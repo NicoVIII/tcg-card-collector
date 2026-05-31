@@ -66,7 +66,7 @@ export async function listInventoryRules(): Promise<InventoryRuleList> {
   const response = await skirClient.invokeRemote(
     ListInventoryRules,
     ListInventoryRulesRequest.create({ unit: true }),
-    "GET",
+    "POST",
   );
 
   return toInventoryRuleList(response);
@@ -101,7 +101,7 @@ export async function getInventoryProjection(
   const response = await skirClient.invokeRemote(
     GetInventoryProjection,
     InventoryProjectionRequest.create({ sortBy, groupBy }),
-    "GET",
+    "POST",
   );
 
   return toInventoryProjection(response);

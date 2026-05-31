@@ -46,7 +46,7 @@ export async function getSettings(): Promise<AppSettings> {
   const response = await skirClient.invokeRemote(
     GetSettings,
     GetSettingsRequest.create({ unit: true }),
-    "GET",
+    "POST",
   );
 
   return normalizeSettings(response);

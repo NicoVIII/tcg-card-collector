@@ -114,7 +114,7 @@ export async function getLatestImportStatus(): Promise<LatestImportStatusRespons
     const response = await skirClient.invokeRemote(
       GetLatestImportStatus,
       GetLatestImportStatusRequest.create({ unit: true }),
-      "GET",
+      "POST",
     );
 
     return normalizeLatestImportStatusResponse(response);

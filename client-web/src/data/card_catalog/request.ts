@@ -36,7 +36,7 @@ export async function listCatalogCards(offset: number, limit: number): Promise<C
   const response = await skirClient.invokeRemote(
     ListCatalogCards,
     ListCatalogCardsRequest.create({ offset, limit }),
-    "GET",
+    "POST",
   );
 
   return toCatalogCardList(response);
