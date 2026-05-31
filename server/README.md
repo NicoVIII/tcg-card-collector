@@ -15,6 +15,7 @@ Planned layering:
 - `gleam format --check src test`
 - `gleam check`
 - `gleam test`
+- `../scripts/check_storage_smoke.sh`
 - `../server/linting/check_architecture.sh`
 
 ## Database Migrations

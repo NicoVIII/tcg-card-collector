@@ -26,6 +26,9 @@ echo "==> backend: unit tests"
   gleam test
 )
 
+echo "==> backend: storage smoke"
+./scripts/check_storage_smoke.sh
+
 echo "==> backend: architecture lint"
 ./server/linting/check_architecture.sh
 

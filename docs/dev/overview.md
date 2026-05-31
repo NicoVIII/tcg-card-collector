@@ -20,6 +20,9 @@ A slice is done only when checks are green and the feature works end-to-end.
 - Frontend: `./scripts/check_frontend.sh`
 - Combined: `./scripts/check_all.sh`
 
+Backend quality includes a SQLite storage smoke check via
+`./scripts/check_storage_smoke.sh`.
+
 ## Fast Local Hooks
 
 - Install hooks once: `lefthook install`
