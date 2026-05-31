@@ -21,8 +21,8 @@ Planned layering:
 
 ## Database Migrations
 
-- Baseline SQLite migration files live in `server/db/migrations`.
-- Current baseline schema:
+- SQLite migration files live in `server/db/migrations`.
+- Current schema:
 	- `import_runs` for import history metadata
 	- `collection_snapshot` for imported collection snapshot rows
 	- `catalog_cards` for minimal catalog card fields

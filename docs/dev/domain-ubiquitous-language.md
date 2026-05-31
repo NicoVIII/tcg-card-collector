@@ -1,4 +1,4 @@
-# Domain Language and Boundaries (Phase 2.1)
+# Domain Language and Boundaries
 
 This document defines the MVP bounded contexts and the shared language for each context.
 
@@ -16,7 +16,7 @@ Purpose:
 Core terms:
 - CatalogCard: normalized card metadata record used by read models and planning.
 - CatalogSyncRun: trace record of one manual metadata refresh execution.
-- CardIdentity: stable identity tuple for one card (set/collector/name shape to be finalized in phase 2.2).
+- CardIdentity: stable identity tuple for one card.
 - CardAttributes: domain attributes needed by catalog and downstream planning.
 
 Boundary notes:
@@ -51,7 +51,7 @@ Core terms:
 
 Boundary notes:
 - Owns rule and projection semantics.
-- Consumes collection and catalog data as inputs through application ports in later phases.
+- Consumes collection and catalog data as inputs through application ports.
 
 ## Implementation Anchors
 
@@ -62,7 +62,7 @@ Initial module boundaries are represented by:
 - `server/src/domain/collection_import/context.gleam`
 - `server/src/domain/inventory_planning/context.gleam`
 
-## Phase 2.2 Value Object Foundations
+## Value Object Foundations
 
 Initial domain-only value objects and invariants:
 

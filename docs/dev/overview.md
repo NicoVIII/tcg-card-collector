@@ -33,10 +33,10 @@ Backend quality includes a SQLite storage smoke check via
 
 Architecture dependency constraints are enforced by the backend lint gate.
 
-Domain language and bounded contexts for Phase 2.1 are documented in
+Domain language and bounded contexts are documented in
 `docs/dev/domain-ubiquitous-language.md`.
 
-Phase 2.4 introduces application ports in `server/src/application/*` and
+Application ports are implemented in `server/src/application/*` and
 infrastructure adapters in `server/src/infrastructure/*`.
 
 Request-to-application mapping handlers are implemented under
