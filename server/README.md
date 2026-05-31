@@ -30,3 +30,8 @@ Planned layering:
 - Application ports and service modules live in `server/src/application/*`.
 - SQLite adapter implementations live in `server/src/infrastructure/*/sqlite_repository.gleam`.
 - Thin wiring lives in `server/src/composition.gleam`.
+
+## Driver Layer
+
+- Skir-oriented handlers live in `server/src/driver/skir/*`.
+- Handlers map transport request models to application commands and queries.

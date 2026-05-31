@@ -19,3 +19,11 @@ pub fn delete_inventory_rule(
 ) -> Nil {
   ports.delete(repository, rule_id)
 }
+
+pub fn inventory_projection(
+  repository: ports.InventoryPlanningRepository,
+  sort_by sort_by: String,
+  group_by group_by: String,
+) -> List(ports.InventoryProjectionReadModel) {
+  ports.projection(repository, sort_by:, group_by:)
+}

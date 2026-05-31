@@ -5,5 +5,6 @@ pub fn new() -> ports.InventoryPlanningRepository {
     upsert_rule: fn(_rule) { Nil },
     list_rules: fn() { [] },
     delete_rule: fn(_rule_id) { Nil },
+    inventory_projection: fn(_sort_by, _group_by) { [] },
   )
 }
