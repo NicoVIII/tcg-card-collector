@@ -28,3 +28,6 @@ A slice is done only when checks are green and the feature works end-to-end.
 	- `./scripts/check_frontend_fast.sh`
 
 Architecture dependency constraints are enforced by the backend lint gate.
+
+Domain language and bounded contexts for Phase 2.1 are documented in
+`docs/dev/domain-ubiquitous-language.md`.
