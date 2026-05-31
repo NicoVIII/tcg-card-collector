@@ -20,7 +20,6 @@
                 "editor.formatOnSave": true
             },
             "extensions": [
-                "Gleam.gleam",
                 "oxc.oxc-vscode",
                 "dbaeumer.vscode-eslint"
             ]

@@ -13,8 +13,15 @@ pub fn allows(source: Layer, target: Layer) -> Bool {
     Domain -> target == Domain || target == Common
     Application -> target == Application || target == Domain || target == Common
     Infrastructure ->
-      target == Infrastructure || target == Application || target == Domain || target == Common
-    Driver -> target == Driver || target == Application || target == Domain || target == Common
+      target == Infrastructure
+      || target == Application
+      || target == Domain
+      || target == Common
+    Driver ->
+      target == Driver
+      || target == Application
+      || target == Domain
+      || target == Common
     Common -> target == Common
     Composition -> True
     Root -> True
