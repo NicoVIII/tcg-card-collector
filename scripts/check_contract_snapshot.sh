@@ -3,29 +3,22 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
-if [ ! -d skir-src ]; then
-  echo "Missing skir-src directory"
+if ! command -v bunx >/dev/null 2>&1; then
+  echo "bunx is required but not installed"
   exit 1
 fi
 
-if [ ! -f skir-snapshot.txt ]; then
-  echo "Missing skir-snapshot.txt"
+if [ ! -f skir.yml ]; then
+  echo "Missing skir.yml"
   exit 1
 fi
 
-ACTUAL=$(mktemp /tmp/skir_snapshot_actual.XXXXXX)
-cleanup() {
-  rm -f "$ACTUAL"
-}
-trap cleanup EXIT
-
-find skir-src -type f -name "*.skir" | sort | while IFS= read -r file; do
-  sha256sum "$file"
-done > "$ACTUAL"
-
-if ! diff -u skir-snapshot.txt "$ACTUAL"; then
-  echo "Contract snapshot mismatch. Update skir-snapshot.txt when contracts change."
+if [ ! -f skir-snapshot.json ]; then
+  echo "Missing skir-snapshot.json"
+  echo "Run: bunx --bun skir snapshot --root $(pwd)"
   exit 1
 fi
+
+bunx --bun skir snapshot --ci --root "$(pwd)"
 
 echo "Contract snapshot check passed"
