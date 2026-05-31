@@ -2,7 +2,7 @@
 
 Self-hosted TCG collection service.
 
-Planned stack:
+Stack:
 - Backend: Gleam with DDD + hexagonal architecture
 - Contract: Skir
 - Frontend: SolidJS + TypeScript + TanStack Query
@@ -17,7 +17,11 @@ Planned stack:
 
 ## Current Status
 
-Phase 1 tooling baseline is in place.
+MVP vertical slice is implemented end-to-end:
+- Contract-first SkirRPC backend/frontend integration
+- SQLite-backed persistence for catalog/import/inventory/settings
+- Inventory projection from latest succeeded import run and saved rules
+- Quality gates covering format/lint/typecheck/tests/storage smoke/contract checks
 
 ## Quality Gates
 

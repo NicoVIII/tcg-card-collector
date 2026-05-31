@@ -1,6 +1,6 @@
 # client-web
 
-SolidJS + TypeScript scaffold for tcg-card-collector.
+SolidJS + TypeScript web client for tcg-card-collector.
 
 MVP routes:
 

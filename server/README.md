@@ -1,6 +1,6 @@
 # server
 
-Gleam backend scaffold.
+Gleam backend service for tcg-card-collector.
 
 Planned layering:
 - domain
@@ -40,4 +40,4 @@ Planned layering:
 
 - Skir-oriented handlers live in `server/src/driver/skir/*`.
 - Handlers map transport request models to application commands and queries.
-- HTTP route and mapper baseline lives in `server/src/driver/http/*`.
+- HTTP routes and mappers live in `server/src/driver/http/*`.

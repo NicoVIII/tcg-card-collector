@@ -39,10 +39,10 @@ Domain language and bounded contexts for Phase 2.1 are documented in
 Phase 2.4 introduces application ports in `server/src/application/*` and
 infrastructure adapters in `server/src/infrastructure/*`.
 
-Phase 3.2 starts request-to-application mapping handlers under
+Request-to-application mapping handlers are implemented under
 `server/src/driver/skir/*`.
 
-Phase 3.3 introduces HTTP route and mapper scaffolding under
+HTTP routes and mapper modules are implemented under
 `server/src/driver/http/*`.
 
 Unversioned contract compatibility policy is documented in
