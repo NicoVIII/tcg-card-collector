@@ -1,7 +1,7 @@
 import { For, Show, createSignal } from "solid-js";
-import { mapError } from "../data/http/error";
 import { useRefreshCatalogMutation } from "../data/card_catalog/mutation";
 import { useCatalogCardsQuery } from "../data/card_catalog/query";
+import { mapError } from "../data/http/error";
 
 export function CatalogPage() {
   const [offset, setOffset] = createSignal(0);

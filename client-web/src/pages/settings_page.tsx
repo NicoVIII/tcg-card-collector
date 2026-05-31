@@ -1,6 +1,6 @@
 import { Show, createEffect, createSignal } from "solid-js";
-import { mapError } from "../data/http/error";
 import { useRefreshCatalogMutation } from "../data/card_catalog/mutation";
+import { mapError } from "../data/http/error";
 import { useUpdateSettingsMutation } from "../data/settings/mutation";
 import { useSettingsQuery } from "../data/settings/query";
 

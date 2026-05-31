@@ -1,0 +1,29 @@
+{
+  "[css]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode",
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit",
+      "source.fixAll.oxc": "explicit",
+      "source.organizeImports": "explicit",
+    }
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit",
+      "source.fixAll.oxc": "explicit",
+      "source.organizeImports": "explicit",
+    },
+  },
+  "oxc.configPath": "./client-web/oxlint.config.ts",
+  "oxc.path.oxfmt": "./client-web/node_modules/.bin/oxfmt",
+  "oxc.path.oxlint": "./client-web/node_modules/.bin/oxlint",
+  "oxc.path.tsgolint": "./client-web/node_modules/.bin/tsgolint",
+  "oxc.useExecPath": true
+}
