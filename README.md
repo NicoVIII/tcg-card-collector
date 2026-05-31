@@ -12,7 +12,7 @@ Planned stack:
 - server: Gleam backend
 - client-web: Solid web client
 - skir-src: Skir contract source
-- deploy: runtime and ops assets
+- container: container/runtime assets
 - docs: project documentation
 
 ## Current Status

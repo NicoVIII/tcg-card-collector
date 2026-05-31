@@ -7,7 +7,7 @@ This repository follows a monorepo layout inspired by full-house.
 - server: Gleam backend
 - client-web: SolidJS frontend
 - skir-src: contract definitions
-- deploy: deployment and operations helpers
+- container: container and runtime helpers
 
 ## Delivery Rule
 
