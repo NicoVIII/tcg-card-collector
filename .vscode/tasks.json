@@ -2,19 +2,143 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "server: build",
+            "type": "shell",
+            "command": "gleam build",
+            "options": {
+                "cwd": "${workspaceFolder}/server"
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "server: typecheck",
+            "type": "shell",
+            "command": "gleam check",
+            "options": {
+                "cwd": "${workspaceFolder}/server"
+            },
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "server: test",
+            "type": "shell",
+            "command": "gleam test",
+            "options": {
+                "cwd": "${workspaceFolder}/server"
+            },
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "server: architecture-lint",
+            "type": "shell",
+            "command": "./linting/check_architecture.sh",
+            "options": {
+                "cwd": "${workspaceFolder}/server"
+            },
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "client-web: typecheck",
+            "type": "shell",
+            "command": "bun run typecheck",
+            "options": {
+                "cwd": "${workspaceFolder}/client-web"
+            },
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [
+                "$tsc"
+            ]
+        },
+        {
+            "label": "client-web: lint",
+            "type": "shell",
+            "command": "bun run lint",
+            "options": {
+                "cwd": "${workspaceFolder}/client-web"
+            },
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "client-web: test",
+            "type": "shell",
+            "command": "bun run test",
+            "options": {
+                "cwd": "${workspaceFolder}/client-web"
+            },
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "client-web: build",
+            "type": "shell",
+            "command": "bun run build",
+            "options": {
+                "cwd": "${workspaceFolder}/client-web"
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": [
+                "$tsc"
+            ]
+        },
+        {
             "label": "check:backend",
             "type": "shell",
-            "command": "./scripts/check_backend.sh"
+            "command": "./scripts/check_backend.sh",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
         },
         {
             "label": "check:frontend",
             "type": "shell",
-            "command": "./scripts/check_frontend.sh"
+            "command": "./scripts/check_frontend.sh",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
         },
         {
             "label": "check:all",
             "type": "shell",
-            "command": "./scripts/check_all.sh"
+            "command": "./scripts/check_all.sh",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
         }
     ]
 }
