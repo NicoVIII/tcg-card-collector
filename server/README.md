@@ -22,9 +22,13 @@ Planned layering:
 ## Database Migrations
 
 - Baseline SQLite migration files live in `server/db/migrations`.
-- Phase 2.3 baseline schema:
+- Current baseline schema:
 	- `import_runs` for import history metadata
 	- `collection_snapshot` for imported collection snapshot rows
+	- `catalog_cards` for minimal catalog card fields
+	- `catalog_sync_metadata` for refresh probe and upstream sync metadata
+	- `inventory_rules` for persisted inventory rule definitions
+	- `app_settings` for persisted default sort/grouping preferences
 
 ## Application Ports and Adapters
 
