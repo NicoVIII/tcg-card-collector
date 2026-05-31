@@ -16,3 +16,10 @@ Planned layering:
 - `gleam check`
 - `gleam test`
 - `../server/linting/check_architecture.sh`
+
+## Database Migrations
+
+- Baseline SQLite migration files live in `server/db/migrations`.
+- Phase 2.3 baseline schema:
+	- `import_runs` for import history metadata
+	- `collection_snapshot` for imported collection snapshot rows
