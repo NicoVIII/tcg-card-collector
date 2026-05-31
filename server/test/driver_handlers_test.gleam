@@ -1,3 +1,4 @@
+import application/collection_import/ports as collection_import_ports
 import driver/skir/card_catalog_handler
 import driver/skir/collection_import_handler
 import driver/skir/inventory_planning_handler
@@ -19,9 +20,40 @@ pub fn card_catalog_handler_lists_stub_card_test() {
 }
 
 pub fn collection_import_handler_returns_not_found_when_empty_test() {
+  collection_import_sqlite.reset_for_tests()
   let repository = collection_import_sqlite.new()
   let response = collection_import_handler.get_latest_import_status(repository)
   should.equal(response, collection_import_handler.ImportStatusNotFound)
+}
+
+pub fn collection_import_handler_returns_latest_saved_import_status_test() {
+  collection_import_sqlite.reset_for_tests()
+  let repository = collection_import_sqlite.new()
+
+  let _ =
+    collection_import_handler.import_collection(
+      repository,
+      collection_import_handler.ImportCollectionRequest(
+        import_run_id: "run-1",
+        source_name: "deckstats-export.csv",
+        source_checksum: "checksum-1",
+        row_count: 42,
+      ),
+    )
+
+  let response = collection_import_handler.get_latest_import_status(repository)
+
+  should.equal(
+    response,
+    collection_import_handler.ImportStatusFound(
+      collection_import_ports.ImportRunReadModel(
+        "run-1",
+        "deckstats-export.csv",
+        "pending",
+        42,
+      ),
+    ),
+  )
 }
 
 pub fn inventory_handler_lists_empty_rules_test() {
