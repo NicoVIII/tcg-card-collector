@@ -23,3 +23,9 @@ Planned layering:
 - Phase 2.3 baseline schema:
 	- `import_runs` for import history metadata
 	- `collection_snapshot` for imported collection snapshot rows
+
+## Application Ports and Adapters
+
+- Application ports and service modules live in `server/src/application/*`.
+- SQLite adapter implementations live in `server/src/infrastructure/*/sqlite_repository.gleam`.
+- Thin wiring lives in `server/src/composition.gleam`.

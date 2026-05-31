@@ -31,3 +31,6 @@ Architecture dependency constraints are enforced by the backend lint gate.
 
 Domain language and bounded contexts for Phase 2.1 are documented in
 `docs/dev/domain-ubiquitous-language.md`.
+
+Phase 2.4 introduces application ports in `server/src/application/*` and
+infrastructure adapters in `server/src/infrastructure/*`.
