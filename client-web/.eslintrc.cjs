@@ -21,5 +21,5 @@ module.exports = {
       version: "detect",
     },
   },
-  ignorePatterns: ["dist", "node_modules"],
+  ignorePatterns: ["dist", "node_modules", "src/data/skirout"],
 };

@@ -1,4 +1,10 @@
-import { requestJson } from "../http/request";
+import { skirClient } from "../http/skir_rpc";
+import { UpdateSettings, UpdateSettingsRequest } from "../skirout/settings/commands.js";
+import {
+  AppSettings as RpcAppSettings,
+  GetSettings,
+  GetSettingsRequest,
+} from "../skirout/settings/queries.js";
 
 export type AppSettings = {
   default_sort: string;
@@ -10,41 +16,50 @@ const DEFAULT_SETTINGS: AppSettings = {
   default_grouping: "location",
 };
 
-function asString(value: unknown, fallback = ""): string {
-  return typeof value === "string" ? value : fallback;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (typeof value !== "object" || value === null) {
-    return null;
+export function normalizeSettings(payload: unknown): AppSettings {
+  if (payload instanceof RpcAppSettings) {
+    return {
+      default_sort: payload.defaultSort || DEFAULT_SETTINGS.default_sort,
+      default_grouping: payload.defaultGrouping || DEFAULT_SETTINGS.default_grouping,
+    };
   }
 
-  return value as Record<string, unknown>;
-}
-
-export function normalizeSettings(payload: unknown): AppSettings {
-  const data = asRecord(payload);
-  if (data === null) {
+  if (typeof payload !== "object" || payload === null) {
     return DEFAULT_SETTINGS;
   }
 
+  const data = payload as Record<string, unknown>;
+
   return {
-    default_sort: asString(data.default_sort, DEFAULT_SETTINGS.default_sort),
-    default_grouping: asString(data.default_grouping, DEFAULT_SETTINGS.default_grouping),
+    default_sort:
+      typeof (data.default_sort ?? data.defaultSort) === "string"
+        ? String(data.default_sort ?? data.defaultSort)
+        : DEFAULT_SETTINGS.default_sort,
+    default_grouping:
+      typeof (data.default_grouping ?? data.defaultGrouping) === "string"
+        ? String(data.default_grouping ?? data.defaultGrouping)
+        : DEFAULT_SETTINGS.default_grouping,
   };
 }
 
 export async function getSettings(): Promise<AppSettings> {
-  const response = await requestJson<unknown>("/api/settings");
+  const response = await skirClient.invokeRemote(
+    GetSettings,
+    GetSettingsRequest.create({ unit: true }),
+    "GET",
+  );
+
   return normalizeSettings(response);
 }
 
 export async function updateSettings(settings: AppSettings): Promise<{ success: boolean }> {
-  const response = await requestJson<unknown>("/api/settings", {
-    method: "PUT",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(settings),
-  });
-  const data = asRecord(response);
-  return { success: Boolean(data?.success) };
+  const response = await skirClient.invokeRemote(
+    UpdateSettings,
+    UpdateSettingsRequest.create({
+      defaultSort: settings.default_sort,
+      defaultGrouping: settings.default_grouping,
+    }),
+  );
+
+  return { success: response.union.kind === "SUCCESS" };
 }

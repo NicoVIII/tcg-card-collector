@@ -2,3 +2,7 @@ generators:
   - mod: skir-gleam-gen
     outDir: ./server/src/driver/skirout
     config: {}
+  - mod: skir-typescript-gen
+    outDir: ./client-web/src/data/skirout
+    config:
+      importPathExtension: ""
