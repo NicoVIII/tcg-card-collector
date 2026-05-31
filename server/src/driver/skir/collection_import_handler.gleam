@@ -63,6 +63,26 @@ pub fn import_collection(
 
   case row_count == actual_row_count {
     True -> {
+      service.replace_snapshot_rows(
+        repository,
+        import_run_id,
+        rows
+          |> list.map(fn(row) {
+            let ImportCollectionRow(
+              card_name: card_name,
+              set_code: set_code,
+              collector_number: collector_number,
+              quantity: quantity,
+            ) = row
+
+            ports.SnapshotRowWriteModel(
+              card_name: card_name,
+              set_code: set_code,
+              collector_number: collector_number,
+              quantity: quantity,
+            )
+          }),
+      )
       persist_run(
         repository,
         import_run_id,

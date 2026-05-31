@@ -3,14 +3,16 @@ import application/card_catalog/service
 
 pub type RefreshCatalogResponse {
   Success
-  Error
+  Failed
 }
 
 pub fn refresh_catalog(
   repository: ports.CatalogRepository,
 ) -> RefreshCatalogResponse {
-  service.refresh_catalog(repository)
-  Success
+  case service.refresh_catalog(repository) {
+    Ok(_) -> Success
+    Error(_) -> Failed
+  }
 }
 
 pub fn list_catalog_cards(

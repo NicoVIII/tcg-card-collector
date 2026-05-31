@@ -1,6 +1,8 @@
 import application/card_catalog/ports
 
-pub fn refresh_catalog(repository: ports.CatalogRepository) -> Nil {
+pub fn refresh_catalog(
+  repository: ports.CatalogRepository,
+) -> Result(Nil, ports.CatalogRefreshError) {
   ports.refresh(repository)
 }
 

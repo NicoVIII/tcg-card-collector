@@ -84,8 +84,12 @@ fn handle_list_catalog_cards(deps: Dependencies) -> Response(mist.ResponseData) 
 }
 
 fn handle_refresh_catalog(deps: Dependencies) -> Response(mist.ResponseData) {
-  card_catalog_handler.refresh_catalog(deps.card_catalog_repository)
-  json_response(200, json_codec.encode_ok("catalog refreshed"))
+  case card_catalog_handler.refresh_catalog(deps.card_catalog_repository) {
+    card_catalog_handler.Success ->
+      json_response(200, json_codec.encode_ok("catalog refreshed"))
+    card_catalog_handler.Failed ->
+      json_response(503, json_codec.encode_error("catalog refresh failed"))
+  }
 }
 
 // ---- Collection import ------------------------------------------------------

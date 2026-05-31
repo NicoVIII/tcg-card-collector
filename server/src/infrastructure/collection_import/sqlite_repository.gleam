@@ -1,4 +1,5 @@
 import application/collection_import/ports
+import gleam/list
 import gleam/option.{type Option, None, Some}
 
 @external(erlang, "collection_import_store", "save")
@@ -11,6 +12,12 @@ fn save_to_store(
 
 @external(erlang, "collection_import_store", "latest")
 fn latest_from_store() -> Option(#(String, String, String, Int))
+
+@external(erlang, "collection_import_store", "replace_rows")
+fn replace_rows_in_store(
+  import_run_id: String,
+  rows: List(#(String, String, String, Int)),
+) -> Nil
 
 @external(erlang, "collection_import_store", "clear")
 fn clear_store() -> Nil
@@ -26,6 +33,22 @@ pub fn new() -> ports.CollectionImportRepository {
       ) = run
 
       save_to_store(id, source_name, status, row_count)
+    },
+    replace_snapshot_rows: fn(import_run_id, rows) {
+      replace_rows_in_store(
+        import_run_id,
+        rows
+          |> list.map(fn(row) {
+            let ports.SnapshotRowWriteModel(
+              card_name: card_name,
+              set_code: set_code,
+              collector_number: collector_number,
+              quantity: quantity,
+            ) = row
+
+            #(card_name, set_code, collector_number, quantity)
+          }),
+      )
     },
     latest_import_run: fn() {
       case latest_from_store() {

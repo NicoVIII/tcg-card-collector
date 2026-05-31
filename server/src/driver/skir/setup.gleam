@@ -84,8 +84,21 @@ fn handle_refresh_catalog(
   Nil,
   Nil,
 ) {
-  card_catalog_handler.refresh_catalog(deps.card_catalog_repository)
-  #(Ok(card_catalog_commands.RefreshCatalogResponseSuccess), req_meta, Nil)
+  case card_catalog_handler.refresh_catalog(deps.card_catalog_repository) {
+    card_catalog_handler.Success -> #(
+      Ok(card_catalog_commands.RefreshCatalogResponseSuccess),
+      req_meta,
+      Nil,
+    )
+    card_catalog_handler.Failed -> #(
+      Error(service.ServiceError(
+        service.E503xServiceUnavailable,
+        "catalog refresh failed",
+      )),
+      req_meta,
+      Nil,
+    )
+  }
 }
 
 fn handle_list_catalog_cards(

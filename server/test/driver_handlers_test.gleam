@@ -1,4 +1,5 @@
 import application/collection_import/ports as collection_import_ports
+import application/inventory_planning/ports as inventory_ports
 import application/settings/ports as settings_ports
 import driver/skir/card_catalog_handler
 import driver/skir/collection_import_handler
@@ -158,6 +159,48 @@ pub fn settings_handler_persists_updated_values_test() {
 }
 
 pub fn inventory_handler_returns_empty_projection_test() {
+  collection_import_sqlite.reset_for_tests()
+  inventory_planning_sqlite.reset_for_tests()
+
+  let import_repository = collection_import_sqlite.new()
+  let inventory_repository = inventory_planning_sqlite.new()
+
+  let _ =
+    collection_import_handler.import_collection(
+      import_repository,
+      collection_import_handler.ImportCollectionRequest(
+        import_run_id: "projection-run-1",
+        source_name: "integration-test.csv",
+        source_checksum: "checksum-projection",
+        row_count: 2,
+        rows: [
+          collection_import_handler.ImportCollectionRow(
+            card_name: "Lightning Bolt",
+            set_code: "M11",
+            collector_number: "146",
+            quantity: 2,
+          ),
+          collection_import_handler.ImportCollectionRow(
+            card_name: "Counterspell",
+            set_code: "2XM",
+            collector_number: "49",
+            quantity: 1,
+          ),
+        ],
+      ),
+    )
+
+  let upsert_result =
+    inventory_planning_handler.upsert_inventory_rule(
+      inventory_repository,
+      inventory_planning_handler.UpsertInventoryRuleRequest(
+        id: "projection-rule-1",
+        location_name: "main-binder",
+        expression: "set_code=M11",
+      ),
+    )
+  should.equal(upsert_result, Ok(Nil))
+
   let repository = inventory_planning_sqlite.new()
   let projection =
     inventory_planning_handler.inventory_projection(
@@ -168,5 +211,16 @@ pub fn inventory_handler_returns_empty_projection_test() {
       ),
     )
 
-  should.equal(projection, Ok([]))
+  should.equal(
+    projection,
+    Ok([
+      inventory_ports.InventoryProjectionReadModel(
+        location_name: "main-binder",
+        card_name: "Lightning Bolt",
+        set_code: "M11",
+        quantity: 2,
+        group_value: "main-binder",
+      ),
+    ]),
+  )
 }

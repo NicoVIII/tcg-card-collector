@@ -8,6 +8,14 @@ pub fn import_collection(
   ports.save(repository, run)
 }
 
+pub fn replace_snapshot_rows(
+  repository: ports.CollectionImportRepository,
+  import_run_id: String,
+  rows: List(ports.SnapshotRowWriteModel),
+) -> Nil {
+  ports.replace_rows(repository, import_run_id, rows)
+}
+
 pub fn latest_import_status(
   repository: ports.CollectionImportRepository,
 ) -> Option(ports.ImportRunReadModel) {

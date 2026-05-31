@@ -2,14 +2,20 @@ pub type CatalogCardReadModel {
   CatalogCardReadModel(id: String, name: String, set_code: String)
 }
 
+pub type CatalogRefreshError {
+  CatalogRefreshError(message: String)
+}
+
 pub type CatalogRepository {
   CatalogRepository(
-    refresh_catalog: fn() -> Nil,
+    refresh_catalog: fn() -> Result(Nil, CatalogRefreshError),
     list_cards: fn() -> List(CatalogCardReadModel),
   )
 }
 
-pub fn refresh(repository: CatalogRepository) -> Nil {
+pub fn refresh(
+  repository: CatalogRepository,
+) -> Result(Nil, CatalogRefreshError) {
   let CatalogRepository(refresh_catalog: refresh_catalog, ..) = repository
   refresh_catalog()
 }

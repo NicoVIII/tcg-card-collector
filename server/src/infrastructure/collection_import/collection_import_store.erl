@@ -1,5 +1,5 @@
 -module(collection_import_store).
--export([save/4, latest/0, clear/0]).
+-export([save/4, latest/0, replace_rows/2, clear/0]).
 
 save(Id, SourceName, Status, RowCount) ->
     SourceChecksum = "manual-upload",
@@ -52,10 +52,44 @@ latest() ->
         error -> none
     end.
 
+replace_rows(ImportRunId, Rows) ->
+    DeleteSql =
+        "DELETE FROM collection_snapshot WHERE import_run_id = "
+        ++ sqlite_store:quote(ImportRunId)
+        ++ ";",
+    ok = sqlite_store:exec(DeleteSql),
+    insert_rows(ImportRunId, Rows, 1),
+    nil.
+
 clear() ->
     ok = sqlite_store:exec("DELETE FROM collection_snapshot;"),
     ok = sqlite_store:exec("DELETE FROM import_runs;"),
     nil.
+
+insert_rows(_ImportRunId, [], _RowNumber) ->
+    ok;
+insert_rows(ImportRunId, [{CardName, SetCode, CollectorNumber, Quantity} | Rest], RowNumber) ->
+    RowId = iolist_to_binary([ImportRunId, "-row-", integer_to_list(RowNumber)]),
+    Sql =
+        "INSERT INTO collection_snapshot ("
+        "  id, import_run_id, row_number, card_name, set_code, collector_number, finish, language, quantity"
+        ") VALUES ("
+        ++ sqlite_store:quote(RowId)
+        ++ ", "
+        ++ sqlite_store:quote(ImportRunId)
+        ++ ", "
+        ++ integer_to_list(RowNumber)
+        ++ ", "
+        ++ sqlite_store:quote(CardName)
+        ++ ", "
+        ++ sqlite_store:quote(SetCode)
+        ++ ", "
+        ++ sqlite_store:quote(CollectorNumber)
+        ++ ", 'nonfoil', 'en', "
+        ++ integer_to_list(Quantity)
+        ++ ");",
+    ok = sqlite_store:exec(Sql),
+    insert_rows(ImportRunId, Rest, RowNumber + 1).
 
 parse_latest(Output) ->
     case string:trim(Output) of
