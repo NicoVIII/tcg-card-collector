@@ -20,4 +20,11 @@ A slice is done only when checks are green and the feature works end-to-end.
 - Frontend: `./scripts/check_frontend.sh`
 - Combined: `./scripts/check_all.sh`
 
+## Fast Local Hooks
+
+- Install hooks once: `lefthook install`
+- Pre-commit uses `lefthook.yml` with fast checks:
+	- `./scripts/check_backend_fast.sh`
+	- `./scripts/check_frontend_fast.sh`
+
 Architecture dependency constraints are enforced by the backend lint gate.

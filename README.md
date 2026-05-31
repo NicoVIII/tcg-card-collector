@@ -29,3 +29,11 @@ Run locally:
 - `./scripts/check_backend.sh`
 - `./scripts/check_frontend.sh`
 - `./scripts/check_all.sh`
+
+## Developer Feedback Loop
+
+- Install git hooks: `lefthook install`
+- Pre-commit hooks run fast backend/frontend checks.
+- You can run them directly:
+	- `./scripts/check_backend_fast.sh`
+	- `./scripts/check_frontend_fast.sh`

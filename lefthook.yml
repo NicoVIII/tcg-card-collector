@@ -1,0 +1,9 @@
+pre-commit:
+  parallel: true
+  commands:
+    backend-fast:
+      glob: "server/**"
+      run: ./scripts/check_backend_fast.sh
+    frontend-fast:
+      glob: "client-web/**"
+      run: ./scripts/check_frontend_fast.sh
