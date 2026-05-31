@@ -3,18 +3,30 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
-if [ -f server/gleam.toml ]; then
-  echo "Backend scaffold present: server/gleam.toml"
-else
-  echo "Missing backend scaffold"
+if ! command -v gleam >/dev/null 2>&1; then
+  echo "gleam is required but not installed"
   exit 1
 fi
 
-if [ -f server/src/tcg_card_collector.gleam ]; then
-  echo "Backend entrypoint scaffold present"
-else
-  echo "Missing backend entrypoint scaffold"
-  exit 1
-fi
+echo "==> backend: format"
+(
+  cd server
+  gleam format --check src test
+)
 
-echo "Backend scaffold checks passed"
+echo "==> backend: typecheck"
+(
+  cd server
+  gleam check
+)
+
+echo "==> backend: unit tests"
+(
+  cd server
+  gleam test
+)
+
+echo "==> backend: architecture lint"
+./server/linting/check_architecture.sh
+
+echo "Backend quality checks passed"

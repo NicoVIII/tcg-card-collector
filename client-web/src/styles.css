@@ -1,58 +1,58 @@
 :root {
-    color-scheme: light;
-    font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
-    --bg: #f4f6f8;
-    --panel: #ffffff;
-    --ink: #1b2430;
-    --brand: #0f766e;
+  color-scheme: light;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --bg: #f4f6f8;
+  --panel: #ffffff;
+  --ink: #1b2430;
+  --brand: #0f766e;
 }
 
 body {
-    margin: 0;
-    background: linear-gradient(165deg, #eef6f5, var(--bg));
-    color: var(--ink);
+  margin: 0;
+  background: linear-gradient(165deg, #eef6f5, var(--bg));
+  color: var(--ink);
 }
 
 .app-shell {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 24px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
 }
 
 .app-header {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 nav {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .nav-btn {
-    border: 1px solid #c7d1d8;
-    background: var(--panel);
-    color: var(--ink);
-    padding: 8px 12px;
-    border-radius: 8px;
-    cursor: pointer;
+  border: 1px solid #c7d1d8;
+  background: var(--panel);
+  color: var(--ink);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
 .page-panel {
-    margin-top: 18px;
-    background: var(--panel);
-    border-radius: 12px;
-    padding: 20px;
-    border: 1px solid #dce4ea;
+  margin-top: 18px;
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #dce4ea;
 }
 
 h1 {
-    margin: 0;
-    color: var(--brand);
+  margin: 0;
+  color: var(--brand);
 }
 
 h2 {
-    margin-top: 0;
+  margin-top: 0;
 }

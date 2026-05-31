@@ -10,6 +10,11 @@
             "label": "check:frontend",
             "type": "shell",
             "command": "./scripts/check_frontend.sh"
+        },
+        {
+            "label": "check:all",
+            "type": "shell",
+            "command": "./scripts/check_all.sh"
         }
     ]
 }

@@ -6,16 +6,35 @@ on:
   pull_request:
 
 jobs:
-  quality:
+  backend-quality:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Backend quality placeholder
-        run: |
-          echo "Backend checks are scaffolded in scripts/check_backend.sh"
+      - name: Setup Erlang/OTP + Gleam
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27"
+          gleam-version: "1.7.0"
 
-      - name: Frontend quality placeholder
+      - name: Run backend quality checks
         run: |
-          echo "Frontend checks are scaffolded in scripts/check_frontend.sh"
+          chmod +x scripts/check_backend.sh server/linting/check_architecture.sh
+          ./scripts/check_backend.sh
+
+  frontend-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run frontend quality checks
+        run: |
+          chmod +x scripts/check_frontend.sh
+          ./scripts/check_frontend.sh

@@ -17,4 +17,15 @@ Planned stack:
 
 ## Current Status
 
-Initial scaffold (slice 0) with quality gate placeholders is in place.
+Phase 1 tooling baseline is in place.
+
+## Quality Gates
+
+- Backend: format, typecheck, unit tests, architecture lint
+- Frontend: format, lint, typecheck, tests
+
+Run locally:
+
+- `./scripts/check_backend.sh`
+- `./scripts/check_frontend.sh`
+- `./scripts/check_all.sh`

@@ -8,7 +8,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Setup Erlang/OTP + Gleam
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27"
+          gleam-version: "1.7.0"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Scaffold checks
         run: |
-          chmod +x scripts/check_backend.sh scripts/check_frontend.sh scripts/check_all.sh
+          chmod +x scripts/check_backend.sh scripts/check_frontend.sh scripts/check_all.sh server/linting/check_architecture.sh
           ./scripts/check_all.sh

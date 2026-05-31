@@ -7,14 +7,14 @@ import "./styles.css";
 const root = document.getElementById("root");
 
 if (!root) {
-    throw new Error("Root element not found");
+  throw new Error("Root element not found");
 }
 
 render(
-    () => (
-        <QueryClientProvider client={queryClient}>
-            <App />
-        </QueryClientProvider>
-    ),
-    root
+  () => (
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>
+  ),
+  root,
 );

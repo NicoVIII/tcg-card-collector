@@ -1,11 +1,22 @@
 {
     "name": "tcg-card-collector",
     "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "features": {
+        "ghcr.io/devcontainers/features/node:1": {
+            "version": "22"
+        }
+    },
     "customizations": {
         "vscode": {
             "settings": {
                 "editor.formatOnSave": true
-            }
+            },
+            "extensions": [
+                "Gleam.gleam",
+                "esbenp.prettier-vscode",
+                "dbaeumer.vscode-eslint"
+            ]
         }
-    }
+    },
+    "postCreateCommand": "sh -c 'if ! command -v gleam >/dev/null 2>&1; then curl -fsSL -o /tmp/gleam.tar.gz https://github.com/gleam-lang/gleam/releases/download/v1.14.0/gleam-v1.14.0-x86_64-unknown-linux-musl.tar.gz && tar -xzf /tmp/gleam.tar.gz -C /tmp && sudo mv /tmp/gleam /usr/local/bin/gleam && sudo chmod +x /usr/local/bin/gleam; fi && cd client-web && npm install'"
 }
