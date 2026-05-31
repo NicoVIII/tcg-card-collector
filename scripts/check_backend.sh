@@ -29,6 +29,9 @@ echo "==> backend: unit tests"
 echo "==> backend: storage smoke"
 ./scripts/check_storage_smoke.sh
 
+echo "==> backend: contract snapshot"
+./scripts/check_contract_snapshot.sh
+
 echo "==> backend: architecture lint"
 ./server/linting/check_architecture.sh
 

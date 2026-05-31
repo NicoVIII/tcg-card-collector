@@ -43,3 +43,6 @@ Phase 3.2 starts request-to-application mapping handlers under
 
 Phase 3.3 introduces HTTP route and mapper scaffolding under
 `server/src/driver/http/*`.
+
+Unversioned contract compatibility policy is documented in
+`docs/dev/contract-compatibility.md`.
