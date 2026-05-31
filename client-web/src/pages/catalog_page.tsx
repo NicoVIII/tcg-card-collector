@@ -35,7 +35,7 @@ export function CatalogPage() {
         setRefreshFeedback({
           kind: "error",
           message:
-            "Refresh finished, but no cards are available. The backend refresh adapter is currently not populating catalog data.",
+            "Refresh finished, but no cards are currently available from the upstream catalog data.",
         });
         return;
       }

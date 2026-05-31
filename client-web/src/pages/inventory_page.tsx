@@ -105,8 +105,11 @@ export function InventoryPage() {
       <Show when={projectionQuery.isLoading}>
         <p>Loading projection...</p>
       </Show>
+      <Show when={projectionQuery.isError}>
+        <p role="alert">{mapError(projectionQuery.error).message}</p>
+      </Show>
       <Show
-        when={(projectionQuery.data?.data?.length ?? 0) > 0}
+        when={!projectionQuery.isError && (projectionQuery.data?.data?.length ?? 0) > 0}
         fallback={<p>No projection data.</p>}
       >
         <pre>{JSON.stringify(projectionQuery.data, null, 2)}</pre>
