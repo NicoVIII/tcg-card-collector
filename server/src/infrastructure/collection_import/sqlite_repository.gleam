@@ -1,26 +1,7 @@
 import application/collection_import/ports
 import gleam/list
-import gleam/option.{type Option, None, Some}
-
-@external(erlang, "collection_import_store", "save")
-fn save_to_store(
-  id: String,
-  source_name: String,
-  status: String,
-  row_count: Int,
-) -> Nil
-
-@external(erlang, "collection_import_store", "latest")
-fn latest_from_store() -> Option(#(String, String, String, Int))
-
-@external(erlang, "collection_import_store", "replace_rows")
-fn replace_rows_in_store(
-  import_run_id: String,
-  rows: List(#(String, String, String, Int)),
-) -> Nil
-
-@external(erlang, "collection_import_store", "clear")
-fn clear_store() -> Nil
+import gleam/option.{None, Some}
+import infrastructure/collection_import/collection_import_store
 
 pub fn new() -> ports.CollectionImportRepository {
   ports.CollectionImportRepository(
@@ -32,10 +13,10 @@ pub fn new() -> ports.CollectionImportRepository {
         row_count: row_count,
       ) = run
 
-      save_to_store(id, source_name, status, row_count)
+      collection_import_store.save(id, source_name, status, row_count)
     },
     replace_snapshot_rows: fn(import_run_id, rows) {
-      replace_rows_in_store(
+      collection_import_store.replace_rows(
         import_run_id,
         rows
           |> list.map(fn(row) {
@@ -51,7 +32,7 @@ pub fn new() -> ports.CollectionImportRepository {
       )
     },
     latest_import_run: fn() {
-      case latest_from_store() {
+      case collection_import_store.latest() {
         None -> None
         Some(#(id, source_name, status, row_count)) ->
           Some(ports.ImportRunReadModel(
@@ -66,5 +47,5 @@ pub fn new() -> ports.CollectionImportRepository {
 }
 
 pub fn reset_for_tests() -> Nil {
-  clear_store()
+  collection_import_store.clear()
 }

@@ -1,3 +1,4 @@
+import common/os_runtime
 import composition.{type Dependencies}
 import driver/http/json_codec
 import driver/skir/card_catalog_handler
@@ -8,7 +9,6 @@ import driver/skir/settings_handler
 import driver/skir/setup as skir_setup
 import gleam/bit_array
 import gleam/bytes_tree
-import gleam/erlang/charlist
 import gleam/erlang/process
 import gleam/http.{Delete, Get, Post, Put}
 import gleam/http/request.{type Request}
@@ -301,13 +301,6 @@ fn json_response(status: Int, body: String) -> Response(mist.ResponseData) {
   )
 }
 
-@external(erlang, "os", "getenv")
-fn erl_getenv(name: charlist.Charlist) -> String
-
 fn get_env(name: String) -> Result(String, Nil) {
-  let result = erl_getenv(charlist.from_string(name))
-  case result {
-    "" -> Error(Nil)
-    value -> Ok(value)
-  }
+  os_runtime.getenv(name)
 }
