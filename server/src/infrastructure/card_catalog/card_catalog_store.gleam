@@ -8,6 +8,14 @@ type CatalogRowTuple =
 
 const bulk_metadata_url = "https://api.scryfall.com/bulk-data/default_cards"
 
+const shell_timeout_seconds = "300"
+
+const curl_connect_timeout_seconds = "10"
+
+const curl_metadata_max_time_seconds = "30"
+
+const curl_bulk_import_max_time_seconds = "240"
+
 pub fn refresh() -> Result(Nil, String) {
   case should_probe() {
     False -> Ok(Nil)
@@ -105,7 +113,11 @@ fn current_upstream_updated_at() -> String {
 fn fetch_bulk_metadata() -> Result(#(String, String), String) {
   let script =
     "set -e; "
-    <> "curl -fsSL "
+    <> "curl -fsSL --connect-timeout "
+    <> curl_connect_timeout_seconds
+    <> " --max-time "
+    <> curl_metadata_max_time_seconds
+    <> " "
     <> shell_quote(bulk_metadata_url)
     <> " | jq -r '[.updated_at, .download_uri] | @tsv'"
 
@@ -129,7 +141,11 @@ fn import_cards(download_uri: String) -> Result(Nil, String) {
     "set -e; "
     <> "tmp=$(mktemp); "
     <> "trap 'rm -f \"$tmp\"' EXIT; "
-    <> "curl -fsSL "
+    <> "curl -fsSL --connect-timeout "
+    <> curl_connect_timeout_seconds
+    <> " --max-time "
+    <> curl_bulk_import_max_time_seconds
+    <> " "
     <> shell_quote(download_uri)
     <> " | jq -r '.[] | [.id, .oracle_id, .name, .set, (.collector_number // \"\"), (.rarity // \"unknown\"), (.image_uris.small // \"\"), (.image_uris.normal // \"\")] | @tsv' > \"$tmp\"; "
     <> "sqlite3 "
@@ -225,7 +241,13 @@ fn run_shell(script: String) -> Result(String, String) {
   let wrapped =
     "set +e; " <> script <> "; status=$?; printf '\n__EXIT__:%s' \"$status\""
 
-  let output = os_runtime.cmd("sh -c " <> shell_quote(wrapped))
+  let command =
+    "timeout --signal=TERM --kill-after=10 "
+    <> shell_timeout_seconds
+    <> " sh -c "
+    <> shell_quote(wrapped)
+
+  let output = os_runtime.cmd(command)
 
   case string.split(output, "__EXIT__:") {
     [body, status_raw] ->
