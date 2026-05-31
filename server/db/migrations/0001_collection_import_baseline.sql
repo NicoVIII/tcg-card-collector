@@ -1,3 +1,5 @@
+-- migrate:up
+
 -- Phase 2.3 baseline: snapshot persistence + import history metadata
 
 PRAGMA foreign_keys = ON;
@@ -36,3 +38,8 @@ CREATE INDEX IF NOT EXISTS idx_collection_snapshot_import_run_id
   ON collection_snapshot(import_run_id);
 CREATE INDEX IF NOT EXISTS idx_collection_snapshot_card_lookup
   ON collection_snapshot(card_name, set_code, collector_number);
+
+-- migrate:down
+
+DROP TABLE IF EXISTS collection_snapshot;
+DROP TABLE IF EXISTS import_runs;

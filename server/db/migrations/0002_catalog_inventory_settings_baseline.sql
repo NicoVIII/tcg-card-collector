@@ -1,3 +1,5 @@
+-- migrate:up
+
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS catalog_cards (
@@ -61,3 +63,10 @@ INSERT OR IGNORE INTO app_settings (
   'card_name',
   'location_name'
 );
+
+-- migrate:down
+
+DROP TABLE IF EXISTS app_settings;
+DROP TABLE IF EXISTS inventory_rules;
+DROP TABLE IF EXISTS catalog_sync_metadata;
+DROP TABLE IF EXISTS catalog_cards;
