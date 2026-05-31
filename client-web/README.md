@@ -11,8 +11,8 @@ MVP routes:
 
 ## Quality
 
-- `npm run format`
-- `npm run lint`
-- `npm run typecheck`
-- `npm run test`
-- `npm run check`
+- `bun run format`
+- `bun run lint`
+- `bun run typecheck`
+- `bun run test`
+- `bun run check`

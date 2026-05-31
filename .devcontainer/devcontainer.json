@@ -1,11 +1,15 @@
 {
     "name": "tcg-card-collector",
-    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "image": "mcr.microsoft.com/devcontainers/base:3-resolute",
     "features": {
-        "ghcr.io/devcontainers/features/node:1": {
-            "version": "22"
+        "ghcr.io/devcontainers/features/git-lfs:1": {},
+        "ghcr.io/devcontainers-extra/features/bun:1": {},
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {
+            "moby": false
         }
     },
+    "postCreateCommand": "sh -c 'if ! command -v gleam >/dev/null 2>&1; then curl -fsSL -o /tmp/gleam.tar.gz https://github.com/gleam-lang/gleam/releases/download/v1.14.0/gleam-v1.14.0-x86_64-unknown-linux-musl.tar.gz && tar -xzf /tmp/gleam.tar.gz -C /tmp && sudo mv /tmp/gleam /usr/local/bin/gleam && sudo chmod +x /usr/local/bin/gleam; fi'",
+    "postStartCommand": "cd client-web && bun install",
     "customizations": {
         "vscode": {
             "settings": {
@@ -13,10 +17,9 @@
             },
             "extensions": [
                 "Gleam.gleam",
-                "esbenp.prettier-vscode",
+                "oxc.oxc-vscode",
                 "dbaeumer.vscode-eslint"
             ]
         }
-    },
-    "postCreateCommand": "sh -c 'if ! command -v gleam >/dev/null 2>&1; then curl -fsSL -o /tmp/gleam.tar.gz https://github.com/gleam-lang/gleam/releases/download/v1.14.0/gleam-v1.14.0-x86_64-unknown-linux-musl.tar.gz && tar -xzf /tmp/gleam.tar.gz -C /tmp && sudo mv /tmp/gleam /usr/local/bin/gleam && sudo chmod +x /usr/local/bin/gleam; fi && cd client-web && npm install'"
+    }
 }

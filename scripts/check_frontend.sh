@@ -3,25 +3,25 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
-if ! command -v npm >/dev/null 2>&1; then
-  echo "npm is required but not installed"
+if ! command -v bun >/dev/null 2>&1; then
+  echo "bun is required but not installed"
   exit 1
 fi
 
 echo "==> frontend: install deps"
 (
   cd client-web
-  if [ -f package-lock.json ]; then
-    npm ci
+  if [ -f bun.lock ]; then
+    bun install --frozen-lockfile
   else
-    npm install
+    bun install
   fi
 )
 
 echo "==> frontend: quality gates"
 (
   cd client-web
-  npm run check
+  bun run check
 )
 
 echo "Frontend quality checks passed"
