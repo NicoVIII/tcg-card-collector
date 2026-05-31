@@ -104,6 +104,26 @@ pub fn inventory_handler_upsert_and_list_rules_test() {
   should.equal(list.length(rules), 1)
 }
 
+pub fn inventory_handler_rejects_invalid_rule_expression_test() {
+  inventory_planning_sqlite.reset_for_tests()
+  let repository = inventory_planning_sqlite.new()
+
+  let upsert_result =
+    inventory_planning_handler.upsert_inventory_rule(
+      repository,
+      inventory_planning_handler.UpsertInventoryRuleRequest(
+        id: "rule-invalid",
+        location_name: "main-binder",
+        expression: "rarity=common",
+      ),
+    )
+
+  should.equal(
+    upsert_result,
+    Error(inventory_planning_handler.InvalidRuleExpression),
+  )
+}
+
 pub fn inventory_handler_delete_rule_removes_it_test() {
   inventory_planning_sqlite.reset_for_tests()
   let repository = inventory_planning_sqlite.new()
@@ -223,4 +243,18 @@ pub fn inventory_handler_returns_empty_projection_test() {
       ),
     ]),
   )
+}
+
+pub fn inventory_handler_rejects_invalid_projection_group_test() {
+  let repository = inventory_planning_sqlite.new()
+  let projection =
+    inventory_planning_handler.inventory_projection(
+      repository,
+      inventory_planning_handler.InventoryProjectionRequest(
+        sort_by: "card_name",
+        group_by: "location",
+      ),
+    )
+
+  should.equal(projection, Error(inventory_planning_handler.InvalidGroupBy))
 }
