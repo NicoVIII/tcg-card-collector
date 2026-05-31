@@ -1,8 +1,8 @@
 import composition
-import gleam/io
+import driver/http/app_server
 
 pub fn main() -> Nil {
   composition.log_boot_message()
-  let _dependencies = composition.dependencies()
-  io.println("tcg-card-collector backend scaffold")
+  let deps = composition.dependencies()
+  app_server.start(deps)
 }
