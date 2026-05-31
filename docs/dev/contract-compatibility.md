@@ -9,9 +9,10 @@ Breaking contract changes are only allowed when backend and frontend adaptations
 ## Required when changing `skir-src/*.skir`
 
 - Update contract source files in `skir-src/`.
-- Update or verify the contract snapshot file `skir-snapshot.txt`.
+- Update or verify the contract snapshot file `skir-snapshot.json`.
 - Ensure corresponding server driver mapping changes are included.
 - Ensure corresponding frontend request/query/mutation changes are included in the same PR.
+- Ensure Skir method usage remains aligned by running `./scripts/check_contract_alignment.sh`.
 
 ## Review Checklist
 

@@ -2,6 +2,7 @@ import { Show, createMemo, createSignal } from "solid-js";
 import { mapError } from "../data/http/error";
 import { useImportCollectionMutation } from "../data/collection_import/mutation";
 import { useLatestImportStatusQuery } from "../data/collection_import/query";
+import { parseImportRowsCsv } from "./import_rows";
 
 export function ImportPage() {
   const [sourceName, setSourceName] = createSignal("deckstats-export.csv");
@@ -9,44 +10,6 @@ export function ImportPage() {
   const [submitError, setSubmitError] = createSignal<string | null>(null);
   const mutation = useImportCollectionMutation();
   const statusQuery = useLatestImportStatusQuery();
-
-  const parseRows = () => {
-    const lines = rowsCsv()
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-
-    const rows: Array<{
-      cardName: string;
-      setCode: string;
-      collectorNumber: string;
-      quantity: number;
-    }> = [];
-
-    for (const line of lines) {
-      const [cardNameRaw, setCodeRaw, collectorNumberRaw, quantityRaw] = line
-        .split(",")
-        .map((part) => part.trim());
-
-      if (!cardNameRaw || !setCodeRaw || !collectorNumberRaw || !quantityRaw) {
-        return { rows: [], error: `Invalid row format: ${line}` };
-      }
-
-      const quantity = Number.parseInt(quantityRaw, 10);
-      if (!Number.isFinite(quantity) || quantity <= 0) {
-        return { rows: [], error: `Invalid quantity in row: ${line}` };
-      }
-
-      rows.push({
-        cardName: cardNameRaw,
-        setCode: setCodeRaw,
-        collectorNumber: collectorNumberRaw,
-        quantity,
-      });
-    }
-
-    return { rows, error: null as string | null };
-  };
 
   const statusMessage = createMemo(() => {
     if (statusQuery.isLoading) {
@@ -68,7 +31,7 @@ export function ImportPage() {
   const submitImport = async () => {
     setSubmitError(null);
 
-    const parsedRows = parseRows();
+    const parsedRows = parseImportRowsCsv(rowsCsv());
     if (parsedRows.error !== null) {
       setSubmitError(parsedRows.error);
       return;

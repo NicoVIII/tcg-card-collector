@@ -1,0 +1,42 @@
+export type ImportRow = {
+  cardName: string;
+  setCode: string;
+  collectorNumber: string;
+  quantity: number;
+};
+
+export function parseImportRowsCsv(rowsCsv: string): {
+  rows: ImportRow[];
+  error: string | null;
+} {
+  const lines = rowsCsv
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const rows: ImportRow[] = [];
+
+  for (const line of lines) {
+    const [cardNameRaw, setCodeRaw, collectorNumberRaw, quantityRaw] = line
+      .split(",")
+      .map((part) => part.trim());
+
+    if (!cardNameRaw || !setCodeRaw || !collectorNumberRaw || !quantityRaw) {
+      return { rows: [], error: `Invalid row format: ${line}` };
+    }
+
+    const quantity = Number.parseInt(quantityRaw, 10);
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      return { rows: [], error: `Invalid quantity in row: ${line}` };
+    }
+
+    rows.push({
+      cardName: cardNameRaw,
+      setCode: setCodeRaw,
+      collectorNumber: collectorNumberRaw,
+      quantity,
+    });
+  }
+
+  return { rows, error: null };
+}
