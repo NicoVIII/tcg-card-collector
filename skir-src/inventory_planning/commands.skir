@@ -1,0 +1,27 @@
+struct UpsertInventoryRuleRequest {
+  id: string = 0;
+  location_name: string = 1;
+  expression: string = 2;
+}
+
+enum UpsertInventoryRuleResponse {
+  success = 1;
+  error = 2;
+}
+
+method UpsertInventoryRule(
+  UpsertInventoryRuleRequest
+): UpsertInventoryRuleResponse = 1;
+
+struct DeleteInventoryRuleRequest {
+  id: string = 0;
+}
+
+enum DeleteInventoryRuleResponse {
+  success = 1;
+  error = 2;
+}
+
+method DeleteInventoryRule(
+  DeleteInventoryRuleRequest
+): DeleteInventoryRuleResponse = 2;

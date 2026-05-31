@@ -1,0 +1,40 @@
+struct InventoryRule {
+  id: string = 0;
+  location_name: string = 1;
+  expression: string = 2;
+}
+
+struct InventoryRuleList {
+  data: [InventoryRule] = 0;
+  total: int32 = 1;
+}
+
+struct ListInventoryRulesRequest {
+  unit: bool = 0;
+}
+
+method ListInventoryRules(
+  ListInventoryRulesRequest
+): InventoryRuleList = 3;
+
+struct InventoryProjectionRequest {
+  sort_by: string = 0;
+  group_by: string = 1;
+}
+
+struct InventoryProjectionRow {
+  location_name: string = 0;
+  card_name: string = 1;
+  set_code: string = 2;
+  quantity: int32 = 3;
+  group_value: string = 4;
+}
+
+struct InventoryProjection {
+  data: [InventoryProjectionRow] = 0;
+  total: int32 = 1;
+}
+
+method GetInventoryProjection(
+  InventoryProjectionRequest
+): InventoryProjection = 4;

@@ -1,0 +1,14 @@
+struct ImportStatus {
+  import_run_id: string = 0;
+  status: string = 1;
+  row_count: int32 = 2;
+  source_name: string = 3;
+}
+
+struct GetLatestImportStatusRequest {
+  unit: bool = 0;
+}
+
+method GetLatestImportStatus(
+  GetLatestImportStatusRequest
+): ImportStatus = 2;

@@ -1,0 +1,21 @@
+struct CatalogCard {
+  id: string = 0;
+  name: string = 1;
+  set_code: string = 2;
+}
+
+struct CatalogCardList {
+  data: [CatalogCard] = 0;
+  total: int32 = 1;
+  offset: int32 = 2;
+  limit: int32 = 3;
+}
+
+struct ListCatalogCardsRequest {
+  offset: int32 = 0;
+  limit: int32 = 1;
+}
+
+method ListCatalogCards(
+  ListCatalogCardsRequest
+): CatalogCardList = 2;
