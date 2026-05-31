@@ -1,6 +1,7 @@
 import application/card_catalog/ports as card_catalog_ports
 import application/collection_import/ports as collection_import_ports
 import application/inventory_planning/ports as inventory_planning_ports
+import driver/http/router
 import gleam/io
 import infrastructure/card_catalog/sqlite_repository as card_catalog_sqlite
 import infrastructure/collection_import/sqlite_repository as collection_import_sqlite
@@ -28,4 +29,8 @@ pub fn dependencies() -> Dependencies {
     collection_import_repository: collection_import_sqlite.new(),
     inventory_planning_repository: inventory_planning_sqlite.new(),
   )
+}
+
+pub fn http_routes() -> List(router.HttpRoute) {
+  router.routes()
 }

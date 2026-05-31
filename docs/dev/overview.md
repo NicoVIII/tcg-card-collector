@@ -40,3 +40,6 @@ infrastructure adapters in `server/src/infrastructure/*`.
 
 Phase 3.2 starts request-to-application mapping handlers under
 `server/src/driver/skir/*`.
+
+Phase 3.3 introduces HTTP route and mapper scaffolding under
+`server/src/driver/http/*`.
