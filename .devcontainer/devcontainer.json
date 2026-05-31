@@ -12,7 +12,7 @@
             "moby": false
         }
     },
-    "postCreateCommand": "cd client-web && bun install",
+    "postCreateCommand": "sudo chmod +x ./.devcontainer/post_create.sh && ./.devcontainer/post_create.sh && cd client-web && bun install",
     "postStartCommand": "lefthook install && cd client-web && bun install",
     "customizations": {
         "vscode": {
@@ -20,6 +20,8 @@
                 "editor.formatOnSave": true
             },
             "extensions": [
+                "editorconfig.editorconfig",
+                "timonwong.shellcheck",
                 "oxc.oxc-vscode",
                 "dbaeumer.vscode-eslint"
             ]
