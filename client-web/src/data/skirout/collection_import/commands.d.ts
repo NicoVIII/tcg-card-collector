@@ -14,6 +14,88 @@
 import * as $ from "skir-client";
 
 // -----------------------------------------------------------------------------
+// struct ImportCollectionRow
+// -----------------------------------------------------------------------------
+
+/** Deeply immutable. If you need mutability, use `ImportCollectionRow.Mutable`. */
+export declare class ImportCollectionRow extends $._FrozenBase {
+  /**
+   * Creates a new instance of `ImportCollectionRow`.
+   *
+   * You must specify all the fields unless you use `create<"partial">({...})>`,
+   * in which case missing fields are set to their default values.
+   */
+  static create<_Wholeness extends "whole" | "partial" = "whole">(
+    initializer: ImportCollectionRow.Initializer<_Wholeness>
+  ): ImportCollectionRow;
+
+  private constructor();
+
+  readonly cardName: string;
+  readonly setCode: string;
+  readonly collectorNumber: string;
+  readonly quantity: number;
+
+  /** Returns this instance (no-op). */
+  toFrozen(): this;
+
+  /** Returns a mutable shallow copy of this instance. */
+  toMutable(): ImportCollectionRow.Mutable;
+
+  /** Default instance with all fields set to their default values. */
+  static readonly DEFAULT: ImportCollectionRow;
+
+  /** Serializer for `ImportCollectionRow` instances. */
+  static readonly serializer: $.Serializer<ImportCollectionRow>;
+
+  /** Mutable version of this class. */
+  static readonly Mutable: typeof ImportCollectionRow_Mutable;
+
+  readonly [$._INITIALIZER]: ImportCollectionRow.Initializer | undefined;
+  private readonly FROZEN: undefined;
+}
+
+/**
+ * Mutable version of `ImportCollectionRow`.
+ *
+ * @alias ImportCollectionRow.Mutable
+ */
+declare class ImportCollectionRow_Mutable {
+  /**
+   * Creates a new mutable instance.
+   *
+   * Fields not specified in `initializer` will be set to their default values.
+   */
+  constructor(initializer?: ImportCollectionRow.Initializer<"partial">);
+
+  cardName: string;
+  setCode: string;
+  collectorNumber: string;
+  quantity: number;
+
+  /** Returns a deeply-immutable copy of this instance. */
+  toFrozen(): ImportCollectionRow;
+
+  readonly [$._INITIALIZER]: ImportCollectionRow.Initializer | undefined;
+}
+
+export declare namespace ImportCollectionRow {
+  interface _Initializer<_Wholeness extends "whole" | "partial"> {
+    readonly cardName: string;
+    readonly setCode: string;
+    readonly collectorNumber: string;
+    readonly quantity: number;
+  }
+
+  export type Initializer<_Wholeness extends "whole" | "partial" = "whole"> =
+    _Wholeness extends "whole" ? _Initializer<"whole"> : Partial<_Initializer<"partial">>;
+
+  /** Mutable version of ImportCollectionRow. */
+  export type Mutable = ImportCollectionRow_Mutable;
+  export type OrMutable = ImportCollectionRow | Mutable;
+}
+
+// -----------------------------------------------------------------------------
 // struct ImportCollectionRequest
 // -----------------------------------------------------------------------------
 
@@ -26,7 +108,7 @@ export declare class ImportCollectionRequest extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: ImportCollectionRequest.Initializer<_Wholeness>,
+    initializer: ImportCollectionRequest.Initializer<_Wholeness>
   ): ImportCollectionRequest;
 
   private constructor();
@@ -35,6 +117,7 @@ export declare class ImportCollectionRequest extends $._FrozenBase {
   readonly sourceName: string;
   readonly sourceChecksum: string;
   readonly rowCount: number;
+  readonly rows: ReadonlyArray<ImportCollectionRow>;
 
   /** Returns this instance (no-op). */
   toFrozen(): this;
@@ -72,6 +155,13 @@ declare class ImportCollectionRequest_Mutable {
   sourceName: string;
   sourceChecksum: string;
   rowCount: number;
+  rows: ReadonlyArray<ImportCollectionRow.OrMutable>;
+
+  /**
+   * If the value of `rows` is already mutable, returns it as-is.
+   * Otherwise, makes a mutable copy, assigns it back to `rows` and returns it.
+   */
+  get mutableRows(): Array<ImportCollectionRow.OrMutable>;
 
   /** Returns a deeply-immutable copy of this instance. */
   toFrozen(): ImportCollectionRequest;
@@ -85,6 +175,7 @@ export declare namespace ImportCollectionRequest {
     readonly sourceName: string;
     readonly sourceChecksum: string;
     readonly rowCount: number;
+    readonly rows: ReadonlyArray<ImportCollectionRow.Initializer<_Wholeness>>;
   }
 
   export type Initializer<_Wholeness extends "whole" | "partial" = "whole"> =
@@ -106,13 +197,13 @@ export declare class ImportCollectionResponse extends $._EnumBase {
    *
    * Default value for fields of type `ImportCollectionResponse`.
    */
-  static readonly UNKNOWN: ImportCollectionResponse;
-  static readonly ACCEPTED: ImportCollectionResponse;
-  static readonly REJECTED: ImportCollectionResponse;
+  static readonly UNKNOWN:  ImportCollectionResponse;
+  static readonly ACCEPTED:  ImportCollectionResponse;
+  static readonly REJECTED:  ImportCollectionResponse;
 
   /** Gets or creates a `ImportCollectionResponse` instance from the given initializer. */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: ImportCollectionResponse.Initializer<_Wholeness>,
+    initializer: ImportCollectionResponse.Initializer<_Wholeness>
   ): ImportCollectionResponse;
 
   /**
@@ -128,7 +219,10 @@ export declare class ImportCollectionResponse extends $._EnumBase {
 
 export declare namespace ImportCollectionResponse {
   /** Identifies a variant. */
-  export type Kind = "UNKNOWN" | "ACCEPTED" | "REJECTED";
+  export type Kind =
+    | "UNKNOWN"
+    | "ACCEPTED"
+    | "REJECTED";
 
   export type Initializer<_Wholeness extends "whole" | "partial" = "whole"> =
     | ImportCollectionResponse

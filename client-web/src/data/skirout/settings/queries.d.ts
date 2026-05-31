@@ -26,7 +26,7 @@ export declare class AppSettings extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: AppSettings.Initializer<_Wholeness>,
+    initializer: AppSettings.Initializer<_Wholeness>
   ): AppSettings;
 
   private constructor();
@@ -102,7 +102,7 @@ export declare class GetSettingsRequest extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: GetSettingsRequest.Initializer<_Wholeness>,
+    initializer: GetSettingsRequest.Initializer<_Wholeness>
   ): GetSettingsRequest;
 
   private constructor();

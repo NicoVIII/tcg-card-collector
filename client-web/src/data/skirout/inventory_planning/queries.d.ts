@@ -26,7 +26,7 @@ export declare class InventoryRule extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: InventoryRule.Initializer<_Wholeness>,
+    initializer: InventoryRule.Initializer<_Wholeness>
   ): InventoryRule;
 
   private constructor();
@@ -105,7 +105,7 @@ export declare class InventoryRuleList extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: InventoryRuleList.Initializer<_Wholeness>,
+    initializer: InventoryRuleList.Initializer<_Wholeness>
   ): InventoryRuleList;
 
   private constructor();
@@ -187,7 +187,7 @@ export declare class ListInventoryRulesRequest extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: ListInventoryRulesRequest.Initializer<_Wholeness>,
+    initializer: ListInventoryRulesRequest.Initializer<_Wholeness>
   ): ListInventoryRulesRequest;
 
   private constructor();
@@ -260,7 +260,7 @@ export declare class InventoryProjectionRequest extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: InventoryProjectionRequest.Initializer<_Wholeness>,
+    initializer: InventoryProjectionRequest.Initializer<_Wholeness>
   ): InventoryProjectionRequest;
 
   private constructor();
@@ -336,7 +336,7 @@ export declare class InventoryProjectionRow extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: InventoryProjectionRow.Initializer<_Wholeness>,
+    initializer: InventoryProjectionRow.Initializer<_Wholeness>
   ): InventoryProjectionRow;
 
   private constructor();
@@ -421,7 +421,7 @@ export declare class InventoryProjection extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: InventoryProjection.Initializer<_Wholeness>,
+    initializer: InventoryProjection.Initializer<_Wholeness>
   ): InventoryProjection;
 
   private constructor();

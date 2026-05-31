@@ -35,6 +35,7 @@ export function ImportPage() {
         sourceName: sourceName(),
         sourceChecksum: "manual-upload",
         rowCount: 0,
+        rows: [],
       });
 
       if (!response.accepted) {

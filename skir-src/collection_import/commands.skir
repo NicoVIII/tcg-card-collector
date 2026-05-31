@@ -1,8 +1,16 @@
+struct ImportCollectionRow {
+  card_name: string = 0;
+  set_code: string = 1;
+  collector_number: string = 2;
+  quantity: int32 = 3;
+}
+
 struct ImportCollectionRequest {
   import_run_id: string = 0;
   source_name: string = 1;
   source_checksum: string = 2;
   row_count: int32 = 3;
+  rows: [ImportCollectionRow] = 4;
 }
 
 enum ImportCollectionResponse {

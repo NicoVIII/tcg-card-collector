@@ -10,7 +10,7 @@ export function SettingsPage() {
   const refreshMutation = useRefreshCatalogMutation();
 
   const [defaultSort, setDefaultSort] = createSignal("card_name");
-  const [defaultGrouping, setDefaultGrouping] = createSignal("location");
+  const [defaultGrouping, setDefaultGrouping] = createSignal("location_name");
   const [saveError, setSaveError] = createSignal<string | null>(null);
   const [saved, setSaved] = createSignal(false);
 

@@ -38,53 +38,56 @@ export class UpdateSettingsResponse extends $._EnumBase {}
 // Initialize the serializers
 // -----------------------------------------------------------------------------
 
-$._initModuleClasses("settings/commands.skir", [
-  {
-    kind: "struct",
-    ctor: UpdateSettingsRequest,
-    initFn: initUpdateSettingsRequest,
-    name: "UpdateSettingsRequest",
-    fields: [
-      {
-        name: "default_sort",
-        property: "defaultSort",
-        number: 0,
-        type: {
-          kind: "primitive",
-          primitive: "string",
+$._initModuleClasses(
+  "settings/commands.skir",
+  [
+    {
+      kind: "struct",
+      ctor: UpdateSettingsRequest,
+      initFn: initUpdateSettingsRequest,
+      name: "UpdateSettingsRequest",
+      fields: [
+        {
+          name: "default_sort",
+          property: "defaultSort",
+          number: 0,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
         },
-      },
-      {
-        name: "default_grouping",
-        property: "defaultGrouping",
-        number: 1,
-        type: {
-          kind: "primitive",
-          primitive: "string",
+        {
+          name: "default_grouping",
+          property: "defaultGrouping",
+          number: 1,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
         },
-      },
-    ],
-  },
-  {
-    kind: "enum",
-    ctor: UpdateSettingsResponse,
-    name: "UpdateSettingsResponse",
-    variants: [
-      {
-        name: "UNKNOWN",
-        number: 0,
-      },
-      {
-        name: "SUCCESS",
-        number: 1,
-      },
-      {
-        name: "ERROR",
-        number: 2,
-      },
-    ],
-  },
-]);
+      ],
+    },
+    {
+      kind: "enum",
+      ctor: UpdateSettingsResponse,
+      name: "UpdateSettingsResponse",
+      variants: [
+        {
+          name: "UNKNOWN",
+          number: 0,
+        },
+        {
+          name: "SUCCESS",
+          number: 1,
+        },
+        {
+          name: "ERROR",
+          number: 2,
+        },
+      ],
+    },
+  ]
+);
 
 // -----------------------------------------------------------------------------
 // Methods

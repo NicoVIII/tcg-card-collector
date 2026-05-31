@@ -11,7 +11,7 @@ import {
 
 export function InventoryPage() {
   const [sortBy, setSortBy] = createSignal("card_name");
-  const [groupBy, setGroupBy] = createSignal("location");
+  const [groupBy, setGroupBy] = createSignal("location_name");
   const [newRuleName, setNewRuleName] = createSignal("");
   const [newExpression, setNewExpression] = createSignal("set_code=M11");
   const [mutationError, setMutationError] = createSignal<string | null>(null);

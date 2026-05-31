@@ -105,6 +105,7 @@ fn handle_import_collection(
           source_name: b.source_name,
           source_checksum: b.source_checksum,
           row_count: b.row_count,
+          rows: [],
         ),
       )
       json_response(202, json_codec.encode_ok("accepted"))
@@ -147,15 +148,25 @@ fn handle_upsert_inventory_rule(
   case json_codec.decode_upsert_rule_body(body) {
     Error(msg) -> json_response(400, json_codec.encode_error(msg))
     Ok(b) -> {
-      inventory_planning_handler.upsert_inventory_rule(
-        deps.inventory_planning_repository,
-        inventory_planning_handler.UpsertInventoryRuleRequest(
-          id: b.id,
-          location_name: b.location_name,
-          expression: b.expression,
-        ),
-      )
-      json_response(200, json_codec.encode_ok("rule saved"))
+      case
+        inventory_planning_handler.upsert_inventory_rule(
+          deps.inventory_planning_repository,
+          inventory_planning_handler.UpsertInventoryRuleRequest(
+            id: b.id,
+            location_name: b.location_name,
+            expression: b.expression,
+          ),
+        )
+      {
+        Ok(_) -> json_response(200, json_codec.encode_ok("rule saved"))
+        Error(inventory_planning_handler.InvalidRuleExpression) ->
+          json_response(
+            400,
+            json_codec.encode_error("invalid inventory rule expression"),
+          )
+        Error(_) ->
+          json_response(400, json_codec.encode_error("invalid inventory rule"))
+      }
     }
   }
 }
@@ -182,8 +193,8 @@ fn handle_inventory_projection(
   deps: Dependencies,
 ) -> Response(mist.ResponseData) {
   let sort_by = query_param(req, "sort_by") |> result.unwrap("card_name")
-  let group_by = query_param(req, "group_by") |> result.unwrap("location")
-  let rows =
+  let group_by = query_param(req, "group_by") |> result.unwrap("location_name")
+  let rows_result =
     inventory_planning_handler.inventory_projection(
       deps.inventory_planning_repository,
       inventory_planning_handler.InventoryProjectionRequest(
@@ -191,7 +202,19 @@ fn handle_inventory_projection(
         group_by: group_by,
       ),
     )
-  json_response(200, json_codec.encode_inventory_projection(rows))
+
+  case rows_result {
+    Ok(rows) -> json_response(200, json_codec.encode_inventory_projection(rows))
+    Error(inventory_planning_handler.InvalidSortBy) ->
+      json_response(400, json_codec.encode_error("invalid sort_by"))
+    Error(inventory_planning_handler.InvalidGroupBy) ->
+      json_response(400, json_codec.encode_error("invalid group_by"))
+    Error(_) ->
+      json_response(
+        400,
+        json_codec.encode_error("invalid inventory projection request"),
+      )
+  }
 }
 
 // ---- Settings ---------------------------------------------------------------

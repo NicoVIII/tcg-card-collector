@@ -57,98 +57,101 @@ export class DeleteInventoryRuleResponse extends $._EnumBase {}
 // Initialize the serializers
 // -----------------------------------------------------------------------------
 
-$._initModuleClasses("inventory_planning/commands.skir", [
-  {
-    kind: "struct",
-    ctor: UpsertInventoryRuleRequest,
-    initFn: initUpsertInventoryRuleRequest,
-    name: "UpsertInventoryRuleRequest",
-    fields: [
-      {
-        name: "id",
-        property: "id",
-        number: 0,
-        type: {
-          kind: "primitive",
-          primitive: "string",
+$._initModuleClasses(
+  "inventory_planning/commands.skir",
+  [
+    {
+      kind: "struct",
+      ctor: UpsertInventoryRuleRequest,
+      initFn: initUpsertInventoryRuleRequest,
+      name: "UpsertInventoryRuleRequest",
+      fields: [
+        {
+          name: "id",
+          property: "id",
+          number: 0,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
         },
-      },
-      {
-        name: "location_name",
-        property: "locationName",
-        number: 1,
-        type: {
-          kind: "primitive",
-          primitive: "string",
+        {
+          name: "location_name",
+          property: "locationName",
+          number: 1,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
         },
-      },
-      {
-        name: "expression",
-        property: "expression",
-        number: 2,
-        type: {
-          kind: "primitive",
-          primitive: "string",
+        {
+          name: "expression",
+          property: "expression",
+          number: 2,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
         },
-      },
-    ],
-  },
-  {
-    kind: "enum",
-    ctor: UpsertInventoryRuleResponse,
-    name: "UpsertInventoryRuleResponse",
-    variants: [
-      {
-        name: "UNKNOWN",
-        number: 0,
-      },
-      {
-        name: "SUCCESS",
-        number: 1,
-      },
-      {
-        name: "ERROR",
-        number: 2,
-      },
-    ],
-  },
-  {
-    kind: "struct",
-    ctor: DeleteInventoryRuleRequest,
-    initFn: initDeleteInventoryRuleRequest,
-    name: "DeleteInventoryRuleRequest",
-    fields: [
-      {
-        name: "id",
-        property: "id",
-        number: 0,
-        type: {
-          kind: "primitive",
-          primitive: "string",
+      ],
+    },
+    {
+      kind: "enum",
+      ctor: UpsertInventoryRuleResponse,
+      name: "UpsertInventoryRuleResponse",
+      variants: [
+        {
+          name: "UNKNOWN",
+          number: 0,
         },
-      },
-    ],
-  },
-  {
-    kind: "enum",
-    ctor: DeleteInventoryRuleResponse,
-    name: "DeleteInventoryRuleResponse",
-    variants: [
-      {
-        name: "UNKNOWN",
-        number: 0,
-      },
-      {
-        name: "SUCCESS",
-        number: 1,
-      },
-      {
-        name: "ERROR",
-        number: 2,
-      },
-    ],
-  },
-]);
+        {
+          name: "SUCCESS",
+          number: 1,
+        },
+        {
+          name: "ERROR",
+          number: 2,
+        },
+      ],
+    },
+    {
+      kind: "struct",
+      ctor: DeleteInventoryRuleRequest,
+      initFn: initDeleteInventoryRuleRequest,
+      name: "DeleteInventoryRuleRequest",
+      fields: [
+        {
+          name: "id",
+          property: "id",
+          number: 0,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
+        },
+      ],
+    },
+    {
+      kind: "enum",
+      ctor: DeleteInventoryRuleResponse,
+      name: "DeleteInventoryRuleResponse",
+      variants: [
+        {
+          name: "UNKNOWN",
+          number: 0,
+        },
+        {
+          name: "SUCCESS",
+          number: 1,
+        },
+        {
+          name: "ERROR",
+          number: 2,
+        },
+      ],
+    },
+  ]
+);
 
 // -----------------------------------------------------------------------------
 // Methods

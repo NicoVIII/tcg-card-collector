@@ -21,7 +21,13 @@ echo "==> frontend fast: install deps"
 echo "==> frontend fast: quality"
 (
   cd client-web
-  bun run format
+
+  find src \
+    -type f \
+    \( -name '*.ts' -o -name '*.tsx' \) \
+    ! -path 'src/data/skirout/*' \
+    | xargs bunx --bun oxfmt --check
+
   bun run lint
   bun run typecheck
 )

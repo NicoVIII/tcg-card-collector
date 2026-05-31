@@ -26,7 +26,7 @@ export declare class RefreshCatalogRequest extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: RefreshCatalogRequest.Initializer<_Wholeness>,
+    initializer: RefreshCatalogRequest.Initializer<_Wholeness>
   ): RefreshCatalogRequest;
 
   private constructor();
@@ -97,13 +97,13 @@ export declare class RefreshCatalogResponse extends $._EnumBase {
    *
    * Default value for fields of type `RefreshCatalogResponse`.
    */
-  static readonly UNKNOWN: RefreshCatalogResponse;
-  static readonly SUCCESS: RefreshCatalogResponse;
-  static readonly ERROR: RefreshCatalogResponse;
+  static readonly UNKNOWN:  RefreshCatalogResponse;
+  static readonly SUCCESS:  RefreshCatalogResponse;
+  static readonly ERROR:  RefreshCatalogResponse;
 
   /** Gets or creates a `RefreshCatalogResponse` instance from the given initializer. */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: RefreshCatalogResponse.Initializer<_Wholeness>,
+    initializer: RefreshCatalogResponse.Initializer<_Wholeness>
   ): RefreshCatalogResponse;
 
   /**
@@ -119,7 +119,10 @@ export declare class RefreshCatalogResponse extends $._EnumBase {
 
 export declare namespace RefreshCatalogResponse {
   /** Identifies a variant. */
-  export type Kind = "UNKNOWN" | "SUCCESS" | "ERROR";
+  export type Kind =
+    | "UNKNOWN"
+    | "SUCCESS"
+    | "ERROR";
 
   export type Initializer<_Wholeness extends "whole" | "partial" = "whole"> =
     | RefreshCatalogResponse

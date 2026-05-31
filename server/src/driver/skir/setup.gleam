@@ -131,14 +131,23 @@ fn handle_import_collection(
       source_name: req.source_name,
       source_checksum: req.source_checksum,
       row_count: req.row_count,
+      rows: list.map(req.rows, map_import_collection_row),
     ),
   )
-
-  #(
-    Ok(collection_import_commands.ImportCollectionResponseAccepted),
-    req_meta,
-    Nil,
-  )
+  |> fn(response) {
+    case response {
+      collection_import_handler.Accepted -> #(
+        Ok(collection_import_commands.ImportCollectionResponseAccepted),
+        req_meta,
+        Nil,
+      )
+      collection_import_handler.Rejected -> #(
+        Ok(collection_import_commands.ImportCollectionResponseRejected),
+        req_meta,
+        Nil,
+      )
+    }
+  }
 }
 
 fn handle_get_latest_import_status(
@@ -189,20 +198,38 @@ fn handle_upsert_inventory_rule(
   Nil,
   Nil,
 ) {
-  inventory_planning_handler.upsert_inventory_rule(
-    deps.inventory_planning_repository,
-    inventory_planning_handler.UpsertInventoryRuleRequest(
-      id: req.id,
-      location_name: req.location_name,
-      expression: req.expression,
-    ),
-  )
-
-  #(
-    Ok(inventory_planning_commands.UpsertInventoryRuleResponseSuccess),
-    req_meta,
-    Nil,
-  )
+  case
+    inventory_planning_handler.upsert_inventory_rule(
+      deps.inventory_planning_repository,
+      inventory_planning_handler.UpsertInventoryRuleRequest(
+        id: req.id,
+        location_name: req.location_name,
+        expression: req.expression,
+      ),
+    )
+  {
+    Ok(_) -> #(
+      Ok(inventory_planning_commands.UpsertInventoryRuleResponseSuccess),
+      req_meta,
+      Nil,
+    )
+    Error(inventory_planning_handler.InvalidRuleExpression) -> #(
+      Error(service.ServiceError(
+        service.E400xBadRequest,
+        "invalid inventory rule expression",
+      )),
+      req_meta,
+      Nil,
+    )
+    Error(_) -> #(
+      Error(service.ServiceError(
+        service.E400xBadRequest,
+        "invalid inventory rule",
+      )),
+      req_meta,
+      Nil,
+    )
+  }
 }
 
 fn handle_delete_inventory_rule(
@@ -260,7 +287,7 @@ fn handle_get_inventory_projection(
   Nil,
   Nil,
 ) {
-  let rows =
+  let rows_result =
     inventory_planning_handler.inventory_projection(
       deps.inventory_planning_repository,
       inventory_planning_handler.InventoryProjectionRequest(
@@ -268,13 +295,36 @@ fn handle_get_inventory_projection(
         group_by: req.group_by,
       ),
     )
-  let response =
-    inventory_planning_queries.inventory_projection_new(
-      list.map(rows, map_inventory_projection_row),
-      list.length(rows),
-    )
 
-  #(Ok(response), req_meta, Nil)
+  case rows_result {
+    Ok(rows) -> {
+      let response =
+        inventory_planning_queries.inventory_projection_new(
+          list.map(rows, map_inventory_projection_row),
+          list.length(rows),
+        )
+
+      #(Ok(response), req_meta, Nil)
+    }
+    Error(inventory_planning_handler.InvalidSortBy) -> #(
+      Error(service.ServiceError(service.E400xBadRequest, "invalid sort_by")),
+      req_meta,
+      Nil,
+    )
+    Error(inventory_planning_handler.InvalidGroupBy) -> #(
+      Error(service.ServiceError(service.E400xBadRequest, "invalid group_by")),
+      req_meta,
+      Nil,
+    )
+    Error(_) -> #(
+      Error(service.ServiceError(
+        service.E400xBadRequest,
+        "invalid inventory projection request",
+      )),
+      req_meta,
+      Nil,
+    )
+  }
 }
 
 fn handle_get_settings(
@@ -337,6 +387,17 @@ fn map_inventory_projection_row(
     row.location_name,
     row.quantity,
     row.set_code,
+  )
+}
+
+fn map_import_collection_row(
+  row: collection_import_commands.ImportCollectionRow,
+) -> collection_import_handler.ImportCollectionRow {
+  collection_import_handler.ImportCollectionRow(
+    card_name: row.card_name,
+    set_code: row.set_code,
+    collector_number: row.collector_number,
+    quantity: row.quantity,
   )
 }
 

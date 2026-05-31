@@ -42,51 +42,54 @@ function initGetSettingsRequest(target, initializer) {
 // Initialize the serializers
 // -----------------------------------------------------------------------------
 
-$._initModuleClasses("settings/queries.skir", [
-  {
-    kind: "struct",
-    ctor: AppSettings,
-    initFn: initAppSettings,
-    name: "AppSettings",
-    fields: [
-      {
-        name: "default_sort",
-        property: "defaultSort",
-        number: 0,
-        type: {
-          kind: "primitive",
-          primitive: "string",
+$._initModuleClasses(
+  "settings/queries.skir",
+  [
+    {
+      kind: "struct",
+      ctor: AppSettings,
+      initFn: initAppSettings,
+      name: "AppSettings",
+      fields: [
+        {
+          name: "default_sort",
+          property: "defaultSort",
+          number: 0,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
         },
-      },
-      {
-        name: "default_grouping",
-        property: "defaultGrouping",
-        number: 1,
-        type: {
-          kind: "primitive",
-          primitive: "string",
+        {
+          name: "default_grouping",
+          property: "defaultGrouping",
+          number: 1,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
         },
-      },
-    ],
-  },
-  {
-    kind: "struct",
-    ctor: GetSettingsRequest,
-    initFn: initGetSettingsRequest,
-    name: "GetSettingsRequest",
-    fields: [
-      {
-        name: "unit",
-        property: "unit",
-        number: 0,
-        type: {
-          kind: "primitive",
-          primitive: "bool",
+      ],
+    },
+    {
+      kind: "struct",
+      ctor: GetSettingsRequest,
+      initFn: initGetSettingsRequest,
+      name: "GetSettingsRequest",
+      fields: [
+        {
+          name: "unit",
+          property: "unit",
+          number: 0,
+          type: {
+            kind: "primitive",
+            primitive: "bool",
+          },
         },
-      },
-    ],
-  },
-]);
+      ],
+    },
+  ]
+);
 
 // -----------------------------------------------------------------------------
 // Methods

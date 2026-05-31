@@ -10,7 +10,7 @@ pub type GroupingStrategyError {
 
 pub fn parse(raw: String) -> Result(GroupingStrategy, GroupingStrategyError) {
   case raw {
-    "location" -> Ok(ByLocation)
+    "location_name" -> Ok(ByLocation)
     "set_code" -> Ok(BySet)
     "card_name" -> Ok(ByCardName)
     _ -> Error(UnknownGroupingStrategy)
@@ -19,7 +19,7 @@ pub fn parse(raw: String) -> Result(GroupingStrategy, GroupingStrategyError) {
 
 pub fn to_string(strategy: GroupingStrategy) -> String {
   case strategy {
-    ByLocation -> "location"
+    ByLocation -> "location_name"
     BySet -> "set_code"
     ByCardName -> "card_name"
   }

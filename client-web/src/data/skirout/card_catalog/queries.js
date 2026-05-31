@@ -36,7 +36,10 @@ function initCatalogCard(target, initializer) {
 export class CatalogCardList extends $._FrozenBase {}
 
 function initCatalogCardList(target, initializer) {
-  target.data = $._toFrozenArray(initializer.data || [], CatalogCard.create);
+  target.data = $._toFrozenArray(
+    initializer.data || [],
+    CatalogCard.create,
+  );
   target.total = initializer.total ?? 0;
   target.offset = initializer.offset ?? 0;
   target.limit = initializer.limit ?? 0;
@@ -58,117 +61,120 @@ function initListCatalogCardsRequest(target, initializer) {
 // Initialize the serializers
 // -----------------------------------------------------------------------------
 
-$._initModuleClasses("card_catalog/queries.skir", [
-  {
-    kind: "struct",
-    ctor: CatalogCard,
-    initFn: initCatalogCard,
-    name: "CatalogCard",
-    fields: [
-      {
-        name: "id",
-        property: "id",
-        number: 0,
-        type: {
-          kind: "primitive",
-          primitive: "string",
-        },
-      },
-      {
-        name: "name",
-        property: "name",
-        number: 1,
-        type: {
-          kind: "primitive",
-          primitive: "string",
-        },
-      },
-      {
-        name: "set_code",
-        property: "setCode",
-        number: 2,
-        type: {
-          kind: "primitive",
-          primitive: "string",
-        },
-      },
-    ],
-  },
-  {
-    kind: "struct",
-    ctor: CatalogCardList,
-    initFn: initCatalogCardList,
-    name: "CatalogCardList",
-    fields: [
-      {
-        name: "data",
-        property: "data",
-        number: 0,
-        type: {
-          kind: "array",
-          item: {
-            kind: "record",
-            ctor: CatalogCard,
+$._initModuleClasses(
+  "card_catalog/queries.skir",
+  [
+    {
+      kind: "struct",
+      ctor: CatalogCard,
+      initFn: initCatalogCard,
+      name: "CatalogCard",
+      fields: [
+        {
+          name: "id",
+          property: "id",
+          number: 0,
+          type: {
+            kind: "primitive",
+            primitive: "string",
           },
         },
-        mutableGetter: "mutableData",
-      },
-      {
-        name: "total",
-        property: "total",
-        number: 1,
-        type: {
-          kind: "primitive",
-          primitive: "int32",
+        {
+          name: "name",
+          property: "name",
+          number: 1,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
         },
-      },
-      {
-        name: "offset",
-        property: "offset",
-        number: 2,
-        type: {
-          kind: "primitive",
-          primitive: "int32",
+        {
+          name: "set_code",
+          property: "setCode",
+          number: 2,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
         },
-      },
-      {
-        name: "limit",
-        property: "limit",
-        number: 3,
-        type: {
-          kind: "primitive",
-          primitive: "int32",
+      ],
+    },
+    {
+      kind: "struct",
+      ctor: CatalogCardList,
+      initFn: initCatalogCardList,
+      name: "CatalogCardList",
+      fields: [
+        {
+          name: "data",
+          property: "data",
+          number: 0,
+          type: {
+            kind: "array",
+            item: {
+              kind: "record",
+              ctor: CatalogCard,
+            },
+          },
+          mutableGetter: "mutableData",
         },
-      },
-    ],
-  },
-  {
-    kind: "struct",
-    ctor: ListCatalogCardsRequest,
-    initFn: initListCatalogCardsRequest,
-    name: "ListCatalogCardsRequest",
-    fields: [
-      {
-        name: "offset",
-        property: "offset",
-        number: 0,
-        type: {
-          kind: "primitive",
-          primitive: "int32",
+        {
+          name: "total",
+          property: "total",
+          number: 1,
+          type: {
+            kind: "primitive",
+            primitive: "int32",
+          },
         },
-      },
-      {
-        name: "limit",
-        property: "limit",
-        number: 1,
-        type: {
-          kind: "primitive",
-          primitive: "int32",
+        {
+          name: "offset",
+          property: "offset",
+          number: 2,
+          type: {
+            kind: "primitive",
+            primitive: "int32",
+          },
         },
-      },
-    ],
-  },
-]);
+        {
+          name: "limit",
+          property: "limit",
+          number: 3,
+          type: {
+            kind: "primitive",
+            primitive: "int32",
+          },
+        },
+      ],
+    },
+    {
+      kind: "struct",
+      ctor: ListCatalogCardsRequest,
+      initFn: initListCatalogCardsRequest,
+      name: "ListCatalogCardsRequest",
+      fields: [
+        {
+          name: "offset",
+          property: "offset",
+          number: 0,
+          type: {
+            kind: "primitive",
+            primitive: "int32",
+          },
+        },
+        {
+          name: "limit",
+          property: "limit",
+          number: 1,
+          type: {
+            kind: "primitive",
+            primitive: "int32",
+          },
+        },
+      ],
+    },
+  ]
+);
 
 // -----------------------------------------------------------------------------
 // Methods

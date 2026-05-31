@@ -2,6 +2,13 @@ import application/inventory_planning/ports
 import application/inventory_planning/service
 import domain/inventory_planning/grouping_strategy
 import domain/inventory_planning/sort_strategy
+import gleam/string
+
+pub type InventoryPlanningValidationError {
+  InvalidSortBy
+  InvalidGroupBy
+  InvalidRuleExpression
+}
 
 pub type UpsertInventoryRuleRequest {
   UpsertInventoryRuleRequest(
@@ -22,21 +29,35 @@ pub type InventoryProjectionRequest {
 pub fn upsert_inventory_rule(
   repository: ports.InventoryPlanningRepository,
   request: UpsertInventoryRuleRequest,
-) -> Nil {
+) -> Result(Nil, InventoryPlanningValidationError) {
   let UpsertInventoryRuleRequest(
     id: id,
     location_name: location_name,
     expression: expression,
   ) = request
 
-  service.upsert_inventory_rule(
-    repository,
-    ports.InventoryRuleWriteModel(
-      id: id,
-      location_name: location_name,
-      expression: expression,
-    ),
-  )
+  case is_valid_rule_expression(expression) {
+    False -> Error(InvalidRuleExpression)
+    True -> {
+      service.upsert_inventory_rule(
+        repository,
+        ports.InventoryRuleWriteModel(
+          id: id,
+          location_name: location_name,
+          expression: expression,
+        ),
+      )
+
+      Ok(Nil)
+    }
+  }
+}
+
+fn is_valid_rule_expression(expression: String) -> Bool {
+  case string.split(expression, "=") {
+    ["set_code", value] -> string.length(value) > 0
+    _ -> False
+  }
 }
 
 pub fn delete_inventory_rule(
@@ -56,29 +77,24 @@ pub fn list_inventory_rules(
 pub fn inventory_projection(
   repository: ports.InventoryPlanningRepository,
   request: InventoryProjectionRequest,
-) -> List(ports.InventoryProjectionReadModel) {
+) -> Result(
+  List(ports.InventoryProjectionReadModel),
+  InventoryPlanningValidationError,
+) {
   let InventoryProjectionRequest(sort_by: raw_sort, group_by: raw_group) =
     request
 
-  let sort_by =
-    raw_sort
-    |> sort_strategy.parse
-    |> fn(r) {
-      case r {
-        Ok(s) -> sort_strategy.to_string(s)
-        Error(_) -> sort_strategy.to_string(sort_strategy.ByCardName)
+  case sort_strategy.parse(raw_sort) {
+    Error(_) -> Error(InvalidSortBy)
+    Ok(sort_by) ->
+      case grouping_strategy.parse(raw_group) {
+        Error(_) -> Error(InvalidGroupBy)
+        Ok(group_by) ->
+          Ok(service.inventory_projection(
+            repository,
+            sort_by: sort_strategy.to_string(sort_by),
+            group_by: grouping_strategy.to_string(group_by),
+          ))
       }
-    }
-
-  let group_by =
-    raw_group
-    |> grouping_strategy.parse
-    |> fn(r) {
-      case r {
-        Ok(g) -> grouping_strategy.to_string(g)
-        Error(_) -> grouping_strategy.to_string(grouping_strategy.ByLocation)
-      }
-    }
-
-  service.inventory_projection(repository, sort_by:, group_by:)
+  }
 }

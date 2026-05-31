@@ -26,7 +26,7 @@ export declare class CatalogCard extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: CatalogCard.Initializer<_Wholeness>,
+    initializer: CatalogCard.Initializer<_Wholeness>
   ): CatalogCard;
 
   private constructor();
@@ -105,7 +105,7 @@ export declare class CatalogCardList extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: CatalogCardList.Initializer<_Wholeness>,
+    initializer: CatalogCardList.Initializer<_Wholeness>
   ): CatalogCardList;
 
   private constructor();
@@ -193,7 +193,7 @@ export declare class ListCatalogCardsRequest extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: ListCatalogCardsRequest.Initializer<_Wholeness>,
+    initializer: ListCatalogCardsRequest.Initializer<_Wholeness>
   ): ListCatalogCardsRequest;
 
   private constructor();

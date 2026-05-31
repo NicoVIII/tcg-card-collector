@@ -14,6 +14,12 @@ export type ImportCollectionPayload = {
   sourceName: string;
   sourceChecksum: string;
   rowCount: number;
+  rows: Array<{
+    cardName: string;
+    setCode: string;
+    collectorNumber: string;
+    quantity: number;
+  }>;
 };
 
 export type ImportStatus = {
@@ -103,6 +109,7 @@ export async function postImportCollection(
       sourceName: payload.sourceName,
       sourceChecksum: payload.sourceChecksum,
       rowCount: payload.rowCount,
+      rows: payload.rows,
     }),
   );
 

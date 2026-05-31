@@ -16,6 +16,20 @@
 import * as $ from "skir-client";
 
 // -----------------------------------------------------------------------------
+// struct ImportCollectionRow
+// -----------------------------------------------------------------------------
+
+/** Deeply immutable. If you need mutability, use `ImportCollectionRow.Mutable`. */
+export class ImportCollectionRow extends $._FrozenBase {}
+
+function initImportCollectionRow(target, initializer) {
+  target.cardName = initializer.cardName ?? "";
+  target.setCode = initializer.setCode ?? "";
+  target.collectorNumber = initializer.collectorNumber ?? "";
+  target.quantity = initializer.quantity ?? 0;
+}
+
+// -----------------------------------------------------------------------------
 // struct ImportCollectionRequest
 // -----------------------------------------------------------------------------
 
@@ -27,6 +41,10 @@ function initImportCollectionRequest(target, initializer) {
   target.sourceName = initializer.sourceName ?? "";
   target.sourceChecksum = initializer.sourceChecksum ?? "";
   target.rowCount = initializer.rowCount ?? 0;
+  target.rows = $._toFrozenArray(
+    initializer.rows || [],
+    ImportCollectionRow.create,
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -40,71 +58,131 @@ export class ImportCollectionResponse extends $._EnumBase {}
 // Initialize the serializers
 // -----------------------------------------------------------------------------
 
-$._initModuleClasses("collection_import/commands.skir", [
-  {
-    kind: "struct",
-    ctor: ImportCollectionRequest,
-    initFn: initImportCollectionRequest,
-    name: "ImportCollectionRequest",
-    fields: [
-      {
-        name: "import_run_id",
-        property: "importRunId",
-        number: 0,
-        type: {
-          kind: "primitive",
-          primitive: "string",
+$._initModuleClasses(
+  "collection_import/commands.skir",
+  [
+    {
+      kind: "struct",
+      ctor: ImportCollectionRow,
+      initFn: initImportCollectionRow,
+      name: "ImportCollectionRow",
+      fields: [
+        {
+          name: "card_name",
+          property: "cardName",
+          number: 0,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
         },
-      },
-      {
-        name: "source_name",
-        property: "sourceName",
-        number: 1,
-        type: {
-          kind: "primitive",
-          primitive: "string",
+        {
+          name: "set_code",
+          property: "setCode",
+          number: 1,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
         },
-      },
-      {
-        name: "source_checksum",
-        property: "sourceChecksum",
-        number: 2,
-        type: {
-          kind: "primitive",
-          primitive: "string",
+        {
+          name: "collector_number",
+          property: "collectorNumber",
+          number: 2,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
         },
-      },
-      {
-        name: "row_count",
-        property: "rowCount",
-        number: 3,
-        type: {
-          kind: "primitive",
-          primitive: "int32",
+        {
+          name: "quantity",
+          property: "quantity",
+          number: 3,
+          type: {
+            kind: "primitive",
+            primitive: "int32",
+          },
         },
-      },
-    ],
-  },
-  {
-    kind: "enum",
-    ctor: ImportCollectionResponse,
-    name: "ImportCollectionResponse",
-    variants: [
-      {
-        name: "UNKNOWN",
-        number: 0,
-      },
-      {
-        name: "ACCEPTED",
-        number: 1,
-      },
-      {
-        name: "REJECTED",
-        number: 2,
-      },
-    ],
-  },
-]);
+      ],
+    },
+    {
+      kind: "struct",
+      ctor: ImportCollectionRequest,
+      initFn: initImportCollectionRequest,
+      name: "ImportCollectionRequest",
+      fields: [
+        {
+          name: "import_run_id",
+          property: "importRunId",
+          number: 0,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
+        },
+        {
+          name: "source_name",
+          property: "sourceName",
+          number: 1,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
+        },
+        {
+          name: "source_checksum",
+          property: "sourceChecksum",
+          number: 2,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
+        },
+        {
+          name: "row_count",
+          property: "rowCount",
+          number: 3,
+          type: {
+            kind: "primitive",
+            primitive: "int32",
+          },
+        },
+        {
+          name: "rows",
+          property: "rows",
+          number: 4,
+          type: {
+            kind: "array",
+            item: {
+              kind: "record",
+              ctor: ImportCollectionRow,
+            },
+          },
+          mutableGetter: "mutableRows",
+        },
+      ],
+    },
+    {
+      kind: "enum",
+      ctor: ImportCollectionResponse,
+      name: "ImportCollectionResponse",
+      variants: [
+        {
+          name: "UNKNOWN",
+          number: 0,
+        },
+        {
+          name: "ACCEPTED",
+          number: 1,
+        },
+        {
+          name: "REJECTED",
+          number: 2,
+        },
+      ],
+    },
+  ]
+);
 
 // -----------------------------------------------------------------------------
 // Methods

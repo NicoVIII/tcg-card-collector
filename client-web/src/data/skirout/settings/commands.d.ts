@@ -26,7 +26,7 @@ export declare class UpdateSettingsRequest extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: UpdateSettingsRequest.Initializer<_Wholeness>,
+    initializer: UpdateSettingsRequest.Initializer<_Wholeness>
   ): UpdateSettingsRequest;
 
   private constructor();
@@ -100,13 +100,13 @@ export declare class UpdateSettingsResponse extends $._EnumBase {
    *
    * Default value for fields of type `UpdateSettingsResponse`.
    */
-  static readonly UNKNOWN: UpdateSettingsResponse;
-  static readonly SUCCESS: UpdateSettingsResponse;
-  static readonly ERROR: UpdateSettingsResponse;
+  static readonly UNKNOWN:  UpdateSettingsResponse;
+  static readonly SUCCESS:  UpdateSettingsResponse;
+  static readonly ERROR:  UpdateSettingsResponse;
 
   /** Gets or creates a `UpdateSettingsResponse` instance from the given initializer. */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: UpdateSettingsResponse.Initializer<_Wholeness>,
+    initializer: UpdateSettingsResponse.Initializer<_Wholeness>
   ): UpdateSettingsResponse;
 
   /**
@@ -122,7 +122,10 @@ export declare class UpdateSettingsResponse extends $._EnumBase {
 
 export declare namespace UpdateSettingsResponse {
   /** Identifies a variant. */
-  export type Kind = "UNKNOWN" | "SUCCESS" | "ERROR";
+  export type Kind =
+    | "UNKNOWN"
+    | "SUCCESS"
+    | "ERROR";
 
   export type Initializer<_Wholeness extends "whole" | "partial" = "whole"> =
     | UpdateSettingsResponse

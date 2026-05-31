@@ -50,7 +50,15 @@ pub fn collection_import_handler_returns_latest_saved_import_status_test() {
         import_run_id: "run-1",
         source_name: "deckstats-export.csv",
         source_checksum: "checksum-1",
-        row_count: 42,
+        row_count: 1,
+        rows: [
+          collection_import_handler.ImportCollectionRow(
+            card_name: "Lightning Bolt",
+            set_code: "M11",
+            collector_number: "146",
+            quantity: 42,
+          ),
+        ],
       ),
     )
 
@@ -62,8 +70,8 @@ pub fn collection_import_handler_returns_latest_saved_import_status_test() {
       collection_import_ports.ImportRunReadModel(
         "run-1",
         "deckstats-export.csv",
-        "pending",
-        42,
+        "succeeded",
+        1,
       ),
     ),
   )
@@ -80,14 +88,16 @@ pub fn inventory_handler_upsert_and_list_rules_test() {
   inventory_planning_sqlite.reset_for_tests()
   let repository = inventory_planning_sqlite.new()
 
-  inventory_planning_handler.upsert_inventory_rule(
-    repository,
-    inventory_planning_handler.UpsertInventoryRuleRequest(
-      id: "rule-1",
-      location_name: "main-binder",
-      expression: "set_code=M11",
-    ),
-  )
+  let upsert_result =
+    inventory_planning_handler.upsert_inventory_rule(
+      repository,
+      inventory_planning_handler.UpsertInventoryRuleRequest(
+        id: "rule-1",
+        location_name: "main-binder",
+        expression: "set_code=M11",
+      ),
+    )
+  should.equal(upsert_result, Ok(Nil))
 
   let rules = inventory_planning_handler.list_inventory_rules(repository)
   should.equal(list.length(rules), 1)
@@ -97,14 +107,16 @@ pub fn inventory_handler_delete_rule_removes_it_test() {
   inventory_planning_sqlite.reset_for_tests()
   let repository = inventory_planning_sqlite.new()
 
-  inventory_planning_handler.upsert_inventory_rule(
-    repository,
-    inventory_planning_handler.UpsertInventoryRuleRequest(
-      id: "rule-2",
-      location_name: "binder-b",
-      expression: "set_code=2XM",
-    ),
-  )
+  let upsert_result =
+    inventory_planning_handler.upsert_inventory_rule(
+      repository,
+      inventory_planning_handler.UpsertInventoryRuleRequest(
+        id: "rule-2",
+        location_name: "binder-b",
+        expression: "set_code=2XM",
+      ),
+    )
+  should.equal(upsert_result, Ok(Nil))
 
   inventory_planning_handler.delete_inventory_rule(
     repository,
@@ -120,7 +132,7 @@ pub fn settings_handler_returns_defaults_when_not_set_test() {
   let repository = settings_sqlite.new()
   let settings = settings_handler.get_settings(repository)
   should.equal(settings.default_sort, "card_name")
-  should.equal(settings.default_grouping, "location")
+  should.equal(settings.default_grouping, "location_name")
 }
 
 pub fn settings_handler_persists_updated_values_test() {
@@ -152,9 +164,9 @@ pub fn inventory_handler_returns_empty_projection_test() {
       repository,
       inventory_planning_handler.InventoryProjectionRequest(
         sort_by: "card_name",
-        group_by: "location",
+        group_by: "location_name",
       ),
     )
 
-  should.equal(list.length(projection), 0)
+  should.equal(projection, Ok([]))
 }

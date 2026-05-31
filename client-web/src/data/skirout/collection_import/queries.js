@@ -44,69 +44,72 @@ function initGetLatestImportStatusRequest(target, initializer) {
 // Initialize the serializers
 // -----------------------------------------------------------------------------
 
-$._initModuleClasses("collection_import/queries.skir", [
-  {
-    kind: "struct",
-    ctor: ImportStatus,
-    initFn: initImportStatus,
-    name: "ImportStatus",
-    fields: [
-      {
-        name: "import_run_id",
-        property: "importRunId",
-        number: 0,
-        type: {
-          kind: "primitive",
-          primitive: "string",
+$._initModuleClasses(
+  "collection_import/queries.skir",
+  [
+    {
+      kind: "struct",
+      ctor: ImportStatus,
+      initFn: initImportStatus,
+      name: "ImportStatus",
+      fields: [
+        {
+          name: "import_run_id",
+          property: "importRunId",
+          number: 0,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
         },
-      },
-      {
-        name: "status",
-        property: "status",
-        number: 1,
-        type: {
-          kind: "primitive",
-          primitive: "string",
+        {
+          name: "status",
+          property: "status",
+          number: 1,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
         },
-      },
-      {
-        name: "row_count",
-        property: "rowCount",
-        number: 2,
-        type: {
-          kind: "primitive",
-          primitive: "int32",
+        {
+          name: "row_count",
+          property: "rowCount",
+          number: 2,
+          type: {
+            kind: "primitive",
+            primitive: "int32",
+          },
         },
-      },
-      {
-        name: "source_name",
-        property: "sourceName",
-        number: 3,
-        type: {
-          kind: "primitive",
-          primitive: "string",
+        {
+          name: "source_name",
+          property: "sourceName",
+          number: 3,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
         },
-      },
-    ],
-  },
-  {
-    kind: "struct",
-    ctor: GetLatestImportStatusRequest,
-    initFn: initGetLatestImportStatusRequest,
-    name: "GetLatestImportStatusRequest",
-    fields: [
-      {
-        name: "unit",
-        property: "unit",
-        number: 0,
-        type: {
-          kind: "primitive",
-          primitive: "bool",
+      ],
+    },
+    {
+      kind: "struct",
+      ctor: GetLatestImportStatusRequest,
+      initFn: initGetLatestImportStatusRequest,
+      name: "GetLatestImportStatusRequest",
+      fields: [
+        {
+          name: "unit",
+          property: "unit",
+          number: 0,
+          type: {
+            kind: "primitive",
+            primitive: "bool",
+          },
         },
-      },
-    ],
-  },
-]);
+      ],
+    },
+  ]
+);
 
 // -----------------------------------------------------------------------------
 // Methods

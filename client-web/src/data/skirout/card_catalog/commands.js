@@ -37,44 +37,47 @@ export class RefreshCatalogResponse extends $._EnumBase {}
 // Initialize the serializers
 // -----------------------------------------------------------------------------
 
-$._initModuleClasses("card_catalog/commands.skir", [
-  {
-    kind: "struct",
-    ctor: RefreshCatalogRequest,
-    initFn: initRefreshCatalogRequest,
-    name: "RefreshCatalogRequest",
-    fields: [
-      {
-        name: "unit",
-        property: "unit",
-        number: 0,
-        type: {
-          kind: "primitive",
-          primitive: "bool",
+$._initModuleClasses(
+  "card_catalog/commands.skir",
+  [
+    {
+      kind: "struct",
+      ctor: RefreshCatalogRequest,
+      initFn: initRefreshCatalogRequest,
+      name: "RefreshCatalogRequest",
+      fields: [
+        {
+          name: "unit",
+          property: "unit",
+          number: 0,
+          type: {
+            kind: "primitive",
+            primitive: "bool",
+          },
         },
-      },
-    ],
-  },
-  {
-    kind: "enum",
-    ctor: RefreshCatalogResponse,
-    name: "RefreshCatalogResponse",
-    variants: [
-      {
-        name: "UNKNOWN",
-        number: 0,
-      },
-      {
-        name: "SUCCESS",
-        number: 1,
-      },
-      {
-        name: "ERROR",
-        number: 2,
-      },
-    ],
-  },
-]);
+      ],
+    },
+    {
+      kind: "enum",
+      ctor: RefreshCatalogResponse,
+      name: "RefreshCatalogResponse",
+      variants: [
+        {
+          name: "UNKNOWN",
+          number: 0,
+        },
+        {
+          name: "SUCCESS",
+          number: 1,
+        },
+        {
+          name: "ERROR",
+          number: 2,
+        },
+      ],
+    },
+  ]
+);
 
 // -----------------------------------------------------------------------------
 // Methods

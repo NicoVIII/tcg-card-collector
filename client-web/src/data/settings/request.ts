@@ -13,7 +13,7 @@ export type AppSettings = {
 
 const DEFAULT_SETTINGS: AppSettings = {
   default_sort: "card_name",
-  default_grouping: "location",
+  default_grouping: "location_name",
 };
 
 export function normalizeSettings(payload: unknown): AppSettings {

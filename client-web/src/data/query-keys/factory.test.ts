@@ -7,11 +7,11 @@ describe("query key factory", () => {
   });
 
   it("builds projection keys with sort and group", () => {
-    expect(queryKeys.inventoryProjection("card_name", "location")).toEqual([
+    expect(queryKeys.inventoryProjection("card_name", "location_name")).toEqual([
       "inventory_planning",
       "projection",
       "card_name",
-      "location",
+      "location_name",
     ]);
   });
 });

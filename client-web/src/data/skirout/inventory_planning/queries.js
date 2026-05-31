@@ -36,7 +36,10 @@ function initInventoryRule(target, initializer) {
 export class InventoryRuleList extends $._FrozenBase {}
 
 function initInventoryRuleList(target, initializer) {
-  target.data = $._toFrozenArray(initializer.data || [], InventoryRule.create);
+  target.data = $._toFrozenArray(
+    initializer.data || [],
+    InventoryRule.create,
+  );
   target.total = initializer.total ?? 0;
 }
 
@@ -86,7 +89,10 @@ function initInventoryProjectionRow(target, initializer) {
 export class InventoryProjection extends $._FrozenBase {}
 
 function initInventoryProjection(target, initializer) {
-  target.data = $._toFrozenArray(initializer.data || [], InventoryProjectionRow.create);
+  target.data = $._toFrozenArray(
+    initializer.data || [],
+    InventoryProjectionRow.create,
+  );
   target.total = initializer.total ?? 0;
 }
 
@@ -94,199 +100,202 @@ function initInventoryProjection(target, initializer) {
 // Initialize the serializers
 // -----------------------------------------------------------------------------
 
-$._initModuleClasses("inventory_planning/queries.skir", [
-  {
-    kind: "struct",
-    ctor: InventoryRule,
-    initFn: initInventoryRule,
-    name: "InventoryRule",
-    fields: [
-      {
-        name: "id",
-        property: "id",
-        number: 0,
-        type: {
-          kind: "primitive",
-          primitive: "string",
-        },
-      },
-      {
-        name: "location_name",
-        property: "locationName",
-        number: 1,
-        type: {
-          kind: "primitive",
-          primitive: "string",
-        },
-      },
-      {
-        name: "expression",
-        property: "expression",
-        number: 2,
-        type: {
-          kind: "primitive",
-          primitive: "string",
-        },
-      },
-    ],
-  },
-  {
-    kind: "struct",
-    ctor: InventoryRuleList,
-    initFn: initInventoryRuleList,
-    name: "InventoryRuleList",
-    fields: [
-      {
-        name: "data",
-        property: "data",
-        number: 0,
-        type: {
-          kind: "array",
-          item: {
-            kind: "record",
-            ctor: InventoryRule,
+$._initModuleClasses(
+  "inventory_planning/queries.skir",
+  [
+    {
+      kind: "struct",
+      ctor: InventoryRule,
+      initFn: initInventoryRule,
+      name: "InventoryRule",
+      fields: [
+        {
+          name: "id",
+          property: "id",
+          number: 0,
+          type: {
+            kind: "primitive",
+            primitive: "string",
           },
         },
-        mutableGetter: "mutableData",
-      },
-      {
-        name: "total",
-        property: "total",
-        number: 1,
-        type: {
-          kind: "primitive",
-          primitive: "int32",
-        },
-      },
-    ],
-  },
-  {
-    kind: "struct",
-    ctor: ListInventoryRulesRequest,
-    initFn: initListInventoryRulesRequest,
-    name: "ListInventoryRulesRequest",
-    fields: [
-      {
-        name: "unit",
-        property: "unit",
-        number: 0,
-        type: {
-          kind: "primitive",
-          primitive: "bool",
-        },
-      },
-    ],
-  },
-  {
-    kind: "struct",
-    ctor: InventoryProjectionRequest,
-    initFn: initInventoryProjectionRequest,
-    name: "InventoryProjectionRequest",
-    fields: [
-      {
-        name: "sort_by",
-        property: "sortBy",
-        number: 0,
-        type: {
-          kind: "primitive",
-          primitive: "string",
-        },
-      },
-      {
-        name: "group_by",
-        property: "groupBy",
-        number: 1,
-        type: {
-          kind: "primitive",
-          primitive: "string",
-        },
-      },
-    ],
-  },
-  {
-    kind: "struct",
-    ctor: InventoryProjectionRow,
-    initFn: initInventoryProjectionRow,
-    name: "InventoryProjectionRow",
-    fields: [
-      {
-        name: "location_name",
-        property: "locationName",
-        number: 0,
-        type: {
-          kind: "primitive",
-          primitive: "string",
-        },
-      },
-      {
-        name: "card_name",
-        property: "cardName",
-        number: 1,
-        type: {
-          kind: "primitive",
-          primitive: "string",
-        },
-      },
-      {
-        name: "set_code",
-        property: "setCode",
-        number: 2,
-        type: {
-          kind: "primitive",
-          primitive: "string",
-        },
-      },
-      {
-        name: "quantity",
-        property: "quantity",
-        number: 3,
-        type: {
-          kind: "primitive",
-          primitive: "int32",
-        },
-      },
-      {
-        name: "group_value",
-        property: "groupValue",
-        number: 4,
-        type: {
-          kind: "primitive",
-          primitive: "string",
-        },
-      },
-    ],
-  },
-  {
-    kind: "struct",
-    ctor: InventoryProjection,
-    initFn: initInventoryProjection,
-    name: "InventoryProjection",
-    fields: [
-      {
-        name: "data",
-        property: "data",
-        number: 0,
-        type: {
-          kind: "array",
-          item: {
-            kind: "record",
-            ctor: InventoryProjectionRow,
+        {
+          name: "location_name",
+          property: "locationName",
+          number: 1,
+          type: {
+            kind: "primitive",
+            primitive: "string",
           },
         },
-        mutableGetter: "mutableData",
-      },
-      {
-        name: "total",
-        property: "total",
-        number: 1,
-        type: {
-          kind: "primitive",
-          primitive: "int32",
+        {
+          name: "expression",
+          property: "expression",
+          number: 2,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
         },
-      },
-    ],
-  },
-]);
+      ],
+    },
+    {
+      kind: "struct",
+      ctor: InventoryRuleList,
+      initFn: initInventoryRuleList,
+      name: "InventoryRuleList",
+      fields: [
+        {
+          name: "data",
+          property: "data",
+          number: 0,
+          type: {
+            kind: "array",
+            item: {
+              kind: "record",
+              ctor: InventoryRule,
+            },
+          },
+          mutableGetter: "mutableData",
+        },
+        {
+          name: "total",
+          property: "total",
+          number: 1,
+          type: {
+            kind: "primitive",
+            primitive: "int32",
+          },
+        },
+      ],
+    },
+    {
+      kind: "struct",
+      ctor: ListInventoryRulesRequest,
+      initFn: initListInventoryRulesRequest,
+      name: "ListInventoryRulesRequest",
+      fields: [
+        {
+          name: "unit",
+          property: "unit",
+          number: 0,
+          type: {
+            kind: "primitive",
+            primitive: "bool",
+          },
+        },
+      ],
+    },
+    {
+      kind: "struct",
+      ctor: InventoryProjectionRequest,
+      initFn: initInventoryProjectionRequest,
+      name: "InventoryProjectionRequest",
+      fields: [
+        {
+          name: "sort_by",
+          property: "sortBy",
+          number: 0,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
+        },
+        {
+          name: "group_by",
+          property: "groupBy",
+          number: 1,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
+        },
+      ],
+    },
+    {
+      kind: "struct",
+      ctor: InventoryProjectionRow,
+      initFn: initInventoryProjectionRow,
+      name: "InventoryProjectionRow",
+      fields: [
+        {
+          name: "location_name",
+          property: "locationName",
+          number: 0,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
+        },
+        {
+          name: "card_name",
+          property: "cardName",
+          number: 1,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
+        },
+        {
+          name: "set_code",
+          property: "setCode",
+          number: 2,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
+        },
+        {
+          name: "quantity",
+          property: "quantity",
+          number: 3,
+          type: {
+            kind: "primitive",
+            primitive: "int32",
+          },
+        },
+        {
+          name: "group_value",
+          property: "groupValue",
+          number: 4,
+          type: {
+            kind: "primitive",
+            primitive: "string",
+          },
+        },
+      ],
+    },
+    {
+      kind: "struct",
+      ctor: InventoryProjection,
+      initFn: initInventoryProjection,
+      name: "InventoryProjection",
+      fields: [
+        {
+          name: "data",
+          property: "data",
+          number: 0,
+          type: {
+            kind: "array",
+            item: {
+              kind: "record",
+              ctor: InventoryProjectionRow,
+            },
+          },
+          mutableGetter: "mutableData",
+        },
+        {
+          name: "total",
+          property: "total",
+          number: 1,
+          type: {
+            kind: "primitive",
+            primitive: "int32",
+          },
+        },
+      ],
+    },
+  ]
+);
 
 // -----------------------------------------------------------------------------
 // Methods

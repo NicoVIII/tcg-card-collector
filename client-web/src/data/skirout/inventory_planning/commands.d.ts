@@ -26,7 +26,7 @@ export declare class UpsertInventoryRuleRequest extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: UpsertInventoryRuleRequest.Initializer<_Wholeness>,
+    initializer: UpsertInventoryRuleRequest.Initializer<_Wholeness>
   ): UpsertInventoryRuleRequest;
 
   private constructor();
@@ -103,13 +103,13 @@ export declare class UpsertInventoryRuleResponse extends $._EnumBase {
    *
    * Default value for fields of type `UpsertInventoryRuleResponse`.
    */
-  static readonly UNKNOWN: UpsertInventoryRuleResponse;
-  static readonly SUCCESS: UpsertInventoryRuleResponse;
-  static readonly ERROR: UpsertInventoryRuleResponse;
+  static readonly UNKNOWN:  UpsertInventoryRuleResponse;
+  static readonly SUCCESS:  UpsertInventoryRuleResponse;
+  static readonly ERROR:  UpsertInventoryRuleResponse;
 
   /** Gets or creates a `UpsertInventoryRuleResponse` instance from the given initializer. */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: UpsertInventoryRuleResponse.Initializer<_Wholeness>,
+    initializer: UpsertInventoryRuleResponse.Initializer<_Wholeness>
   ): UpsertInventoryRuleResponse;
 
   /**
@@ -125,7 +125,10 @@ export declare class UpsertInventoryRuleResponse extends $._EnumBase {
 
 export declare namespace UpsertInventoryRuleResponse {
   /** Identifies a variant. */
-  export type Kind = "UNKNOWN" | "SUCCESS" | "ERROR";
+  export type Kind =
+    | "UNKNOWN"
+    | "SUCCESS"
+    | "ERROR";
 
   export type Initializer<_Wholeness extends "whole" | "partial" = "whole"> =
     | UpsertInventoryRuleResponse
@@ -153,7 +156,7 @@ export declare class DeleteInventoryRuleRequest extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: DeleteInventoryRuleRequest.Initializer<_Wholeness>,
+    initializer: DeleteInventoryRuleRequest.Initializer<_Wholeness>
   ): DeleteInventoryRuleRequest;
 
   private constructor();
@@ -224,13 +227,13 @@ export declare class DeleteInventoryRuleResponse extends $._EnumBase {
    *
    * Default value for fields of type `DeleteInventoryRuleResponse`.
    */
-  static readonly UNKNOWN: DeleteInventoryRuleResponse;
-  static readonly SUCCESS: DeleteInventoryRuleResponse;
-  static readonly ERROR: DeleteInventoryRuleResponse;
+  static readonly UNKNOWN:  DeleteInventoryRuleResponse;
+  static readonly SUCCESS:  DeleteInventoryRuleResponse;
+  static readonly ERROR:  DeleteInventoryRuleResponse;
 
   /** Gets or creates a `DeleteInventoryRuleResponse` instance from the given initializer. */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: DeleteInventoryRuleResponse.Initializer<_Wholeness>,
+    initializer: DeleteInventoryRuleResponse.Initializer<_Wholeness>
   ): DeleteInventoryRuleResponse;
 
   /**
@@ -246,7 +249,10 @@ export declare class DeleteInventoryRuleResponse extends $._EnumBase {
 
 export declare namespace DeleteInventoryRuleResponse {
   /** Identifies a variant. */
-  export type Kind = "UNKNOWN" | "SUCCESS" | "ERROR";
+  export type Kind =
+    | "UNKNOWN"
+    | "SUCCESS"
+    | "ERROR";
 
   export type Initializer<_Wholeness extends "whole" | "partial" = "whole"> =
     | DeleteInventoryRuleResponse

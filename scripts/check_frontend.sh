@@ -21,7 +21,16 @@ echo "==> frontend: install deps"
 echo "==> frontend: quality gates"
 (
   cd client-web
-  bun run check
+
+  find src \
+    -type f \
+    \( -name '*.ts' -o -name '*.tsx' \) \
+    ! -path 'src/data/skirout/*' \
+    | xargs bunx --bun oxfmt --check
+
+  bun run lint
+  bun run typecheck
+  bun run test
 )
 
 echo "Frontend quality checks passed"

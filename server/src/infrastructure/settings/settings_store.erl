@@ -3,7 +3,7 @@
 
 -define(KEY, tcg_app_settings).
 -define(DEFAULT_SORT, <<"card_name">>).
--define(DEFAULT_GROUPING, <<"location">>).
+-define(DEFAULT_GROUPING, <<"location_name">>).
 
 get() ->
     persistent_term:get(?KEY, {?DEFAULT_SORT, ?DEFAULT_GROUPING}).

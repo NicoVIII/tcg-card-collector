@@ -26,7 +26,7 @@ export declare class ImportStatus extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: ImportStatus.Initializer<_Wholeness>,
+    initializer: ImportStatus.Initializer<_Wholeness>
   ): ImportStatus;
 
   private constructor();
@@ -108,7 +108,7 @@ export declare class GetLatestImportStatusRequest extends $._FrozenBase {
    * in which case missing fields are set to their default values.
    */
   static create<_Wholeness extends "whole" | "partial" = "whole">(
-    initializer: GetLatestImportStatusRequest.Initializer<_Wholeness>,
+    initializer: GetLatestImportStatusRequest.Initializer<_Wholeness>
   ): GetLatestImportStatusRequest;
 
   private constructor();
