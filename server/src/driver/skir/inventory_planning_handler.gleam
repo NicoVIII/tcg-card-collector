@@ -1,5 +1,7 @@
 import application/inventory_planning/ports
 import application/inventory_planning/service
+import domain/inventory_planning/grouping_strategy
+import domain/inventory_planning/sort_strategy
 
 pub type UpsertInventoryRuleRequest {
   UpsertInventoryRuleRequest(
@@ -55,6 +57,28 @@ pub fn inventory_projection(
   repository: ports.InventoryPlanningRepository,
   request: InventoryProjectionRequest,
 ) -> List(ports.InventoryProjectionReadModel) {
-  let InventoryProjectionRequest(sort_by: sort_by, group_by: group_by) = request
+  let InventoryProjectionRequest(sort_by: raw_sort, group_by: raw_group) =
+    request
+
+  let sort_by =
+    raw_sort
+    |> sort_strategy.parse
+    |> fn(r) {
+      case r {
+        Ok(s) -> sort_strategy.to_string(s)
+        Error(_) -> sort_strategy.to_string(sort_strategy.ByCardName)
+      }
+    }
+
+  let group_by =
+    raw_group
+    |> grouping_strategy.parse
+    |> fn(r) {
+      case r {
+        Ok(g) -> grouping_strategy.to_string(g)
+        Error(_) -> grouping_strategy.to_string(grouping_strategy.ByLocation)
+      }
+    }
+
   service.inventory_projection(repository, sort_by:, group_by:)
 }
