@@ -29,6 +29,7 @@ Run locally:
 - `./scripts/check_backend.sh`
 - `./scripts/check_frontend.sh`
 - `./scripts/check_all.sh`
+- `./scripts/check_contract_alignment.sh`
 
 ## Developer Feedback Loop
 

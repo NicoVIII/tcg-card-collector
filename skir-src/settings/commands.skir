@@ -1,0 +1,13 @@
+struct UpdateSettingsRequest {
+  default_sort: string = 0;
+  default_grouping: string = 1;
+}
+
+enum UpdateSettingsResponse {
+  success = 1;
+  error = 2;
+}
+
+method UpdateSettings(
+  UpdateSettingsRequest
+): UpdateSettingsResponse = 1;

@@ -9,3 +9,5 @@ Current MVP contract areas:
 - card_catalog/queries.skir
 - inventory_planning/commands.skir
 - inventory_planning/queries.skir
+- settings/commands.skir
+- settings/queries.skir

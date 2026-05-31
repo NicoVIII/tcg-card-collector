@@ -19,6 +19,7 @@ A slice is done only when checks are green and the feature works end-to-end.
 - Backend: `./scripts/check_backend.sh`
 - Frontend: `./scripts/check_frontend.sh`
 - Combined: `./scripts/check_all.sh`
+- Contract alignment: `./scripts/check_contract_alignment.sh`
 
 Backend quality includes a SQLite storage smoke check via
 `./scripts/check_storage_smoke.sh`.

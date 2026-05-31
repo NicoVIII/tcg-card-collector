@@ -19,5 +19,7 @@ pub fn routes() -> List(HttpRoute) {
     HttpRoute(Put, "/api/inventory/rules", "inventory.upsert_rule"),
     HttpRoute(Delete, "/api/inventory/rules", "inventory.delete_rule"),
     HttpRoute(Get, "/api/inventory/projection", "inventory.projection"),
+    HttpRoute(Get, "/api/settings", "settings.get"),
+    HttpRoute(Put, "/api/settings", "settings.update"),
   ]
 }
