@@ -6,7 +6,7 @@ import {
   CatalogCardList as RpcCatalogCardList,
 } from "../skirout/card_catalog/queries.js";
 
-const refreshTimeoutMs = 120_000;
+const refreshTimeoutMs = 90_000;
 
 export type CatalogCard = {
   id: string;
@@ -48,7 +48,7 @@ export async function refreshCatalog(): Promise<{ success: boolean }> {
   const response = await withTimeout(
     skirClient.invokeRemote(RefreshCatalog, RefreshCatalogRequest.create({ unit: true })),
     refreshTimeoutMs,
-    "Catalog refresh timed out. Please try again.",
+    "Catalog refresh is still running on the server. Please check again in a moment.",
   );
 
   return { success: response.union.kind === "SUCCESS" };

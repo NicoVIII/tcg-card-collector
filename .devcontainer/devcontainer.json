@@ -31,6 +31,8 @@
         "MermaidChart.vscode-mermaid-chart",
         // API
         "TylerFibonacci.skir-language",
+        // Database
+        "qwtel.sqlite-viewer",
         // Webclient
         "oxc.oxc-vscode",
         "dbaeumer.vscode-eslint"

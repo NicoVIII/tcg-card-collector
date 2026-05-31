@@ -8,13 +8,13 @@ type CatalogRowTuple =
 
 const bulk_metadata_url = "https://api.scryfall.com/bulk-data/default_cards"
 
-const shell_timeout_seconds = "300"
+const shell_timeout_seconds = "540"
 
 const curl_connect_timeout_seconds = "10"
 
-const curl_metadata_max_time_seconds = "30"
+const curl_metadata_max_time_seconds = "60"
 
-const curl_bulk_import_max_time_seconds = "240"
+const curl_bulk_import_max_time_seconds = "480"
 
 pub fn refresh() -> Result(Nil, String) {
   case should_probe() {
@@ -94,7 +94,9 @@ fn should_probe() -> Bool {
     sqlite_store.query(
       "SELECT last_probe_at "
       <> "FROM catalog_sync_metadata "
-      <> "WHERE id = 1 AND last_probe_at >= datetime('now', '-1 day') "
+      <> "WHERE id = 1 "
+      <> "  AND last_refresh_status IN ('succeeded', 'skipped') "
+      <> "  AND last_probe_at >= datetime('now', '-1 day') "
       <> "LIMIT 1;",
     )
 
@@ -113,7 +115,7 @@ fn current_upstream_updated_at() -> String {
 fn fetch_bulk_metadata() -> Result(#(String, String), String) {
   let script =
     "set -e; "
-    <> "curl -fsSL --connect-timeout "
+    <> "curl -fsSL --compressed --connect-timeout "
     <> curl_connect_timeout_seconds
     <> " --max-time "
     <> curl_metadata_max_time_seconds
@@ -141,7 +143,7 @@ fn import_cards(download_uri: String) -> Result(Nil, String) {
     "set -e; "
     <> "tmp=$(mktemp); "
     <> "trap 'rm -f \"$tmp\"' EXIT; "
-    <> "curl -fsSL --connect-timeout "
+    <> "curl -fsSL --compressed --connect-timeout "
     <> curl_connect_timeout_seconds
     <> " --max-time "
     <> curl_bulk_import_max_time_seconds
