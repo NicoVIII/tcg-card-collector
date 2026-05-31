@@ -24,7 +24,7 @@ Planned layering:
 - SQLite migration files live in `server/db/migrations`.
 - Apply migrations with `dbmate` (source of truth for schema):
 	- `../scripts/install_dbmate.sh`
-	- `TCG_DB_FILE=../tcg-card-collector.db ../scripts/dbmate_up.sh`
+	- `TCG_DB_FILE=./db/tcg-card-collector.db ../scripts/dbmate_up.sh`
 - Current schema:
 	- `import_runs` for import history metadata
 	- `collection_snapshot` for imported collection snapshot rows

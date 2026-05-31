@@ -17,4 +17,5 @@ lint:
   ./linting/check_architecture.sh
 
 run:
-  gleam run
+  mkdir -p db
+  TCG_DB_FILE=db/tcg-card-collector.db gleam run

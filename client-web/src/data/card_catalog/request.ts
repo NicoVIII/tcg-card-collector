@@ -1,5 +1,4 @@
 import { skirClient } from "../http/skir_rpc";
-import { RefreshCatalog, RefreshCatalogRequest } from "../skirout/card_catalog/commands.js";
 import {
   ListCatalogCards,
   ListCatalogCardsRequest,
@@ -7,6 +6,7 @@ import {
 } from "../skirout/card_catalog/queries.js";
 
 const refreshTimeoutMs = 90_000;
+const refreshEndpoint = "/api/catalog/refresh";
 
 export type CatalogCard = {
   id: string;
@@ -44,14 +44,23 @@ export async function listCatalogCards(offset: number, limit: number): Promise<C
   return toCatalogCardList(response);
 }
 
-export async function refreshCatalog(): Promise<{ success: boolean }> {
+export async function refreshCatalog(): Promise<{ success: boolean; message: string }> {
   const response = await withTimeout(
-    skirClient.invokeRemote(RefreshCatalog, RefreshCatalogRequest.create({ unit: true })),
+    fetch(refreshEndpoint, { method: "POST" }),
     refreshTimeoutMs,
     "Catalog refresh is still running on the server. Please check again in a moment.",
   );
 
-  return { success: response.union.kind === "SUCCESS" };
+  const payload = (await response.json()) as { ok?: string; error?: string };
+
+  if (response.ok) {
+    return {
+      success: true,
+      message: payload.ok ?? "Catalog refresh started.",
+    };
+  }
+
+  throw new Error(payload.error ?? `Catalog refresh failed (status ${response.status})`);
 }
 
 async function withTimeout<T>(

@@ -31,18 +31,15 @@ export function CatalogPage() {
         return;
       }
 
-      if ((cardsQuery.data?.total ?? 0) === 0) {
-        setRefreshFeedback({
-          kind: "error",
-          message:
-            "Refresh finished, but no cards are currently available from the upstream catalog data.",
-        });
-        return;
+      let message = response.message;
+
+      if ((cardsQuery.data?.total ?? 0) > 0) {
+        message = `${message} Current catalog rows: ${cardsQuery.data?.total ?? 0}.`;
       }
 
       setRefreshFeedback({
         kind: "success",
-        message: `Catalog refreshed. Loaded ${cardsQuery.data?.total ?? 0} cards.`,
+        message: message,
       });
     } catch (error) {
       setRefreshFeedback({

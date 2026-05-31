@@ -14,15 +14,22 @@ import gleam/http.{Delete, Get, Post, Put}
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/int
+import gleam/io
 import gleam/list
 import gleam/result
 import gleam/string
 import mist
 
+type CatalogRefreshLaunch {
+  RefreshStarted
+  RefreshAlreadyRunning
+}
+
 pub fn start(deps: Dependencies) -> Nil {
   let port = read_port()
   let rpc_service = skir_setup.make_service()
   let server_name = process.new_name("skir_rpc_server")
+  let refresh_worker_name = process.new_name("catalog_refresh_worker")
 
   let _server_pid =
     process.spawn(fn() {
@@ -33,7 +40,7 @@ pub fn start(deps: Dependencies) -> Nil {
     })
 
   let handler = fn(req: Request(mist.Connection)) -> Response(mist.ResponseData) {
-    handle_request(req, deps, server_name)
+    handle_request(req, deps, server_name, refresh_worker_name)
   }
 
   let assert Ok(_) =
@@ -41,6 +48,8 @@ pub fn start(deps: Dependencies) -> Nil {
     |> mist.port(port)
     |> mist.bind("0.0.0.0")
     |> mist.start
+
+  let _ = launch_catalog_refresh(deps, refresh_worker_name, "startup")
 
   process.sleep_forever()
 }
@@ -55,12 +64,14 @@ fn handle_request(
   req: Request(mist.Connection),
   deps: Dependencies,
   server_name: skir_setup.ServerName,
+  refresh_worker_name: process.Name(Nil),
 ) -> Response(mist.ResponseData) {
   let path = path_without_query(req.path)
 
   case req.method, path {
     Get, "/api/catalog/cards" -> handle_list_catalog_cards(deps)
-    Post, "/api/catalog/refresh" -> handle_refresh_catalog(deps)
+    Post, "/api/catalog/refresh" ->
+      handle_refresh_catalog(deps, refresh_worker_name)
     Post, "/api/import" -> handle_import_collection(req, deps)
     Get, "/api/import/latest" -> handle_latest_import_status(deps)
     Get, "/api/inventory/rules" -> handle_list_inventory_rules(deps)
@@ -83,13 +94,77 @@ fn handle_list_catalog_cards(deps: Dependencies) -> Response(mist.ResponseData) 
   json_response(200, json_codec.encode_catalog_cards(cards))
 }
 
-fn handle_refresh_catalog(deps: Dependencies) -> Response(mist.ResponseData) {
-  case card_catalog_handler.refresh_catalog(deps.card_catalog_repository) {
-    card_catalog_handler.Success ->
-      json_response(200, json_codec.encode_ok("catalog refreshed"))
-    card_catalog_handler.Failed ->
-      json_response(503, json_codec.encode_error("catalog refresh failed"))
+fn handle_refresh_catalog(
+  deps: Dependencies,
+  refresh_worker_name: process.Name(Nil),
+) -> Response(mist.ResponseData) {
+  case launch_catalog_refresh(deps, refresh_worker_name, "manual") {
+    RefreshStarted ->
+      json_response(202, json_codec.encode_ok("catalog refresh started"))
+    RefreshAlreadyRunning ->
+      json_response(
+        202,
+        json_codec.encode_ok("catalog refresh already running"),
+      )
   }
+}
+
+fn launch_catalog_refresh(
+  deps: Dependencies,
+  refresh_worker_name: process.Name(Nil),
+  trigger: String,
+) -> CatalogRefreshLaunch {
+  let refresh_subject = process.named_subject(refresh_worker_name)
+
+  case process.subject_owner(refresh_subject) {
+    Ok(_) -> {
+      log_async(
+        "catalog-refresh",
+        "already running, skipped trigger: " <> trigger,
+      )
+      RefreshAlreadyRunning
+    }
+    Error(_) -> {
+      let _ =
+        process.spawn_unlinked(fn() {
+          case process.register(process.self(), refresh_worker_name) {
+            Ok(_) -> {
+              log_async("catalog-refresh", "started: " <> trigger)
+              case
+                card_catalog_handler.refresh_catalog(
+                  deps.card_catalog_repository,
+                )
+              {
+                card_catalog_handler.Success ->
+                  log_async(
+                    "catalog-refresh",
+                    "finished successfully: " <> trigger,
+                  )
+                card_catalog_handler.Failed ->
+                  log_async(
+                    "catalog-refresh",
+                    "finished with failure: " <> trigger,
+                  )
+              }
+              Nil
+            }
+            Error(_) -> {
+              log_async(
+                "catalog-refresh",
+                "registration race, skipping: " <> trigger,
+              )
+              Nil
+            }
+          }
+        })
+
+      RefreshStarted
+    }
+  }
+}
+
+fn log_async(process_name: String, message: String) -> Nil {
+  io.println("[async][" <> process_name <> "] " <> message)
 }
 
 // ---- Collection import ------------------------------------------------------

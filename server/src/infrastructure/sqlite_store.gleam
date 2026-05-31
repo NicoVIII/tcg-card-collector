@@ -2,7 +2,7 @@ import common/os_runtime
 import gleam/int
 import gleam/string
 
-const default_db_file = "tcg-card-collector.db"
+const default_db_file = "db/tcg-card-collector.db"
 
 pub fn exec(sql: String) -> Nil {
   let _ = run(sql)
