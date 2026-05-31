@@ -16,4 +16,9 @@ describe("routes", () => {
       expect(route.label.length).toBeGreaterThan(0);
     }
   });
+
+  it("contains unique paths only", () => {
+    const paths = routes.map((route) => route.path);
+    expect(new Set(paths).size).toBe(paths.length);
+  });
 });
