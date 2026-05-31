@@ -15,7 +15,7 @@ struct ListInventoryRulesRequest {
 
 method ListInventoryRules(
   ListInventoryRulesRequest
-): InventoryRuleList = 3;
+): InventoryRuleList = 303;
 
 struct InventoryProjectionRequest {
   sort_by: string = 0;
@@ -37,4 +37,4 @@ struct InventoryProjection {
 
 method GetInventoryProjection(
   InventoryProjectionRequest
-): InventoryProjection = 4;
+): InventoryProjection = 304;

@@ -11,7 +11,7 @@ enum UpsertInventoryRuleResponse {
 
 method UpsertInventoryRule(
   UpsertInventoryRuleRequest
-): UpsertInventoryRuleResponse = 1;
+): UpsertInventoryRuleResponse = 301;
 
 struct DeleteInventoryRuleRequest {
   id: string = 0;
@@ -24,4 +24,4 @@ enum DeleteInventoryRuleResponse {
 
 method DeleteInventoryRule(
   DeleteInventoryRuleRequest
-): DeleteInventoryRuleResponse = 2;
+): DeleteInventoryRuleResponse = 302;

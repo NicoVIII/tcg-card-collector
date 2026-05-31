@@ -9,4 +9,4 @@ struct GetSettingsRequest {
 
 method GetSettings(
   GetSettingsRequest
-): AppSettings = 2;
+): AppSettings = 402;

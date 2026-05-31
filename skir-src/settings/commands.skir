@@ -10,4 +10,4 @@ enum UpdateSettingsResponse {
 
 method UpdateSettings(
   UpdateSettingsRequest
-): UpdateSettingsResponse = 1;
+): UpdateSettingsResponse = 401;

@@ -21,5 +21,7 @@ pub fn routes() -> List(HttpRoute) {
     HttpRoute(Get, "/api/inventory/projection", "inventory.projection"),
     HttpRoute(Get, "/api/settings", "settings.get"),
     HttpRoute(Put, "/api/settings", "settings.update"),
+    HttpRoute(Get, "/api/skir", "skir.rpc"),
+    HttpRoute(Post, "/api/skir", "skir.rpc"),
   ]
 }

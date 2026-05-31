@@ -12,4 +12,4 @@ enum ImportCollectionResponse {
 
 method ImportCollection(
   ImportCollectionRequest
-): ImportCollectionResponse = 1;
+): ImportCollectionResponse = 201;

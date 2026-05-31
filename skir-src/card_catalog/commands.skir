@@ -1,8 +1,12 @@
+struct RefreshCatalogRequest {
+  unit: bool = 0;
+}
+
 enum RefreshCatalogResponse {
   success = 1;
   error = 2;
 }
 
 method RefreshCatalog(
-  unit
-): RefreshCatalogResponse = 1;
+  RefreshCatalogRequest
+): RefreshCatalogResponse = 101;

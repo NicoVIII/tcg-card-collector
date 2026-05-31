@@ -3,7 +3,9 @@ import driver/http/json_codec
 import driver/skir/card_catalog_handler
 import driver/skir/collection_import_handler
 import driver/skir/inventory_planning_handler
+import driver/skir/router as skir_router
 import driver/skir/settings_handler
+import driver/skir/setup as skir_setup
 import gleam/bit_array
 import gleam/bytes_tree
 import gleam/erlang/charlist
@@ -19,9 +21,19 @@ import mist
 
 pub fn start(deps: Dependencies) -> Nil {
   let port = read_port()
+  let rpc_service = skir_setup.make_service()
+  let server_name = process.new_name("skir_rpc_server")
+
+  let _server_pid =
+    process.spawn(fn() {
+      skir_setup.start_server_loop(
+        server_name,
+        skir_setup.ServerState(service: rpc_service, context: deps),
+      )
+    })
 
   let handler = fn(req: Request(mist.Connection)) -> Response(mist.ResponseData) {
-    handle_request(req, deps)
+    handle_request(req, deps, server_name)
   }
 
   let assert Ok(_) =
@@ -42,11 +54,9 @@ fn read_port() -> Int {
 fn handle_request(
   req: Request(mist.Connection),
   deps: Dependencies,
+  server_name: skir_setup.ServerName,
 ) -> Response(mist.ResponseData) {
-  let path = case string.split(req.path, "?") {
-    [p, ..] -> p
-    _ -> req.path
-  }
+  let path = path_without_query(req.path)
 
   case req.method, path {
     Get, "/api/catalog/cards" -> handle_list_catalog_cards(deps)
@@ -59,6 +69,8 @@ fn handle_request(
     Get, "/api/inventory/projection" -> handle_inventory_projection(req, deps)
     Get, "/api/settings" -> handle_get_settings(deps)
     Put, "/api/settings" -> handle_update_settings(req, deps)
+    Get, "/api/skir" | Post, "/api/skir" ->
+      skir_router.handle_request(req, server_name)
     _, _ -> json_response(404, json_codec.encode_error("not found"))
   }
 }
@@ -210,6 +222,13 @@ fn handle_update_settings(
 }
 
 // ---- Helpers ----------------------------------------------------------------
+
+fn path_without_query(path: String) -> String {
+  case string.split(path, "?") {
+    [p, ..] -> p
+    _ -> path
+  }
+}
 
 fn with_json_body(
   req: Request(mist.Connection),
