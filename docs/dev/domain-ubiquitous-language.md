@@ -61,3 +61,17 @@ Initial module boundaries are represented by:
 - `server/src/domain/card_catalog/context.gleam`
 - `server/src/domain/collection_import/context.gleam`
 - `server/src/domain/inventory_planning/context.gleam`
+
+## Phase 2.2 Value Object Foundations
+
+Initial domain-only value objects and invariants:
+
+- Card Catalog
+	- `server/src/domain/card_catalog/card_name.gleam`
+	- `server/src/domain/card_catalog/set_code.gleam`
+- Collection Import
+	- `server/src/domain/collection_import/import_source.gleam`
+	- `server/src/domain/collection_import/import_status.gleam`
+- Inventory Planning
+	- `server/src/domain/inventory_planning/location_name.gleam`
+	- `server/src/domain/inventory_planning/grouping_strategy.gleam`
