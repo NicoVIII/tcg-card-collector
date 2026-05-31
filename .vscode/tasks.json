@@ -1,0 +1,15 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "check:backend",
+            "type": "shell",
+            "command": "./scripts/check_backend.sh"
+        },
+        {
+            "label": "check:frontend",
+            "type": "shell",
+            "command": "./scripts/check_frontend.sh"
+        }
+    ]
+}

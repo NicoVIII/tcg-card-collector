@@ -1,0 +1,11 @@
+{
+    "name": "tcg-card-collector",
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "editor.formatOnSave": true
+            }
+        }
+    }
+}

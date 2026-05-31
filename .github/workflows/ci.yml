@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Backend quality placeholder
+        run: |
+          echo "Backend checks are scaffolded in scripts/check_backend.sh"
+
+      - name: Frontend quality placeholder
+        run: |
+          echo "Frontend checks are scaffolded in scripts/check_frontend.sh"

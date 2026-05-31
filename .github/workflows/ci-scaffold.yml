@@ -1,0 +1,14 @@
+name: CI Scaffold
+
+on:
+  workflow_dispatch:
+
+jobs:
+  scaffold-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scaffold checks
+        run: |
+          chmod +x scripts/check_backend.sh scripts/check_frontend.sh scripts/check_all.sh
+          ./scripts/check_all.sh
