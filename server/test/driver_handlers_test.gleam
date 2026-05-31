@@ -16,10 +16,20 @@ pub fn main() -> Nil {
   gleeunit.main()
 }
 
-pub fn card_catalog_handler_lists_stub_card_test() {
+pub fn card_catalog_handler_lists_empty_catalog_test() {
+  card_catalog_sqlite.reset_for_tests()
   let repository = card_catalog_sqlite.new()
   let cards = card_catalog_handler.list_catalog_cards(repository)
-  should.equal(list.length(cards), 1)
+  should.equal(list.length(cards), 0)
+}
+
+pub fn card_catalog_handler_lists_seeded_cards_test() {
+  card_catalog_sqlite.reset_for_tests()
+  card_catalog_sqlite.seed_card("card-1", "Lightning Bolt", "M11")
+  card_catalog_sqlite.seed_card("card-2", "Counterspell", "2XM")
+  let repository = card_catalog_sqlite.new()
+  let cards = card_catalog_handler.list_catalog_cards(repository)
+  should.equal(list.length(cards), 2)
 }
 
 pub fn collection_import_handler_returns_not_found_when_empty_test() {
