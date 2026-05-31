@@ -16,10 +16,10 @@ A slice is done only when checks are green and the feature works end-to-end.
 
 ## Baseline Checks
 
-- Backend: `./scripts/check_backend.sh`
-- Frontend: `./scripts/check_frontend.sh`
-- Combined: `./scripts/check_all.sh`
-- Contract alignment: `./scripts/check_contract_alignment.sh`
+- Backend: `just check-backend`
+- Frontend: `just check-frontend`
+- Combined: `just check-all`
+- Contract alignment: `just contract-alignment-check`
 
 Backend quality includes a SQLite storage smoke check via
 `./scripts/check_storage_smoke.sh`.
@@ -28,8 +28,12 @@ Backend quality includes a SQLite storage smoke check via
 
 - Install hooks once: `lefthook install`
 - Pre-commit uses `lefthook.yml` with fast checks:
-	- `./scripts/check_backend_fast.sh`
-	- `./scripts/check_frontend_fast.sh`
+  - `just backend-format-check`
+  - `just backend-typecheck`
+  - `just backend-architecture-lint`
+  - `just frontend-format-check`
+  - `just frontend-lint`
+  - `just frontend-typecheck`
 
 Architecture dependency constraints are enforced by the backend lint gate.
 

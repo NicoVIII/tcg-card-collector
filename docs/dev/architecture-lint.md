@@ -15,16 +15,18 @@ The backend follows strict layer boundaries inspired by full-house.
 
 - Rule implementation reference: `server/linting/src/rules/depends_only_on.gleam`
 - Runtime architecture gate: `server/linting/check_architecture.sh`
-- Backend quality entrypoint: `scripts/check_backend.sh`
+- Backend quality entrypoint: `just check-backend`
 
 ## Exception Policy
 
 Exceptions are documented in `server/linting/architecture_exceptions.txt`.
 
 Allowed:
+
 - Temporary, explicit one-to-one exceptions with clear refactoring intent.
 
 Not allowed:
+
 - Wildcards or blanket layer bypasses.
 - Permanent exceptions without a follow-up task.
 

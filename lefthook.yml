@@ -1,9 +1,21 @@
 pre-commit:
   parallel: true
   commands:
-    backend-fast:
+    backend-format-check:
       glob: "server/**"
-      run: ./scripts/check_backend_fast.sh
-    frontend-fast:
+      run: just backend-format-check
+    backend-typecheck:
+      glob: "server/**"
+      run: just backend-typecheck
+    backend-architecture-lint:
+      glob: "server/**"
+      run: just backend-architecture-lint
+    frontend-format-check:
       glob: "client-web/**"
-      run: ./scripts/check_frontend_fast.sh
+      run: just frontend-format-check
+    frontend-lint:
+      glob: "client-web/**"
+      run: just frontend-lint
+    frontend-typecheck:
+      glob: "client-web/**"
+      run: just frontend-typecheck

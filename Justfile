@@ -4,29 +4,66 @@ mod client 'client-web'
 default:
   @just --list
 
-check-backend:
-  ./scripts/check_backend.sh
-
-check-backend-fast:
-  ./scripts/check_backend_fast.sh
-
-check-frontend:
-  ./scripts/check_frontend.sh
-
-check-frontend-fast:
-  ./scripts/check_frontend_fast.sh
-
-check-all:
-  ./scripts/check_all.sh
-
-check-contract-alignment:
+contract-alignment-check:
   ./scripts/check_contract_alignment.sh
 
-check-contract-snapshot:
+contract-snapshot-check:
   ./scripts/check_contract_snapshot.sh
 
-check-storage-smoke:
+storage-smoke-check:
   ./scripts/check_storage_smoke.sh
+
+backend-format-check:
+  just server::format-check
+
+backend-typecheck:
+  just server::check
+
+backend-architecture-lint:
+  just server::lint
+
+backend-test:
+  just server::test
+
+frontend-format-check:
+  just client::format-check
+
+frontend-lint:
+  just client::lint
+
+frontend-typecheck:
+  just client::type-check
+
+frontend-test:
+  just client::test
+
+check-backend:
+  just backend-format-check
+  just backend-typecheck
+  just backend-test
+  just storage-smoke-check
+  just backend-architecture-lint
+
+check-frontend:
+  just frontend-format-check
+  just frontend-lint
+  just frontend-typecheck
+  just frontend-test
+
+check-all:
+  just check-backend
+  just check-frontend
+  just contract-alignment-check
+
+# Compatibility aliases
+check-contract-alignment:
+  just contract-alignment-check
+
+check-contract-snapshot:
+  just contract-snapshot-check
+
+check-storage-smoke:
+  just storage-smoke-check
 
 dev-server:
   just server::run
@@ -39,16 +76,10 @@ test:
   just client::test
 
 check:
-  just check-contract-alignment
-  just check-contract-snapshot
-  just server::format-check
-  just server::check
-  just server::lint
-  just server::test
-  just client::format-check
-  just client::type-check
-  just client::lint
-  just client::test
+  just contract-alignment-check
+  just contract-snapshot-check
+  just check-backend
+  just check-frontend
 
 fix-format:
   just server::format

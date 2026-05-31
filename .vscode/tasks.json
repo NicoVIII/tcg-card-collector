@@ -116,7 +116,7 @@
         {
             "label": "check:backend",
             "type": "shell",
-            "command": "./scripts/check_backend.sh",
+            "command": "just check-backend",
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated"
@@ -125,7 +125,7 @@
         {
             "label": "check:frontend",
             "type": "shell",
-            "command": "./scripts/check_frontend.sh",
+            "command": "just check-frontend",
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated"
@@ -134,7 +134,7 @@
         {
             "label": "check:all",
             "type": "shell",
-            "command": "./scripts/check_all.sh",
+            "command": "just check-all",
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated"
