@@ -1,19 +1,81 @@
 -module(collection_import_store).
 -export([save/4, latest/0, clear/0]).
 
--define(KEY, tcg_collection_import_latest).
-
 save(Id, SourceName, Status, RowCount) ->
-    persistent_term:put(?KEY, {Id, SourceName, Status, RowCount}),
+    SourceChecksum = "manual-upload",
+    FinishedAtSql =
+        case Status of
+            <<"succeeded">> -> "CURRENT_TIMESTAMP";
+            <<"failed">> -> "CURRENT_TIMESTAMP";
+            "succeeded" -> "CURRENT_TIMESTAMP";
+            "failed" -> "CURRENT_TIMESTAMP";
+            _ -> "NULL"
+        end,
+    Sql =
+        "INSERT INTO import_runs ("
+        "  id, source_name, source_checksum, status, started_at, finished_at, imported_row_count"
+        ") VALUES ("
+        ++ sqlite_store:quote(Id)
+        ++ ", "
+        ++ sqlite_store:quote(SourceName)
+        ++ ", "
+        ++ sqlite_store:quote(SourceChecksum)
+        ++ ", "
+        ++ sqlite_store:quote(Status)
+        ++ ", CURRENT_TIMESTAMP, "
+        ++ FinishedAtSql
+        ++ ", "
+        ++ integer_to_list(RowCount)
+        ++ ") "
+        "ON CONFLICT(id) DO UPDATE SET "
+        "  source_name = excluded.source_name,"
+        "  source_checksum = excluded.source_checksum,"
+        "  status = excluded.status,"
+        "  imported_row_count = excluded.imported_row_count,"
+        "  finished_at = "
+        ++ FinishedAtSql
+        ++ ", "
+        "  updated_at = CURRENT_TIMESTAMP;",
+    ok = sqlite_store:exec(Sql),
     nil.
 
 latest() ->
-    case persistent_term:get(?KEY, undefined) of
-        undefined -> none;
-        {Id, SourceName, Status, RowCount} ->
-            {some, {Id, SourceName, Status, RowCount}}
+    Output =
+        sqlite_store:query(
+            "SELECT id, source_name, status, imported_row_count "
+            "FROM import_runs "
+            "ORDER BY updated_at DESC, created_at DESC "
+            "LIMIT 1;"
+        ),
+    case parse_latest(Output) of
+        {ok, Row} -> {some, Row};
+        error -> none
     end.
 
 clear() ->
-    persistent_term:erase(?KEY),
+    ok = sqlite_store:exec("DELETE FROM collection_snapshot;"),
+    ok = sqlite_store:exec("DELETE FROM import_runs;"),
     nil.
+
+parse_latest(Output) ->
+    case string:trim(Output) of
+        [] -> error;
+        Line ->
+            case string:split(Line, "\t", all) of
+                [Id, SourceName, Status, RowCountRaw] ->
+                    case string:to_integer(RowCountRaw) of
+                        {error, _} -> error;
+                        {RowCount, _Rest} ->
+                            {
+                                ok,
+                                {
+                                    unicode:characters_to_binary(Id),
+                                    unicode:characters_to_binary(SourceName),
+                                    unicode:characters_to_binary(Status),
+                                    RowCount
+                                }
+                            }
+                    end;
+                _ -> error
+            end
+    end.

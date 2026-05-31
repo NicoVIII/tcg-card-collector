@@ -41,6 +41,10 @@ pub fn grouping_strategy_parser_rejects_unknown_values_test() {
     grouping_strategy.parse("unknown"),
     Error(grouping_strategy.UnknownGroupingStrategy),
   )
+  should.equal(
+    grouping_strategy.parse("card_name"),
+    Error(grouping_strategy.UnknownGroupingStrategy),
+  )
 }
 
 pub fn grouping_strategy_roundtrip_test() {
@@ -55,12 +59,6 @@ pub fn grouping_strategy_roundtrip_test() {
       |> grouping_strategy.to_string
       |> grouping_strategy.parse,
     Ok(grouping_strategy.BySet),
-  )
-  should.equal(
-    grouping_strategy.ByCardName
-      |> grouping_strategy.to_string
-      |> grouping_strategy.parse,
-    Ok(grouping_strategy.ByCardName),
   )
 }
 

@@ -10,6 +10,12 @@ fn store_list() -> List(#(String, String, String))
 @external(erlang, "inventory_rules_store", "delete")
 fn store_delete(id: String) -> Nil
 
+@external(erlang, "inventory_rules_store", "projection")
+fn store_projection(
+  sort_by: String,
+  group_by: String,
+) -> List(#(String, String, String, Int, String))
+
 @external(erlang, "inventory_rules_store", "clear")
 fn store_clear() -> Nil
 
@@ -32,7 +38,19 @@ pub fn new() -> ports.InventoryPlanningRepository {
       })
     },
     delete_rule: fn(rule_id) { store_delete(rule_id) },
-    inventory_projection: fn(_sort_by, _group_by) { [] },
+    inventory_projection: fn(sort_by, group_by) {
+      store_projection(sort_by, group_by)
+      |> list.map(fn(row) {
+        let #(location_name, card_name, set_code, quantity, group_value) = row
+        ports.InventoryProjectionReadModel(
+          location_name: location_name,
+          card_name: card_name,
+          set_code: set_code,
+          quantity: quantity,
+          group_value: group_value,
+        )
+      })
+    },
   )
 }
 
