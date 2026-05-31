@@ -8,11 +8,15 @@ if ! command -v gleam >/dev/null 2>&1; then
   exit 1
 fi
 
+format_inputs() {
+  find server/src server/test \
+    -type f \
+    -name '*.gleam' \
+    ! -path 'server/src/driver/skirout/*'
+}
+
 echo "==> backend fast: format"
-(
-  cd server
-  gleam format --check src test
-)
+format_inputs | xargs gleam format --check
 
 echo "==> backend fast: typecheck"
 (
