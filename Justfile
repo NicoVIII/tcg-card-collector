@@ -4,6 +4,12 @@ mod client 'client-web'
 default:
   @just --list
 
+dbmate-install:
+  sh ./scripts/install_dbmate.sh
+
+db-migrate:
+  sh ./scripts/dbmate_up.sh
+
 contract-alignment-check:
   ./scripts/check_contract_alignment.sh
 
@@ -23,6 +29,7 @@ backend-architecture-lint:
   just server::lint
 
 backend-test:
+  just db-migrate
   just server::test
 
 frontend-format-check:
@@ -40,6 +47,7 @@ frontend-test:
 check-backend:
   just backend-format-check
   just backend-typecheck
+  just db-migrate
   just backend-test
   just storage-smoke-check
   just backend-architecture-lint

@@ -8,15 +8,19 @@ if ! command -v sqlite3 >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v dbmate >/dev/null 2>&1; then
+  echo "dbmate is required but not installed"
+  echo "Run: ./scripts/install_dbmate.sh"
+  exit 1
+fi
+
 DB_FILE=$(mktemp /tmp/tcg_storage_smoke.XXXXXX.db)
 cleanup() {
   rm -f "$DB_FILE"
 }
 trap cleanup EXIT
 
-for migration in server/db/migrations/*.sql; do
-  sqlite3 "$DB_FILE" < "$migration"
-done
+TCG_DB_FILE="$DB_FILE" sh ./scripts/dbmate_up.sh >/dev/null
 
 sqlite3 "$DB_FILE" <<'SQL'
 PRAGMA foreign_keys = ON;

@@ -18,5 +18,6 @@ EOF
 
 sudo apt-get -y update
 sudo apt-get install -y erlang erlang-dev just rebar3 shellcheck sqlite3
+sh ./scripts/install_dbmate.sh
 
 echo "Post-create provisioning completed"
