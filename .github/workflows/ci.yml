@@ -2,29 +2,24 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+    tags:
+      - "v*"
   pull_request:
+  workflow_dispatch:
+
+env:
+  GLEAM_VERSION: "1.14.0"
+  OTP_VERSION: "27"
+  REBAR3_VERSION: "3"
+  BUN_VERSION: "latest"
 
 jobs:
-  backend-quality:
+  contract-validate:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Erlang/OTP + Gleam
-        uses: erlef/setup-beam@v1
-        with:
-          otp-version: "27"
-          gleam-version: "1.14.0"
-
-      - name: Run backend quality checks
-        run: |
-          chmod +x scripts/check_backend.sh server/linting/check_architecture.sh
-          ./scripts/check_backend.sh
-
-  frontend-quality:
-    runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -32,9 +27,77 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "latest"
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Ensure contract snapshot is up-to-date
+        run: |
+          chmod +x scripts/check_contract_snapshot.sh scripts/check_contract_alignment.sh
+          ./scripts/check_contract_snapshot.sh
+          ./scripts/check_contract_alignment.sh
+
+  backend-quality:
+    needs: [contract-validate]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Erlang/OTP + Gleam
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ env.OTP_VERSION }}
+          gleam-version: ${{ env.GLEAM_VERSION }}
+          rebar3-version: ${{ env.REBAR3_VERSION }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache Gleam dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/gleam
+            server/build/packages
+          key: ${{ runner.os }}-gleam-${{ env.OTP_VERSION }}-${{ env.GLEAM_VERSION }}-${{ hashFiles('server/manifest.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-gleam-${{ env.OTP_VERSION }}-${{ env.GLEAM_VERSION }}-
+
+      - name: Run backend quality checks
+        run: |
+          chmod +x scripts/check_backend.sh server/linting/check_architecture.sh
+          ./scripts/check_backend.sh
+
+  frontend-quality:
+    needs: [contract-validate]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: client-web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache client-web dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('client-web/package.json', 'client-web/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
 
       - name: Run frontend quality checks
         run: |
+          cd ..
           chmod +x scripts/check_frontend.sh
           ./scripts/check_frontend.sh
