@@ -1,0 +1,20 @@
+format:
+  find src test -type f -name '*.gleam' ! -path 'src/driver/skirout/*' | xargs gleam format
+
+format-check:
+  find src test -type f -name '*.gleam' ! -path 'src/driver/skirout/*' | xargs gleam format --check
+
+build:
+  gleam build
+
+check:
+  gleam check
+
+test:
+  gleam test
+
+lint:
+  ./linting/check_architecture.sh
+
+run:
+  gleam run

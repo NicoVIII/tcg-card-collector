@@ -35,6 +35,18 @@ Run locally:
 - `./scripts/check_all.sh`
 - `./scripts/check_contract_alignment.sh`
 
+## Task Runner
+
+Use `just` as the primary local task runner.
+
+Examples:
+
+- `just check-all`
+- `just check-backend`
+- `just check-frontend`
+- `just server::test`
+- `just client::lint`
+
 ## Developer Feedback Loop
 
 - Install git hooks: `lefthook install`
