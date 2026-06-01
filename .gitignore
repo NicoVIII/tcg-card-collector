@@ -2,24 +2,5 @@
 .DS_Store
 *.log
 
-# Node/Bun
-node_modules/
-client-web/dist/
-client-web/.vite/
-
-# Gleam/Erlang
-server/build/
-server/.gleam/
-server/erlang-shipment/
-
-# Env
-.env
-.env.*
-
-# SQLite data
-*.db
-*.sqlite
-*.sqlite3
-
-# IDE
-.vscode/*.code-workspace
+# Generated skir files
+skirout/

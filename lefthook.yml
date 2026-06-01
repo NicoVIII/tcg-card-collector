@@ -1,21 +1,30 @@
 pre-commit:
   parallel: true
   commands:
-    backend-format-check:
-      glob: "server/**"
-      run: just backend-format-check
-    backend-typecheck:
-      glob: "server/**"
-      run: just backend-typecheck
-    backend-architecture-lint:
-      glob: "server/**"
-      run: just backend-architecture-lint
-    frontend-format-check:
-      glob: "client-web/**"
-      run: just frontend-format-check
-    frontend-lint:
-      glob: "client-web/**"
-      run: just frontend-lint
-    frontend-typecheck:
-      glob: "client-web/**"
-      run: just frontend-typecheck
+    skir-check:
+      glob: "{lefthook.yml,justfile,skir-src/**}"
+      run: just skir-check
+    server-format-check:
+      glob: "{lefthook.yml,justfile,skir-src/**,server/**}"
+      run: just server::format-check
+    server-type-check:
+      glob: "{lefthook.yml,justfile,skir-src/**,server/**}"
+      run: just server::type-check
+    server-lint-check:
+      glob: "{lefthook.yml,justfile,skir-src/**,server/**}"
+      run: just server::lint-check
+    server-test:
+      glob: "{lefthook.yml,justfile,skir-src/**,server/**}"
+      run: just server::test
+    client-web-format-check:
+      glob: "{lefthook.yml,justfile,skir-src/**,client-web/**}"
+      run: just client-web::format-check
+    client-web-type-check:
+      glob: "{lefthook.yml,justfile,skir-src/**,client-web/**}"
+      run: just client-web::type-check
+    client-web-lint-check:
+      glob: "{lefthook.yml,justfile,skir-src/**,client-web/**}"
+      run: just client-web::lint-check
+    client-test:
+      glob: "{lefthook.yml,justfile,skir-src/**,client-web/**}"
+      run: just client-web::test

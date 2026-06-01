@@ -1,21 +1,33 @@
+default: dev
+
+setup:
+  gleam download deps
+
 format:
   find src test -type f -name '*.gleam' ! -path 'src/driver/skirout/*' | xargs gleam format
 
+[group('check')]
 format-check:
   find src test -type f -name '*.gleam' ! -path 'src/driver/skirout/*' | xargs gleam format --check
 
-build:
-  gleam build
-
-check:
+[group('check')]
+type-check:
   gleam check
 
+[group('check')]
+lint-check:
+  ./linting/check_architecture.sh
+
+[group('check')]
+check: format-check type-check lint-check
+
+[group('test')]
 test:
   gleam test
-
-lint:
-  ./linting/check_architecture.sh
 
 run:
   mkdir -p db
   TCG_DB_FILE=db/tcg-card-collector.db gleam run
+
+[group('dev')]
+dev: run

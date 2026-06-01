@@ -7,12 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "format": "oxfmt --check .",
-    "format:fix": "oxfmt .",
+    "format": "find src -type f -name '*.ts' -o -name '*.tsx' ! -path 'src/data/skirout/*' | xargs oxfmt",
+    "format-check": "find src -type f -name '*.ts' -o -name '*.tsx' ! -path 'src/data/skirout/*' | xargs bunx --no-install --bun oxfmt --check",
+    "type-check": "tsc --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\" && oxlint --ignore-pattern src/data/skirout/** .",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run --environment node",
-    "check": "bun run format && bun run lint && bun run typecheck && bun run test"
+    "test": "vitest run --environment node"
   },
   "dependencies": {
     "@tanstack/solid-query": "^5.59.18",

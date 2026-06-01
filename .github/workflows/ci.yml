@@ -7,16 +7,16 @@ on:
     tags:
       - "v*"
   pull_request:
-  workflow_dispatch:
 
 env:
+  JUST_VERSION: "latest"
   GLEAM_VERSION: "1.14.0"
   OTP_VERSION: "27"
   REBAR3_VERSION: "3"
   BUN_VERSION: "latest"
 
 jobs:
-  contract-validate:
+  skir-validate:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -24,82 +24,57 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Just
+        uses: extractions/setup-just@v3
         with:
-          bun-version: ${{ env.BUN_VERSION }}
+          just-version: ${{ env.JUST_VERSION }}
 
-      - name: Install just
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y just
-
-      - name: Install dbmate
-        run: sh ./scripts/install_dbmate.sh
-
-      - name: Contract snapshot check
-        run: just contract-snapshot-check
-
-      - name: Contract alignment check
-        run: |
-          just contract-alignment-check
-
+      - name: Check skir
+        run: just skir-check
   backend-quality:
-    needs: [contract-validate]
+    needs: [skir-validate]
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Setup Just
+        uses: extractions/setup-just@v3
+        with:
+          just-version: ${{ env.JUST_VERSION }}
 
       - name: Setup Erlang/OTP + Gleam
         uses: erlef/setup-beam@v1
         with:
-          otp-version: ${{ env.OTP_VERSION }}
-          gleam-version: ${{ env.GLEAM_VERSION }}
-          rebar3-version: ${{ env.REBAR3_VERSION }}
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-
-      - name: Install just
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y just
+          otp-version: ${{ env.OTP_VERSION }}Backend format check
+        run: just backend-format-check
 
       - name: Cache Gleam dependencies
         uses: actions/cache@v5
         with:
           path: |
-            ~/.cache/gleam
             server/build/packages
+            server/build/dev/erlang
           key: ${{ runner.os }}-gleam-${{ env.OTP_VERSION }}-${{ env.GLEAM_VERSION }}-${{ hashFiles('server/manifest.toml') }}
           restore-keys: |
             ${{ runner.os }}-gleam-${{ env.OTP_VERSION }}-${{ env.GLEAM_VERSION }}-
 
-      - name: Backend format check
-        run: just backend-format-check
+      - name: Generate skir files
+        run: just skir-gen
 
-      - name: Backend typecheck
-        run: just backend-typecheck
+      - name: Setup server
+        run: just server::setup
 
-      - name: Apply database migrations
-        run: just db-migrate
+      - name: Check server
+        run: just server::check
 
-      - name: Backend tests
-        run: just backend-test
-
-      - name: Backend storage smoke
-        run: just storage-smoke-check
-
-      - name: Backend architecture lint
-        run: just backend-architecture-lint
+      - name: Test server
+        run: just server::test
 
   frontend-quality:
-    needs: [contract-validate]
+    needs: [skir-validate]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -107,15 +82,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Setup Just
+        uses: extractions/setup-just@v3
+        with:
+          just-version: ${{ env.JUST_VERSION }}
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
-
-      - name: Install just
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y just
 
       - name: Cache client-web dependencies
         uses: actions/cache@v5
@@ -125,14 +100,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bun-
 
-      - name: Frontend format check
-        run: just frontend-format-check
+      - name: Generate skir files
+        run: just skir-gen
 
-      - name: Frontend lint
-        run: just frontend-lint
+      - name: Setup client-web
+        run: just client-web::setup
 
-      - name: Frontend typecheck
-        run: just frontend-typecheck
+      - name: Check web client
+        run: just client-web::check
 
-      - name: Frontend tests
-        run: just frontend-test
+      - name: Test web client
+        run: just client-web::test

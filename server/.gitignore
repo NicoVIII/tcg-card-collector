@@ -1,3 +1,4 @@
 build/
 .gleam/
 erlang-shipment/
+*.db

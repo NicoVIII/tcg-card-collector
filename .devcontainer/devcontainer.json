@@ -2,14 +2,14 @@
   "name": "tcg-card-collector",
   "image": "mcr.microsoft.com/devcontainers/base:3-resolute",
   "features": {
-    "ghcr.io/devcontainers/features/git-lfs:1": {},
-    "ghcr.io/NicoVIII/devcontainer-features/lefthook:0": {},
+    "ghcr.io/devcontainers/features/git-lfs:1": { },
+    "ghcr.io/NicoVIII/devcontainer-features/lefthook:0": { },
     // Server
     "ghcr.io/NicoVIII/devcontainer-features/gleam:0": {
       "version": "1.14.0"
     },
     // Client - Web
-    "ghcr.io/devcontainers-extra/features/bun:1": {},
+    "ghcr.io/devcontainers-extra/features/bun:1": { },
     // Container
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "moby": false

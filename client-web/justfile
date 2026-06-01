@@ -1,0 +1,33 @@
+default: dev
+
+install:
+  if [ -f bun.lock ]; then bun install --frozen-lockfile; else bun install; fi
+
+alias setup := install
+
+format:
+  bun run format
+
+[group('check')]
+format-check:
+  bun run format-check
+
+[group('check')]
+type-check:
+  bun run type-check
+
+[group('check')]
+lint-check:
+  bun run lint
+
+test:
+  bun run test
+
+build:
+  bun run build
+
+dev:
+  bun run dev
+
+[group('check')]
+check: format-check type-check lint-check
