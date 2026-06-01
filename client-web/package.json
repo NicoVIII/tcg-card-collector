@@ -28,7 +28,7 @@
     "oxfmt": "^0.52.0",
     "oxlint": "^1.67.0",
     "typescript": "5.5.4",
-    "vite": "^5.4.10",
+    "vite": "^8.0.16",
     "vite-plugin-solid": "^2.11.1",
     "vitest": "^2.1.6"
   }
