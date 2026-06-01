@@ -6,7 +6,7 @@
     "ghcr.io/NicoVIII/devcontainer-features/lefthook:0": { },
     // Server
     "ghcr.io/NicoVIII/devcontainer-features/gleam:0": {
-      "version": "1.14.0"
+      "version": "1.16.0"
     },
     // Client - Web
     "ghcr.io/devcontainers-extra/features/bun:1": { },
@@ -19,9 +19,6 @@
   "postStartCommand": "lefthook install && cd client-web && bun install",
   "customizations": {
     "vscode": {
-      "settings": {
-        "editor.formatOnSave": true
-      },
       "extensions": [
         // General
         "editorconfig.editorconfig",

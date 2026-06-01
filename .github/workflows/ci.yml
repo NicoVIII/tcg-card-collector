@@ -10,7 +10,7 @@ on:
 
 env:
   JUST_VERSION: "latest"
-  GLEAM_VERSION: "1.14.0"
+  GLEAM_VERSION: "1.16.0"
   OTP_VERSION: "27"
   REBAR3_VERSION: "3"
   BUN_VERSION: "latest"
