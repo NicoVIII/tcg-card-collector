@@ -88,7 +88,9 @@ fn handle_request(
 
 // ---- Card catalog -----------------------------------------------------------
 
-fn handle_list_catalog_cards(deps: Dependencies) -> Response(mist.ResponseData) {
+fn handle_list_catalog_cards(
+  deps: Dependencies,
+) -> Response(mist.ResponseData) {
   let cards =
     card_catalog_handler.list_catalog_cards(deps.card_catalog_repository)
   json_response(200, json_codec.encode_catalog_cards(cards))

@@ -47,32 +47,6 @@ pub fn refresh() -> Result(Nil, String) {
   }
 }
 
-pub fn upsert(id: String, name: String, set_code: String) -> Nil {
-  let sql =
-    "INSERT INTO catalog_cards ("
-    <> "  id, oracle_id, name, set_code, collector_number, rarity, image_small_uri, image_normal_uri"
-    <> ") VALUES ("
-    <> sqlite_store.quote(id)
-    <> ", "
-    <> sqlite_store.quote(id)
-    <> ", "
-    <> sqlite_store.quote(name)
-    <> ", "
-    <> sqlite_store.quote(set_code)
-    <> ", ''"
-    <> ", 'unknown'"
-    <> ", ''"
-    <> ", ''"
-    <> ") "
-    <> "ON CONFLICT(id) DO UPDATE SET "
-    <> "  oracle_id = excluded.oracle_id,"
-    <> "  name = excluded.name,"
-    <> "  set_code = excluded.set_code,"
-    <> "  updated_at = CURRENT_TIMESTAMP;"
-
-  sqlite_store.exec(sql)
-}
-
 pub fn list() -> List(CatalogRowTuple) {
   let output =
     sqlite_store.query(
@@ -82,11 +56,6 @@ pub fn list() -> List(CatalogRowTuple) {
     )
 
   parse_rows(output)
-}
-
-pub fn clear() -> Nil {
-  sqlite_store.exec("DELETE FROM catalog_cards;")
-  sqlite_store.exec("DELETE FROM catalog_sync_metadata;")
 }
 
 fn should_probe() -> Bool {

@@ -45,7 +45,3 @@ pub fn new() -> ports.CollectionImportRepository {
     },
   )
 }
-
-pub fn reset_for_tests() -> Nil {
-  collection_import_store.clear()
-}

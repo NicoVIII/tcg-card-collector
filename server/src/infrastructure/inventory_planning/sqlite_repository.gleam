@@ -36,7 +36,3 @@ pub fn new() -> ports.InventoryPlanningRepository {
     },
   )
 }
-
-pub fn reset_for_tests() -> Nil {
-  inventory_rules_store.clear()
-}

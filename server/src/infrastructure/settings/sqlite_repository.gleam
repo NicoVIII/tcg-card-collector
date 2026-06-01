@@ -17,7 +17,3 @@ pub fn new() -> ports.SettingsRepository {
     },
   )
 }
-
-pub fn reset_for_tests() -> Nil {
-  settings_store.clear()
-}

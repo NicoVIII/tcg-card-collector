@@ -17,6 +17,7 @@ type-check:
 [group('check')]
 lint-check:
   ./linting/check_architecture.sh
+  gleam run -m glinter
 
 [group('check')]
 check: format-check type-check lint-check

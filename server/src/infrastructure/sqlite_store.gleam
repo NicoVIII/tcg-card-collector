@@ -1,5 +1,4 @@
 import common/os_runtime
-import gleam/int
 import gleam/string
 
 const default_db_file = "db/tcg-card-collector.db"
@@ -15,10 +14,6 @@ pub fn query(sql: String) -> String {
 
 pub fn quote(value: String) -> String {
   "'" <> escape_sql(value) <> "'"
-}
-
-pub fn quote_int(value: Int) -> String {
-  int.to_string(value)
 }
 
 fn run(sql: String) -> String {

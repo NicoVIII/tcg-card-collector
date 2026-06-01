@@ -63,7 +63,10 @@ pub fn latest() -> Option(LatestRunTuple) {
   parse_latest(output)
 }
 
-pub fn replace_rows(import_run_id: String, rows: List(SnapshotRowTuple)) -> Nil {
+pub fn replace_rows(
+  import_run_id: String,
+  rows: List(SnapshotRowTuple),
+) -> Nil {
   let delete_sql =
     "DELETE FROM collection_snapshot WHERE import_run_id = "
     <> sqlite_store.quote(import_run_id)
@@ -71,11 +74,6 @@ pub fn replace_rows(import_run_id: String, rows: List(SnapshotRowTuple)) -> Nil 
 
   sqlite_store.exec(delete_sql)
   insert_rows(import_run_id, rows, 1)
-}
-
-pub fn clear() -> Nil {
-  sqlite_store.exec("DELETE FROM collection_snapshot;")
-  sqlite_store.exec("DELETE FROM import_runs;")
 }
 
 fn insert_rows(

@@ -1,7 +1,5 @@
 -- migrate:up
 
--- Phase 2.3 baseline: snapshot persistence + import history metadata
-
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS import_runs (

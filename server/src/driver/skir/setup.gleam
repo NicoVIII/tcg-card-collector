@@ -459,14 +459,12 @@ fn handle_server_message(
   state: ServerState,
   message: ServerMessage,
 ) -> ServerState {
-  case message {
-    HandleRpc(body, reply) -> {
-      let #(raw, _) =
-        service.handle_request(state.service, body, Nil, state.context)
-      process.send(reply, raw)
-      state
-    }
-  }
+  let HandleRpc(body, reply) = message
+
+  let #(raw, _) =
+    service.handle_request(state.service, body, Nil, state.context)
+  process.send(reply, raw)
+  state
 }
 
 fn server_loop(

@@ -39,11 +39,3 @@ pub fn update(default_sort: String, default_grouping: String) -> Nil {
 
   sqlite_store.exec(sql)
 }
-
-pub fn clear() -> Nil {
-  sqlite_store.exec("DELETE FROM app_settings;")
-  sqlite_store.exec(
-    "INSERT OR IGNORE INTO app_settings (id, default_sort, default_grouping) "
-    <> "VALUES (1, 'card_name', 'location_name');",
-  )
-}

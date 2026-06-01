@@ -2,7 +2,6 @@ import application/card_catalog/ports as card_catalog_ports
 import application/collection_import/ports as collection_import_ports
 import application/inventory_planning/ports as inventory_planning_ports
 import application/settings/ports as settings_ports
-import driver/http/router
 import gleam/io
 import infrastructure/card_catalog/sqlite_repository as card_catalog_sqlite
 import infrastructure/collection_import/sqlite_repository as collection_import_sqlite
@@ -18,7 +17,7 @@ pub type Dependencies {
   )
 }
 
-pub fn boot_message() -> String {
+fn boot_message() -> String {
   "tcg-card-collector composition ready"
 }
 
@@ -33,8 +32,4 @@ pub fn dependencies() -> Dependencies {
     inventory_planning_repository: inventory_planning_sqlite.new(),
     settings_repository: settings_sqlite.new(),
   )
-}
-
-pub fn http_routes() -> List(router.HttpRoute) {
-  router.routes()
 }

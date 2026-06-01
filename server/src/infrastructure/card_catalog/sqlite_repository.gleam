@@ -19,11 +19,3 @@ pub fn new() -> ports.CatalogRepository {
     },
   )
 }
-
-pub fn seed_card(id: String, name: String, set_code: String) -> Nil {
-  card_catalog_store.upsert(id, name, set_code)
-}
-
-pub fn reset_for_tests() -> Nil {
-  card_catalog_store.clear()
-}

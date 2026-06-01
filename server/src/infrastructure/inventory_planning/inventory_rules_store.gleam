@@ -84,10 +84,6 @@ pub fn projection(sort_by: String, group_by: String) -> List(ProjectionTuple) {
   |> parse_projection_rows
 }
 
-pub fn clear() -> Nil {
-  sqlite_store.exec("DELETE FROM inventory_rules;")
-}
-
 fn parse_rule_rows(output: String) -> List(RuleTuple) {
   output
   |> string.split("\n")
