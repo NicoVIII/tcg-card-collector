@@ -51,7 +51,7 @@ export function CatalogPage() {
 
   return (
     <section>
-      <h2>Catalog</h2>
+      <h2>Database</h2>
       <button onClick={refreshCatalog} disabled={refreshMutation.isPending}>
         Refresh catalog
       </button>

@@ -40,7 +40,7 @@ export function InventoryPage() {
 
   return (
     <section>
-      <h2>Inventory</h2>
+      <h2>Collection</h2>
       <div>
         <label>
           Sort by
