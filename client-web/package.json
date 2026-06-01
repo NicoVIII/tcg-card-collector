@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "format": "find src -type f -name '*.ts' -o -name '*.tsx' ! -path 'src/data/skirout/*' | xargs oxfmt",
-    "format-check": "find src -type f -name '*.ts' -o -name '*.tsx' ! -path 'src/data/skirout/*' | xargs bunx --no-install --bun oxfmt --check",
+    "format": "find src -type f \\( -name '*.ts' -o -name '*.tsx' \\) ! -path 'src/data/skirout/*' | xargs oxfmt",
+    "format-check": "find src -type f \\( -name '*.ts' -o -name '*.tsx' \\) ! -path 'src/data/skirout/*' | xargs bunx --no-install --bun oxfmt --check",
     "type-check": "tsc --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\" && oxlint --ignore-pattern src/data/skirout/** .",
     "test": "vitest run --environment node"

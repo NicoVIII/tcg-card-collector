@@ -1,12 +1,18 @@
 mod server
 mod client-web
 
+skir_version := "1.2"
+
 default:
   just --list
 
 [private]
 skir *args:
-  bunx skir@1.2 {{args}}
+  if command -v bunx >/dev/null 2>&1; then \
+    bunx skir@{{skir_version}} {{args}}; \
+  else \
+    npx skir@{{skir_version}} {{args}}; \
+  fi
 
 [group('skir')]
 skir-gen:
