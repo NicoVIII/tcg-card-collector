@@ -1,10 +1,19 @@
 version: 2
 updates:
+  - package-ecosystem: "devcontainers"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
   - package-ecosystem: "bun"
     directory: "/client-web"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
     groups:
       client-web-linting:
         patterns:
@@ -13,14 +22,3 @@ updates:
           - "@typescript-eslint/*"
           - "oxlint"
           - "oxfmt"
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-
-  - package-ecosystem: "devcontainers"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-

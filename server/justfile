@@ -1,7 +1,7 @@
 default: dev
 
 setup:
-  gleam download deps
+  gleam deps download
 
 format:
   find src test -type f -name '*.gleam' ! -path 'src/driver/skirout/*' | xargs gleam format
