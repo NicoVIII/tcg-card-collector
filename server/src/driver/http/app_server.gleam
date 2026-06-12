@@ -92,7 +92,7 @@ fn handle_list_catalog_cards(
   deps: Dependencies,
 ) -> Response(mist.ResponseData) {
   let cards =
-    card_catalog_handler.list_catalog_cards(deps.card_catalog_repository)
+    card_catalog_handler.list_catalog_cards(deps.list_database_cards_port)
   json_response(200, json_codec.encode_catalog_cards(cards))
 }
 
@@ -133,9 +133,7 @@ fn launch_catalog_refresh(
             Ok(_) -> {
               log_async("catalog-refresh", "started: " <> trigger)
               case
-                card_catalog_handler.refresh_catalog(
-                  deps.card_catalog_repository,
-                )
+                card_catalog_handler.refresh_catalog(deps.refresh_database_port)
               {
                 card_catalog_handler.Success ->
                   log_async(

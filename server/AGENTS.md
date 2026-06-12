@@ -8,6 +8,14 @@ Layer violations require a named exception in `server/linting/architecture_excep
 
 Three bounded contexts under `server/src/domain/`: Card Catalog, Collection Import, Inventory Planning.
 
+## Application Layer
+
+Commands: `application/commands/<domain>/<command>/`, queries: `application/queries/<domain>/<query>/`. Each use case has its own narrow port — `handler.gleam` (command/query type + `execute`), `ports.gleam` (port interface + errors). No shared repository bundles.
+
+Naming: operation-first — `RefreshDatabaseCommand`, `ListDatabaseCardsQuery`, `RefreshDatabasePort`.
+
+**Note**: "Card Catalog" in `domain/` is called "database" in the application and infrastructure layers — intentional, reflects the concept rather than the domain model name.
+
 ## Database
 
 SQLite. Set `TCG_DB_FILE` to the db path. Run migrations with `just dbmate-migrate`.

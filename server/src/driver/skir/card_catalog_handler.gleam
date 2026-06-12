@@ -1,5 +1,7 @@
-import application/card_catalog/ports
-import application/card_catalog/service
+import application/commands/database/refresh/handler as refresh_handler
+import application/commands/database/refresh/ports as refresh_ports
+import application/queries/database/list_cards/handler as list_cards_handler
+import application/queries/database/list_cards/ports as list_cards_ports
 
 pub type RefreshCatalogResponse {
   Success
@@ -7,16 +9,16 @@ pub type RefreshCatalogResponse {
 }
 
 pub fn refresh_catalog(
-  repository: ports.CatalogRepository,
+  port: refresh_ports.RefreshDatabasePort,
 ) -> RefreshCatalogResponse {
-  case service.refresh_catalog(repository) {
+  case refresh_handler.execute(refresh_handler.RefreshDatabaseCommand, port) {
     Ok(_) -> Success
     Error(_) -> Failed
   }
 }
 
 pub fn list_catalog_cards(
-  repository: ports.CatalogRepository,
-) -> List(ports.CatalogCardReadModel) {
-  service.list_catalog_cards(repository)
+  port: list_cards_ports.ListCardsPort,
+) -> List(list_cards_ports.DatabaseCardReadModel) {
+  list_cards_handler.execute(list_cards_handler.ListDatabaseCardsQuery, port)
 }
