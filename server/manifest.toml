@@ -35,4 +35,5 @@ gleam_stdlib = { version = ">= 1.0.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 glinter = { version = ">= 2.19.0 and < 3.0.0" }
 mist = { version = ">= 6.0.2 and < 7.0.0" }
+simplifile = { version = ">= 2.4.0 and < 3.0.0" }
 skir_client = { version = ">= 1.0.5 and < 2.0.0" }

@@ -18,6 +18,8 @@ Naming: operation-first — `RefreshDatabaseCommand`, `ListDatabaseCardsQuery`, 
 
 **Note**: "Card Catalog" in `domain/` is called "database" in the application and infrastructure layers — intentional, reflects the concept rather than the domain model name.
 
+**Catalog import validation.** Every card imported from Scryfall flows through `card_definition.from_raw` before being persisted. Invalid rows (unknown rarity, empty required fields) are skipped with a per-row warning log; the refresh still succeeds with the valid subset. This is where domain-layer consistency checks live — add new checks to `from_raw`.
+
 ## Database
 
 SQLite. Set `TCG_DB_FILE` to the db path. Run migrations with `just dbmate-migrate`.

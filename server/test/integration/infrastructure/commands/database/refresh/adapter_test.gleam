@@ -36,7 +36,8 @@ pub fn import_succeeds_and_loads_cards_test() {
 
   assert result == Ok(Nil)
 
-  // Fixture cards should be present
+  // 4 cards in the fixture but test-id-004 has rarity "mythical_rare" (unknown)
+  // and must be skipped; only 3 valid cards should be persisted
   let cards = database_store.list()
   assert list.length(cards) == 3
 
