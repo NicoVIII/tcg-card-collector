@@ -10,7 +10,7 @@ Three bounded contexts under `server/src/domain/`: Card Catalog, Collection Impo
 
 ## Application Layer
 
-Commands: `application/commands/<domain>/<command>/`, queries: `application/queries/<domain>/<query>/`. Each use case has its own narrow port — `handler.gleam` (command/query type + `execute`), `ports.gleam` (port interface + errors). No shared repository bundles.
+CQRS: commands and queries are strictly separated. Commands: `application/commands/<domain>/<command>/`, queries: `application/queries/<domain>/<query>/`. Each use case has its own narrow port — `handler.gleam` (command/query type + `execute`), `ports.gleam` (port interface + errors). No shared repository bundles.
 
 Naming: operation-first — `RefreshDatabaseCommand`, `ListDatabaseCardsQuery`, `RefreshDatabasePort`.
 
