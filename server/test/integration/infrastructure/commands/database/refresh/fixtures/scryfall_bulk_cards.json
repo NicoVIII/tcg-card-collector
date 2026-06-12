@@ -1,0 +1,38 @@
+[
+  {
+    "id": "test-id-001",
+    "oracle_id": "oracle-001",
+    "name": "Black Lotus",
+    "set": "lea",
+    "collector_number": "232",
+    "rarity": "rare",
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/b/d/bd8fa327-dd41-4737-8f19-2cf5eb1f7cdd.jpg",
+      "normal": "https://cards.scryfall.io/normal/front/b/d/bd8fa327-dd41-4737-8f19-2cf5eb1f7cdd.jpg"
+    }
+  },
+  {
+    "id": "test-id-002",
+    "oracle_id": "oracle-002",
+    "name": "Lightning Bolt",
+    "set": "lea",
+    "collector_number": "161",
+    "rarity": "common",
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/e/3/e3285e6b-3e79-4d7c-bf96-d920f973b122.jpg",
+      "normal": "https://cards.scryfall.io/normal/front/e/3/e3285e6b-3e79-4d7c-bf96-d920f973b122.jpg"
+    }
+  },
+  {
+    "id": "test-id-003",
+    "oracle_id": "oracle-003",
+    "name": "Llanowar Elves",
+    "set": "lea",
+    "collector_number": "181",
+    "rarity": "common",
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/front/8/2/8204b3ca-07a1-4cb1-bce8-0faf52e12df4.jpg",
+      "normal": "https://cards.scryfall.io/normal/front/8/2/8204b3ca-07a1-4cb1-bce8-0faf52e12df4.jpg"
+    }
+  }
+]

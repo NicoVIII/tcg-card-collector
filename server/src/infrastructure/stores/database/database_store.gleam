@@ -10,55 +10,11 @@ const bulk_metadata_url = "https://api.scryfall.com/bulk-data/default_cards"
 
 const shell_timeout_seconds = "540"
 
-const curl_connect_timeout_seconds = "10"
-
-const curl_metadata_max_time_seconds = "60"
-
-const curl_bulk_import_max_time_seconds = "480"
-
-pub fn refresh() -> Result(Nil, String) {
-  case should_probe() {
-    False -> Ok(Nil)
-    True ->
-      case fetch_bulk_metadata() {
-        Error(reason) -> {
-          mark_probe_failed(reason)
-          Error(reason)
-        }
-        Ok(#(updated_at, download_uri)) ->
-          case current_upstream_updated_at() {
-            value if value == updated_at -> {
-              mark_probe_skipped(updated_at)
-              Ok(Nil)
-            }
-            _ ->
-              case import_cards(download_uri) {
-                Ok(_) -> {
-                  mark_probe_succeeded(updated_at)
-                  Ok(Nil)
-                }
-                Error(reason) -> {
-                  mark_probe_failed(reason)
-                  Error("catalog refresh failed: " <> reason)
-                }
-              }
-          }
-      }
-  }
+pub type RefreshIO {
+  RefreshIO(download: fn(String) -> Result(String, String))
 }
 
-pub fn list() -> List(CatalogRowTuple) {
-  let output =
-    sqlite_store.query(
-      "SELECT id, name, set_code "
-      <> "FROM catalog_cards "
-      <> "ORDER BY name ASC, set_code ASC, collector_number ASC, id ASC;",
-    )
-
-  parse_rows(output)
-}
-
-fn should_probe() -> Bool {
+pub fn is_probe_due() -> Bool {
   let output =
     sqlite_store.query(
       "SELECT last_probe_at "
@@ -72,7 +28,7 @@ fn should_probe() -> Bool {
   string.trim(output) == ""
 }
 
-fn current_upstream_updated_at() -> String {
+pub fn current_upstream_updated_at() -> String {
   sqlite_store.query(
     "SELECT COALESCE(last_upstream_updated_at, '') "
     <> "FROM catalog_sync_metadata "
@@ -81,79 +37,81 @@ fn current_upstream_updated_at() -> String {
   |> string.trim
 }
 
-fn fetch_bulk_metadata() -> Result(#(String, String), String) {
-  let script =
-    "set -e; "
-    <> "curl -fsSL --compressed --connect-timeout "
-    <> curl_connect_timeout_seconds
-    <> " --max-time "
-    <> curl_metadata_max_time_seconds
-    <> " "
-    <> shell_quote(bulk_metadata_url)
-    <> " | jq -r '[.updated_at, .download_uri] | @tsv'"
-
-  case run_shell(script) {
-    Error(output) -> Error(simplify_error(output))
-    Ok(output) ->
-      case string.split(string.trim(output), "\t") {
-        [updated_at, download_uri] ->
-          case updated_at != "" && download_uri != "" {
-            True -> Ok(#(updated_at, download_uri))
-            False -> Error("invalid metadata response from scryfall")
+pub fn fetch_metadata(io: RefreshIO) -> Result(#(String, String), String) {
+  case io.download(bulk_metadata_url) {
+    Error(reason) -> Error(simplify_error(reason))
+    Ok(path) -> {
+      let script =
+        "jq -r '[.updated_at, .download_uri] | @tsv' < " <> shell_quote(path)
+      case run_shell(script) {
+        Error(output) -> Error(simplify_error(output))
+        Ok(output) ->
+          case string.split(string.trim(output), "\t") {
+            [updated_at, download_uri] ->
+              case updated_at != "" && download_uri != "" {
+                True -> Ok(#(updated_at, download_uri))
+                False -> Error("invalid metadata response from scryfall")
+              }
+            _ -> Error("invalid metadata response from scryfall")
           }
-        _ -> Error("invalid metadata response from scryfall")
       }
+    }
   }
 }
 
-fn import_cards(download_uri: String) -> Result(Nil, String) {
+pub fn import_cards(
+  io: RefreshIO,
+  download_uri: String,
+) -> Result(Nil, String) {
   let _ = sqlite_store.exec("SELECT 1;")
-  let script =
-    "set -e; "
-    <> "tmp=$(mktemp); "
-    <> "sqltmp=$(mktemp); "
-    <> "trap 'rm -f \"$tmp\" \"$sqltmp\"' EXIT; "
-    <> "curl -fsSL --compressed --connect-timeout "
-    <> curl_connect_timeout_seconds
-    <> " --max-time "
-    <> curl_bulk_import_max_time_seconds
-    <> " "
-    <> shell_quote(download_uri)
-    <> " | jq -r '.[] | [(.id // \"\"), (.oracle_id // \"\"), (.name // \"\"), (.set // \"\"), (.collector_number // \"\"), (.rarity // \"unknown\"), (.image_uris.small // \"\"), (.image_uris.normal // \"\")] | @csv' > \"$tmp\"; "
-    <> "printf '%s\\n' "
-    <> "\"BEGIN;\" "
-    <> "\"CREATE TEMP TABLE _catalog_import (\" "
-    <> "\"  id TEXT,\" "
-    <> "\"  oracle_id TEXT,\" "
-    <> "\"  name TEXT,\" "
-    <> "\"  set_code TEXT,\" "
-    <> "\"  collector_number TEXT,\" "
-    <> "\"  rarity TEXT,\" "
-    <> "\"  image_small_uri TEXT,\" "
-    <> "\"  image_normal_uri TEXT\" "
-    <> "\");\" "
-    <> "\".mode csv\" "
-    <> "\".import $tmp _catalog_import\" "
-    <> "\"DELETE FROM catalog_cards;\" "
-    <> "\"INSERT INTO catalog_cards (\" "
-    <> "\"  id, oracle_id, name, set_code, collector_number, rarity, image_small_uri, image_normal_uri\" "
-    <> "\")\" "
-    <> "\"SELECT\" "
-    <> "\"  id, oracle_id, name, set_code, collector_number, rarity, image_small_uri, image_normal_uri\" "
-    <> "\"FROM _catalog_import;\" "
-    <> "\"DROP TABLE _catalog_import;\" "
-    <> "\"COMMIT;\" > \"$sqltmp\"; "
-    <> "sqlite3 "
-    <> shell_quote(sqlite_store.db_file())
-    <> " < \"$sqltmp\""
+  case io.download(download_uri) {
+    Error(reason) -> Error(simplify_error(reason))
+    Ok(path) -> {
+      let script =
+        "set -e; "
+        <> "sqltmp=$(mktemp); "
+        <> "trap 'rm -f \"$sqltmp\"' EXIT; "
+        <> "tmp="
+        <> shell_quote(path)
+        <> "; "
+        <> "jq -r '.[] | [(.id // \"\"), (.oracle_id // \"\"), (.name // \"\"), (.set // \"\"), (.collector_number // \"\"), (.rarity // \"unknown\"), (.image_uris.small // \"\"), (.image_uris.normal // \"\")] | @csv' < \"$tmp\" > \"${tmp}.csv\"; "
+        <> "printf '%s\\n' "
+        <> "\"BEGIN;\" "
+        <> "\"CREATE TEMP TABLE _catalog_import (\" "
+        <> "\"  id TEXT,\" "
+        <> "\"  oracle_id TEXT,\" "
+        <> "\"  name TEXT,\" "
+        <> "\"  set_code TEXT,\" "
+        <> "\"  collector_number TEXT,\" "
+        <> "\"  rarity TEXT,\" "
+        <> "\"  image_small_uri TEXT,\" "
+        <> "\"  image_normal_uri TEXT\" "
+        <> "\");\" "
+        <> "\".mode csv\" "
+        <> "\".import ${tmp}.csv _catalog_import\" "
+        <> "\"DELETE FROM catalog_cards;\" "
+        <> "\"INSERT INTO catalog_cards (\" "
+        <> "\"  id, oracle_id, name, set_code, collector_number, rarity, image_small_uri, image_normal_uri\" "
+        <> "\")\" "
+        <> "\"SELECT\" "
+        <> "\"  id, oracle_id, name, set_code, collector_number, rarity, image_small_uri, image_normal_uri\" "
+        <> "\"FROM _catalog_import;\" "
+        <> "\"DROP TABLE _catalog_import;\" "
+        <> "\"COMMIT;\" > \"$sqltmp\"; "
+        <> "sqlite3 "
+        <> shell_quote(sqlite_store.db_file())
+        <> " < \"$sqltmp\"; "
+        <> "rm -f \"${tmp}.csv\""
 
-  case run_shell(script) {
-    Ok(_) -> Ok(Nil)
-    Error(output) -> Error(simplify_error(output))
+      case run_shell(script) {
+        Ok(_) -> Ok(Nil)
+        Error(output) -> Error(simplify_error(output))
+      }
+    }
   }
 }
 
-fn mark_probe_succeeded(updated_at: String) -> Nil {
+pub fn mark_probe_succeeded(updated_at: String) -> Nil {
   let sql =
     "INSERT INTO catalog_sync_metadata ("
     <> "  id, last_probe_at, last_upstream_updated_at, last_refresh_status, last_error_message, updated_at"
@@ -172,7 +130,7 @@ fn mark_probe_succeeded(updated_at: String) -> Nil {
   sqlite_store.exec(sql)
 }
 
-fn mark_probe_skipped(updated_at: String) -> Nil {
+pub fn mark_probe_skipped(updated_at: String) -> Nil {
   let sql =
     "INSERT INTO catalog_sync_metadata ("
     <> "  id, last_probe_at, last_upstream_updated_at, last_refresh_status, last_error_message, updated_at"
@@ -191,7 +149,7 @@ fn mark_probe_skipped(updated_at: String) -> Nil {
   sqlite_store.exec(sql)
 }
 
-fn mark_probe_failed(reason: String) -> Nil {
+pub fn mark_probe_failed(reason: String) -> Nil {
   let sql =
     "INSERT INTO catalog_sync_metadata ("
     <> "  id, last_probe_at, last_upstream_updated_at, last_refresh_status, last_error_message, updated_at"
@@ -207,6 +165,17 @@ fn mark_probe_failed(reason: String) -> Nil {
     <> "  updated_at = CURRENT_TIMESTAMP;"
 
   sqlite_store.exec(sql)
+}
+
+pub fn list() -> List(CatalogRowTuple) {
+  let output =
+    sqlite_store.query(
+      "SELECT id, name, set_code "
+      <> "FROM catalog_cards "
+      <> "ORDER BY name ASC, set_code ASC, collector_number ASC, id ASC;",
+    )
+
+  parse_rows(output)
 }
 
 fn run_shell(script: String) -> Result(String, String) {

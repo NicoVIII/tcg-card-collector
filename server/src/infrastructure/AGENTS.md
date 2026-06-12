@@ -6,3 +6,7 @@ Two sub-layers:
 - `stores/` — reusable SQLite access, organized by bounded context (`stores/<context>/`). Shared by adapters within the same context.
 
 When adding a new use case, place its adapter at the path that mirrors the application layer, and its store logic in `stores/<context>/`.
+
+**Stores hold primitives, not orchestration.** Business-logic flow (branching, sequencing) belongs in the application handler. Stores expose public, single-responsibility functions that the adapter wires into the port.
+
+**Injected-IO seam for testability.** Adapters that make network calls accept a `*IO` record (e.g. `database_store.RefreshIO`) holding the outbound I/O as a closure, injected via a `new_with_io(io)` constructor. `new()` calls `new_with_io(live_io())` for production. This lets integration tests pass a hermetic fake without changing `composition.gleam`.
