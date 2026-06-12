@@ -17,7 +17,7 @@ deb [arch=amd64 signed-by=/usr/share/keyrings/com.rabbitmq.team.gpg] https://deb
 EOF
 
 sudo apt-get -y update
-sudo apt-get install -y erlang erlang-dev just rebar3 shellcheck sqlite3
+sudo apt-get install -y erlang erlang-dev rebar3 shellcheck sqlite3
 sh ./scripts/install_dbmate.sh
 
 echo "Post-create provisioning completed"
