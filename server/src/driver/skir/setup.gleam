@@ -14,6 +14,7 @@ import driver/skirout/inventory_planning/queries as inventory_planning_queries
 import driver/skirout/settings/commands as settings_commands
 import driver/skirout/settings/queries as settings_queries
 import gleam/erlang/process
+import gleam/io
 import gleam/list
 import skir_client/service
 
@@ -84,21 +85,28 @@ fn handle_refresh_catalog(
   Nil,
   Nil,
 ) {
+  log_rpc("started")
   case card_catalog_handler.refresh_catalog(deps.refresh_database_port) {
-    card_catalog_handler.Success -> #(
-      Ok(card_catalog_commands.RefreshCatalogResponseSuccess),
-      req_meta,
-      Nil,
-    )
-    card_catalog_handler.Failed -> #(
-      Error(service.ServiceError(
-        service.E503xServiceUnavailable,
-        "catalog refresh failed",
-      )),
-      req_meta,
-      Nil,
-    )
+    card_catalog_handler.Success -> {
+      log_rpc("finished successfully")
+      #(Ok(card_catalog_commands.RefreshCatalogResponseSuccess), req_meta, Nil)
+    }
+    card_catalog_handler.Failed -> {
+      log_rpc("finished with failure")
+      #(
+        Error(service.ServiceError(
+          service.E503xServiceUnavailable,
+          "catalog refresh failed",
+        )),
+        req_meta,
+        Nil,
+      )
+    }
   }
+}
+
+fn log_rpc(message: String) -> Nil {
+  io.println("[rpc][catalog-refresh] " <> message)
 }
 
 fn handle_list_catalog_cards(

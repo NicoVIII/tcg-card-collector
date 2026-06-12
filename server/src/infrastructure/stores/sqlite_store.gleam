@@ -1,11 +1,29 @@
 import common/os_runtime
+import gleam/io
 import gleam/string
 
 const default_db_file = "db/tcg-card-collector.db"
 
 pub fn exec(sql: String) -> Nil {
-  let _ = run(sql)
-  Nil
+  let inner =
+    "sqlite3 -noheader -separator '\t' "
+    <> shell_quote(db_file())
+    <> " "
+    <> shell_quote(sql)
+  let wrapped =
+    "set +e; " <> inner <> "; status=$?; printf '\\n__EXIT__:%s' \"$status\""
+  let output = os_runtime.cmd("sh -c " <> shell_quote(wrapped))
+  case string.split(output, "__EXIT__:") {
+    [body, status_raw] ->
+      case string.trim(status_raw) {
+        "0" -> Nil
+        _ -> io.println("[sqlite][error] exec failed: " <> string.trim(body))
+      }
+    _ ->
+      io.println(
+        "[sqlite][error] exec failed (no exit marker): " <> string.trim(output),
+      )
+  }
 }
 
 pub fn query(sql: String) -> String {
