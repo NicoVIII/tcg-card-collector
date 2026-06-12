@@ -1,5 +1,6 @@
-import application/inventory_planning/ports as inventory_planning_ports
 import application/queries/database/list_cards/ports as list_cards_ports
+import application/queries/inventory_planning/list_rules/ports as list_rules_ports
+import application/queries/inventory_planning/projection/ports as projection_ports
 import composition.{type Dependencies}
 import driver/skir/card_catalog_handler
 import driver/skir/collection_import_handler
@@ -146,14 +147,12 @@ fn handle_import_collection(
   Nil,
 ) {
   collection_import_handler.import_collection(
-    deps.collection_import_repository,
-    collection_import_handler.ImportCollectionRequest(
-      import_run_id: req.import_run_id,
-      source_name: req.source_name,
-      source_checksum: req.source_checksum,
-      row_count: req.row_count,
-      rows: list.map(req.rows, map_import_collection_row),
-    ),
+    deps.import_collection_port,
+    req.import_run_id,
+    req.source_name,
+    req.source_checksum,
+    req.row_count,
+    list.map(req.rows, map_import_collection_row),
   )
   |> fn(response) {
     case response {
@@ -182,7 +181,7 @@ fn handle_get_latest_import_status(
 ) {
   let response =
     collection_import_handler.get_latest_import_status(
-      deps.collection_import_repository,
+      deps.latest_import_status_port,
     )
 
   case response {
@@ -221,12 +220,10 @@ fn handle_upsert_inventory_rule(
 ) {
   case
     inventory_planning_handler.upsert_inventory_rule(
-      deps.inventory_planning_repository,
-      inventory_planning_handler.UpsertInventoryRuleRequest(
-        id: req.id,
-        location_name: req.location_name,
-        expression: req.expression,
-      ),
+      deps.upsert_inventory_rule_port,
+      req.id,
+      req.location_name,
+      req.expression,
     )
   {
     Ok(_) -> #(
@@ -234,18 +231,10 @@ fn handle_upsert_inventory_rule(
       req_meta,
       Nil,
     )
-    Error(inventory_planning_handler.InvalidRuleExpression) -> #(
-      Error(service.ServiceError(
-        service.E400xBadRequest,
-        "invalid inventory rule expression",
-      )),
-      req_meta,
-      Nil,
-    )
     Error(_) -> #(
       Error(service.ServiceError(
         service.E400xBadRequest,
-        "invalid inventory rule",
+        "invalid inventory rule expression",
       )),
       req_meta,
       Nil,
@@ -266,8 +255,8 @@ fn handle_delete_inventory_rule(
   Nil,
 ) {
   inventory_planning_handler.delete_inventory_rule(
-    deps.inventory_planning_repository,
-    inventory_planning_handler.DeleteInventoryRuleRequest(id: req.id),
+    deps.delete_inventory_rule_port,
+    req.id,
   )
 
   #(
@@ -288,7 +277,7 @@ fn handle_list_inventory_rules(
 ) {
   let rules =
     inventory_planning_handler.list_inventory_rules(
-      deps.inventory_planning_repository,
+      deps.list_inventory_rules_port,
     )
   let response =
     inventory_planning_queries.inventory_rule_list_new(
@@ -310,11 +299,9 @@ fn handle_get_inventory_projection(
 ) {
   let rows_result =
     inventory_planning_handler.inventory_projection(
-      deps.inventory_planning_repository,
-      inventory_planning_handler.InventoryProjectionRequest(
-        sort_by: req.sort_by,
-        group_by: req.group_by,
-      ),
+      deps.inventory_projection_port,
+      req.sort_by,
+      req.group_by,
     )
 
   case rows_result {
@@ -337,14 +324,6 @@ fn handle_get_inventory_projection(
       req_meta,
       Nil,
     )
-    Error(_) -> #(
-      Error(service.ServiceError(
-        service.E400xBadRequest,
-        "invalid inventory projection request",
-      )),
-      req_meta,
-      Nil,
-    )
   }
 }
 
@@ -353,7 +332,7 @@ fn handle_get_settings(
   req_meta: Nil,
   deps: Dependencies,
 ) -> #(Result(settings_queries.AppSettings, service.ServiceError), Nil, Nil) {
-  let current = settings_handler.get_settings(deps.settings_repository)
+  let current = settings_handler.get_settings(deps.get_settings_port)
   let response =
     settings_queries.app_settings_new(
       current.default_grouping,
@@ -373,11 +352,9 @@ fn handle_update_settings(
   Nil,
 ) {
   settings_handler.update_settings(
-    deps.settings_repository,
-    settings_handler.UpdateSettingsRequest(
-      default_sort: req.default_sort,
-      default_grouping: req.default_grouping,
-    ),
+    deps.update_settings_port,
+    req.default_sort,
+    req.default_grouping,
   )
 
   #(Ok(settings_commands.UpdateSettingsResponseSuccess), req_meta, Nil)
@@ -390,7 +367,7 @@ fn map_catalog_card(
 }
 
 fn map_inventory_rule(
-  rule: inventory_planning_ports.InventoryRuleReadModel,
+  rule: list_rules_ports.InventoryRuleReadModel,
 ) -> inventory_planning_queries.InventoryRule {
   inventory_planning_queries.inventory_rule_new(
     rule.expression,
@@ -400,7 +377,7 @@ fn map_inventory_rule(
 }
 
 fn map_inventory_projection_row(
-  row: inventory_planning_ports.InventoryProjectionReadModel,
+  row: projection_ports.InventoryProjectionReadModel,
 ) -> inventory_planning_queries.InventoryProjectionRow {
   inventory_planning_queries.inventory_projection_row_new(
     row.card_name,

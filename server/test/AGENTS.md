@@ -1,15 +1,10 @@
 # Test Suite
 
-Two top-level test types, each with its own subtree:
-
-- `test/unit/` — pure unit tests. Fake ports via inline record construction (no mocking library needed — ports are records of functions). No I/O, no DB, no network. Fast.
-- `test/integration/` — infrastructure integration tests. Each test drives a real adapter against a real (but disposable) SQLite DB with only the **network** faked via an injected IO seam.
+Integration tests live under `test/integration/`, which tests infrastructure adapters against a real (but disposable) SQLite DB with only the **network** faked via an injected IO seam.
 
 ## Layout convention
 
-Both subtrees mirror `src/` — e.g. `src/application/commands/database/refresh/handler.gleam` → `test/unit/application/commands/database/refresh/handler_test.gleam`.
-
-Infrastructure integration tests test adapters by definition, so the `adapters/` segment is dropped from the path: `test/integration/infrastructure/commands/database/refresh/adapter_test.gleam` (not `…/adapters/commands/…`).
+The `test/integration/` subtree mirrors `src/`, but the `adapters/` segment is dropped from the path: `test/integration/infrastructure/commands/database/refresh/adapter_test.gleam` (not `…/adapters/commands/…`).
 
 ## Shared helpers vs. slice-local
 

@@ -1,7 +1,9 @@
-import application/collection_import/ports
-import application/collection_import/service
+import application/commands/collection_import/import_collection/handler as import_collection_handler
+import application/commands/collection_import/import_collection/ports as import_collection_ports
+import application/queries/collection_import/latest_status/handler as latest_status_handler
+import application/queries/collection_import/latest_status/ports as latest_status_ports
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{None, Some}
 
 pub type ImportCollectionRow {
   ImportCollectionRow(
@@ -12,125 +14,61 @@ pub type ImportCollectionRow {
   )
 }
 
-pub type ImportCollectionRequest {
-  ImportCollectionRequest(
-    import_run_id: String,
-    source_name: String,
-    source_checksum: String,
-    row_count: Int,
-    rows: List(ImportCollectionRow),
-  )
-}
-
 pub type ImportCollectionResponse {
   Accepted
   Rejected
 }
 
 pub type LatestImportStatusResponse {
-  ImportStatusFound(ports.ImportRunReadModel)
+  ImportStatusFound(latest_status_ports.ImportRunReadModel)
   ImportStatusNotFound
 }
 
 pub fn import_collection(
-  repository: ports.CollectionImportRepository,
-  request: ImportCollectionRequest,
+  port: import_collection_ports.ImportCollectionPort,
+  import_run_id: String,
+  source_name: String,
+  source_checksum: String,
+  row_count: Int,
+  rows: List(ImportCollectionRow),
 ) -> ImportCollectionResponse {
-  let ImportCollectionRequest(
-    import_run_id: import_run_id,
-    source_name: source_name,
-    row_count: row_count,
-    rows: rows,
-    ..,
-  ) = request
-
-  let actual_row_count = list.length(rows)
-
-  persist_run(
-    repository,
-    import_run_id,
-    source_name,
-    "pending",
-    actual_row_count,
-  )
-  persist_run(
-    repository,
-    import_run_id,
-    source_name,
-    "running",
-    actual_row_count,
-  )
-
-  case row_count == actual_row_count {
-    True -> {
-      service.replace_snapshot_rows(
-        repository,
-        import_run_id,
-        rows
-          |> list.map(fn(row) {
-            let ImportCollectionRow(
-              card_name: card_name,
-              set_code: set_code,
-              collector_number: collector_number,
-              quantity: quantity,
-            ) = row
-
-            ports.SnapshotRowWriteModel(
-              card_name: card_name,
-              set_code: set_code,
-              collector_number: collector_number,
-              quantity: quantity,
-            )
-          }),
-      )
-      persist_run(
-        repository,
-        import_run_id,
-        source_name,
-        "succeeded",
-        actual_row_count,
-      )
-      Accepted
-    }
-    False -> {
-      persist_run(
-        repository,
-        import_run_id,
-        source_name,
-        "failed",
-        actual_row_count,
-      )
-      Rejected
-    }
+  let command =
+    import_collection_handler.ImportCollectionCommand(
+      import_run_id: import_run_id,
+      source_name: source_name,
+      source_checksum: source_checksum,
+      row_count: row_count,
+      rows: list.map(rows, fn(row) {
+        let ImportCollectionRow(
+          card_name: card_name,
+          set_code: set_code,
+          collector_number: collector_number,
+          quantity: quantity,
+        ) = row
+        import_collection_ports.ImportCollectionRow(
+          card_name: card_name,
+          set_code: set_code,
+          collector_number: collector_number,
+          quantity: quantity,
+        )
+      }),
+    )
+  case import_collection_handler.execute(command, port) {
+    Ok(_) -> Accepted
+    Error(_) -> Rejected
   }
 }
 
-fn persist_run(
-  repository: ports.CollectionImportRepository,
-  import_run_id: String,
-  source_name: String,
-  status: String,
-  row_count: Int,
-) -> Nil {
-  service.import_collection(
-    repository,
-    ports.ImportRunWriteModel(
-      id: import_run_id,
-      source_name: source_name,
-      status: status,
-      row_count: row_count,
-    ),
-  )
-}
-
 pub fn get_latest_import_status(
-  repository: ports.CollectionImportRepository,
+  port: latest_status_ports.LatestImportStatusPort,
 ) -> LatestImportStatusResponse {
-  let status: Option(ports.ImportRunReadModel) =
-    service.latest_import_status(repository)
-
-  case status {
-    Some(run) -> ImportStatusFound(run)
+  case
+    latest_status_handler.execute(
+      latest_status_handler.LatestImportStatusQuery,
+      port,
+    )
+  {
     None -> ImportStatusNotFound
+    Some(run) -> ImportStatusFound(run)
   }
 }

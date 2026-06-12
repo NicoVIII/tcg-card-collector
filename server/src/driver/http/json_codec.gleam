@@ -1,7 +1,8 @@
-import application/collection_import/ports as import_ports
-import application/inventory_planning/ports as inventory_ports
+import application/queries/collection_import/latest_status/ports as import_ports
 import application/queries/database/list_cards/ports as list_cards_ports
-import application/settings/ports as settings_ports
+import application/queries/inventory_planning/list_rules/ports as list_rules_ports
+import application/queries/inventory_planning/projection/ports as projection_ports
+import application/queries/settings/get/ports as settings_ports
 import gleam/dynamic/decode
 import gleam/json
 import gleam/result
@@ -50,7 +51,7 @@ pub fn encode_import_status_not_found() -> String {
 }
 
 fn encode_inventory_rule(
-  rule: inventory_ports.InventoryRuleReadModel,
+  rule: list_rules_ports.InventoryRuleReadModel,
 ) -> json.Json {
   json.object([
     #("id", json.string(rule.id)),
@@ -60,14 +61,14 @@ fn encode_inventory_rule(
 }
 
 pub fn encode_inventory_rules(
-  rules: List(inventory_ports.InventoryRuleReadModel),
+  rules: List(list_rules_ports.InventoryRuleReadModel),
 ) -> String {
   json.array(rules, of: encode_inventory_rule)
   |> json.to_string
 }
 
 fn encode_projection_row(
-  row: inventory_ports.InventoryProjectionReadModel,
+  row: projection_ports.InventoryProjectionReadModel,
 ) -> json.Json {
   json.object([
     #("location_name", json.string(row.location_name)),
@@ -79,7 +80,7 @@ fn encode_projection_row(
 }
 
 pub fn encode_inventory_projection(
-  rows: List(inventory_ports.InventoryProjectionReadModel),
+  rows: List(projection_ports.InventoryProjectionReadModel),
 ) -> String {
   json.array(rows, of: encode_projection_row)
   |> json.to_string

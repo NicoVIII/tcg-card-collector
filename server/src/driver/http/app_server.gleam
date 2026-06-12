@@ -178,14 +178,12 @@ fn handle_import_collection(
     Error(msg) -> json_response(400, json_codec.encode_error(msg))
     Ok(b) -> {
       collection_import_handler.import_collection(
-        deps.collection_import_repository,
-        collection_import_handler.ImportCollectionRequest(
-          import_run_id: b.import_run_id,
-          source_name: b.source_name,
-          source_checksum: b.source_checksum,
-          row_count: b.row_count,
-          rows: [],
-        ),
+        deps.import_collection_port,
+        b.import_run_id,
+        b.source_name,
+        b.source_checksum,
+        b.row_count,
+        [],
       )
       json_response(202, json_codec.encode_ok("accepted"))
     }
@@ -197,7 +195,7 @@ fn handle_latest_import_status(
 ) -> Response(mist.ResponseData) {
   case
     collection_import_handler.get_latest_import_status(
-      deps.collection_import_repository,
+      deps.latest_import_status_port,
     )
   {
     collection_import_handler.ImportStatusFound(run) ->
@@ -214,7 +212,7 @@ fn handle_list_inventory_rules(
 ) -> Response(mist.ResponseData) {
   let rules =
     inventory_planning_handler.list_inventory_rules(
-      deps.inventory_planning_repository,
+      deps.list_inventory_rules_port,
     )
   json_response(200, json_codec.encode_inventory_rules(rules))
 }
@@ -229,22 +227,18 @@ fn handle_upsert_inventory_rule(
     Ok(b) -> {
       case
         inventory_planning_handler.upsert_inventory_rule(
-          deps.inventory_planning_repository,
-          inventory_planning_handler.UpsertInventoryRuleRequest(
-            id: b.id,
-            location_name: b.location_name,
-            expression: b.expression,
-          ),
+          deps.upsert_inventory_rule_port,
+          b.id,
+          b.location_name,
+          b.expression,
         )
       {
         Ok(_) -> json_response(200, json_codec.encode_ok("rule saved"))
-        Error(inventory_planning_handler.InvalidRuleExpression) ->
+        Error(_) ->
           json_response(
             400,
             json_codec.encode_error("invalid inventory rule expression"),
           )
-        Error(_) ->
-          json_response(400, json_codec.encode_error("invalid inventory rule"))
       }
     }
   }
@@ -259,8 +253,8 @@ fn handle_delete_inventory_rule(
     Error(msg) -> json_response(400, json_codec.encode_error(msg))
     Ok(b) -> {
       inventory_planning_handler.delete_inventory_rule(
-        deps.inventory_planning_repository,
-        inventory_planning_handler.DeleteInventoryRuleRequest(id: b.id),
+        deps.delete_inventory_rule_port,
+        b.id,
       )
       json_response(200, json_codec.encode_ok("rule deleted"))
     }
@@ -275,11 +269,9 @@ fn handle_inventory_projection(
   let group_by = query_param(req, "group_by") |> result.unwrap("location_name")
   let rows_result =
     inventory_planning_handler.inventory_projection(
-      deps.inventory_planning_repository,
-      inventory_planning_handler.InventoryProjectionRequest(
-        sort_by: sort_by,
-        group_by: group_by,
-      ),
+      deps.inventory_projection_port,
+      sort_by,
+      group_by,
     )
 
   case rows_result {
@@ -288,18 +280,13 @@ fn handle_inventory_projection(
       json_response(400, json_codec.encode_error("invalid sort_by"))
     Error(inventory_planning_handler.InvalidGroupBy) ->
       json_response(400, json_codec.encode_error("invalid group_by"))
-    Error(_) ->
-      json_response(
-        400,
-        json_codec.encode_error("invalid inventory projection request"),
-      )
   }
 }
 
 // ---- Settings ---------------------------------------------------------------
 
 fn handle_get_settings(deps: Dependencies) -> Response(mist.ResponseData) {
-  let settings = settings_handler.get_settings(deps.settings_repository)
+  let settings = settings_handler.get_settings(deps.get_settings_port)
   json_response(200, json_codec.encode_settings(settings))
 }
 
@@ -312,11 +299,9 @@ fn handle_update_settings(
     Error(msg) -> json_response(400, json_codec.encode_error(msg))
     Ok(b) -> {
       settings_handler.update_settings(
-        deps.settings_repository,
-        settings_handler.UpdateSettingsRequest(
-          default_sort: b.default_sort,
-          default_grouping: b.default_grouping,
-        ),
+        deps.update_settings_port,
+        b.default_sort,
+        b.default_grouping,
       )
       json_response(200, json_codec.encode_ok("settings saved"))
     }

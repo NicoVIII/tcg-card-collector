@@ -1,99 +1,70 @@
-import application/inventory_planning/ports
-import application/inventory_planning/service
+import application/commands/inventory_planning/delete_rule/handler as delete_rule_handler
+import application/commands/inventory_planning/delete_rule/ports as delete_rule_ports
+import application/commands/inventory_planning/upsert_rule/handler as upsert_rule_handler
+import application/commands/inventory_planning/upsert_rule/ports as upsert_rule_ports
+import application/queries/inventory_planning/list_rules/handler as list_rules_handler
+import application/queries/inventory_planning/list_rules/ports as list_rules_ports
+import application/queries/inventory_planning/projection/handler as projection_handler
+import application/queries/inventory_planning/projection/ports as projection_ports
 import domain/inventory_planning/grouping_strategy
 import domain/inventory_planning/sort_strategy
-import gleam/string
 
-pub type InventoryPlanningValidationError {
+pub type InventoryProjectionError {
   InvalidSortBy
   InvalidGroupBy
-  InvalidRuleExpression
-}
-
-pub type UpsertInventoryRuleRequest {
-  UpsertInventoryRuleRequest(
-    id: String,
-    location_name: String,
-    expression: String,
-  )
-}
-
-pub type DeleteInventoryRuleRequest {
-  DeleteInventoryRuleRequest(id: String)
-}
-
-pub type InventoryProjectionRequest {
-  InventoryProjectionRequest(sort_by: String, group_by: String)
 }
 
 pub fn upsert_inventory_rule(
-  repository: ports.InventoryPlanningRepository,
-  request: UpsertInventoryRuleRequest,
-) -> Result(Nil, InventoryPlanningValidationError) {
-  let UpsertInventoryRuleRequest(
-    id: id,
-    location_name: location_name,
-    expression: expression,
-  ) = request
-
-  case is_valid_rule_expression(expression) {
-    False -> Error(InvalidRuleExpression)
-    True -> {
-      service.upsert_inventory_rule(
-        repository,
-        ports.InventoryRuleWriteModel(
-          id: id,
-          location_name: location_name,
-          expression: expression,
-        ),
-      )
-
-      Ok(Nil)
-    }
-  }
-}
-
-fn is_valid_rule_expression(expression: String) -> Bool {
-  case string.split(expression, "=") {
-    ["set_code", value] -> string.length(value) > 0
-    _ -> False
-  }
+  port: upsert_rule_ports.UpsertInventoryRulePort,
+  id: String,
+  location_name: String,
+  expression: String,
+) -> Result(Nil, upsert_rule_ports.UpsertInventoryRuleError) {
+  upsert_rule_handler.execute(
+    upsert_rule_handler.UpsertInventoryRuleCommand(
+      id: id,
+      location_name: location_name,
+      expression: expression,
+    ),
+    port,
+  )
 }
 
 pub fn delete_inventory_rule(
-  repository: ports.InventoryPlanningRepository,
-  request: DeleteInventoryRuleRequest,
+  port: delete_rule_ports.DeleteInventoryRulePort,
+  id: String,
 ) -> Nil {
-  let DeleteInventoryRuleRequest(id: id) = request
-  service.delete_inventory_rule(repository, id)
+  let _ =
+    delete_rule_handler.execute(
+      delete_rule_handler.DeleteInventoryRuleCommand(id: id),
+      port,
+    )
+  Nil
 }
 
 pub fn list_inventory_rules(
-  repository: ports.InventoryPlanningRepository,
-) -> List(ports.InventoryRuleReadModel) {
-  service.list_inventory_rules(repository)
+  port: list_rules_ports.ListInventoryRulesPort,
+) -> List(list_rules_ports.InventoryRuleReadModel) {
+  list_rules_handler.execute(list_rules_handler.ListInventoryRulesQuery, port)
 }
 
 pub fn inventory_projection(
-  repository: ports.InventoryPlanningRepository,
-  request: InventoryProjectionRequest,
+  port: projection_ports.InventoryProjectionPort,
+  raw_sort_by: String,
+  raw_group_by: String,
 ) -> Result(
-  List(ports.InventoryProjectionReadModel),
-  InventoryPlanningValidationError,
+  List(projection_ports.InventoryProjectionReadModel),
+  InventoryProjectionError,
 ) {
-  let InventoryProjectionRequest(sort_by: raw_sort, group_by: raw_group) =
-    request
-
-  case sort_strategy.parse(raw_sort) {
+  case sort_strategy.parse(raw_sort_by) {
     Error(_) -> Error(InvalidSortBy)
     Ok(sort_by) ->
-      case grouping_strategy.parse(raw_group) {
+      case grouping_strategy.parse(raw_group_by) {
         Error(_) -> Error(InvalidGroupBy)
         Ok(group_by) ->
-          Ok(service.inventory_projection(
-            repository,
-            sort_by: sort_strategy.to_string(sort_by),
-            group_by: grouping_strategy.to_string(group_by),
+          Ok(projection_handler.execute(
+            projection_handler.InventoryProjectionQuery(sort_by:, group_by:),
+            port,
           ))
       }
   }
