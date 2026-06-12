@@ -28,7 +28,9 @@ test:
 
 run:
   mkdir -p db
-  TCG_DB_FILE=db/tcg-card-collector.db gleam run
+  export TCG_DB_FILE=db/tcg-card-collector.db
+  ../scripts/dbmate_up.sh
+  gleam run
 
 [group('dev')]
 dev: run
