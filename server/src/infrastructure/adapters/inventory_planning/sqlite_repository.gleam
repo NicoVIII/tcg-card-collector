@@ -1,6 +1,6 @@
 import application/inventory_planning/ports
 import gleam/list
-import infrastructure/inventory_planning/inventory_rules_store
+import infrastructure/stores/inventory_planning/inventory_rules_store
 
 pub fn new() -> ports.InventoryPlanningRepository {
   ports.InventoryPlanningRepository(

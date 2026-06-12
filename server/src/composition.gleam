@@ -4,11 +4,11 @@ import application/inventory_planning/ports as inventory_planning_ports
 import application/queries/database/list_cards/ports as list_cards_ports
 import application/settings/ports as settings_ports
 import gleam/io
-import infrastructure/collection_import/sqlite_repository as collection_import_sqlite
-import infrastructure/database/list_cards_adapter
-import infrastructure/database/refresh_adapter
-import infrastructure/inventory_planning/sqlite_repository as inventory_planning_sqlite
-import infrastructure/settings/sqlite_repository as settings_sqlite
+import infrastructure/adapters/collection_import/sqlite_repository as collection_import_sqlite
+import infrastructure/adapters/commands/database/refresh/adapter as refresh_adapter
+import infrastructure/adapters/inventory_planning/sqlite_repository as inventory_planning_sqlite
+import infrastructure/adapters/queries/database/list_cards/adapter as list_cards_adapter
+import infrastructure/adapters/settings/sqlite_repository as settings_sqlite
 
 pub type Dependencies {
   Dependencies(

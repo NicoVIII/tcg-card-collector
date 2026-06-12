@@ -1,7 +1,7 @@
 import gleam/int
 import gleam/list
 import gleam/string
-import infrastructure/sqlite_store
+import infrastructure/stores/sqlite_store
 
 type RuleTuple =
   #(String, String, String)

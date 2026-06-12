@@ -1,7 +1,7 @@
 import application/collection_import/ports
 import gleam/list
 import gleam/option.{None, Some}
-import infrastructure/collection_import/collection_import_store
+import infrastructure/stores/collection_import/collection_import_store
 
 pub fn new() -> ports.CollectionImportRepository {
   ports.CollectionImportRepository(

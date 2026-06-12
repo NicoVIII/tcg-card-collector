@@ -1,5 +1,5 @@
 import application/commands/database/refresh/ports
-import infrastructure/database/database_store
+import infrastructure/stores/database/database_store
 
 pub fn new() -> ports.RefreshDatabasePort {
   ports.RefreshDatabasePort(execute: fn() {

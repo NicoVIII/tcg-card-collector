@@ -1,7 +1,7 @@
 import common/os_runtime
 import gleam/list
 import gleam/string
-import infrastructure/sqlite_store
+import infrastructure/stores/sqlite_store
 
 type CatalogRowTuple =
   #(String, String, String)

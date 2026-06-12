@@ -1,7 +1,7 @@
 import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/string
-import infrastructure/sqlite_store
+import infrastructure/stores/sqlite_store
 
 type SnapshotRowTuple =
   #(String, String, String, Int)

@@ -1,5 +1,5 @@
 import application/settings/ports
-import infrastructure/settings/settings_store
+import infrastructure/stores/settings/settings_store
 
 pub fn new() -> ports.SettingsRepository {
   ports.SettingsRepository(

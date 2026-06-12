@@ -1,5 +1,5 @@
 import gleam/string
-import infrastructure/sqlite_store
+import infrastructure/stores/sqlite_store
 
 const default_sort = "card_name"
 

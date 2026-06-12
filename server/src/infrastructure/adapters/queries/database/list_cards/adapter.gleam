@@ -1,6 +1,6 @@
 import application/queries/database/list_cards/ports
 import gleam/list
-import infrastructure/database/database_store
+import infrastructure/stores/database/database_store
 
 pub fn new() -> ports.ListCardsPort {
   ports.ListCardsPort(list_cards: fn() {
