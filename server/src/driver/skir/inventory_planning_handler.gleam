@@ -1,7 +1,11 @@
 import application/commands/inventory_planning/delete_rule/handler as delete_rule_handler
 import application/commands/inventory_planning/delete_rule/ports as delete_rule_ports
+import application/commands/inventory_planning/update_preferences/handler as update_preferences_handler
+import application/commands/inventory_planning/update_preferences/ports as update_preferences_ports
 import application/commands/inventory_planning/upsert_rule/handler as upsert_rule_handler
 import application/commands/inventory_planning/upsert_rule/ports as upsert_rule_ports
+import application/queries/inventory_planning/get_preferences/handler as get_preferences_handler
+import application/queries/inventory_planning/get_preferences/ports as get_preferences_ports
 import application/queries/inventory_planning/list_rules/handler as list_rules_handler
 import application/queries/inventory_planning/list_rules/ports as list_rules_ports
 import application/queries/inventory_planning/projection/handler as projection_handler
@@ -68,4 +72,29 @@ pub fn inventory_projection(
           ))
       }
   }
+}
+
+pub fn get_planning_preferences(
+  port: get_preferences_ports.GetPlanningPreferencesPort,
+) -> get_preferences_ports.PlanningPreferencesReadModel {
+  get_preferences_handler.execute(
+    get_preferences_handler.GetPlanningPreferencesQuery,
+    port,
+  )
+}
+
+pub fn update_planning_preferences(
+  port: update_preferences_ports.UpdatePlanningPreferencesPort,
+  default_sort: String,
+  default_grouping: String,
+) -> Nil {
+  let _ =
+    update_preferences_handler.execute(
+      update_preferences_handler.UpdatePlanningPreferencesCommand(
+        default_sort: default_sort,
+        default_grouping: default_grouping,
+      ),
+      port,
+    )
+  Nil
 }

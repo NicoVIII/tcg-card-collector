@@ -1,8 +1,8 @@
 import application/queries/catalog/list_cards/ports as list_cards_ports
 import application/queries/collection/latest_status/ports as import_ports
+import application/queries/inventory_planning/get_preferences/ports as preferences_ports
 import application/queries/inventory_planning/list_rules/ports as list_rules_ports
 import application/queries/inventory_planning/projection/ports as projection_ports
-import application/queries/settings/get/ports as settings_ports
 import domain/collection/import_status
 import gleam/dynamic/decode
 import gleam/json
@@ -87,7 +87,9 @@ pub fn encode_inventory_projection(
   |> json.to_string
 }
 
-pub fn encode_settings(model: settings_ports.AppSettingsReadModel) -> String {
+pub fn encode_settings(
+  model: preferences_ports.PlanningPreferencesReadModel,
+) -> String {
   json.object([
     #("default_sort", json.string(model.default_sort)),
     #("default_grouping", json.string(model.default_grouping)),

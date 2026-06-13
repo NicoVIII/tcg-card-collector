@@ -5,15 +5,12 @@ import composition.{type Dependencies}
 import driver/skir/card_catalog_handler
 import driver/skir/collection_handler
 import driver/skir/inventory_planning_handler
-import driver/skir/settings_handler
 import driver/skirout/card_catalog/commands as card_catalog_commands
 import driver/skirout/card_catalog/queries as card_catalog_queries
 import driver/skirout/collection/commands as collection_commands
 import driver/skirout/collection/queries as collection_queries
 import driver/skirout/inventory_planning/commands as inventory_planning_commands
 import driver/skirout/inventory_planning/queries as inventory_planning_queries
-import driver/skirout/settings/commands as settings_commands
-import driver/skirout/settings/queries as settings_queries
 import gleam/erlang/process
 import gleam/io
 import gleam/list
@@ -68,12 +65,12 @@ pub fn make_service() -> RpcService {
     handle_get_inventory_projection,
   )
   |> service.add_method(
-    settings_queries.get_settings_method(),
-    handle_get_settings,
+    inventory_planning_queries.get_planning_preferences_method(),
+    handle_get_planning_preferences,
   )
   |> service.add_method(
-    settings_commands.update_settings_method(),
-    handle_update_settings,
+    inventory_planning_commands.update_planning_preferences_method(),
+    handle_update_planning_preferences,
   )
 }
 
@@ -318,14 +315,21 @@ fn handle_get_inventory_projection(
   }
 }
 
-fn handle_get_settings(
-  _: settings_queries.GetSettingsRequest,
+fn handle_get_planning_preferences(
+  _: inventory_planning_queries.GetPlanningPreferencesRequest,
   req_meta: Nil,
   deps: Dependencies,
-) -> #(Result(settings_queries.AppSettings, service.ServiceError), Nil, Nil) {
-  let current = settings_handler.get_settings(deps.get_settings_port)
+) -> #(
+  Result(inventory_planning_queries.PlanningPreferences, service.ServiceError),
+  Nil,
+  Nil,
+) {
+  let current =
+    inventory_planning_handler.get_planning_preferences(
+      deps.get_planning_preferences_port,
+    )
   let response =
-    settings_queries.app_settings_new(
+    inventory_planning_queries.planning_preferences_new(
       current.default_grouping,
       current.default_sort,
     )
@@ -333,22 +337,29 @@ fn handle_get_settings(
   #(Ok(response), req_meta, Nil)
 }
 
-fn handle_update_settings(
-  req: settings_commands.UpdateSettingsRequest,
+fn handle_update_planning_preferences(
+  req: inventory_planning_commands.UpdatePlanningPreferencesRequest,
   req_meta: Nil,
   deps: Dependencies,
 ) -> #(
-  Result(settings_commands.UpdateSettingsResponse, service.ServiceError),
+  Result(
+    inventory_planning_commands.UpdatePlanningPreferencesResponse,
+    service.ServiceError,
+  ),
   Nil,
   Nil,
 ) {
-  settings_handler.update_settings(
-    deps.update_settings_port,
+  inventory_planning_handler.update_planning_preferences(
+    deps.update_planning_preferences_port,
     req.default_sort,
     req.default_grouping,
   )
 
-  #(Ok(settings_commands.UpdateSettingsResponseSuccess), req_meta, Nil)
+  #(
+    Ok(inventory_planning_commands.UpdatePlanningPreferencesResponseSuccess),
+    req_meta,
+    Nil,
+  )
 }
 
 fn map_catalog_card(

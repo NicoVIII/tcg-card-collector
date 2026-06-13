@@ -38,3 +38,16 @@ struct InventoryProjection {
 method GetInventoryProjection(
   InventoryProjectionRequest
 ): InventoryProjection = 304;
+
+struct PlanningPreferences {
+  default_sort: string = 0;
+  default_grouping: string = 1;
+}
+
+struct GetPlanningPreferencesRequest {
+  unit: bool = 0;
+}
+
+method GetPlanningPreferences(
+  GetPlanningPreferencesRequest
+): PlanningPreferences = 402;

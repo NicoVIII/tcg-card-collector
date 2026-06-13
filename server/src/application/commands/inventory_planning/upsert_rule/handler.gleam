@@ -1,6 +1,6 @@
 import application/commands/command_result
 import application/commands/inventory_planning/upsert_rule/ports
-import gleam/string
+import domain/inventory_planning/rule_expression
 
 pub type UpsertInventoryRuleCommand {
   UpsertInventoryRuleCommand(
@@ -20,9 +20,9 @@ pub fn execute(
     expression: expression,
   ) = command
 
-  case is_valid_rule_expression(expression) {
-    False -> Error(ports.InvalidExpression)
-    True -> {
+  case rule_expression.parse(expression) {
+    Error(_) -> Error(ports.InvalidExpression)
+    Ok(_) -> {
       port.upsert_rule(ports.InventoryRuleWriteModel(
         id: id,
         location_name: location_name,
@@ -30,12 +30,5 @@ pub fn execute(
       ))
       Ok(Nil)
     }
-  }
-}
-
-fn is_valid_rule_expression(expression: String) -> Bool {
-  case string.split(expression, "=") {
-    ["set_code", value] -> string.length(value) > 0
-    _ -> False
   }
 }

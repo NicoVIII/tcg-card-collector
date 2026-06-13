@@ -406,6 +406,29 @@ fn shell_quote(value: String) -> String {
   "'" <> string.replace(value, "'", "'\"'\"'") <> "'"
 }
 
+pub fn name_lookup() -> List(#(String, String, String)) {
+  let output =
+    sqlite_store.query(
+      "SELECT set_code, collector_number, name "
+      <> "FROM catalog_cards "
+      <> "ORDER BY set_code ASC, collector_number ASC;",
+    )
+
+  output
+  |> string.split("\n")
+  |> list.filter_map(fn(line) {
+    case line == "" {
+      True -> Error(Nil)
+      False ->
+        case string.split(line, "\t") {
+          [set_code, collector_number, name] ->
+            Ok(#(set_code, collector_number, name))
+          _ -> Error(Nil)
+        }
+    }
+  })
+}
+
 fn parse_rows(output: String) -> List(CatalogRowTuple) {
   output
   |> string.split("\n")

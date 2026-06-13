@@ -1,3 +1,5 @@
+import gleam/option.{type Option}
+
 pub type InventoryProjectionReadModel {
   InventoryProjectionReadModel(
     location_name: String,
@@ -8,8 +10,18 @@ pub type InventoryProjectionReadModel {
   )
 }
 
+pub type SnapshotRow {
+  SnapshotRow(set_code: String, collector_number: String, quantity: Int)
+}
+
+pub type RuleRow {
+  RuleRow(location_name: String, expression: String)
+}
+
 pub type InventoryProjectionPort {
   InventoryProjectionPort(
-    projection: fn(String, String) -> List(InventoryProjectionReadModel),
+    snapshot_rows: fn() -> List(SnapshotRow),
+    catalog_name: fn(String, String) -> Option(String),
+    rules: fn() -> List(RuleRow),
   )
 }

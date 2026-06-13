@@ -1,5 +1,6 @@
 import domain/collection/import_status
 import gleam/int
+import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import infrastructure/stores/sqlite_store
@@ -61,6 +62,39 @@ pub fn latest() -> Option(LatestRunTuple) {
     )
 
   parse_latest(output)
+}
+
+pub fn snapshot_rows() -> List(SnapshotRowTuple) {
+  let output =
+    sqlite_store.query(
+      "WITH latest_succeeded AS ("
+      <> "  SELECT id FROM import_runs"
+      <> "  WHERE status = 'succeeded'"
+      <> "  ORDER BY updated_at DESC, created_at DESC"
+      <> "  LIMIT 1"
+      <> ") "
+      <> "SELECT s.set_code, s.collector_number, SUM(s.quantity) "
+      <> "FROM collection_snapshot s "
+      <> "JOIN latest_succeeded ls ON s.import_run_id = ls.id "
+      <> "GROUP BY s.set_code, s.collector_number;",
+    )
+
+  output
+  |> string.split("\n")
+  |> list.filter_map(fn(line) {
+    case line == "" {
+      True -> Error(Nil)
+      False ->
+        case string.split(line, "\t") {
+          [set_code, collector_number, quantity_raw] ->
+            case int.parse(quantity_raw) {
+              Ok(quantity) -> Ok(#(set_code, collector_number, quantity))
+              Error(_) -> Error(Nil)
+            }
+          _ -> Error(Nil)
+        }
+    }
+  })
 }
 
 pub fn replace_rows(

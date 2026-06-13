@@ -5,7 +5,6 @@ import driver/skir/card_catalog_handler
 import driver/skir/collection_handler
 import driver/skir/inventory_planning_handler
 import driver/skir/router as skir_router
-import driver/skir/settings_handler
 import driver/skir/setup as skir_setup
 import gleam/bit_array
 import gleam/bytes_tree
@@ -281,11 +280,14 @@ fn handle_inventory_projection(
   }
 }
 
-// ---- Settings ---------------------------------------------------------------
+// ---- Planning preferences ---------------------------------------------------
 
 fn handle_get_settings(deps: Dependencies) -> Response(mist.ResponseData) {
-  let settings = settings_handler.get_settings(deps.get_settings_port)
-  json_response(200, json_codec.encode_settings(settings))
+  let prefs =
+    inventory_planning_handler.get_planning_preferences(
+      deps.get_planning_preferences_port,
+    )
+  json_response(200, json_codec.encode_settings(prefs))
 }
 
 fn handle_update_settings(
@@ -296,8 +298,8 @@ fn handle_update_settings(
   case json_codec.decode_update_settings_body(body) {
     Error(msg) -> json_response(400, json_codec.encode_error(msg))
     Ok(b) -> {
-      settings_handler.update_settings(
-        deps.update_settings_port,
+      inventory_planning_handler.update_planning_preferences(
+        deps.update_planning_preferences_port,
         b.default_sort,
         b.default_grouping,
       )

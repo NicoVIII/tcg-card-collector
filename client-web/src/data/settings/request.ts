@@ -1,10 +1,13 @@
 import { skirClient } from "../http/skir_rpc";
-import { UpdateSettings, UpdateSettingsRequest } from "../skirout/settings/commands.js";
 import {
-  AppSettings as RpcAppSettings,
-  GetSettings,
-  GetSettingsRequest,
-} from "../skirout/settings/queries.js";
+  UpdatePlanningPreferences,
+  UpdatePlanningPreferencesRequest,
+} from "../skirout/inventory_planning/commands.js";
+import {
+  GetPlanningPreferences,
+  GetPlanningPreferencesRequest,
+  PlanningPreferences as RpcPlanningPreferences,
+} from "../skirout/inventory_planning/queries.js";
 
 export type AppSettings = {
   default_sort: string;
@@ -17,7 +20,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 export function normalizeSettings(payload: unknown): AppSettings {
-  if (payload instanceof RpcAppSettings) {
+  if (payload instanceof RpcPlanningPreferences) {
     return {
       default_sort: payload.defaultSort || DEFAULT_SETTINGS.default_sort,
       default_grouping: payload.defaultGrouping || DEFAULT_SETTINGS.default_grouping,
@@ -44,8 +47,8 @@ export function normalizeSettings(payload: unknown): AppSettings {
 
 export async function getSettings(): Promise<AppSettings> {
   const response = await skirClient.invokeRemote(
-    GetSettings,
-    GetSettingsRequest.create({ unit: true }),
+    GetPlanningPreferences,
+    GetPlanningPreferencesRequest.create({ unit: true }),
     "POST",
   );
 
@@ -54,8 +57,8 @@ export async function getSettings(): Promise<AppSettings> {
 
 export async function updateSettings(settings: AppSettings): Promise<{ success: boolean }> {
   const response = await skirClient.invokeRemote(
-    UpdateSettings,
-    UpdateSettingsRequest.create({
+    UpdatePlanningPreferences,
+    UpdatePlanningPreferencesRequest.create({
       defaultSort: settings.default_sort,
       defaultGrouping: settings.default_grouping,
     }),
