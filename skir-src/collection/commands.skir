@@ -1,8 +1,8 @@
 struct ImportCollectionRow {
-  card_name: string = 0;
-  set_code: string = 1;
-  collector_number: string = 2;
-  quantity: int32 = 3;
+  removed;
+  set_code: string;
+  collector_number: string;
+  quantity: int32;
 }
 
 struct ImportCollectionRequest {

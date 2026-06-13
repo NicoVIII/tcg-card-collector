@@ -2,7 +2,7 @@ import common/os_runtime
 import composition.{type Dependencies}
 import driver/http/json_codec
 import driver/skir/card_catalog_handler
-import driver/skir/collection_import_handler
+import driver/skir/collection_handler
 import driver/skir/inventory_planning_handler
 import driver/skir/router as skir_router
 import driver/skir/settings_handler
@@ -177,7 +177,7 @@ fn handle_import_collection(
   case json_codec.decode_import_collection_body(body) {
     Error(msg) -> json_response(400, json_codec.encode_error(msg))
     Ok(b) -> {
-      collection_import_handler.import_collection(
+      collection_handler.import_collection(
         deps.import_collection_port,
         b.import_run_id,
         b.source_name,
@@ -194,13 +194,11 @@ fn handle_latest_import_status(
   deps: Dependencies,
 ) -> Response(mist.ResponseData) {
   case
-    collection_import_handler.get_latest_import_status(
-      deps.latest_import_status_port,
-    )
+    collection_handler.get_latest_import_status(deps.latest_import_status_port)
   {
-    collection_import_handler.ImportStatusFound(run) ->
+    collection_handler.ImportStatusFound(run) ->
       json_response(200, json_codec.encode_import_status_found(run))
-    collection_import_handler.ImportStatusNotFound ->
+    collection_handler.ImportStatusNotFound ->
       json_response(200, json_codec.encode_import_status_not_found())
   }
 }

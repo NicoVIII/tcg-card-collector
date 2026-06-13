@@ -1,5 +1,4 @@
 export type ImportRow = {
-  cardName: string;
   setCode: string;
   collectorNumber: string;
   quantity: number;
@@ -17,11 +16,11 @@ export function parseImportRowsCsv(rowsCsv: string): {
   const rows: ImportRow[] = [];
 
   for (const line of lines) {
-    const [cardNameRaw, setCodeRaw, collectorNumberRaw, quantityRaw] = line
+    const [setCodeRaw, collectorNumberRaw, quantityRaw] = line
       .split(",")
       .map((part) => part.trim());
 
-    if (!cardNameRaw || !setCodeRaw || !collectorNumberRaw || !quantityRaw) {
+    if (!setCodeRaw || !collectorNumberRaw || !quantityRaw) {
       return { rows: [], error: `Invalid row format: ${line}` };
     }
 
@@ -31,7 +30,6 @@ export function parseImportRowsCsv(rowsCsv: string): {
     }
 
     rows.push({
-      cardName: cardNameRaw,
       setCode: setCodeRaw,
       collectorNumber: collectorNumberRaw,
       quantity,

@@ -3,13 +3,13 @@ import application/queries/inventory_planning/list_rules/ports as list_rules_por
 import application/queries/inventory_planning/projection/ports as projection_ports
 import composition.{type Dependencies}
 import driver/skir/card_catalog_handler
-import driver/skir/collection_import_handler
+import driver/skir/collection_handler
 import driver/skir/inventory_planning_handler
 import driver/skir/settings_handler
 import driver/skirout/card_catalog/commands as card_catalog_commands
 import driver/skirout/card_catalog/queries as card_catalog_queries
-import driver/skirout/collection_import/commands as collection_import_commands
-import driver/skirout/collection_import/queries as collection_import_queries
+import driver/skirout/collection/commands as collection_commands
+import driver/skirout/collection/queries as collection_queries
 import driver/skirout/inventory_planning/commands as inventory_planning_commands
 import driver/skirout/inventory_planning/queries as inventory_planning_queries
 import driver/skirout/settings/commands as settings_commands
@@ -44,11 +44,11 @@ pub fn make_service() -> RpcService {
     handle_list_catalog_cards,
   )
   |> service.add_method(
-    collection_import_commands.import_collection_method(),
+    collection_commands.import_collection_method(),
     handle_import_collection,
   )
   |> service.add_method(
-    collection_import_queries.get_latest_import_status_method(),
+    collection_queries.get_latest_import_status_method(),
     handle_get_latest_import_status,
   )
   |> service.add_method(
@@ -135,18 +135,15 @@ fn handle_list_catalog_cards(
 }
 
 fn handle_import_collection(
-  req: collection_import_commands.ImportCollectionRequest,
+  req: collection_commands.ImportCollectionRequest,
   req_meta: Nil,
   deps: Dependencies,
 ) -> #(
-  Result(
-    collection_import_commands.ImportCollectionResponse,
-    service.ServiceError,
-  ),
+  Result(collection_commands.ImportCollectionResponse, service.ServiceError),
   Nil,
   Nil,
 ) {
-  collection_import_handler.import_collection(
+  collection_handler.import_collection(
     deps.import_collection_port,
     req.import_run_id,
     req.source_name,
@@ -156,13 +153,13 @@ fn handle_import_collection(
   )
   |> fn(response) {
     case response {
-      collection_import_handler.Accepted -> #(
-        Ok(collection_import_commands.ImportCollectionResponseAccepted),
+      collection_handler.Accepted -> #(
+        Ok(collection_commands.ImportCollectionResponseAccepted),
         req_meta,
         Nil,
       )
-      collection_import_handler.Rejected -> #(
-        Ok(collection_import_commands.ImportCollectionResponseRejected),
+      collection_handler.Rejected -> #(
+        Ok(collection_commands.ImportCollectionResponseRejected),
         req_meta,
         Nil,
       )
@@ -171,31 +168,25 @@ fn handle_import_collection(
 }
 
 fn handle_get_latest_import_status(
-  _: collection_import_queries.GetLatestImportStatusRequest,
+  _: collection_queries.GetLatestImportStatusRequest,
   req_meta: Nil,
   deps: Dependencies,
-) -> #(
-  Result(collection_import_queries.ImportStatus, service.ServiceError),
-  Nil,
-  Nil,
-) {
+) -> #(Result(collection_queries.ImportStatus, service.ServiceError), Nil, Nil) {
   let response =
-    collection_import_handler.get_latest_import_status(
-      deps.latest_import_status_port,
-    )
+    collection_handler.get_latest_import_status(deps.latest_import_status_port)
 
   case response {
-    collection_import_handler.ImportStatusFound(run) -> #(
-      Ok(collection_import_queries.import_status_new(
+    collection_handler.ImportStatusFound(run) -> #(
+      Ok(collection_queries.import_status_new(
         run.id,
         run.row_count,
         run.source_name,
-        run.status,
+        collection_handler.status_to_string(run.status),
       )),
       req_meta,
       Nil,
     )
-    collection_import_handler.ImportStatusNotFound -> #(
+    collection_handler.ImportStatusNotFound -> #(
       Error(service.ServiceError(
         service.E404xNotFound,
         "import status not found",
@@ -389,10 +380,9 @@ fn map_inventory_projection_row(
 }
 
 fn map_import_collection_row(
-  row: collection_import_commands.ImportCollectionRow,
-) -> collection_import_handler.ImportCollectionRow {
-  collection_import_handler.ImportCollectionRow(
-    card_name: row.card_name,
+  row: collection_commands.ImportCollectionRow,
+) -> collection_handler.ImportCollectionRow {
+  collection_handler.ImportCollectionRow(
     set_code: row.set_code,
     collector_number: row.collector_number,
     quantity: row.quantity,

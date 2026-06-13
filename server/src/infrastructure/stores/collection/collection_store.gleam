@@ -1,24 +1,24 @@
+import domain/collection/import_status
 import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import infrastructure/stores/sqlite_store
 
 type SnapshotRowTuple =
-  #(String, String, String, Int)
+  #(String, String, Int)
 
 type LatestRunTuple =
-  #(String, String, String, Int)
+  #(String, String, import_status.ImportStatus, Int)
 
 pub fn save(
   id: String,
   source_name: String,
-  status: String,
+  status: import_status.ImportStatus,
   row_count: Int,
 ) -> Nil {
-  let source_checksum = "manual-upload"
+  let status_str = import_status.to_string(status)
   let finished_at_sql = case status {
-    "succeeded" -> "CURRENT_TIMESTAMP"
-    "failed" -> "CURRENT_TIMESTAMP"
+    import_status.Succeeded | import_status.Failed -> "CURRENT_TIMESTAMP"
     _ -> "NULL"
   }
 
@@ -30,9 +30,9 @@ pub fn save(
     <> ", "
     <> sqlite_store.quote(source_name)
     <> ", "
-    <> sqlite_store.quote(source_checksum)
+    <> sqlite_store.quote("manual-upload")
     <> ", "
-    <> sqlite_store.quote(status)
+    <> sqlite_store.quote(status_str)
     <> ", CURRENT_TIMESTAMP, "
     <> finished_at_sql
     <> ", "
@@ -83,19 +83,17 @@ fn insert_rows(
 ) -> Nil {
   case rows {
     [] -> Nil
-    [#(card_name, set_code, collector_number, quantity), ..rest] -> {
+    [#(set_code, collector_number, quantity), ..rest] -> {
       let row_id = import_run_id <> "-row-" <> int.to_string(row_number)
       let sql =
         "INSERT INTO collection_snapshot ("
-        <> "  id, import_run_id, row_number, card_name, set_code, collector_number, finish, language, quantity"
+        <> "  id, import_run_id, row_number, set_code, collector_number, finish, language, quantity"
         <> ") VALUES ("
         <> sqlite_store.quote(row_id)
         <> ", "
         <> sqlite_store.quote(import_run_id)
         <> ", "
         <> int.to_string(row_number)
-        <> ", "
-        <> sqlite_store.quote(card_name)
         <> ", "
         <> sqlite_store.quote(set_code)
         <> ", "
@@ -116,10 +114,11 @@ fn parse_latest(output: String) -> Option(LatestRunTuple) {
     True -> None
     False ->
       case string.split(trimmed, "\t") {
-        [id, source_name, status, row_count_raw] ->
-          case int.parse(row_count_raw) {
-            Ok(row_count) -> Some(#(id, source_name, status, row_count))
-            Error(_) -> None
+        [id, source_name, status_raw, row_count_raw] ->
+          case import_status.from_string(status_raw), int.parse(row_count_raw) {
+            Ok(status), Ok(row_count) ->
+              Some(#(id, source_name, status, row_count))
+            _, _ -> None
           }
         _ -> None
       }

@@ -1,17 +1,13 @@
-import application/commands/collection_import/import_collection/handler as import_collection_handler
-import application/commands/collection_import/import_collection/ports as import_collection_ports
-import application/queries/collection_import/latest_status/handler as latest_status_handler
-import application/queries/collection_import/latest_status/ports as latest_status_ports
+import application/commands/collection/import_collection/handler as import_collection_handler
+import application/commands/collection/import_collection/ports as import_collection_ports
+import application/queries/collection/latest_status/handler as latest_status_handler
+import application/queries/collection/latest_status/ports as latest_status_ports
+import domain/collection/import_status
 import gleam/list
 import gleam/option.{None, Some}
 
 pub type ImportCollectionRow {
-  ImportCollectionRow(
-    card_name: String,
-    set_code: String,
-    collector_number: String,
-    quantity: Int,
-  )
+  ImportCollectionRow(set_code: String, collector_number: String, quantity: Int)
 }
 
 pub type ImportCollectionResponse {
@@ -40,13 +36,11 @@ pub fn import_collection(
       row_count: row_count,
       rows: list.map(rows, fn(row) {
         let ImportCollectionRow(
-          card_name: card_name,
           set_code: set_code,
           collector_number: collector_number,
           quantity: quantity,
         ) = row
         import_collection_ports.ImportCollectionRow(
-          card_name: card_name,
           set_code: set_code,
           collector_number: collector_number,
           quantity: quantity,
@@ -71,4 +65,8 @@ pub fn get_latest_import_status(
     None -> ImportStatusNotFound
     Some(run) -> ImportStatusFound(run)
   }
+}
+
+pub fn status_to_string(status: import_status.ImportStatus) -> String {
+  import_status.to_string(status)
 }

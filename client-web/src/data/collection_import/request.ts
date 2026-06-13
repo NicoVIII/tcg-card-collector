@@ -1,13 +1,10 @@
 import { skirClient } from "../http/skir_rpc";
-import {
-  ImportCollection,
-  ImportCollectionRequest,
-} from "../skirout/collection_import/commands.js";
+import { ImportCollection, ImportCollectionRequest } from "../skirout/collection/commands.js";
 import {
   GetLatestImportStatus,
   GetLatestImportStatusRequest,
   ImportStatus as RpcImportStatus,
-} from "../skirout/collection_import/queries.js";
+} from "../skirout/collection/queries.js";
 
 export type ImportCollectionPayload = {
   importRunId: string;
@@ -15,7 +12,6 @@ export type ImportCollectionPayload = {
   sourceChecksum: string;
   rowCount: number;
   rows: Array<{
-    cardName: string;
     setCode: string;
     collectorNumber: string;
     quantity: number;

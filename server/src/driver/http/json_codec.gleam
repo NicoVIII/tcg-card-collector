@@ -1,8 +1,9 @@
 import application/queries/catalog/list_cards/ports as list_cards_ports
-import application/queries/collection_import/latest_status/ports as import_ports
+import application/queries/collection/latest_status/ports as import_ports
 import application/queries/inventory_planning/list_rules/ports as list_rules_ports
 import application/queries/inventory_planning/projection/ports as projection_ports
 import application/queries/settings/get/ports as settings_ports
+import domain/collection/import_status
 import gleam/dynamic/decode
 import gleam/json
 import gleam/result
@@ -30,7 +31,7 @@ fn encode_import_run(run: import_ports.ImportRunReadModel) -> json.Json {
   json.object([
     #("id", json.string(run.id)),
     #("source_name", json.string(run.source_name)),
-    #("status", json.string(run.status)),
+    #("status", json.string(import_status.to_string(run.status))),
     #("row_count", json.int(run.row_count)),
   ])
 }

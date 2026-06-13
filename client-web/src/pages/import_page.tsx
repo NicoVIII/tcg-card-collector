@@ -6,7 +6,7 @@ import { parseImportRowsCsv } from "./import_rows";
 
 export function ImportPage() {
   const [sourceName, setSourceName] = createSignal("deckstats-export.csv");
-  const [rowsCsv, setRowsCsv] = createSignal("Lightning Bolt,M11,146,2");
+  const [rowsCsv, setRowsCsv] = createSignal("M11,146,2");
   const [submitError, setSubmitError] = createSignal<string | null>(null);
   const mutation = useImportCollectionMutation();
   const statusQuery = useLatestImportStatusQuery();
@@ -62,7 +62,7 @@ export function ImportPage() {
         <input value={sourceName()} onInput={(event) => setSourceName(event.currentTarget.value)} />
       </label>
       <label>
-        Rows CSV (card_name,set_code,collector_number,quantity)
+        Rows CSV (set_code,collector_number,quantity)
         <textarea
           value={rowsCsv()}
           onInput={(event) => setRowsCsv(event.currentTarget.value)}

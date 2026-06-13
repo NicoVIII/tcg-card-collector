@@ -1,28 +1,21 @@
+import common/card_key.{type CardKey}
+import domain/collection/import_status.{type ImportStatus}
+
 pub type ImportCollectionRow {
-  ImportCollectionRow(
-    card_name: String,
-    set_code: String,
-    collector_number: String,
-    quantity: Int,
-  )
+  ImportCollectionRow(set_code: String, collector_number: String, quantity: Int)
 }
 
 pub type ImportRunWriteModel {
   ImportRunWriteModel(
     id: String,
     source_name: String,
-    status: String,
+    status: ImportStatus,
     row_count: Int,
   )
 }
 
 pub type SnapshotRowWriteModel {
-  SnapshotRowWriteModel(
-    card_name: String,
-    set_code: String,
-    collector_number: String,
-    quantity: Int,
-  )
+  SnapshotRowWriteModel(key: CardKey, quantity: Int)
 }
 
 pub type ImportCollectionPort {
