@@ -1,5 +1,5 @@
-import domain/card_definition.{type CardDefinitionId}
+import domain/catalog/card_printing.{type CardPrintingId}
 
 pub type PhysicalCard {
-  PhysicalCard(id: String, card_definition_id: CardDefinitionId)
+  PhysicalCard(id: String, card_printing_id: CardPrintingId)
 }

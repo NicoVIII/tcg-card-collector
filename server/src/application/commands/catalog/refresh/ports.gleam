@@ -2,8 +2,8 @@ pub type BulkMetadata {
   BulkMetadata(updated_at: String, download_uri: String)
 }
 
-pub type RefreshDatabasePort {
-  RefreshDatabasePort(
+pub type RefreshCatalogPort {
+  RefreshCatalogPort(
     is_probe_due: fn() -> Bool,
     current_upstream_updated_at: fn() -> String,
     fetch_metadata: fn() -> Result(BulkMetadata, String),
@@ -14,6 +14,6 @@ pub type RefreshDatabasePort {
   )
 }
 
-pub type RefreshDatabaseError {
-  RefreshDatabaseError(message: String)
+pub type RefreshCatalogError {
+  RefreshCatalogError(message: String)
 }

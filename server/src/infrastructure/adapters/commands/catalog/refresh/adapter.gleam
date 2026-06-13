@@ -1,18 +1,18 @@
-import application/commands/database/refresh/ports
+import application/commands/catalog/refresh/ports
 import common/os_runtime
 import gleam/string
-import infrastructure/stores/database/database_store
+import infrastructure/stores/catalog/catalog_store
 
-pub fn new() -> ports.RefreshDatabasePort {
+pub fn new() -> ports.RefreshCatalogPort {
   new_with_io(live_io())
 }
 
-pub fn new_with_io(io: database_store.RefreshIO) -> ports.RefreshDatabasePort {
-  ports.RefreshDatabasePort(
-    is_probe_due: database_store.is_probe_due,
-    current_upstream_updated_at: database_store.current_upstream_updated_at,
+pub fn new_with_io(io: catalog_store.RefreshIO) -> ports.RefreshCatalogPort {
+  ports.RefreshCatalogPort(
+    is_probe_due: catalog_store.is_probe_due,
+    current_upstream_updated_at: catalog_store.current_upstream_updated_at,
     fetch_metadata: fn() {
-      case database_store.fetch_metadata(io) {
+      case catalog_store.fetch_metadata(io) {
         Error(msg) -> Error(msg)
         Ok(#(updated_at, download_uri)) ->
           Ok(ports.BulkMetadata(
@@ -21,19 +21,19 @@ pub fn new_with_io(io: database_store.RefreshIO) -> ports.RefreshDatabasePort {
           ))
       }
     },
-    import_cards: fn(uri) { database_store.import_cards(io, uri) },
-    record_succeeded: database_store.mark_probe_succeeded,
-    record_skipped: database_store.mark_probe_skipped,
-    record_failed: database_store.mark_probe_failed,
+    import_cards: fn(uri) { catalog_store.import_cards(io, uri) },
+    record_succeeded: catalog_store.mark_probe_succeeded,
+    record_skipped: catalog_store.mark_probe_skipped,
+    record_failed: catalog_store.mark_probe_failed,
   )
 }
 
 // Uses a single fixed temp path so nothing accumulates between runs.
 // The path is overwritten on each download; concurrent refreshes are not expected.
-fn live_io() -> database_store.RefreshIO {
+fn live_io() -> catalog_store.RefreshIO {
   let tmp_dir = os_runtime.getenv_or("TMPDIR", "/tmp")
   let download_path = tmp_dir <> "/tcg-refresh-download"
-  database_store.RefreshIO(download: fn(url) {
+  catalog_store.RefreshIO(download: fn(url) {
     let script =
       "set +e; curl -fsSL --compressed --connect-timeout 10 --max-time 480 "
       <> shell_quote(url)

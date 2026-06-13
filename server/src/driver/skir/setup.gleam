@@ -1,4 +1,4 @@
-import application/queries/database/list_cards/ports as list_cards_ports
+import application/queries/catalog/list_cards/ports as list_cards_ports
 import application/queries/inventory_planning/list_rules/ports as list_rules_ports
 import application/queries/inventory_planning/projection/ports as projection_ports
 import composition.{type Dependencies}
@@ -87,7 +87,7 @@ fn handle_refresh_catalog(
   Nil,
 ) {
   log_rpc("started")
-  case card_catalog_handler.refresh_catalog(deps.refresh_database_port) {
+  case card_catalog_handler.refresh_catalog(deps.refresh_catalog_port) {
     card_catalog_handler.Success -> {
       log_rpc("finished successfully")
       #(Ok(card_catalog_commands.RefreshCatalogResponseSuccess), req_meta, Nil)
@@ -120,7 +120,7 @@ fn handle_list_catalog_cards(
   Nil,
 ) {
   let all_cards =
-    card_catalog_handler.list_catalog_cards(deps.list_database_cards_port)
+    card_catalog_handler.list_catalog_cards(deps.list_catalog_cards_port)
   let total = list.length(all_cards)
   let paged_cards = paginate_cards(all_cards, req.offset, req.limit)
   let response =
@@ -361,7 +361,7 @@ fn handle_update_settings(
 }
 
 fn map_catalog_card(
-  card: list_cards_ports.DatabaseCardReadModel,
+  card: list_cards_ports.CatalogCardReadModel,
 ) -> card_catalog_queries.CatalogCard {
   card_catalog_queries.catalog_card_new(card.id, card.name, card.set_code)
 }
@@ -400,10 +400,10 @@ fn map_import_collection_row(
 }
 
 fn paginate_cards(
-  cards: List(list_cards_ports.DatabaseCardReadModel),
+  cards: List(list_cards_ports.CatalogCardReadModel),
   offset: Int,
   limit: Int,
-) -> List(list_cards_ports.DatabaseCardReadModel) {
+) -> List(list_cards_ports.CatalogCardReadModel) {
   let normalized_offset = clamp_non_negative(offset)
   let normalized_limit = clamp_non_negative(limit)
 

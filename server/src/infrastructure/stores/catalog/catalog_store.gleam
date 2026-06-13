@@ -1,6 +1,6 @@
 import common/non_empty_string
 import common/os_runtime
-import domain/card_definition
+import domain/catalog/card_printing
 import gleam/dynamic/decode
 import gleam/int
 import gleam/io
@@ -219,9 +219,7 @@ pub fn import_cards(
   }
 }
 
-fn validate_card_rows(
-  lines: List(String),
-) -> List(card_definition.CardDefinition) {
+fn validate_card_rows(lines: List(String)) -> List(card_printing.CardPrinting) {
   list.filter_map(lines, fn(line) {
     case parse_card_row(line) {
       Ok(card) -> Ok(card)
@@ -233,9 +231,7 @@ fn validate_card_rows(
   })
 }
 
-fn parse_card_row(
-  line: String,
-) -> Result(card_definition.CardDefinition, String) {
+fn parse_card_row(line: String) -> Result(card_printing.CardPrinting, String) {
   let row_decoder = {
     use id <- decode.field("id", decode.string)
     use name <- decode.field("name", decode.string)
@@ -251,7 +247,7 @@ fn parse_card_row(
         "invalid json: " <> string.slice(from: line, at_index: 0, length: 80),
       )
     Ok(#(id, name, set_code, collector_number, rarity, image_uri)) ->
-      card_definition.from_raw(
+      card_printing.from_raw(
         id: id,
         name: name,
         set_code: set_code,
@@ -265,35 +261,34 @@ fn parse_card_row(
 
 fn card_error_to_string(
   id: String,
-  err: card_definition.CardDefinitionError,
+  err: card_printing.CardPrintingError,
 ) -> String {
   let reason = case err {
-    card_definition.EmptyName -> "empty name"
-    card_definition.EmptySetCode -> "empty set_code"
-    card_definition.EmptyCollectorNumber -> "empty collector_number"
-    card_definition.UnknownRarity(r) -> "unknown rarity: " <> r
+    card_printing.EmptyName -> "empty name"
+    card_printing.EmptySetCode -> "empty set_code"
+    card_printing.EmptyCollectorNumber -> "empty collector_number"
+    card_printing.UnknownRarity(r) -> "unknown rarity: " <> r
   }
   "id=" <> id <> " " <> reason
 }
 
-fn card_to_csv_row(card: card_definition.CardDefinition) -> String {
-  let card_definition.CardDefinition(
-    id: card_definition.CardDefinitionId(id),
+fn card_to_csv_row(card: card_printing.CardPrinting) -> String {
+  let card_printing.CardPrinting(
+    id: card_printing.CardPrintingId(id),
+    key: key,
     name: name,
-    set_code: set_code,
-    collector_number: collector_number,
     rarity: rarity,
-    image_uri: card_definition.ImageUri(image_uri),
+    image_uri: card_printing.ImageUri(image_uri),
   ) = card
   csv_field(id)
   <> ","
   <> csv_field(non_empty_string.to_string(name))
   <> ","
-  <> csv_field(non_empty_string.to_string(set_code))
+  <> csv_field(non_empty_string.to_string(key.set_code))
   <> ","
-  <> csv_field(non_empty_string.to_string(collector_number))
+  <> csv_field(non_empty_string.to_string(key.collector_number))
   <> ","
-  <> csv_field(card_definition.rarity_to_string(rarity))
+  <> csv_field(card_printing.rarity_to_string(rarity))
   <> ","
   <> csv_field(image_uri)
 }

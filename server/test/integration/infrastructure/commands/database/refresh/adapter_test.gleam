@@ -1,8 +1,8 @@
-import application/commands/database/refresh/handler
+import application/commands/catalog/refresh/handler
 import gleam/list
 import gleam/string
-import infrastructure/adapters/commands/database/refresh/adapter
-import infrastructure/stores/database/database_store
+import infrastructure/adapters/commands/catalog/refresh/adapter
+import infrastructure/stores/catalog/catalog_store
 import infrastructure/stores/sqlite_store
 import support/test_db
 
@@ -17,8 +17,8 @@ const fixture_updated_at = "2024-01-01T00:00:00.000Z"
 // Returns the fixture metadata path for any URL except those containing
 // "fixture.local" (the download_uri in scryfall_metadata.json), which get
 // the bulk cards fixture.
-fn fake_io() -> database_store.RefreshIO {
-  database_store.RefreshIO(download: fn(url) {
+fn fake_io() -> catalog_store.RefreshIO {
+  catalog_store.RefreshIO(download: fn(url) {
     case string.contains(url, "fixture.local") {
       True -> Ok(bulk_fixture)
       False -> Ok(metadata_fixture)
@@ -32,13 +32,13 @@ pub fn import_succeeds_and_loads_cards_test() {
   // catalog_sync_metadata is empty: upstream is "" -> different from fixture's
   // updated_at -> import branch runs
   let port = adapter.new_with_io(fake_io())
-  let result = handler.execute(handler.RefreshDatabaseCommand, port)
+  let result = handler.execute(handler.RefreshCatalogCommand, port)
 
   assert result == Ok(Nil)
 
   // 4 cards in the fixture but test-id-004 has rarity "mythical_rare" (unknown)
   // and must be skipped; only 3 valid cards should be persisted
-  let cards = database_store.list()
+  let cards = catalog_store.list()
   assert list.length(cards) == 3
 
   // Metadata should reflect succeeded
@@ -70,12 +70,12 @@ pub fn unchanged_upstream_marks_skipped_test() {
   )
 
   let port = adapter.new_with_io(fake_io())
-  let result = handler.execute(handler.RefreshDatabaseCommand, port)
+  let result = handler.execute(handler.RefreshCatalogCommand, port)
 
   assert result == Ok(Nil)
 
   // No cards should have been imported
-  assert database_store.list() == []
+  assert catalog_store.list() == []
 
   // Metadata should be skipped
   let status =

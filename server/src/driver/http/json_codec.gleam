@@ -1,5 +1,5 @@
+import application/queries/catalog/list_cards/ports as list_cards_ports
 import application/queries/collection_import/latest_status/ports as import_ports
-import application/queries/database/list_cards/ports as list_cards_ports
 import application/queries/inventory_planning/list_rules/ports as list_rules_ports
 import application/queries/inventory_planning/projection/ports as projection_ports
 import application/queries/settings/get/ports as settings_ports
@@ -10,7 +10,7 @@ import gleam/result
 // ---- Encoders ---------------------------------------------------------------
 
 fn encode_catalog_card(
-  card: list_cards_ports.DatabaseCardReadModel,
+  card: list_cards_ports.CatalogCardReadModel,
 ) -> json.Json {
   json.object([
     #("id", json.string(card.id)),
@@ -20,7 +20,7 @@ fn encode_catalog_card(
 }
 
 pub fn encode_catalog_cards(
-  cards: List(list_cards_ports.DatabaseCardReadModel),
+  cards: List(list_cards_ports.CatalogCardReadModel),
 ) -> String {
   json.array(cards, of: encode_catalog_card)
   |> json.to_string

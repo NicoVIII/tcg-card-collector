@@ -1,3 +1,4 @@
+import common/card_key.{type CardKey}
 import common/non_empty_string.{type NonEmptyString}
 import gleam/result
 
@@ -5,8 +6,8 @@ pub type ImageUri {
   ImageUri(String)
 }
 
-pub type CardDefinitionId {
-  CardDefinitionId(String)
+pub type CardPrintingId {
+  CardPrintingId(String)
 }
 
 pub type CardRarity {
@@ -18,24 +19,26 @@ pub type CardRarity {
   Bonus
 }
 
-pub type CardDefinition {
-  CardDefinition(
-    id: CardDefinitionId,
+pub type CardPrinting {
+  CardPrinting(
+    id: CardPrintingId,
+    key: CardKey,
     name: NonEmptyString,
-    set_code: NonEmptyString,
-    collector_number: NonEmptyString,
     rarity: CardRarity,
     image_uri: ImageUri,
   )
 }
 
-pub type CardDefinitionError {
+pub type CardPrintingError {
   EmptyName
   EmptySetCode
   EmptyCollectorNumber
   UnknownRarity(String)
 }
 
+/// Validate and construct a CardPrinting from raw string fields.
+/// Invalid rows (unknown rarity, empty required fields) should be skipped
+/// by callers with a per-row warning log. Add new invariant checks here.
 pub fn from_raw(
   id id: String,
   name name: String,
@@ -43,25 +46,26 @@ pub fn from_raw(
   collector_number collector_number: String,
   rarity rarity: String,
   image_uri image_uri: String,
-) -> Result(CardDefinition, CardDefinitionError) {
+) -> Result(CardPrinting, CardPrintingError) {
   use name <- result.try(
     non_empty_string.new(name) |> result.map_error(fn(_) { EmptyName }),
   )
-  use set_code <- result.try(
-    non_empty_string.new(set_code) |> result.map_error(fn(_) { EmptySetCode }),
-  )
-  use collector_number <- result.try(
-    non_empty_string.new(collector_number)
-    |> result.map_error(fn(_) { EmptyCollectorNumber }),
+  use key <- result.try(
+    card_key.new(set_code: set_code, collector_number: collector_number)
+    |> result.map_error(fn(err) {
+      case err {
+        card_key.EmptySetCode -> EmptySetCode
+        card_key.EmptyCollectorNumber -> EmptyCollectorNumber
+      }
+    }),
   )
   use rarity_value <- result.try(
     parse_rarity(rarity) |> result.map_error(fn(_) { UnknownRarity(rarity) }),
   )
-  Ok(CardDefinition(
-    id: CardDefinitionId(id),
+  Ok(CardPrinting(
+    id: CardPrintingId(id),
+    key: key,
     name: name,
-    set_code: set_code,
-    collector_number: collector_number,
     rarity: rarity_value,
     image_uri: ImageUri(image_uri),
   ))
