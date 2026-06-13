@@ -6,7 +6,7 @@ Layer violations require a named exception in `server/linting/architecture_excep
 
 **Request flow**: `skir-src/*.skir` → generated `server/src/driver/skirout/` → handler (`server/src/driver/skir/`) → application port (`server/src/application/`) → domain + infrastructure.
 
-Three bounded contexts under `server/src/domain/`: **Catalog**, **Collection**, **Inventory Planning**.
+Three bounded contexts under `server/src/domain/`: **Catalog**, **Collection**, **Inventory Planning**. Planning preferences (formerly "Settings") live inside Inventory Planning — there is no separate Settings context.
 
 ## Application Layer
 
