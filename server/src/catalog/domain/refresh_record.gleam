@@ -1,5 +1,7 @@
-import common/timestamp.{type Timestamp}
 import gleam/option.{type Option, None, Some}
+import gleam/order
+import gleam/time/duration
+import gleam/time/timestamp.{type Timestamp}
 
 const one_day_seconds = 86_400
 
@@ -30,7 +32,11 @@ pub fn is_probe_due(record: RefreshRecord, now: Timestamp) -> Bool {
     NeverRefreshed -> True
     Probed(status: Failed(_), ..) -> True
     Probed(last_probe_at:, ..) ->
-      timestamp.difference_seconds(now, last_probe_at) >= one_day_seconds
+      duration.compare(
+        timestamp.difference(last_probe_at, now),
+        duration.seconds(one_day_seconds),
+      )
+      != order.Lt
   }
 }
 

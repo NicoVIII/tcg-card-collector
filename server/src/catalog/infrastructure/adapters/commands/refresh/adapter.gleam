@@ -1,4 +1,5 @@
 import catalog/application/commands/refresh/ports
+import catalog/infrastructure/adapters/commands/refresh/now_adapter
 import catalog/infrastructure/stores/catalog_store
 import common/os_runtime
 import gleam/string
@@ -9,15 +10,11 @@ pub fn new() -> ports.RefreshCatalogPorts {
 
 pub fn new_with_io(io: catalog_store.RefreshIO) -> ports.RefreshCatalogPorts {
   ports.RefreshCatalogPorts(
-    now: now_adapter(),
+    now: now_adapter.get_now(),
     record_repository: record_repository_adapter(),
     fetch_metadata: fetch_metadata_adapter(io),
     import_cards: import_cards_adapter(io),
   )
-}
-
-fn now_adapter() -> ports.NowPort {
-  catalog_store.now_timestamp
 }
 
 fn record_repository_adapter() -> ports.RefreshRecordRepositoryPort {

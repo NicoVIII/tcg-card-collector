@@ -1,5 +1,5 @@
 import catalog/domain/refresh_record.{type RefreshRecord}
-import common/timestamp.{type Timestamp}
+import gleam/time/timestamp.{type Timestamp}
 
 pub type BulkMetadata {
   BulkMetadata(updated_at: String, download_uri: String)

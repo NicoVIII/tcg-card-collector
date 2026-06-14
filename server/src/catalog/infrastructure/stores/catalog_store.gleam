@@ -3,7 +3,6 @@ import catalog/domain/refresh_record
 import common/card_key
 import common/non_empty_string
 import common/os_runtime
-import common/timestamp
 import gleam/dynamic/decode
 import gleam/int
 import gleam/io
@@ -12,6 +11,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
+import gleam/time/timestamp
 import infrastructure/stores/sqlite_store
 import simplifile
 
@@ -31,7 +31,7 @@ pub fn now_timestamp() -> timestamp.Timestamp {
   |> string.trim
   |> int.parse
   |> result.unwrap(0)
-  |> timestamp.from_epoch_seconds
+  |> timestamp.from_unix_seconds
 }
 
 pub fn load_refresh_record() -> refresh_record.RefreshRecord {
@@ -53,7 +53,7 @@ pub fn load_refresh_record() -> refresh_record.RefreshRecord {
           case int.parse(epoch_str) {
             Error(_) -> refresh_record.NeverRefreshed
             Ok(epoch) -> {
-              let last_probe_at = timestamp.from_epoch_seconds(epoch)
+              let last_probe_at = timestamp.from_unix_seconds(epoch)
               let last_upstream_updated_at = case upstream_at {
                 "" -> None
                 s -> Some(s)
@@ -80,7 +80,7 @@ pub fn save_refresh_record(record: refresh_record.RefreshRecord) -> Nil {
   case record {
     refresh_record.NeverRefreshed -> Nil
     refresh_record.Probed(last_probe_at:, last_upstream_updated_at:, status:) -> {
-      let epoch = timestamp.to_epoch_seconds(last_probe_at)
+      let #(epoch, _) = timestamp.to_unix_seconds_and_nanoseconds(last_probe_at)
       let upstream_at_sql = case last_upstream_updated_at {
         None -> "NULL"
         Some(s) -> sqlite_store.quote(s)

@@ -1,13 +1,13 @@
 import catalog/domain/refresh_record.{
   Failed, Import, NeverRefreshed, Probed, Skip, Skipped, Succeeded,
 }
-import common/timestamp
 import gleam/option.{None, Some}
+import gleam/time/timestamp
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 fn ts(epoch: Int) -> timestamp.Timestamp {
-  timestamp.from_epoch_seconds(epoch)
+  timestamp.from_unix_seconds(epoch)
 }
 
 const one_day = 86_400
