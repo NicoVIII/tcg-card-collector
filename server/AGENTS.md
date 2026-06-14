@@ -2,7 +2,7 @@
 
 Code is organized **context-first, then layer**: `server/src/<bounded_context>/{domain,application/{commands,queries},infrastructure/{adapters,stores},driver/{skir,http}}/`. Strict hexagonal layers apply within and across contexts — each layer may only import itself and layers below it: `domain` → `application` → `infrastructure`/`driver` → `composition`. `common` is available everywhere.
 
-Three bounded contexts under `server/src/`: **catalog**, **collection**, **inventory_planning**. Planning preferences (formerly "Settings") live inside inventory_planning — there is no separate Settings context.
+Three bounded contexts under `server/src/`: **catalog**, **collection**, **inventory_planning**. Planning preferences live inside inventory_planning — there is no separate Settings context.
 
 **Context facade**: each context exposes a transport-agnostic service at `<context>/application/handler.gleam`. It calls use-case handlers and returns simplified types (`Success`/`Failed`, `Accepted`/`Rejected`, …). Both `driver/skir/handler.gleam` and `driver/http/handler.gleam` import it — no transport concern leaks into the application layer.
 

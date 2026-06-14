@@ -14,7 +14,6 @@ Stack:
 - client-web: Solid web client
 - skir-src: Skir contract source
 - container: container/runtime assets
-- docs: project documentation
 
 ## Current Status
 
@@ -32,31 +31,16 @@ MVP vertical slice is implemented end-to-end:
 
 Run locally:
 
-- `just check-backend`
-- `just check-frontend`
-- `just check-all`
-- `just contract-alignment-check`
-
-## Task Runner
-
-Use `just` as the primary local task runner.
-
-Examples:
-
-- `just check-all`
-- `just check-backend`
-- `just check-frontend`
-- `just server::test`
-- `just client::lint`
+- `just server::check` — backend checks (format, typecheck, lint)
+- `just client-web::check` — frontend checks
+- `just skir-check` — contract format + snapshot alignment
+- `just check` — all of the above
 
 ## Developer Feedback Loop
 
-- Install git hooks: `lefthook install`
-- Pre-commit hooks run fast backend/frontend checks.
-- You can run them directly:
-  - `just backend-format-check`
-  - `just backend-typecheck`
-  - `just backend-architecture-lint`
-  - `just frontend-format-check`
-  - `just frontend-lint`
-  - `just frontend-typecheck`
+Install git hooks: `lefthook install`. Pre-commit hooks run the full check suite on staged content.
+
+Individual checks:
+
+- `just server::format-check`, `just server::type-check`, `just server::lint-check`
+- `just client-web::format-check`, `just client-web::type-check`, `just client-web::lint-check`

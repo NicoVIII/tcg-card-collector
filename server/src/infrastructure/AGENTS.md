@@ -2,10 +2,10 @@
 
 Two sub-layers:
 
-- `adapters/` — port implementations. Mirrors the `application/` structure: `adapters/commands/<domain>/<command>/`, `adapters/queries/<domain>/<query>/`, or `adapters/<context>/` for contexts not yet split into commands/queries.
-- `stores/` — reusable SQLite access, organized by bounded context (`stores/<context>/`). Shared by adapters within the same context.
+- `adapters/` — port implementations. Mirrors the `application/` structure: `adapters/commands/<command>/adapter.gleam`, `adapters/queries/<query>/adapter.gleam`.
+- `stores/` — SQLite access helpers, one file per store, shared by adapters within the same context.
 
-When adding a new use case, place its adapter at the path that mirrors the application layer, and its store logic in `stores/<context>/`.
+When adding a new use case, place its adapter at the path that mirrors the application layer, and its store logic in the context's `stores/` folder.
 
 **Stores hold primitives, not orchestration.** Business-logic flow (branching, sequencing) belongs in the application handler. Stores expose public, single-responsibility functions that the adapter wires into the port.
 
