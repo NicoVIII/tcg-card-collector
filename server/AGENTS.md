@@ -20,6 +20,10 @@ Naming: operation-first — `RefreshCatalogCommand`, `ListCatalogCardsQuery`, `R
 
 **Handlers own orchestration.** The `execute` function in `handler.gleam` contains the use-case logic (branching, sequencing, error mapping). It must not be an empty pass-through to a single `port.execute()` god-method. Ports are **capability-narrow**: each field is one specific operation (`fetch_metadata`, `import_cards`, `now`, …). The handler composes them. **Exception:** domain aggregates use a repository shape — `load_record`/`save_record` — because the aggregate is the consistency boundary; stateless I/O effects stay narrow.
 
+## Infrastructure Layer
+
+**Injected-IO seam for testability.** Adapters that make network calls accept a `*IO` record (e.g. `catalog_store.RefreshIO`) holding the outbound I/O as a closure, injected via a `new_with_io(io)` constructor. `new()` calls `new_with_io(live_io())` for production. This lets integration tests pass a hermetic fake without touching `composition.gleam`.
+
 ## Database
 
 SQLite. Set `TCG_DB_FILE` to the db path. Run migrations with `just dbmate-migrate`.
