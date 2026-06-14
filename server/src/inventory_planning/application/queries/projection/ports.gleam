@@ -18,10 +18,19 @@ pub type RuleRow {
   RuleRow(location_name: String, expression: String)
 }
 
-pub type InventoryProjectionPort {
-  InventoryProjectionPort(
-    snapshot_rows: fn() -> List(SnapshotRow),
-    catalog_name: fn(String, String) -> Option(String),
-    rules: fn() -> List(RuleRow),
+pub type SnapshotRowsPort =
+  fn() -> List(SnapshotRow)
+
+pub type CatalogNamePort =
+  fn(String, String) -> Option(String)
+
+pub type RulesPort =
+  fn() -> List(RuleRow)
+
+pub type InventoryProjectionPorts {
+  InventoryProjectionPorts(
+    snapshot_rows: SnapshotRowsPort,
+    catalog_name: CatalogNamePort,
+    rules: RulesPort,
   )
 }

@@ -72,7 +72,7 @@ pub fn handle_inventory_projection(
     helpers.query_param(req, "group_by") |> result.unwrap("location_name")
   let rows_result =
     inventory_planning_handler.inventory_projection(
-      deps.inventory_projection_port,
+      deps.inventory_projection_ports,
       sort_by,
       group_by,
     )

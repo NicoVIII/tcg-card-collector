@@ -1,5 +1,5 @@
 import application/command_result
-import collection/application/commands/import_collection/ports
+import collection/application/commands/import_collection/ports as import_collection_ports
 import collection/domain/collection
 import collection/domain/import_status
 import collection/domain/physical_card
@@ -12,14 +12,14 @@ pub type ImportCollectionCommand {
     source_name: String,
     source_checksum: String,
     row_count: Int,
-    rows: List(ports.ImportCollectionRow),
+    rows: List(import_collection_ports.ImportCollectionRow),
   )
 }
 
 pub fn execute(
   command: ImportCollectionCommand,
-  port: ports.ImportCollectionPort,
-) -> command_result.CommandResult(ports.ImportCollectionError) {
+  ports: import_collection_ports.ImportCollectionPorts,
+) -> command_result.CommandResult(import_collection_ports.ImportCollectionError) {
   let ImportCollectionCommand(
     import_run_id: import_run_id,
     source_name: source_name,
@@ -31,14 +31,14 @@ pub fn execute(
   let actual_row_count = list.length(rows)
 
   record_run(
-    port,
+    ports,
     import_run_id,
     source_name,
     import_status.Pending,
     actual_row_count,
   )
   record_run(
-    port,
+    ports,
     import_run_id,
     source_name,
     import_status.Running,
@@ -63,14 +63,17 @@ pub fn execute(
 
   case collection.from_cards(valid_cards, row_count) {
     Ok(coll) -> {
-      port.replace_rows(
+      ports.replace_rows(
         import_run_id,
         list.map(coll.cards, fn(card) {
-          ports.SnapshotRowWriteModel(key: card.key, quantity: card.quantity)
+          import_collection_ports.SnapshotRowWriteModel(
+            key: card.key,
+            quantity: card.quantity,
+          )
         }),
       )
       record_run(
-        port,
+        ports,
         import_run_id,
         source_name,
         import_status.Succeeded,
@@ -80,25 +83,25 @@ pub fn execute(
     }
     Error(collection.RowCountMismatch) -> {
       record_run(
-        port,
+        ports,
         import_run_id,
         source_name,
         import_status.Failed,
         actual_row_count,
       )
-      Error(ports.RowCountMismatch)
+      Error(import_collection_ports.RowCountMismatch)
     }
   }
 }
 
 fn record_run(
-  port: ports.ImportCollectionPort,
+  ports: import_collection_ports.ImportCollectionPorts,
   id: String,
   source_name: String,
   status: import_status.ImportStatus,
   row_count: Int,
 ) -> Nil {
-  port.save_run(ports.ImportRunWriteModel(
+  ports.save_run(import_collection_ports.ImportRunWriteModel(
     id: id,
     source_name: source_name,
     status: status,

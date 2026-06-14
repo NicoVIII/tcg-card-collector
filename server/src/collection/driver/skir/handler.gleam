@@ -29,7 +29,7 @@ fn handle_import_collection(
   Nil,
 ) {
   collection_handler.import_collection(
-    deps.import_collection_port,
+    deps.import_collection_ports,
     req.import_run_id,
     req.source_name,
     req.source_checksum,

@@ -31,7 +31,7 @@ fn handle_refresh_catalog(
   Nil,
 ) {
   log_rpc("started")
-  case catalog_handler.refresh_catalog(deps.refresh_catalog_port) {
+  case catalog_handler.refresh_catalog(deps.refresh_catalog_ports) {
     catalog_handler.Success -> {
       log_rpc("finished successfully")
       #(Ok(card_catalog_commands.RefreshCatalogResponseSuccess), req_meta, Nil)

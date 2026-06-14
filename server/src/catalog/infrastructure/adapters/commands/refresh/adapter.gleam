@@ -3,27 +3,47 @@ import catalog/infrastructure/stores/catalog_store
 import common/os_runtime
 import gleam/string
 
-pub fn new() -> ports.RefreshCatalogPort {
+pub fn new() -> ports.RefreshCatalogPorts {
   new_with_io(live_io())
 }
 
-pub fn new_with_io(io: catalog_store.RefreshIO) -> ports.RefreshCatalogPort {
-  ports.RefreshCatalogPort(
-    now: catalog_store.now_timestamp,
-    load_record: catalog_store.load_refresh_record,
-    save_record: catalog_store.save_refresh_record,
-    fetch_metadata: fn() {
-      case catalog_store.fetch_metadata(io) {
-        Error(msg) -> Error(msg)
-        Ok(#(updated_at, download_uri)) ->
-          Ok(ports.BulkMetadata(
-            updated_at: updated_at,
-            download_uri: download_uri,
-          ))
-      }
-    },
-    import_cards: fn(uri) { catalog_store.import_cards(io, uri) },
+pub fn new_with_io(io: catalog_store.RefreshIO) -> ports.RefreshCatalogPorts {
+  ports.RefreshCatalogPorts(
+    now: now_adapter(),
+    record_repository: record_repository_adapter(),
+    fetch_metadata: fetch_metadata_adapter(io),
+    import_cards: import_cards_adapter(io),
   )
+}
+
+fn now_adapter() -> ports.NowPort {
+  catalog_store.now_timestamp
+}
+
+fn record_repository_adapter() -> ports.RefreshRecordRepositoryPort {
+  ports.RefreshRecordRepositoryPort(
+    load: catalog_store.load_refresh_record,
+    save: catalog_store.save_refresh_record,
+  )
+}
+
+fn fetch_metadata_adapter(
+  io: catalog_store.RefreshIO,
+) -> ports.FetchMetadataPort {
+  fn() {
+    case catalog_store.fetch_metadata(io) {
+      Error(msg) -> Error(msg)
+      Ok(#(updated_at, download_uri)) ->
+        Ok(ports.BulkMetadata(
+          updated_at: updated_at,
+          download_uri: download_uri,
+        ))
+    }
+  }
+}
+
+fn import_cards_adapter(io: catalog_store.RefreshIO) -> ports.ImportCardsPort {
+  fn(uri) { catalog_store.import_cards(io, uri) }
 }
 
 // Uses a single fixed temp path so nothing accumulates between runs.

@@ -21,7 +21,7 @@ pub type LatestImportStatusResponse {
 }
 
 pub fn import_collection(
-  port: import_collection_ports.ImportCollectionPort,
+  ports: import_collection_ports.ImportCollectionPorts,
   import_run_id: String,
   source_name: String,
   source_checksum: String,
@@ -47,7 +47,7 @@ pub fn import_collection(
         )
       }),
     )
-  case import_collection_handler.execute(command, port) {
+  case import_collection_handler.execute(command, ports) {
     Ok(_) -> Accepted
     Error(_) -> Rejected
   }

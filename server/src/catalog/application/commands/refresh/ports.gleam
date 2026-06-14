@@ -5,13 +5,28 @@ pub type BulkMetadata {
   BulkMetadata(updated_at: String, download_uri: String)
 }
 
-pub type RefreshCatalogPort {
-  RefreshCatalogPort(
-    now: fn() -> Timestamp,
-    load_record: fn() -> RefreshRecord,
-    save_record: fn(RefreshRecord) -> Nil,
-    fetch_metadata: fn() -> Result(BulkMetadata, String),
-    import_cards: fn(String) -> Result(Nil, String),
+pub type NowPort =
+  fn() -> Timestamp
+
+pub type FetchMetadataPort =
+  fn() -> Result(BulkMetadata, String)
+
+pub type ImportCardsPort =
+  fn(String) -> Result(Nil, String)
+
+pub type RefreshRecordRepositoryPort {
+  RefreshRecordRepositoryPort(
+    load: fn() -> RefreshRecord,
+    save: fn(RefreshRecord) -> Nil,
+  )
+}
+
+pub type RefreshCatalogPorts {
+  RefreshCatalogPorts(
+    now: NowPort,
+    record_repository: RefreshRecordRepositoryPort,
+    fetch_metadata: FetchMetadataPort,
+    import_cards: ImportCardsPort,
   )
 }
 

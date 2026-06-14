@@ -16,7 +16,7 @@ pub fn handle_import_collection(
     Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
     Ok(b) -> {
       collection_handler.import_collection(
-        deps.import_collection_port,
+        deps.import_collection_ports,
         b.import_run_id,
         b.source_name,
         b.source_checksum,

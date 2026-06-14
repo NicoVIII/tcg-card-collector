@@ -22,14 +22,14 @@ import inventory_planning/infrastructure/adapters/queries/projection/adapter as 
 
 pub type Dependencies {
   Dependencies(
-    refresh_catalog_port: refresh_ports.RefreshCatalogPort,
+    refresh_catalog_ports: refresh_ports.RefreshCatalogPorts,
     list_catalog_cards_port: list_cards_ports.ListCatalogCardsPort,
-    import_collection_port: import_collection_ports.ImportCollectionPort,
+    import_collection_ports: import_collection_ports.ImportCollectionPorts,
     latest_import_status_port: latest_status_ports.LatestImportStatusPort,
     upsert_inventory_rule_port: upsert_rule_ports.UpsertInventoryRulePort,
     delete_inventory_rule_port: delete_rule_ports.DeleteInventoryRulePort,
     list_inventory_rules_port: list_rules_ports.ListInventoryRulesPort,
-    inventory_projection_port: projection_ports.InventoryProjectionPort,
+    inventory_projection_ports: projection_ports.InventoryProjectionPorts,
     update_planning_preferences_port: update_preferences_ports.UpdatePlanningPreferencesPort,
     get_planning_preferences_port: get_preferences_ports.GetPlanningPreferencesPort,
   )
@@ -45,14 +45,14 @@ pub fn log_boot_message() -> Nil {
 
 pub fn dependencies() -> Dependencies {
   Dependencies(
-    refresh_catalog_port: refresh_adapter.new(),
+    refresh_catalog_ports: refresh_adapter.new(),
     list_catalog_cards_port: list_cards_adapter.new(),
-    import_collection_port: import_collection_adapter.new(),
+    import_collection_ports: import_collection_adapter.new(),
     latest_import_status_port: latest_status_adapter.new(),
     upsert_inventory_rule_port: upsert_rule_adapter.new(),
     delete_inventory_rule_port: delete_rule_adapter.new(),
     list_inventory_rules_port: list_rules_adapter.new(),
-    inventory_projection_port: projection_adapter.new(),
+    inventory_projection_ports: projection_adapter.new(),
     update_planning_preferences_port: update_preferences_adapter.new(),
     get_planning_preferences_port: get_preferences_adapter.new(),
   )

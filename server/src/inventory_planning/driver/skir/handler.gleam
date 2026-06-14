@@ -130,7 +130,7 @@ fn handle_get_inventory_projection(
 ) {
   let rows_result =
     inventory_planning_handler.inventory_projection(
-      deps.inventory_projection_port,
+      deps.inventory_projection_ports,
       req.sort_by,
       req.group_by,
     )

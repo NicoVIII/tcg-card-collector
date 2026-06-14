@@ -2,7 +2,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
 import gleam/string
-import inventory_planning/application/queries/projection/ports
+import inventory_planning/application/queries/projection/ports as projection_ports
 import inventory_planning/domain/grouping_strategy
 import inventory_planning/domain/rule_expression
 import inventory_planning/domain/rule_set
@@ -17,11 +17,11 @@ pub type InventoryProjectionQuery {
 
 pub fn execute(
   query: InventoryProjectionQuery,
-  port: ports.InventoryProjectionPort,
-) -> List(ports.InventoryProjectionReadModel) {
+  ports: projection_ports.InventoryProjectionPorts,
+) -> List(projection_ports.InventoryProjectionReadModel) {
   let InventoryProjectionQuery(sort_by: sort_by, group_by: group_by) = query
 
-  let raw_rules = port.rules()
+  let raw_rules = ports.rules()
   let rules =
     list.filter_map(raw_rules, fn(r) {
       case rule_expression.parse(r.expression) {
@@ -34,19 +34,19 @@ pub fn execute(
       }
     })
 
-  port.snapshot_rows()
+  ports.snapshot_rows()
   |> list.filter_map(fn(row) {
     case rule_set.location_for(rules, row.set_code) {
       None -> Error(Nil)
       Some(location_name) -> {
         let card_name =
-          port.catalog_name(row.set_code, row.collector_number)
+          ports.catalog_name(row.set_code, row.collector_number)
           |> option.unwrap("")
         let group_value = case group_by {
           grouping_strategy.BySet -> row.set_code
           grouping_strategy.ByLocation -> location_name
         }
-        Ok(ports.InventoryProjectionReadModel(
+        Ok(projection_ports.InventoryProjectionReadModel(
           location_name: location_name,
           card_name: card_name,
           set_code: row.set_code,
@@ -60,9 +60,9 @@ pub fn execute(
 }
 
 fn sort_results(
-  rows: List(ports.InventoryProjectionReadModel),
+  rows: List(projection_ports.InventoryProjectionReadModel),
   sort_by: sort_strategy.SortStrategy,
-) -> List(ports.InventoryProjectionReadModel) {
+) -> List(projection_ports.InventoryProjectionReadModel) {
   list.sort(rows, fn(a, b) {
     let primary = case sort_by {
       sort_strategy.ByCardName -> string.compare(a.card_name, b.card_name)

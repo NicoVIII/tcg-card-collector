@@ -59,7 +59,7 @@ pub fn launch_catalog_refresh(
           case process.register(process.self(), refresh_worker_name) {
             Ok(_) -> {
               log_async("catalog-refresh", "started: " <> trigger)
-              case catalog_handler.refresh_catalog(deps.refresh_catalog_port) {
+              case catalog_handler.refresh_catalog(deps.refresh_catalog_ports) {
                 catalog_handler.Success ->
                   log_async(
                     "catalog-refresh",

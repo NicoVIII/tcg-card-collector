@@ -18,11 +18,14 @@ pub type SnapshotRowWriteModel {
   SnapshotRowWriteModel(key: CardKey, quantity: Int)
 }
 
-pub type ImportCollectionPort {
-  ImportCollectionPort(
-    save_run: fn(ImportRunWriteModel) -> Nil,
-    replace_rows: fn(String, List(SnapshotRowWriteModel)) -> Nil,
-  )
+pub type SaveRunPort =
+  fn(ImportRunWriteModel) -> Nil
+
+pub type ReplaceRowsPort =
+  fn(String, List(SnapshotRowWriteModel)) -> Nil
+
+pub type ImportCollectionPorts {
+  ImportCollectionPorts(save_run: SaveRunPort, replace_rows: ReplaceRowsPort)
 }
 
 pub type ImportCollectionError {

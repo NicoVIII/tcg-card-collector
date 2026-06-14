@@ -53,7 +53,7 @@ pub fn list_inventory_rules(
 }
 
 pub fn inventory_projection(
-  port: projection_ports.InventoryProjectionPort,
+  ports: projection_ports.InventoryProjectionPorts,
   raw_sort_by: String,
   raw_group_by: String,
 ) -> Result(
@@ -68,7 +68,7 @@ pub fn inventory_projection(
         Ok(group_by) ->
           Ok(projection_handler.execute(
             projection_handler.InventoryProjectionQuery(sort_by:, group_by:),
-            port,
+            ports,
           ))
       }
   }

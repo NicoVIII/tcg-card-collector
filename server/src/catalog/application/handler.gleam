@@ -9,9 +9,9 @@ pub type RefreshCatalogResponse {
 }
 
 pub fn refresh_catalog(
-  port: refresh_ports.RefreshCatalogPort,
+  ports: refresh_ports.RefreshCatalogPorts,
 ) -> RefreshCatalogResponse {
-  case refresh_handler.execute(refresh_handler.RefreshCatalogCommand, port) {
+  case refresh_handler.execute(refresh_handler.RefreshCatalogCommand, ports) {
     Ok(_) -> Success
     Error(_) -> Failed
   }
