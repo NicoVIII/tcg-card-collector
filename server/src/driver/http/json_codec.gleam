@@ -1,12 +1,12 @@
-import application/queries/inventory_planning/get_preferences/ports as preferences_ports
-import application/queries/inventory_planning/list_rules/ports as list_rules_ports
-import application/queries/inventory_planning/projection/ports as projection_ports
 import catalog/application/queries/list_cards/ports as list_cards_ports
 import collection/application/queries/latest_status/ports as import_ports
 import collection/domain/import_status
 import gleam/dynamic/decode
 import gleam/json
 import gleam/result
+import inventory_planning/application/queries/get_preferences/ports as preferences_ports
+import inventory_planning/application/queries/list_rules/ports as list_rules_ports
+import inventory_planning/application/queries/projection/ports as projection_ports
 
 // ---- Encoders ---------------------------------------------------------------
 

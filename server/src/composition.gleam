@@ -1,9 +1,3 @@
-import application/commands/inventory_planning/delete_rule/ports as delete_rule_ports
-import application/commands/inventory_planning/update_preferences/ports as update_preferences_ports
-import application/commands/inventory_planning/upsert_rule/ports as upsert_rule_ports
-import application/queries/inventory_planning/get_preferences/ports as get_preferences_ports
-import application/queries/inventory_planning/list_rules/ports as list_rules_ports
-import application/queries/inventory_planning/projection/ports as projection_ports
 import catalog/application/commands/refresh/ports as refresh_ports
 import catalog/application/queries/list_cards/ports as list_cards_ports
 import catalog/infrastructure/adapters/commands/refresh/adapter as refresh_adapter
@@ -13,12 +7,18 @@ import collection/application/queries/latest_status/ports as latest_status_ports
 import collection/infrastructure/adapters/commands/import_collection/adapter as import_collection_adapter
 import collection/infrastructure/adapters/queries/latest_status/adapter as latest_status_adapter
 import gleam/io
-import infrastructure/adapters/commands/inventory_planning/delete_rule/adapter as delete_rule_adapter
-import infrastructure/adapters/commands/inventory_planning/update_preferences/adapter as update_preferences_adapter
-import infrastructure/adapters/commands/inventory_planning/upsert_rule/adapter as upsert_rule_adapter
-import infrastructure/adapters/queries/inventory_planning/get_preferences/adapter as get_preferences_adapter
-import infrastructure/adapters/queries/inventory_planning/list_rules/adapter as list_rules_adapter
-import infrastructure/adapters/queries/inventory_planning/projection/adapter as projection_adapter
+import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
+import inventory_planning/application/commands/update_preferences/ports as update_preferences_ports
+import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
+import inventory_planning/application/queries/get_preferences/ports as get_preferences_ports
+import inventory_planning/application/queries/list_rules/ports as list_rules_ports
+import inventory_planning/application/queries/projection/ports as projection_ports
+import inventory_planning/infrastructure/adapters/commands/delete_rule/adapter as delete_rule_adapter
+import inventory_planning/infrastructure/adapters/commands/update_preferences/adapter as update_preferences_adapter
+import inventory_planning/infrastructure/adapters/commands/upsert_rule/adapter as upsert_rule_adapter
+import inventory_planning/infrastructure/adapters/queries/get_preferences/adapter as get_preferences_adapter
+import inventory_planning/infrastructure/adapters/queries/list_rules/adapter as list_rules_adapter
+import inventory_planning/infrastructure/adapters/queries/projection/adapter as projection_adapter
 
 pub type Dependencies {
   Dependencies(
