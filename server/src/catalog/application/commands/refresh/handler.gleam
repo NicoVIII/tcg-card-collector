@@ -14,6 +14,8 @@ pub fn execute(
 ) -> command_result.CommandResult(refresh_ports.RefreshCatalogError) {
   let now = ports.now()
   let record = ports.record_repository.load()
+  // No save: upstream was never contacted, so there is nothing to record.
+  // The probe interval must count from the last actual upstream contact.
   use <- bool.guard(
     when: !refresh_record.is_probe_due(record, now),
     return: Ok(Nil),
@@ -30,6 +32,8 @@ pub fn execute(
     }),
   )
   case refresh_record.decide(record, meta.updated_at) {
+    // Upstream was contacted and confirmed current — record the probe time so
+    // the interval runs from this contact, not from the previous one.
     refresh_record.Skip -> {
       ports.record_repository.save(refresh_record.mark_skipped(
         record,

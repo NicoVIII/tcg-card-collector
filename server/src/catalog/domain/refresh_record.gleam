@@ -24,7 +24,7 @@ pub type RefreshDecision {
 }
 
 /// A probe is always due when there is no prior record or the last attempt
-/// failed (immediate retry). For successful/skipped probes, we wait one day.
+/// failed (immediate retry). For successful or version-current probes, we wait one day.
 pub fn is_probe_due(record: RefreshRecord, now: Timestamp) -> Bool {
   case record {
     NeverRefreshed -> True
