@@ -3,17 +3,14 @@ import gleam/order
 import gleam/time/duration
 import gleam/time/timestamp.{type Timestamp}
 
-const one_day_seconds = 86_400
-
 pub type RefreshStatus {
   Succeeded
   Skipped
   Failed(reason: String)
 }
 
-pub type RefreshRecord {
-  NeverRefreshed
-  Probed(
+pub type ProbeResult {
+  ProbeResult(
     last_probe_at: Timestamp,
     last_upstream_updated_at: Option(String),
     status: RefreshStatus,
@@ -27,14 +24,14 @@ pub type RefreshDecision {
 
 /// A probe is always due when there is no prior record or the last attempt
 /// failed (immediate retry). For successful or version-current probes, we wait one day.
-pub fn is_probe_due(record: RefreshRecord, now: Timestamp) -> Bool {
+pub fn is_probe_due(record: Option(ProbeResult), now: Timestamp) -> Bool {
   case record {
-    NeverRefreshed -> True
-    Probed(status: Failed(_), ..) -> True
-    Probed(last_probe_at:, ..) ->
+    None -> True
+    Some(ProbeResult(status: Failed(_), ..)) -> True
+    Some(ProbeResult(last_probe_at:, ..)) ->
       duration.compare(
         timestamp.difference(last_probe_at, now),
-        duration.seconds(one_day_seconds),
+        duration.hours(24),
       )
       != order.Lt
   }
@@ -43,54 +40,30 @@ pub fn is_probe_due(record: RefreshRecord, now: Timestamp) -> Bool {
 /// Skip when the upstream version matches what we already imported; otherwise
 /// fetch and import.
 pub fn decide(
-  record: RefreshRecord,
+  record: Option(ProbeResult),
   fetched_updated_at: String,
 ) -> RefreshDecision {
   case record {
-    NeverRefreshed -> Import
-    Probed(last_upstream_updated_at: Some(stored), ..)
+    None -> Import
+    Some(ProbeResult(last_upstream_updated_at: Some(stored), ..))
       if stored == fetched_updated_at
     -> Skip
-    Probed(..) -> Import
+    Some(ProbeResult(..)) -> Import
   }
-}
-
-pub fn mark_succeeded(
-  _record: RefreshRecord,
-  now: Timestamp,
-  upstream_updated_at: String,
-) -> RefreshRecord {
-  Probed(
-    last_probe_at: now,
-    last_upstream_updated_at: Some(upstream_updated_at),
-    status: Succeeded,
-  )
-}
-
-pub fn mark_skipped(
-  _record: RefreshRecord,
-  now: Timestamp,
-  upstream_updated_at: String,
-) -> RefreshRecord {
-  Probed(
-    last_probe_at: now,
-    last_upstream_updated_at: Some(upstream_updated_at),
-    status: Skipped,
-  )
 }
 
 /// On failure, preserve the prior upstream version so we know what is actually
 /// in the DB, and retry immediately next probe.
-pub fn mark_failed(
-  record: RefreshRecord,
+pub fn create_failed(
+  previous: Option(ProbeResult),
   now: Timestamp,
   reason: String,
-) -> RefreshRecord {
-  let prior_upstream = case record {
-    NeverRefreshed -> None
-    Probed(last_upstream_updated_at: ua, ..) -> ua
+) -> ProbeResult {
+  let prior_upstream = case previous {
+    None -> None
+    Some(ProbeResult(last_upstream_updated_at: ua, ..)) -> ua
   }
-  Probed(
+  ProbeResult(
     last_probe_at: now,
     last_upstream_updated_at: prior_upstream,
     status: Failed(reason),

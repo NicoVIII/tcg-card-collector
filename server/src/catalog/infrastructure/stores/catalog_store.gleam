@@ -8,8 +8,7 @@ import gleam/int
 import gleam/io
 import gleam/json
 import gleam/list
-import gleam/option.{None, Some}
-import gleam/result
+import gleam/option.{type Option, None, Some}
 import gleam/string
 import gleam/time/timestamp
 import infrastructure/stores/sqlite_store
@@ -26,15 +25,7 @@ pub type RefreshIO {
   RefreshIO(download: fn(String) -> Result(String, String))
 }
 
-pub fn now_timestamp() -> timestamp.Timestamp {
-  sqlite_store.query("SELECT strftime('%s', 'now');")
-  |> string.trim
-  |> int.parse
-  |> result.unwrap(0)
-  |> timestamp.from_unix_seconds
-}
-
-pub fn load_refresh_record() -> refresh_record.RefreshRecord {
+pub fn load_refresh_record() -> Option(refresh_record.ProbeResult) {
   let output =
     sqlite_store.query(
       "SELECT strftime('%s', last_probe_at), last_upstream_updated_at, last_refresh_status, last_error_message "
@@ -46,12 +37,12 @@ pub fn load_refresh_record() -> refresh_record.RefreshRecord {
     string.split(output, "\n")
     |> list.find(fn(line) { line != "" })
   case row {
-    Error(_) -> refresh_record.NeverRefreshed
+    Error(_) -> None
     Ok(line) ->
       case string.split(line, "\t") {
         [epoch_str, upstream_at, status_str, error_msg] ->
           case int.parse(epoch_str) {
-            Error(_) -> refresh_record.NeverRefreshed
+            Error(_) -> None
             Ok(epoch) -> {
               let last_probe_at = timestamp.from_unix_seconds(epoch)
               let last_upstream_updated_at = case upstream_at {
@@ -64,55 +55,55 @@ pub fn load_refresh_record() -> refresh_record.RefreshRecord {
                 "failed" -> refresh_record.Failed(error_msg)
                 _ -> refresh_record.Failed("unknown status: " <> status_str)
               }
-              refresh_record.Probed(
+              Some(refresh_record.ProbeResult(
                 last_probe_at:,
                 last_upstream_updated_at:,
                 status:,
-              )
+              ))
             }
           }
-        _ -> refresh_record.NeverRefreshed
+        _ -> None
       }
   }
 }
 
-pub fn save_refresh_record(record: refresh_record.RefreshRecord) -> Nil {
-  case record {
-    refresh_record.NeverRefreshed -> Nil
-    refresh_record.Probed(last_probe_at:, last_upstream_updated_at:, status:) -> {
-      let #(epoch, _) = timestamp.to_unix_seconds_and_nanoseconds(last_probe_at)
-      let upstream_at_sql = case last_upstream_updated_at {
-        None -> "NULL"
-        Some(s) -> sqlite_store.quote(s)
-      }
-      let #(status_str, error_msg_sql) = case status {
-        refresh_record.Succeeded -> #("succeeded", "NULL")
-        refresh_record.Skipped -> #("skipped", "NULL")
-        refresh_record.Failed(reason) -> #("failed", sqlite_store.quote(reason))
-      }
-      let sql =
-        "INSERT INTO catalog_sync_metadata ("
-        <> "  id, last_probe_at, last_upstream_updated_at, last_refresh_status, last_error_message, updated_at"
-        <> ") VALUES ("
-        <> "  1, datetime("
-        <> int.to_string(epoch)
-        <> ", 'unixepoch'), "
-        <> upstream_at_sql
-        <> ", "
-        <> sqlite_store.quote(status_str)
-        <> ", "
-        <> error_msg_sql
-        <> ", CURRENT_TIMESTAMP"
-        <> ") "
-        <> "ON CONFLICT(id) DO UPDATE SET "
-        <> "  last_probe_at = excluded.last_probe_at,"
-        <> "  last_upstream_updated_at = excluded.last_upstream_updated_at,"
-        <> "  last_refresh_status = excluded.last_refresh_status,"
-        <> "  last_error_message = excluded.last_error_message,"
-        <> "  updated_at = CURRENT_TIMESTAMP;"
-      sqlite_store.exec(sql)
-    }
+pub fn save_refresh_record(record: refresh_record.ProbeResult) -> Nil {
+  let refresh_record.ProbeResult(
+    last_probe_at:,
+    last_upstream_updated_at:,
+    status:,
+  ) = record
+  let #(epoch, _) = timestamp.to_unix_seconds_and_nanoseconds(last_probe_at)
+  let upstream_at_sql = case last_upstream_updated_at {
+    None -> "NULL"
+    Some(s) -> sqlite_store.quote(s)
   }
+  let #(status_str, error_msg_sql) = case status {
+    refresh_record.Succeeded -> #("succeeded", "NULL")
+    refresh_record.Skipped -> #("skipped", "NULL")
+    refresh_record.Failed(reason) -> #("failed", sqlite_store.quote(reason))
+  }
+  let sql =
+    "INSERT INTO catalog_sync_metadata ("
+    <> "  id, last_probe_at, last_upstream_updated_at, last_refresh_status, last_error_message, updated_at"
+    <> ") VALUES ("
+    <> "  1, datetime("
+    <> int.to_string(epoch)
+    <> ", 'unixepoch'), "
+    <> upstream_at_sql
+    <> ", "
+    <> sqlite_store.quote(status_str)
+    <> ", "
+    <> error_msg_sql
+    <> ", CURRENT_TIMESTAMP"
+    <> ") "
+    <> "ON CONFLICT(id) DO UPDATE SET "
+    <> "  last_probe_at = excluded.last_probe_at,"
+    <> "  last_upstream_updated_at = excluded.last_upstream_updated_at,"
+    <> "  last_refresh_status = excluded.last_refresh_status,"
+    <> "  last_error_message = excluded.last_error_message,"
+    <> "  updated_at = CURRENT_TIMESTAMP;"
+  sqlite_store.exec(sql)
 }
 
 pub fn fetch_metadata(io: RefreshIO) -> Result(#(String, String), String) {

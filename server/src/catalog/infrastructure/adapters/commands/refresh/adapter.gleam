@@ -10,7 +10,7 @@ pub fn new() -> ports.RefreshCatalogPorts {
 
 pub fn new_with_io(io: catalog_store.RefreshIO) -> ports.RefreshCatalogPorts {
   ports.RefreshCatalogPorts(
-    now: now_adapter.get_now(),
+    now: now_adapter.create(),
     record_repository: record_repository_adapter(),
     fetch_metadata: fetch_metadata_adapter(io),
     import_cards: import_cards_adapter(io),

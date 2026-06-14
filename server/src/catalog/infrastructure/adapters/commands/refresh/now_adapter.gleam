@@ -1,6 +1,10 @@
 import catalog/application/commands/refresh/ports
-import catalog/infrastructure/stores/catalog_store
+import gleam/time/timestamp.{type Timestamp}
 
-pub fn get_now() -> ports.NowPort {
-  catalog_store.now_timestamp
+fn get_now() -> Timestamp {
+  timestamp.system_time()
+}
+
+pub fn create() -> ports.NowPort {
+  get_now
 }

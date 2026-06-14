@@ -1,4 +1,5 @@
-import catalog/domain/refresh_record.{type RefreshRecord}
+import catalog/domain/refresh_record.{type ProbeResult}
+import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
 
 pub type BulkMetadata {
@@ -16,8 +17,8 @@ pub type ImportCardsPort =
 
 pub type RefreshRecordRepositoryPort {
   RefreshRecordRepositoryPort(
-    load: fn() -> RefreshRecord,
-    save: fn(RefreshRecord) -> Nil,
+    load: fn() -> Option(ProbeResult),
+    save: fn(ProbeResult) -> Nil,
   )
 }
 
