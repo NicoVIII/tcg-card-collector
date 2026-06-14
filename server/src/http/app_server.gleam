@@ -9,10 +9,9 @@ import gleam/http/response.{type Response}
 import gleam/int
 import gleam/result
 import gleam/string
-
 import http/helpers
 import http/json_codec
-import inventory_planning/skir/handler as inventory_planning_handler
+import inventory_planning/driver/http/handler as inventory_http
 import mist
 import skir/router as skir_router
 import skir/setup as skir_setup
@@ -68,124 +67,19 @@ fn handle_request(
     Post, "/api/import" -> collection_http.handle_import_collection(req, deps)
     Get, "/api/import/latest" ->
       collection_http.handle_latest_import_status(deps)
-    Get, "/api/inventory/rules" -> handle_list_inventory_rules(deps)
-    Put, "/api/inventory/rules" -> handle_upsert_inventory_rule(req, deps)
-    Delete, "/api/inventory/rules" -> handle_delete_inventory_rule(req, deps)
-    Get, "/api/inventory/projection" -> handle_inventory_projection(req, deps)
-    Get, "/api/settings" -> handle_get_settings(deps)
-    Put, "/api/settings" -> handle_update_settings(req, deps)
+    Get, "/api/inventory/rules" ->
+      inventory_http.handle_list_inventory_rules(deps)
+    Put, "/api/inventory/rules" ->
+      inventory_http.handle_upsert_inventory_rule(req, deps)
+    Delete, "/api/inventory/rules" ->
+      inventory_http.handle_delete_inventory_rule(req, deps)
+    Get, "/api/inventory/projection" ->
+      inventory_http.handle_inventory_projection(req, deps)
+    Get, "/api/settings" -> inventory_http.handle_get_settings(deps)
+    Put, "/api/settings" -> inventory_http.handle_update_settings(req, deps)
     Get, "/api/skir" | Post, "/api/skir" ->
       skir_router.handle_request(req, server_name)
     _, _ -> helpers.json_response(404, json_codec.encode_error("not found"))
-  }
-}
-
-// ---- Inventory planning -----------------------------------------------------
-
-fn handle_list_inventory_rules(
-  deps: Dependencies,
-) -> Response(mist.ResponseData) {
-  let rules =
-    inventory_planning_handler.list_inventory_rules(
-      deps.list_inventory_rules_port,
-    )
-  helpers.json_response(200, json_codec.encode_inventory_rules(rules))
-}
-
-fn handle_upsert_inventory_rule(
-  req: Request(mist.Connection),
-  deps: Dependencies,
-) -> Response(mist.ResponseData) {
-  use body <- helpers.with_json_body(req)
-  case json_codec.decode_upsert_rule_body(body) {
-    Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
-    Ok(b) -> {
-      case
-        inventory_planning_handler.upsert_inventory_rule(
-          deps.upsert_inventory_rule_port,
-          b.id,
-          b.location_name,
-          b.expression,
-        )
-      {
-        Ok(_) -> helpers.json_response(200, json_codec.encode_ok("rule saved"))
-        Error(_) ->
-          helpers.json_response(
-            400,
-            json_codec.encode_error("invalid inventory rule expression"),
-          )
-      }
-    }
-  }
-}
-
-fn handle_delete_inventory_rule(
-  req: Request(mist.Connection),
-  deps: Dependencies,
-) -> Response(mist.ResponseData) {
-  use body <- helpers.with_json_body(req)
-  case json_codec.decode_delete_rule_body(body) {
-    Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
-    Ok(b) -> {
-      inventory_planning_handler.delete_inventory_rule(
-        deps.delete_inventory_rule_port,
-        b.id,
-      )
-      helpers.json_response(200, json_codec.encode_ok("rule deleted"))
-    }
-  }
-}
-
-fn handle_inventory_projection(
-  req: Request(mist.Connection),
-  deps: Dependencies,
-) -> Response(mist.ResponseData) {
-  let sort_by =
-    helpers.query_param(req, "sort_by") |> result.unwrap("card_name")
-  let group_by =
-    helpers.query_param(req, "group_by") |> result.unwrap("location_name")
-  let rows_result =
-    inventory_planning_handler.inventory_projection(
-      deps.inventory_projection_port,
-      sort_by,
-      group_by,
-    )
-
-  case rows_result {
-    Ok(rows) ->
-      helpers.json_response(200, json_codec.encode_inventory_projection(rows))
-    Error(inventory_planning_handler.InvalidSortBy) ->
-      helpers.json_response(400, json_codec.encode_error("invalid sort_by"))
-    Error(inventory_planning_handler.InvalidGroupBy) ->
-      helpers.json_response(400, json_codec.encode_error("invalid group_by"))
-  }
-}
-
-// ---- Planning preferences ---------------------------------------------------
-
-fn handle_get_settings(deps: Dependencies) -> Response(mist.ResponseData) {
-  let prefs =
-    inventory_planning_handler.get_planning_preferences(
-      deps.get_planning_preferences_port,
-    )
-  helpers.json_response(200, json_codec.encode_settings(prefs))
-}
-
-fn handle_update_settings(
-  req: Request(mist.Connection),
-  deps: Dependencies,
-) -> Response(mist.ResponseData) {
-  use body <- helpers.with_json_body(req)
-  case json_codec.decode_update_settings_body(body) {
-    Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
-    Ok(b) -> {
-      inventory_planning_handler.update_planning_preferences(
-        deps.update_planning_preferences_port,
-        b.default_sort,
-        b.default_grouping,
-      )
-      helpers.json_response(200, json_codec.encode_ok("settings saved"))
-    }
   }
 }
 
