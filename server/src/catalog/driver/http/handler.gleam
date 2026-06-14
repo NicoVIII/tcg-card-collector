@@ -1,4 +1,5 @@
-import catalog/application/handler as catalog_handler
+import catalog/application/commands/refresh/handler.{RefreshCatalogCommand} as catalog_refresh_handler
+import catalog/application/queries/list_cards/handler.{ListCatalogCardsQuery} as catalog_list_cards_handler
 import catalog/driver/http/json_codec as catalog_codec
 import composition.{type Dependencies}
 import gleam/erlang/process
@@ -16,7 +17,11 @@ pub type CatalogRefreshLaunch {
 pub fn handle_list_catalog_cards(
   deps: Dependencies,
 ) -> Response(mist.ResponseData) {
-  let cards = catalog_handler.list_catalog_cards(deps.list_catalog_cards_port)
+  let cards =
+    catalog_list_cards_handler.execute(
+      ListCatalogCardsQuery,
+      deps.list_catalog_cards_port,
+    )
   helpers.json_response(200, catalog_codec.encode_catalog_cards(cards))
 }
 
@@ -59,13 +64,18 @@ pub fn launch_catalog_refresh(
           case process.register(process.self(), refresh_worker_name) {
             Ok(_) -> {
               log_async("catalog-refresh", "started: " <> trigger)
-              case catalog_handler.refresh_catalog(deps.refresh_catalog_ports) {
-                catalog_handler.Success ->
+              case
+                catalog_refresh_handler.execute(
+                  RefreshCatalogCommand,
+                  deps.refresh_catalog_ports,
+                )
+              {
+                Ok(Nil) ->
                   log_async(
                     "catalog-refresh",
                     "finished successfully: " <> trigger,
                   )
-                catalog_handler.Failed ->
+                Error(_) ->
                   log_async(
                     "catalog-refresh",
                     "finished with failure: " <> trigger,

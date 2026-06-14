@@ -1,4 +1,5 @@
-import catalog/application/handler as catalog_handler
+import catalog/application/commands/refresh/handler.{RefreshCatalogCommand} as catalog_refresh_handler
+import catalog/application/queries/list_cards/handler.{ListCatalogCardsQuery} as catalog_list_cards_handler
 import catalog/application/queries/list_cards/ports as list_cards_ports
 import composition.{type Dependencies}
 import gleam/io
@@ -31,12 +32,17 @@ fn handle_refresh_catalog(
   Nil,
 ) {
   log_rpc("started")
-  case catalog_handler.refresh_catalog(deps.refresh_catalog_ports) {
-    catalog_handler.Success -> {
+  case
+    catalog_refresh_handler.execute(
+      RefreshCatalogCommand,
+      deps.refresh_catalog_ports,
+    )
+  {
+    Ok(Nil) -> {
       log_rpc("finished successfully")
       #(Ok(card_catalog_commands.RefreshCatalogResponseSuccess), req_meta, Nil)
     }
-    catalog_handler.Failed -> {
+    Error(_) -> {
       log_rpc("finished with failure")
       #(
         Error(service.ServiceError(
@@ -64,7 +70,10 @@ fn handle_list_catalog_cards(
   Nil,
 ) {
   let all_cards =
-    catalog_handler.list_catalog_cards(deps.list_catalog_cards_port)
+    catalog_list_cards_handler.execute(
+      ListCatalogCardsQuery,
+      deps.list_catalog_cards_port,
+    )
   let total = list.length(all_cards)
   let paged_cards = paginate_cards(all_cards, req.offset, req.limit)
   let response =
