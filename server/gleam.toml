@@ -17,4 +17,4 @@ gleeunit = ">= 1.0.0 and < 2.0.0"
 glinter = ">= 2.19.0 and < 3.0.0"
 
 [tools.glinter]
-exclude = ["src/driver/skirout/"] # skip generated files entirely
+exclude = ["src/skir/skirout/"] # skip generated files entirely

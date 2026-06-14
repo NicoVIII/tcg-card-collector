@@ -1,4 +1,4 @@
-import application/commands/command_result
+import application/command_result
 import inventory_planning/application/commands/upsert_rule/ports
 import inventory_planning/domain/rule_expression
 

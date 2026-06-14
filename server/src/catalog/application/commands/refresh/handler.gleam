@@ -1,4 +1,4 @@
-import application/commands/command_result
+import application/command_result
 import catalog/application/commands/refresh/ports
 import gleam/bool
 import gleam/result

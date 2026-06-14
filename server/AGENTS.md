@@ -1,14 +1,16 @@
 # Backend Architecture
 
-Strict hexagonal layers — each layer may only import itself and layers below it: `domain` → `application` → `infrastructure`/`driver` → `composition`. `common` is available everywhere.
+Code is organized **context-first, then layer**: `server/src/<bounded_context>/{domain,application/{commands,queries},infrastructure/{adapters,stores},skir}/`. Strict hexagonal layers apply within and across contexts — each layer may only import itself and layers below it: `domain` → `application` → `infrastructure`/`skir`/`http` → `composition`. `common` is available everywhere.
 
-**Request flow**: `skir-src/*.skir` → generated `server/src/driver/skirout/` → handler (`server/src/driver/skir/`) → application port (`server/src/application/`) → domain + infrastructure.
+Three bounded contexts under `server/src/`: **catalog**, **collection**, **inventory_planning**. Planning preferences (formerly "Settings") live inside inventory_planning — there is no separate Settings context.
 
-Three bounded contexts under `server/src/domain/`: **Catalog**, **Collection**, **Inventory Planning**. Planning preferences (formerly "Settings") live inside Inventory Planning — there is no separate Settings context.
+**Request flow**: `skir-src/*.skir` → generated `server/src/skir/skirout/` → handler (`server/src/<context>/skir/handler.gleam`) → application port (`server/src/<context>/application/`) → domain + infrastructure.
+
+Shared cross-context code: `common/` (shared kernel), `application/command_result.gleam` (shared app type), `infrastructure/stores/sqlite_store.gleam` (shared infra), `skir/{router,setup}.gleam` + `skir/skirout/` (shared skir adapter), `http/{app_server,json_codec}.gleam` (shared http adapter).
 
 ## Application Layer
 
-CQRS: commands and queries are strictly separated. Commands: `application/commands/<domain>/<command>/`, queries: `application/queries/<domain>/<query>/`. Each use case has its own narrow port — `handler.gleam` (command/query type + `execute`), `ports.gleam` (port interface + errors). No shared repository bundles.
+CQRS: commands and queries are strictly separated. Commands: `<context>/application/commands/<command>/`, queries: `<context>/application/queries/<query>/`. Each use case has its own narrow port — `handler.gleam` (command/query type + `execute`), `ports.gleam` (port interface + errors). No shared repository bundles.
 
 Naming: operation-first — `RefreshCatalogCommand`, `ListCatalogCardsQuery`, `RefreshCatalogPort`.
 

@@ -1,4 +1,4 @@
-import application/commands/command_result
+import application/command_result
 import collection/application/commands/import_collection/ports
 import collection/domain/collection
 import collection/domain/import_status

@@ -2,9 +2,6 @@ import catalog/skir/handler as card_catalog_handler
 import collection/skir/handler as collection_handler
 import common/os_runtime
 import composition.{type Dependencies}
-import driver/http/json_codec
-import driver/skir/router as skir_router
-import driver/skir/setup as skir_setup
 import gleam/bit_array
 import gleam/bytes_tree
 import gleam/erlang/process
@@ -16,8 +13,11 @@ import gleam/io
 import gleam/list
 import gleam/result
 import gleam/string
+import http/json_codec
 import inventory_planning/skir/handler as inventory_planning_handler
 import mist
+import skir/router as skir_router
+import skir/setup as skir_setup
 
 type CatalogRefreshLaunch {
   RefreshStarted

@@ -1,4 +1,4 @@
-import application/commands/command_result
+import application/command_result
 import inventory_planning/application/commands/update_preferences/ports
 
 pub type UpdatePlanningPreferencesCommand {

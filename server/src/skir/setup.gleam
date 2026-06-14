@@ -2,18 +2,18 @@ import catalog/application/queries/list_cards/ports as list_cards_ports
 import catalog/skir/handler as card_catalog_handler
 import collection/skir/handler as collection_handler
 import composition.{type Dependencies}
-import driver/skirout/card_catalog/commands as card_catalog_commands
-import driver/skirout/card_catalog/queries as card_catalog_queries
-import driver/skirout/collection/commands as collection_commands
-import driver/skirout/collection/queries as collection_queries
-import driver/skirout/inventory_planning/commands as inventory_planning_commands
-import driver/skirout/inventory_planning/queries as inventory_planning_queries
 import gleam/erlang/process
 import gleam/io
 import gleam/list
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
 import inventory_planning/skir/handler as inventory_planning_handler
+import skir/skirout/card_catalog/commands as card_catalog_commands
+import skir/skirout/card_catalog/queries as card_catalog_queries
+import skir/skirout/collection/commands as collection_commands
+import skir/skirout/collection/queries as collection_queries
+import skir/skirout/inventory_planning/commands as inventory_planning_commands
+import skir/skirout/inventory_planning/queries as inventory_planning_queries
 import skir_client/service
 
 pub type RpcService =

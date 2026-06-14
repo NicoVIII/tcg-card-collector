@@ -4,11 +4,11 @@ setup:
   gleam deps download
 
 format:
-  find src test -type f -name '*.gleam' ! -path 'src/driver/skirout/*' | xargs gleam format
+  find src test -type f -name '*.gleam' ! -path 'src/skir/skirout/*' | xargs gleam format
 
 [group('check')]
 format-check:
-  find src test -type f -name '*.gleam' ! -path 'src/driver/skirout/*' | xargs gleam format --check
+  find src test -type f -name '*.gleam' ! -path 'src/skir/skirout/*' | xargs gleam format --check
 
 [group('check')]
 type-check:

@@ -1,5 +1,5 @@
 import composition
-import driver/http/app_server
+import http/app_server
 
 pub fn main() -> Nil {
   composition.log_boot_message()
