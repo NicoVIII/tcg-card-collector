@@ -1,7 +1,0 @@
-# One exception per line in the format:
-# source/module -> target/module
-#
-# Policy:
-# - Exceptions are temporary and must include a follow-up task in the same PR.
-# - Broad wildcard exceptions are not allowed.
-# - Remove the entry as soon as the dependency is refactored away.
