@@ -4,10 +4,7 @@
         {
             "label": "server: build",
             "type": "shell",
-            "command": "gleam build",
-            "options": {
-                "cwd": "${workspaceFolder}/server"
-            },
+            "command": "just server::build",
             "group": "build",
             "presentation": {
                 "reveal": "always",
@@ -17,10 +14,7 @@
         {
             "label": "server: typecheck",
             "type": "shell",
-            "command": "gleam check",
-            "options": {
-                "cwd": "${workspaceFolder}/server"
-            },
+            "command": "just server::type-check",
             "group": "test",
             "presentation": {
                 "reveal": "always",
@@ -30,10 +24,7 @@
         {
             "label": "server: test",
             "type": "shell",
-            "command": "gleam test",
-            "options": {
-                "cwd": "${workspaceFolder}/server"
-            },
+            "command": "just server::test",
             "group": "test",
             "presentation": {
                 "reveal": "always",
@@ -41,26 +32,9 @@
             }
         },
         {
-            "label": "server: architecture-lint",
-            "type": "shell",
-            "command": "./linting/check_architecture.sh",
-            "options": {
-                "cwd": "${workspaceFolder}/server"
-            },
-            "group": "test",
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated"
-            },
-            "problemMatcher": []
-        },
-        {
             "label": "client-web: typecheck",
             "type": "shell",
-            "command": "bun run typecheck",
-            "options": {
-                "cwd": "${workspaceFolder}/client-web"
-            },
+            "command": "just client-web::type-check",
             "group": "test",
             "presentation": {
                 "reveal": "always",
@@ -73,10 +47,7 @@
         {
             "label": "client-web: lint",
             "type": "shell",
-            "command": "bun run lint",
-            "options": {
-                "cwd": "${workspaceFolder}/client-web"
-            },
+            "command": "just client-web::lint-check",
             "group": "test",
             "presentation": {
                 "reveal": "always",
@@ -87,10 +58,7 @@
         {
             "label": "client-web: test",
             "type": "shell",
-            "command": "bun run test",
-            "options": {
-                "cwd": "${workspaceFolder}/client-web"
-            },
+            "command": "just client-web::test",
             "group": "test",
             "presentation": {
                 "reveal": "always",
@@ -100,10 +68,7 @@
         {
             "label": "client-web: build",
             "type": "shell",
-            "command": "bun run build",
-            "options": {
-                "cwd": "${workspaceFolder}/client-web"
-            },
+            "command": "just client-web::build",
             "group": "build",
             "presentation": {
                 "reveal": "always",
@@ -114,9 +79,40 @@
             ]
         },
         {
+            "label": "server: dev",
+            "type": "shell",
+            "command": "just server::dev",
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "client-web: dev",
+            "type": "shell",
+            "command": "just client-web::dev",
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "dev",
+            "dependsOn": ["server: dev", "client-web: dev"],
+            "dependsOrder": "parallel",
+            "presentation": {
+                "reveal": "never"
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "check:backend",
             "type": "shell",
-            "command": "just check-backend",
+            "command": "just server::check",
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated"
@@ -125,7 +121,7 @@
         {
             "label": "check:frontend",
             "type": "shell",
-            "command": "just check-frontend",
+            "command": "just client-web::check",
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated"
@@ -134,7 +130,7 @@
         {
             "label": "check:all",
             "type": "shell",
-            "command": "just check-all",
+            "command": "just check",
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated"

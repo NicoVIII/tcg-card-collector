@@ -43,7 +43,12 @@ dbmate-migrate:
 devcontainer-shellcheck:
   find .devcontainer container -type f -name '*.sh' -print0 | xargs -0r shellcheck
 
-dev: server::dev client-web::dev
+dev:
+  #!/usr/bin/env bash
+  trap 'kill 0' EXIT
+  just server::dev &
+  just client-web::dev &
+  wait
 
 [group('check')]
 check: skir-check server::check client-web::check

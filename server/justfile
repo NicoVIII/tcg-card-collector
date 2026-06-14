@@ -3,6 +3,9 @@ default: dev
 setup:
   gleam deps download
 
+build:
+  gleam build
+
 format:
   find src test -type f -name '*.gleam' ! -path 'src/skir/skirout/*' | xargs gleam format
 
