@@ -1,5 +1,6 @@
 import catalog/domain/card_printing
 import catalog/domain/card_rarity
+import common/card_key
 import common/non_empty_string
 import common/os_runtime
 import gleam/dynamic/decode
@@ -7,7 +8,6 @@ import gleam/int
 import gleam/io
 import gleam/json
 import gleam/list
-import gleam/result
 import gleam/string
 import infrastructure/stores/sqlite_store
 import simplifile
@@ -248,29 +248,29 @@ fn parse_card_row(line: String) -> Result(card_printing.CardPrinting, String) {
         "invalid json: " <> string.slice(from: line, at_index: 0, length: 80),
       )
     Ok(#(id, name, set_code, collector_number, rarity, image_uri)) ->
-      card_printing.from_raw(
-        id: id,
-        name: name,
-        set_code: set_code,
-        collector_number: collector_number,
-        rarity: rarity,
-        image_uri: image_uri,
-      )
-      |> result.map_error(fn(err) { card_error_to_string(id, err) })
+      case non_empty_string.new(name) {
+        Error(_) -> Error("id=" <> id <> " empty name")
+        Ok(name_nes) ->
+          case card_key.new(set_code:, collector_number:) {
+            Error(card_key.EmptySetCode) ->
+              Error("id=" <> id <> " empty set_code")
+            Error(card_key.EmptyCollectorNumber) ->
+              Error("id=" <> id <> " empty collector_number")
+            Ok(key) ->
+              case card_rarity.parse(rarity) {
+                Error(_) -> Error("id=" <> id <> " unknown rarity: " <> rarity)
+                Ok(rarity_val) ->
+                  Ok(card_printing.CardPrinting(
+                    id: card_printing.CardPrintingId(id),
+                    key:,
+                    name: name_nes,
+                    rarity: rarity_val,
+                    image_uri: card_printing.ImageUri(image_uri),
+                  ))
+              }
+          }
+      }
   }
-}
-
-fn card_error_to_string(
-  id: String,
-  err: card_printing.CardPrintingError,
-) -> String {
-  let reason = case err {
-    card_printing.EmptyName -> "empty name"
-    card_printing.EmptySetCode -> "empty set_code"
-    card_printing.EmptyCollectorNumber -> "empty collector_number"
-    card_printing.UnknownRarity(r) -> "unknown rarity: " <> r
-  }
-  "id=" <> id <> " " <> reason
 }
 
 fn card_to_csv_row(card: card_printing.CardPrinting) -> String {

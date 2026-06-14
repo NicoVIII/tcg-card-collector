@@ -20,8 +20,6 @@ Naming: operation-first — `RefreshCatalogCommand`, `ListCatalogCardsQuery`, `R
 
 **Handlers own orchestration.** The `execute` function in `handler.gleam` contains the use-case logic (branching, sequencing, error mapping). It must not be an empty pass-through to a single `port.execute()` god-method. Ports are **capability-narrow**: each field is one specific operation (`is_probe_due`, `fetch_metadata`, `import_cards`, `record_succeeded`, …). The handler composes them.
 
-**Catalog import validation.** Every card imported from Scryfall flows through `card_printing.from_raw` before being persisted. Invalid rows (unknown rarity, empty required fields) are skipped with a per-row warning log; the refresh still succeeds with the valid subset. This is where domain-layer consistency checks live — add new checks to `from_raw`.
-
 ## Database
 
 SQLite. Set `TCG_DB_FILE` to the db path. Run migrations with `just dbmate-migrate`.
