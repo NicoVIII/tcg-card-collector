@@ -1,15 +1,11 @@
-import catalog/application/queries/list_cards/ports as list_cards_ports
-import catalog/skir/handler as card_catalog_handler
+import catalog/driver/skir/handler as catalog_skir
 import collection/skir/handler as collection_handler
 import composition.{type Dependencies}
 import gleam/erlang/process
-import gleam/io
 import gleam/list
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
 import inventory_planning/skir/handler as inventory_planning_handler
-import skir/skirout/card_catalog/commands as card_catalog_commands
-import skir/skirout/card_catalog/queries as card_catalog_queries
 import skir/skirout/collection/commands as collection_commands
 import skir/skirout/collection/queries as collection_queries
 import skir/skirout/inventory_planning/commands as inventory_planning_commands
@@ -32,14 +28,7 @@ pub type ServerState {
 
 pub fn make_service() -> RpcService {
   service.new(empty_message: Nil)
-  |> service.add_method(
-    card_catalog_commands.refresh_catalog_method(),
-    handle_refresh_catalog,
-  )
-  |> service.add_method(
-    card_catalog_queries.list_catalog_cards_method(),
-    handle_list_catalog_cards,
-  )
+  |> catalog_skir.register
   |> service.add_method(
     collection_commands.import_collection_method(),
     handle_import_collection,
@@ -72,63 +61,6 @@ pub fn make_service() -> RpcService {
     inventory_planning_commands.update_planning_preferences_method(),
     handle_update_planning_preferences,
   )
-}
-
-fn handle_refresh_catalog(
-  _: card_catalog_commands.RefreshCatalogRequest,
-  req_meta: Nil,
-  deps: Dependencies,
-) -> #(
-  Result(card_catalog_commands.RefreshCatalogResponse, service.ServiceError),
-  Nil,
-  Nil,
-) {
-  log_rpc("started")
-  case card_catalog_handler.refresh_catalog(deps.refresh_catalog_port) {
-    card_catalog_handler.Success -> {
-      log_rpc("finished successfully")
-      #(Ok(card_catalog_commands.RefreshCatalogResponseSuccess), req_meta, Nil)
-    }
-    card_catalog_handler.Failed -> {
-      log_rpc("finished with failure")
-      #(
-        Error(service.ServiceError(
-          service.E503xServiceUnavailable,
-          "catalog refresh failed",
-        )),
-        req_meta,
-        Nil,
-      )
-    }
-  }
-}
-
-fn log_rpc(message: String) -> Nil {
-  io.println("[rpc][catalog-refresh] " <> message)
-}
-
-fn handle_list_catalog_cards(
-  req: card_catalog_queries.ListCatalogCardsRequest,
-  req_meta: Nil,
-  deps: Dependencies,
-) -> #(
-  Result(card_catalog_queries.CatalogCardList, service.ServiceError),
-  Nil,
-  Nil,
-) {
-  let all_cards =
-    card_catalog_handler.list_catalog_cards(deps.list_catalog_cards_port)
-  let total = list.length(all_cards)
-  let paged_cards = paginate_cards(all_cards, req.offset, req.limit)
-  let response =
-    card_catalog_queries.catalog_card_list_new(
-      list.map(paged_cards, map_catalog_card),
-      req.limit,
-      req.offset,
-      total,
-    )
-
-  #(Ok(response), req_meta, Nil)
 }
 
 fn handle_import_collection(
@@ -362,12 +294,6 @@ fn handle_update_planning_preferences(
   )
 }
 
-fn map_catalog_card(
-  card: list_cards_ports.CatalogCardReadModel,
-) -> card_catalog_queries.CatalogCard {
-  card_catalog_queries.catalog_card_new(card.id, card.name, card.set_code)
-}
-
 fn map_inventory_rule(
   rule: list_rules_ports.InventoryRuleReadModel,
 ) -> inventory_planning_queries.InventoryRule {
@@ -398,47 +324,6 @@ fn map_import_collection_row(
     collector_number: row.collector_number,
     quantity: row.quantity,
   )
-}
-
-fn paginate_cards(
-  cards: List(list_cards_ports.CatalogCardReadModel),
-  offset: Int,
-  limit: Int,
-) -> List(list_cards_ports.CatalogCardReadModel) {
-  let normalized_offset = clamp_non_negative(offset)
-  let normalized_limit = clamp_non_negative(limit)
-
-  cards
-  |> drop_items(normalized_offset)
-  |> fn(remaining) {
-    case normalized_limit {
-      0 -> remaining
-      _ -> take_items(remaining, normalized_limit)
-    }
-  }
-}
-
-fn clamp_non_negative(value: Int) -> Int {
-  case value < 0 {
-    True -> 0
-    False -> value
-  }
-}
-
-fn drop_items(items: List(a), count: Int) -> List(a) {
-  case count <= 0, items {
-    True, _ -> items
-    False, [] -> []
-    False, [_first, ..rest] -> drop_items(rest, count - 1)
-  }
-}
-
-fn take_items(items: List(a), count: Int) -> List(a) {
-  case count <= 0, items {
-    True, _ -> []
-    False, [] -> []
-    False, [first, ..rest] -> [first, ..take_items(rest, count - 1)]
-  }
 }
 
 fn handle_server_message(
