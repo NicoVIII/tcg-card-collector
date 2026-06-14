@@ -31,5 +31,5 @@ pub type RefreshCatalogPorts {
 }
 
 pub type RefreshCatalogError {
-  RefreshCatalogError(message: String)
+  RefreshCatalogError(reason: String)
 }
