@@ -18,7 +18,7 @@ CQRS: commands and queries are strictly separated. Commands: `<context>/applicat
 
 Naming: operation-first — `RefreshCatalogCommand`, `ListCatalogCardsQuery`, `RefreshCatalogPort`.
 
-**Handlers own orchestration.** The `execute` function in `handler.gleam` contains the use-case logic (branching, sequencing, error mapping). It must not be an empty pass-through to a single `port.execute()` god-method. Ports are **capability-narrow**: each field is one specific operation (`is_probe_due`, `fetch_metadata`, `import_cards`, `record_succeeded`, …). The handler composes them.
+**Handlers own orchestration.** The `execute` function in `handler.gleam` contains the use-case logic (branching, sequencing, error mapping). It must not be an empty pass-through to a single `port.execute()` god-method. Ports are **capability-narrow**: each field is one specific operation (`fetch_metadata`, `import_cards`, `now`, …). The handler composes them. **Exception:** domain aggregates use a repository shape — `load_record`/`save_record` — because the aggregate is the consistency boundary; stateless I/O effects stay narrow.
 
 ## Database
 

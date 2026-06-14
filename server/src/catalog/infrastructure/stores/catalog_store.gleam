@@ -1,13 +1,16 @@
 import catalog/domain/card_printing
-import catalog/domain/card_rarity
+import catalog/domain/refresh_record
 import common/card_key
 import common/non_empty_string
 import common/os_runtime
+import common/timestamp
 import gleam/dynamic/decode
 import gleam/int
 import gleam/io
 import gleam/json
 import gleam/list
+import gleam/option.{None, Some}
+import gleam/result
 import gleam/string
 import infrastructure/stores/sqlite_store
 import simplifile
@@ -23,27 +26,93 @@ pub type RefreshIO {
   RefreshIO(download: fn(String) -> Result(String, String))
 }
 
-pub fn is_probe_due() -> Bool {
-  let output =
-    sqlite_store.query(
-      "SELECT last_probe_at "
-      <> "FROM catalog_sync_metadata "
-      <> "WHERE id = 1 "
-      <> "  AND last_refresh_status IN ('succeeded', 'skipped') "
-      <> "  AND last_probe_at >= datetime('now', '-1 day') "
-      <> "LIMIT 1;",
-    )
-
-  string.trim(output) == ""
+pub fn now_timestamp() -> timestamp.Timestamp {
+  sqlite_store.query("SELECT strftime('%s', 'now');")
+  |> string.trim
+  |> int.parse
+  |> result.unwrap(0)
+  |> timestamp.from_epoch_seconds
 }
 
-pub fn current_upstream_updated_at() -> String {
-  sqlite_store.query(
-    "SELECT COALESCE(last_upstream_updated_at, '') "
-    <> "FROM catalog_sync_metadata "
-    <> "WHERE id = 1 LIMIT 1;",
-  )
-  |> string.trim
+pub fn load_refresh_record() -> refresh_record.RefreshRecord {
+  let output =
+    sqlite_store.query(
+      "SELECT strftime('%s', last_probe_at), last_upstream_updated_at, last_refresh_status, last_error_message "
+      <> "FROM catalog_sync_metadata WHERE id = 1 LIMIT 1;",
+    )
+  // Split on newline first so the trailing tab for a NULL column is preserved
+  // when we subsequently split on tab. string.trim would eat the trailing tab.
+  let row =
+    string.split(output, "\n")
+    |> list.find(fn(line) { line != "" })
+  case row {
+    Error(_) -> refresh_record.NeverRefreshed
+    Ok(line) ->
+      case string.split(line, "\t") {
+        [epoch_str, upstream_at, status_str, error_msg] ->
+          case int.parse(epoch_str) {
+            Error(_) -> refresh_record.NeverRefreshed
+            Ok(epoch) -> {
+              let last_probe_at = timestamp.from_epoch_seconds(epoch)
+              let last_upstream_updated_at = case upstream_at {
+                "" -> None
+                s -> Some(s)
+              }
+              let status = case status_str {
+                "succeeded" -> refresh_record.Succeeded
+                "skipped" -> refresh_record.Skipped
+                "failed" -> refresh_record.Failed(error_msg)
+                _ -> refresh_record.Failed("unknown status: " <> status_str)
+              }
+              refresh_record.Probed(
+                last_probe_at:,
+                last_upstream_updated_at:,
+                status:,
+              )
+            }
+          }
+        _ -> refresh_record.NeverRefreshed
+      }
+  }
+}
+
+pub fn save_refresh_record(record: refresh_record.RefreshRecord) -> Nil {
+  case record {
+    refresh_record.NeverRefreshed -> Nil
+    refresh_record.Probed(last_probe_at:, last_upstream_updated_at:, status:) -> {
+      let epoch = timestamp.to_epoch_seconds(last_probe_at)
+      let upstream_at_sql = case last_upstream_updated_at {
+        None -> "NULL"
+        Some(s) -> sqlite_store.quote(s)
+      }
+      let #(status_str, error_msg_sql) = case status {
+        refresh_record.Succeeded -> #("succeeded", "NULL")
+        refresh_record.Skipped -> #("skipped", "NULL")
+        refresh_record.Failed(reason) -> #("failed", sqlite_store.quote(reason))
+      }
+      let sql =
+        "INSERT INTO catalog_sync_metadata ("
+        <> "  id, last_probe_at, last_upstream_updated_at, last_refresh_status, last_error_message, updated_at"
+        <> ") VALUES ("
+        <> "  1, datetime("
+        <> int.to_string(epoch)
+        <> ", 'unixepoch'), "
+        <> upstream_at_sql
+        <> ", "
+        <> sqlite_store.quote(status_str)
+        <> ", "
+        <> error_msg_sql
+        <> ", CURRENT_TIMESTAMP"
+        <> ") "
+        <> "ON CONFLICT(id) DO UPDATE SET "
+        <> "  last_probe_at = excluded.last_probe_at,"
+        <> "  last_upstream_updated_at = excluded.last_upstream_updated_at,"
+        <> "  last_refresh_status = excluded.last_refresh_status,"
+        <> "  last_error_message = excluded.last_error_message,"
+        <> "  updated_at = CURRENT_TIMESTAMP;"
+      sqlite_store.exec(sql)
+    }
+  }
 }
 
 pub fn fetch_metadata(io: RefreshIO) -> Result(#(String, String), String) {
@@ -257,16 +326,20 @@ fn parse_card_row(line: String) -> Result(card_printing.CardPrinting, String) {
             Error(card_key.EmptyCollectorNumber) ->
               Error("id=" <> id <> " empty collector_number")
             Ok(key) ->
-              case card_rarity.parse(rarity) {
+              case parse_rarity(rarity) {
                 Error(_) -> Error("id=" <> id <> " unknown rarity: " <> rarity)
                 Ok(rarity_val) ->
-                  Ok(card_printing.CardPrinting(
-                    id: card_printing.CardPrintingId(id),
-                    key:,
-                    name: name_nes,
-                    rarity: rarity_val,
-                    image_uri: card_printing.ImageUri(image_uri),
-                  ))
+                  case non_empty_string.new(image_uri) {
+                    Error(_) -> Error("id=" <> id <> " empty image_uri")
+                    Ok(image_uri_nes) ->
+                      Ok(card_printing.CardPrinting(
+                        id: card_printing.CardPrintingId(id),
+                        key:,
+                        name: name_nes,
+                        rarity: rarity_val,
+                        image_uri: image_uri_nes,
+                      ))
+                  }
               }
           }
       }
@@ -279,7 +352,7 @@ fn card_to_csv_row(card: card_printing.CardPrinting) -> String {
     key: key,
     name: name,
     rarity: rarity,
-    image_uri: card_printing.ImageUri(image_uri),
+    image_uri: image_uri,
   ) = card
   csv_field(id)
   <> ","
@@ -289,9 +362,9 @@ fn card_to_csv_row(card: card_printing.CardPrinting) -> String {
   <> ","
   <> csv_field(non_empty_string.to_string(key.collector_number))
   <> ","
-  <> csv_field(card_rarity.to_string(rarity))
+  <> csv_field(rarity_to_string(rarity))
   <> ","
-  <> csv_field(image_uri)
+  <> csv_field(non_empty_string.to_string(image_uri))
 }
 
 fn csv_field(value: String) -> String {
@@ -304,62 +377,6 @@ fn csv_field(value: String) -> String {
     False -> value
     True -> "\"" <> string.replace(value, "\"", "\"\"") <> "\""
   }
-}
-
-pub fn mark_probe_succeeded(updated_at: String) -> Nil {
-  let sql =
-    "INSERT INTO catalog_sync_metadata ("
-    <> "  id, last_probe_at, last_upstream_updated_at, last_refresh_status, last_error_message, updated_at"
-    <> ") VALUES ("
-    <> "  1, CURRENT_TIMESTAMP, "
-    <> sqlite_store.quote(updated_at)
-    <> ", 'succeeded', NULL, CURRENT_TIMESTAMP"
-    <> ") "
-    <> "ON CONFLICT(id) DO UPDATE SET "
-    <> "  last_probe_at = CURRENT_TIMESTAMP,"
-    <> "  last_upstream_updated_at = excluded.last_upstream_updated_at,"
-    <> "  last_refresh_status = 'succeeded',"
-    <> "  last_error_message = NULL,"
-    <> "  updated_at = CURRENT_TIMESTAMP;"
-
-  sqlite_store.exec(sql)
-}
-
-pub fn mark_probe_skipped(updated_at: String) -> Nil {
-  let sql =
-    "INSERT INTO catalog_sync_metadata ("
-    <> "  id, last_probe_at, last_upstream_updated_at, last_refresh_status, last_error_message, updated_at"
-    <> ") VALUES ("
-    <> "  1, CURRENT_TIMESTAMP, "
-    <> sqlite_store.quote(updated_at)
-    <> ", 'skipped', NULL, CURRENT_TIMESTAMP"
-    <> ") "
-    <> "ON CONFLICT(id) DO UPDATE SET "
-    <> "  last_probe_at = CURRENT_TIMESTAMP,"
-    <> "  last_upstream_updated_at = excluded.last_upstream_updated_at,"
-    <> "  last_refresh_status = 'skipped',"
-    <> "  last_error_message = NULL,"
-    <> "  updated_at = CURRENT_TIMESTAMP;"
-
-  sqlite_store.exec(sql)
-}
-
-pub fn mark_probe_failed(reason: String) -> Nil {
-  let sql =
-    "INSERT INTO catalog_sync_metadata ("
-    <> "  id, last_probe_at, last_upstream_updated_at, last_refresh_status, last_error_message, updated_at"
-    <> ") VALUES ("
-    <> "  1, CURRENT_TIMESTAMP, NULL, 'failed', "
-    <> sqlite_store.quote(reason)
-    <> ", CURRENT_TIMESTAMP"
-    <> ") "
-    <> "ON CONFLICT(id) DO UPDATE SET "
-    <> "  last_probe_at = CURRENT_TIMESTAMP,"
-    <> "  last_refresh_status = 'failed',"
-    <> "  last_error_message = excluded.last_error_message,"
-    <> "  updated_at = CURRENT_TIMESTAMP;"
-
-  sqlite_store.exec(sql)
 }
 
 pub fn list() -> List(CatalogRowTuple) {
@@ -443,6 +460,29 @@ fn parse_rows(output: String) -> List(CatalogRowTuple) {
         }
     }
   })
+}
+
+fn parse_rarity(raw: String) -> Result(card_printing.CardRarity, Nil) {
+  case raw {
+    "common" -> Ok(card_printing.Common)
+    "uncommon" -> Ok(card_printing.Uncommon)
+    "rare" -> Ok(card_printing.Rare)
+    "mythic" -> Ok(card_printing.Mythic)
+    "special" -> Ok(card_printing.Special)
+    "bonus" -> Ok(card_printing.Bonus)
+    _ -> Error(Nil)
+  }
+}
+
+fn rarity_to_string(rarity: card_printing.CardRarity) -> String {
+  case rarity {
+    card_printing.Common -> "common"
+    card_printing.Uncommon -> "uncommon"
+    card_printing.Rare -> "rare"
+    card_printing.Mythic -> "mythic"
+    card_printing.Special -> "special"
+    card_printing.Bonus -> "bonus"
+  }
 }
 
 fn log(message: String) -> Nil {

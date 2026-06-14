@@ -1,5 +1,6 @@
 import application/command_result
 import catalog/application/commands/refresh/ports
+import catalog/domain/refresh_record
 import gleam/bool
 import gleam/result
 
@@ -11,28 +12,40 @@ pub fn execute(
   _command: RefreshCatalogCommand,
   port: ports.RefreshCatalogPort,
 ) -> command_result.CommandResult(ports.RefreshCatalogError) {
-  use <- bool.guard(when: !port.is_probe_due(), return: Ok(Nil))
+  let now = port.now()
+  let record = port.load_record()
+  use <- bool.guard(
+    when: !refresh_record.is_probe_due(record, now),
+    return: Ok(Nil),
+  )
   use meta <- result.try(
     port.fetch_metadata()
     |> result.map_error(fn(reason) {
-      port.record_failed(reason)
+      port.save_record(refresh_record.mark_failed(record, now, reason))
       ports.RefreshCatalogError(message: reason)
     }),
   )
-  use <- bool.lazy_guard(
-    when: meta.updated_at == port.current_upstream_updated_at(),
-    return: fn() {
-      port.record_skipped(meta.updated_at)
+  case refresh_record.decide(record, meta.updated_at) {
+    refresh_record.Skip -> {
+      port.save_record(refresh_record.mark_skipped(record, now, meta.updated_at))
       Ok(Nil)
-    },
-  )
-  use _ <- result.try(
-    port.import_cards(meta.download_uri)
-    |> result.map_error(fn(reason) {
-      port.record_failed(reason)
-      ports.RefreshCatalogError(message: "catalog refresh failed: " <> reason)
-    }),
-  )
-  port.record_succeeded(meta.updated_at)
-  Ok(Nil)
+    }
+    refresh_record.Import -> {
+      use _ <- result.try(
+        port.import_cards(meta.download_uri)
+        |> result.map_error(fn(reason) {
+          port.save_record(refresh_record.mark_failed(record, now, reason))
+          ports.RefreshCatalogError(
+            message: "catalog refresh failed: " <> reason,
+          )
+        }),
+      )
+      port.save_record(refresh_record.mark_succeeded(
+        record,
+        now,
+        meta.updated_at,
+      ))
+      Ok(Nil)
+    }
+  }
 }

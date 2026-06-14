@@ -1,9 +1,13 @@
-import catalog/domain/card_rarity.{type CardRarity}
 import common/card_key.{type CardKey}
 import common/non_empty_string.{type NonEmptyString}
 
-pub type ImageUri {
-  ImageUri(String)
+pub type CardRarity {
+  Common
+  Uncommon
+  Rare
+  Mythic
+  Special
+  Bonus
 }
 
 pub type CardPrintingId {
@@ -16,6 +20,6 @@ pub type CardPrinting {
     key: CardKey,
     name: NonEmptyString,
     rarity: CardRarity,
-    image_uri: ImageUri,
+    image_uri: NonEmptyString,
   )
 }

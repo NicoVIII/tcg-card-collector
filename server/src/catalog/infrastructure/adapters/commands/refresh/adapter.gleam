@@ -9,8 +9,9 @@ pub fn new() -> ports.RefreshCatalogPort {
 
 pub fn new_with_io(io: catalog_store.RefreshIO) -> ports.RefreshCatalogPort {
   ports.RefreshCatalogPort(
-    is_probe_due: catalog_store.is_probe_due,
-    current_upstream_updated_at: catalog_store.current_upstream_updated_at,
+    now: catalog_store.now_timestamp,
+    load_record: catalog_store.load_refresh_record,
+    save_record: catalog_store.save_refresh_record,
     fetch_metadata: fn() {
       case catalog_store.fetch_metadata(io) {
         Error(msg) -> Error(msg)
@@ -22,9 +23,6 @@ pub fn new_with_io(io: catalog_store.RefreshIO) -> ports.RefreshCatalogPort {
       }
     },
     import_cards: fn(uri) { catalog_store.import_cards(io, uri) },
-    record_succeeded: catalog_store.mark_probe_succeeded,
-    record_skipped: catalog_store.mark_probe_skipped,
-    record_failed: catalog_store.mark_probe_failed,
   )
 }
 
