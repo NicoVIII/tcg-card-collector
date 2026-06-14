@@ -1,4 +1,5 @@
 import catalog/domain/card_printing
+import catalog/domain/card_rarity
 import common/non_empty_string
 import common/os_runtime
 import gleam/dynamic/decode
@@ -288,7 +289,7 @@ fn card_to_csv_row(card: card_printing.CardPrinting) -> String {
   <> ","
   <> csv_field(non_empty_string.to_string(key.collector_number))
   <> ","
-  <> csv_field(card_printing.rarity_to_string(rarity))
+  <> csv_field(card_rarity.to_string(rarity))
   <> ","
   <> csv_field(image_uri)
 }
