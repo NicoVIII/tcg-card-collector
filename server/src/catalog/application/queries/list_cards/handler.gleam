@@ -1,4 +1,4 @@
-import application/queries/catalog/list_cards/ports
+import catalog/application/queries/list_cards/ports
 
 pub type ListCatalogCardsQuery {
   ListCatalogCardsQuery

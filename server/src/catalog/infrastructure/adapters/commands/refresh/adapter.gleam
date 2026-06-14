@@ -1,7 +1,7 @@
-import application/commands/catalog/refresh/ports
+import catalog/application/commands/refresh/ports
+import catalog/infrastructure/stores/catalog_store
 import common/os_runtime
 import gleam/string
-import infrastructure/stores/catalog/catalog_store
 
 pub fn new() -> ports.RefreshCatalogPort {
   new_with_io(live_io())

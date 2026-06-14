@@ -1,8 +1,8 @@
-import application/queries/catalog/list_cards/ports as list_cards_ports
 import application/queries/inventory_planning/list_rules/ports as list_rules_ports
 import application/queries/inventory_planning/projection/ports as projection_ports
+import catalog/application/queries/list_cards/ports as list_cards_ports
+import catalog/skir/handler as card_catalog_handler
 import composition.{type Dependencies}
-import driver/skir/card_catalog_handler
 import driver/skir/collection_handler
 import driver/skir/inventory_planning_handler
 import driver/skirout/card_catalog/commands as card_catalog_commands

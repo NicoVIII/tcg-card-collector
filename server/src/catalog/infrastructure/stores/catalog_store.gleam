@@ -1,6 +1,6 @@
+import catalog/domain/card_printing
 import common/non_empty_string
 import common/os_runtime
-import domain/catalog/card_printing
 import gleam/dynamic/decode
 import gleam/int
 import gleam/io

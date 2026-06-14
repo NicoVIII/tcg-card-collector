@@ -1,7 +1,7 @@
-import application/commands/catalog/refresh/handler as refresh_handler
-import application/commands/catalog/refresh/ports as refresh_ports
-import application/queries/catalog/list_cards/handler as list_cards_handler
-import application/queries/catalog/list_cards/ports as list_cards_ports
+import catalog/application/commands/refresh/handler as refresh_handler
+import catalog/application/commands/refresh/ports as refresh_ports
+import catalog/application/queries/list_cards/handler as list_cards_handler
+import catalog/application/queries/list_cards/ports as list_cards_ports
 
 pub type RefreshCatalogResponse {
   Success

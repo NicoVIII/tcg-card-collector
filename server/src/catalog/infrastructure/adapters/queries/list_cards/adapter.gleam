@@ -1,6 +1,6 @@
-import application/queries/catalog/list_cards/ports
+import catalog/application/queries/list_cards/ports
+import catalog/infrastructure/stores/catalog_store
 import gleam/list
-import infrastructure/stores/catalog/catalog_store
 
 pub fn new() -> ports.ListCatalogCardsPort {
   ports.ListCatalogCardsPort(list_cards: fn() {

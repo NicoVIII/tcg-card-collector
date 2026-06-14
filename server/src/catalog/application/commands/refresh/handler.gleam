@@ -1,5 +1,5 @@
-import application/commands/catalog/refresh/ports
 import application/commands/command_result
+import catalog/application/commands/refresh/ports
 import gleam/bool
 import gleam/result
 

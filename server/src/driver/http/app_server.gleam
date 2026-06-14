@@ -1,7 +1,7 @@
+import catalog/skir/handler as card_catalog_handler
 import common/os_runtime
 import composition.{type Dependencies}
 import driver/http/json_codec
-import driver/skir/card_catalog_handler
 import driver/skir/collection_handler
 import driver/skir/inventory_planning_handler
 import driver/skir/router as skir_router

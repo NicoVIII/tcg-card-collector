@@ -1,12 +1,12 @@
-import application/commands/catalog/refresh/handler
+import catalog/application/commands/refresh/handler
+import catalog/infrastructure/adapters/commands/refresh/adapter
+import catalog/infrastructure/stores/catalog_store
 import gleam/list
 import gleam/string
-import infrastructure/adapters/commands/catalog/refresh/adapter
-import infrastructure/stores/catalog/catalog_store
 import infrastructure/stores/sqlite_store
 import support/test_db
 
-const fixture_dir = "test/integration/infrastructure/commands/database/refresh/fixtures"
+const fixture_dir = "test/catalog/process/infrastructure/fixtures"
 
 const metadata_fixture = fixture_dir <> "/scryfall_metadata.json"
 
