@@ -9,6 +9,47 @@ pub type RefreshCatalogCommand {
   RefreshCatalogCommand
 }
 
+fn import_and_mark(
+  record: RefreshRecord,
+  meta: refresh_ports.BulkMetadata,
+  now: Timestamp,
+  import_cards: refresh_ports.ImportCardsPort,
+) -> #(
+  RefreshRecord,
+  command_result.CommandResult(refresh_ports.RefreshCatalogError),
+) {
+  case import_cards(meta.download_uri) {
+    Ok(Nil) -> #(
+      refresh_record.mark_succeeded(record, now, meta.updated_at),
+      Ok(Nil),
+    )
+    Error(reason) -> #(
+      refresh_record.mark_failed(record, now, reason),
+      Error(RefreshCatalogError(reason:)),
+    )
+  }
+}
+
+fn apply_decision(
+  record: RefreshRecord,
+  meta: refresh_ports.BulkMetadata,
+  now: Timestamp,
+  import_cards: refresh_ports.ImportCardsPort,
+) -> #(
+  RefreshRecord,
+  command_result.CommandResult(refresh_ports.RefreshCatalogError),
+) {
+  case refresh_record.decide(record, meta.updated_at) {
+    // Upstream was contacted and confirmed current — record the probe time so
+    // the interval runs from this contact, not from the previous one.
+    Skip -> #(
+      refresh_record.mark_skipped(record, now, meta.updated_at),
+      Ok(Nil),
+    )
+    Import -> import_and_mark(record, meta, now, import_cards)
+  }
+}
+
 pub fn execute(
   _command: RefreshCatalogCommand,
   ports: refresh_ports.RefreshCatalogPorts,
@@ -38,45 +79,4 @@ pub fn execute(
     apply_decision(record, meta, now, ports.import_cards)
   ports.record_repository.save(new_record)
   outcome
-}
-
-fn apply_decision(
-  record: RefreshRecord,
-  meta: refresh_ports.BulkMetadata,
-  now: Timestamp,
-  import_cards: refresh_ports.ImportCardsPort,
-) -> #(
-  RefreshRecord,
-  command_result.CommandResult(refresh_ports.RefreshCatalogError),
-) {
-  case refresh_record.decide(record, meta.updated_at) {
-    // Upstream was contacted and confirmed current — record the probe time so
-    // the interval runs from this contact, not from the previous one.
-    Skip -> #(
-      refresh_record.mark_skipped(record, now, meta.updated_at),
-      Ok(Nil),
-    )
-    Import -> import_and_mark(record, meta, now, import_cards)
-  }
-}
-
-fn import_and_mark(
-  record: RefreshRecord,
-  meta: refresh_ports.BulkMetadata,
-  now: Timestamp,
-  import_cards: refresh_ports.ImportCardsPort,
-) -> #(
-  RefreshRecord,
-  command_result.CommandResult(refresh_ports.RefreshCatalogError),
-) {
-  case import_cards(meta.download_uri) {
-    Ok(Nil) -> #(
-      refresh_record.mark_succeeded(record, now, meta.updated_at),
-      Ok(Nil),
-    )
-    Error(reason) -> #(
-      refresh_record.mark_failed(record, now, reason),
-      Error(RefreshCatalogError(reason:)),
-    )
-  }
 }
