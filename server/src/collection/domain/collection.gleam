@@ -1,4 +1,4 @@
-import domain/collection/physical_card.{type PhysicalCard}
+import collection/domain/physical_card.{type PhysicalCard}
 import gleam/list
 
 pub type Collection {

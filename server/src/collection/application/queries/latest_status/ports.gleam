@@ -1,4 +1,4 @@
-import domain/collection/import_status.{type ImportStatus}
+import collection/domain/import_status.{type ImportStatus}
 import gleam/option.{type Option}
 
 pub type ImportRunReadModel {

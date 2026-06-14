@@ -1,9 +1,9 @@
-import application/commands/collection/import_collection/ports
 import application/commands/command_result
+import collection/application/commands/import_collection/ports
+import collection/domain/collection
+import collection/domain/import_status
+import collection/domain/physical_card
 import common/card_key
-import domain/collection/collection
-import domain/collection/import_status
-import domain/collection/physical_card
 import gleam/list
 
 pub type ImportCollectionCommand {

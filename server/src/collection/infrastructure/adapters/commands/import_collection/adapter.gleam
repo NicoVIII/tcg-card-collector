@@ -1,7 +1,7 @@
-import application/commands/collection/import_collection/ports
+import collection/application/commands/import_collection/ports
+import collection/infrastructure/stores/collection_store
 import common/non_empty_string
 import gleam/list
-import infrastructure/stores/collection/collection_store
 
 pub fn new() -> ports.ImportCollectionPort {
   ports.ImportCollectionPort(

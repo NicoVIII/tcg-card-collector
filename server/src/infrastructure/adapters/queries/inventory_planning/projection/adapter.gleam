@@ -1,8 +1,8 @@
 import application/queries/inventory_planning/projection/ports
 import catalog/infrastructure/stores/catalog_store
+import collection/infrastructure/stores/collection_store
 import gleam/list
 import gleam/option.{None, Some}
-import infrastructure/stores/collection/collection_store
 import infrastructure/stores/inventory_planning/inventory_rules_store
 
 pub fn new() -> ports.InventoryProjectionPort {

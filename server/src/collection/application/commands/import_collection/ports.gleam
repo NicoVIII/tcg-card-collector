@@ -1,5 +1,5 @@
+import collection/domain/import_status.{type ImportStatus}
 import common/card_key.{type CardKey}
-import domain/collection/import_status.{type ImportStatus}
 
 pub type ImportCollectionRow {
   ImportCollectionRow(set_code: String, collector_number: String, quantity: Int)

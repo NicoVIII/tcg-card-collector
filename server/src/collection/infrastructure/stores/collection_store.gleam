@@ -1,4 +1,4 @@
-import domain/collection/import_status
+import collection/domain/import_status
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}

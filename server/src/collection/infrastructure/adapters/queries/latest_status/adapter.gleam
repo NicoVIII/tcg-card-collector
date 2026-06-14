@@ -1,6 +1,6 @@
-import application/queries/collection/latest_status/ports
+import collection/application/queries/latest_status/ports
+import collection/infrastructure/stores/collection_store
 import gleam/option.{None, Some}
-import infrastructure/stores/collection/collection_store
 
 pub fn new() -> ports.LatestImportStatusPort {
   ports.LatestImportStatusPort(latest: fn() {

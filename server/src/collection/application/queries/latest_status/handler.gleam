@@ -1,4 +1,4 @@
-import application/queries/collection/latest_status/ports
+import collection/application/queries/latest_status/ports
 import gleam/option.{type Option}
 
 pub type LatestImportStatusQuery {

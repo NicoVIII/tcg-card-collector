@@ -1,8 +1,8 @@
-import application/commands/collection/import_collection/handler as import_collection_handler
-import application/commands/collection/import_collection/ports as import_collection_ports
-import application/queries/collection/latest_status/handler as latest_status_handler
-import application/queries/collection/latest_status/ports as latest_status_ports
-import domain/collection/import_status
+import collection/application/commands/import_collection/handler as import_collection_handler
+import collection/application/commands/import_collection/ports as import_collection_ports
+import collection/application/queries/latest_status/handler as latest_status_handler
+import collection/application/queries/latest_status/ports as latest_status_ports
+import collection/domain/import_status
 import gleam/list
 import gleam/option.{None, Some}
 
