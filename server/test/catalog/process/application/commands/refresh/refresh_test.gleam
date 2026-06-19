@@ -1,13 +1,9 @@
-// process/application coverage for catalog refresh.
-// Covered: import-succeeds, skip-unchanged, probe-not-due,
-//   fetch-metadata failure (no prior, with prior), import failure.
-
 import catalog/application/commands/refresh/handler
 import catalog/application/commands/refresh/ports as refresh_ports
 import catalog/domain/refresh_record.{Failed, ProbeResult, Skipped, Succeeded}
 import gleam/option.{None, Some}
 import gleam/time/timestamp
-import support/call_log
+import support/ref
 
 const now = 1_000_000
 
@@ -18,21 +14,24 @@ fn fetch_metadata_ok() {
   ))
 }
 
+fn fetch_metadata_fails() {
+  Error("network error")
+}
+
 fn import_cards_ok(_) {
   Ok(Nil)
 }
 
 fn build_ports(
-  log,
-  load load,
+  repo repo,
   fetch_metadata fetch_metadata,
   import_cards import_cards,
 ) {
   refresh_ports.RefreshCatalogPorts(
     now: fn() { timestamp.from_unix_seconds(now) },
     record_repository: refresh_ports.RefreshRecordRepositoryPort(
-      load:,
-      save: fn(record) { call_log.record(log, record) },
+      load: fn() { ref.get(repo) },
+      save: fn(record) { ref.set(repo, Some(record)) },
     ),
     fetch_metadata:,
     import_cards:,
@@ -40,154 +39,175 @@ fn build_ports(
 }
 
 pub fn import_succeeds_persists_succeeded_test() {
-  let log = call_log.new()
+  let repo = ref.new(None)
   let result =
     handler.execute(
       handler.RefreshCatalogCommand,
       build_ports(
-        log,
-        load: fn() { None },
+        repo:,
         fetch_metadata: fetch_metadata_ok,
         import_cards: import_cards_ok,
       ),
     )
   assert result == Ok(Nil)
 
-  let assert [saved] = call_log.drain(log)
-  let assert ProbeResult(
-    last_upstream_updated_at: Some("v1"),
-    status: Succeeded,
-    ..,
-  ) = saved
-  Nil
+  let assert Some(saved) = ref.get(repo)
+  assert saved
+    == ProbeResult(
+      last_probe_at: timestamp.from_unix_seconds(now),
+      last_upstream_updated_at: Some("v1"),
+      status: Succeeded,
+    )
 }
 
 pub fn skip_unchanged_persists_skipped_test() {
-  let log = call_log.new()
   let prior =
     ProbeResult(
       last_probe_at: timestamp.from_unix_seconds(0),
       last_upstream_updated_at: Some("v1"),
       status: Succeeded,
     )
+  let repo = ref.new(Some(prior))
   let result =
     handler.execute(
       handler.RefreshCatalogCommand,
       build_ports(
-        log,
-        load: fn() { Some(prior) },
+        repo:,
         fetch_metadata: fetch_metadata_ok,
         import_cards: import_cards_ok,
       ),
     )
   assert result == Ok(Nil)
 
-  let assert [saved] = call_log.drain(log)
-  let assert ProbeResult(
-    last_upstream_updated_at: Some("v1"),
-    status: Skipped,
-    ..,
-  ) = saved
-  Nil
+  let assert Some(saved) = ref.get(repo)
+  assert saved
+    == ProbeResult(
+      last_probe_at: timestamp.from_unix_seconds(now),
+      last_upstream_updated_at: Some("v1"),
+      status: Skipped,
+    )
 }
 
 pub fn probe_not_due_returns_ok_without_save_test() {
-  let log = call_log.new()
   let recent_probe =
     ProbeResult(
       last_probe_at: timestamp.from_unix_seconds(now - 1),
       last_upstream_updated_at: Some("v1"),
       status: Succeeded,
     )
+  let repo = ref.new(Some(recent_probe))
   let result =
     handler.execute(
       handler.RefreshCatalogCommand,
-      build_ports(
-        log,
-        load: fn() { Some(recent_probe) },
-        fetch_metadata: fetch_metadata_ok,
-        import_cards: import_cards_ok,
-      ),
+      build_ports(repo:, fetch_metadata: fn() { panic }, import_cards: fn(_) {
+        panic
+      }),
     )
   assert result == Ok(Nil)
-  assert call_log.drain(log) == []
-  Nil
+  assert ref.get(repo) == Some(recent_probe)
 }
 
 pub fn fetch_metadata_fails_no_prior_persists_failed_test() {
-  let log = call_log.new()
+  let repo = ref.new(None)
   let result =
     handler.execute(
       handler.RefreshCatalogCommand,
       build_ports(
-        log,
-        load: fn() { None },
-        fetch_metadata: fn() { Error("network error") },
+        repo:,
+        fetch_metadata: fetch_metadata_fails,
         import_cards: import_cards_ok,
       ),
     )
   assert result
     == Error(refresh_ports.RefreshCatalogError(reason: "network error"))
 
-  let assert [saved] = call_log.drain(log)
-  let assert ProbeResult(
-    last_upstream_updated_at: None,
-    status: Failed(reason: "network error"),
-    ..,
-  ) = saved
-  Nil
+  let assert Some(saved) = ref.get(repo)
+  assert saved
+    == ProbeResult(
+      last_probe_at: timestamp.from_unix_seconds(now),
+      last_upstream_updated_at: None,
+      status: Failed(reason: "network error"),
+    )
 }
 
 pub fn fetch_metadata_fails_with_prior_persists_failed_test() {
-  let log = call_log.new()
   let prior =
     ProbeResult(
       last_probe_at: timestamp.from_unix_seconds(0),
       last_upstream_updated_at: Some("v1"),
       status: Succeeded,
     )
+  let repo = ref.new(Some(prior))
   let result =
     handler.execute(
       handler.RefreshCatalogCommand,
       build_ports(
-        log,
-        load: fn() { Some(prior) },
-        fetch_metadata: fn() { Error("network error") },
+        repo:,
+        fetch_metadata: fetch_metadata_fails,
         import_cards: import_cards_ok,
       ),
     )
   assert result
     == Error(refresh_ports.RefreshCatalogError(reason: "network error"))
 
-  let assert [saved] = call_log.drain(log)
-  let assert ProbeResult(
-    last_upstream_updated_at: Some("v1"),
-    status: Failed(reason: "network error"),
-    ..,
-  ) = saved
-  Nil
+  let assert Some(saved) = ref.get(repo)
+  assert saved
+    == ProbeResult(
+      last_probe_at: timestamp.from_unix_seconds(now),
+      last_upstream_updated_at: Some("v1"),
+      status: Failed(reason: "network error"),
+    )
 }
 
 pub fn import_fails_persists_failed_test() {
-  let log = call_log.new()
+  let repo = ref.new(None)
   let result =
     handler.execute(
       handler.RefreshCatalogCommand,
-      build_ports(
-        log,
-        load: fn() { None },
-        fetch_metadata: fetch_metadata_ok,
-        import_cards: fn(_) { Error("import error") },
-      ),
+      build_ports(repo:, fetch_metadata: fetch_metadata_ok, import_cards: fn(_) {
+        Error("import error")
+      }),
     )
   assert result
     == Error(refresh_ports.RefreshCatalogError(reason: "import error"))
 
-  let assert [saved] = call_log.drain(log)
-  let assert ProbeResult(
-    last_upstream_updated_at: None,
-    status: Failed(reason: "import error"),
-    ..,
-  ) = saved
-  Nil
+  let assert Some(saved) = ref.get(repo)
+  // create_failed preserves the prior's last_upstream_updated_at (None here,
+  // since there was no prior record), not the just-fetched metadata version.
+  assert saved
+    == ProbeResult(
+      last_probe_at: timestamp.from_unix_seconds(now),
+      last_upstream_updated_at: None,
+      status: Failed(reason: "import error"),
+    )
+}
+
+pub fn import_fails_with_prior_persists_failed_test() {
+  // Prior has "v0" (different from what fetch returns), so decide → Import.
+  // On import failure, create_failed preserves "v0" (what the DB holds),
+  // not "v1" (what was just fetched but not yet imported).
+  let prior =
+    ProbeResult(
+      last_probe_at: timestamp.from_unix_seconds(0),
+      last_upstream_updated_at: Some("v0"),
+      status: Succeeded,
+    )
+  let repo = ref.new(Some(prior))
+  let result =
+    handler.execute(
+      handler.RefreshCatalogCommand,
+      build_ports(repo:, fetch_metadata: fetch_metadata_ok, import_cards: fn(_) {
+        Error("import error")
+      }),
+    )
+  assert result
+    == Error(refresh_ports.RefreshCatalogError(reason: "import error"))
+
+  let assert Some(saved) = ref.get(repo)
+  assert saved
+    == ProbeResult(
+      last_probe_at: timestamp.from_unix_seconds(now),
+      last_upstream_updated_at: Some("v0"),
+      status: Failed(reason: "import error"),
+    )
 }
