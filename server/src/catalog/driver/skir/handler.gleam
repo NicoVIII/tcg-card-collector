@@ -1,6 +1,7 @@
 import catalog/application/commands/refresh/handler.{RefreshCatalogCommand} as catalog_refresh_handler
 import catalog/application/queries/list_cards/handler.{ListCatalogCardsQuery} as catalog_list_cards_handler
 import catalog/application/queries/list_cards/ports as list_cards_ports
+import catalog/driver/skir/codec as catalog_skir_codec
 import composition.{type Dependencies}
 import gleam/io
 import gleam/list
@@ -32,28 +33,16 @@ fn handle_refresh_catalog(
   Nil,
 ) {
   log_rpc("started")
-  case
+  let result =
     catalog_refresh_handler.execute(
       RefreshCatalogCommand,
       deps.refresh_catalog_ports,
     )
-  {
-    Ok(Nil) -> {
-      log_rpc("finished successfully")
-      #(Ok(card_catalog_commands.RefreshCatalogResponseSuccess), req_meta, Nil)
-    }
-    Error(_) -> {
-      log_rpc("finished with failure")
-      #(
-        Error(service.ServiceError(
-          service.E503xServiceUnavailable,
-          "catalog refresh failed",
-        )),
-        req_meta,
-        Nil,
-      )
-    }
+  case result {
+    Ok(_) -> log_rpc("finished successfully")
+    Error(_) -> log_rpc("finished with failure")
   }
+  #(catalog_skir_codec.map_refresh_catalog_result(result), req_meta, Nil)
 }
 
 fn log_rpc(message: String) -> Nil {

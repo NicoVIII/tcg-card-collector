@@ -6,13 +6,7 @@ import gleam/erlang/process
 import gleam/http/response.{type Response}
 import gleam/io
 import http/helpers
-import http/json_codec
 import mist
-
-pub type CatalogRefreshLaunch {
-  RefreshStarted
-  RefreshAlreadyRunning
-}
 
 pub fn handle_list_catalog_cards(
   deps: Dependencies,
@@ -29,25 +23,16 @@ pub fn handle_refresh_catalog(
   deps: Dependencies,
   refresh_worker_name: process.Name(Nil),
 ) -> Response(mist.ResponseData) {
-  case launch_catalog_refresh(deps, refresh_worker_name, "manual") {
-    RefreshStarted ->
-      helpers.json_response(
-        202,
-        json_codec.encode_ok("catalog refresh started"),
-      )
-    RefreshAlreadyRunning ->
-      helpers.json_response(
-        202,
-        json_codec.encode_ok("catalog refresh already running"),
-      )
-  }
+  launch_catalog_refresh(deps, refresh_worker_name, "manual")
+  |> catalog_codec.encode_refresh_launch
+  |> helpers.json_response(202, _)
 }
 
 pub fn launch_catalog_refresh(
   deps: Dependencies,
   refresh_worker_name: process.Name(Nil),
   trigger: String,
-) -> CatalogRefreshLaunch {
+) -> catalog_codec.CatalogRefreshLaunch {
   let refresh_subject = process.named_subject(refresh_worker_name)
 
   case process.subject_owner(refresh_subject) {
@@ -56,7 +41,7 @@ pub fn launch_catalog_refresh(
         "catalog-refresh",
         "already running, skipped trigger: " <> trigger,
       )
-      RefreshAlreadyRunning
+      catalog_codec.RefreshAlreadyRunning
     }
     Error(_) -> {
       let _ =
@@ -93,7 +78,7 @@ pub fn launch_catalog_refresh(
           }
         })
 
-      RefreshStarted
+      catalog_codec.RefreshStarted
     }
   }
 }
