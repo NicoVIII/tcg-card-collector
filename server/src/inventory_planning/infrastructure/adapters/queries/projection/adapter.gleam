@@ -1,4 +1,4 @@
-import catalog/infrastructure/stores/catalog_store
+import catalog/infrastructure/stores/catalog_dao
 import collection/infrastructure/stores/collection_store
 import gleam/list
 import gleam/option.{None, Some}
@@ -29,7 +29,7 @@ fn snapshot_rows_adapter() -> ports.SnapshotRowsPort {
 
 fn catalog_name_adapter() -> ports.CatalogNamePort {
   fn(set_code, collector_number) {
-    let names = catalog_store.name_lookup()
+    let names = catalog_dao.name_lookup()
     case
       list.find(names, fn(entry) {
         let #(s, c, _) = entry

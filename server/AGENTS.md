@@ -30,7 +30,7 @@ Ports are **capability-narrow**: each function declares only what the use case n
 
 ## Infrastructure Layer
 
-**Injected-IO seam for testability.** Adapters that make network calls accept a `*IO` record (e.g. `catalog_store.RefreshIO`) holding the outbound I/O as a closure, injected via a `new_with_io(io)` constructor. `new()` calls `new_with_io(live_io())` for production. This lets integration tests pass a hermetic fake without touching `composition.gleam`.
+**Injected-IO seam for testability.** Adapters that make network calls accept a seam type (e.g. `scryfall_client.Downloader`) holding the outbound I/O as a closure, injected via a `new_with_*` constructor. `new()` calls `new_with_*(live_*())` for production. This lets integration tests pass a hermetic fake without touching `composition.gleam`.
 
 ## Database
 
