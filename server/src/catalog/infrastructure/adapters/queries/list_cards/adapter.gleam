@@ -1,5 +1,5 @@
 import catalog/application/queries/list_cards/ports
-import catalog/infrastructure/stores/catalog_dao
+import catalog/infrastructure/daos/catalog_dao
 import gleam/list
 
 pub fn new() -> ports.ListCatalogCardsPort {

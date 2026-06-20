@@ -1,4 +1,4 @@
-import catalog/infrastructure/stores/catalog_dao
+import catalog/infrastructure/daos/catalog_dao
 import collection/infrastructure/stores/collection_store
 import gleam/list
 import gleam/option.{None, Some}

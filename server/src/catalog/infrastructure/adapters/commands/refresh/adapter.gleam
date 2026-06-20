@@ -2,7 +2,7 @@ import catalog/application/commands/refresh/ports
 import catalog/infrastructure/adapters/commands/refresh/now_adapter
 import catalog/infrastructure/clients/scryfall_client
 import catalog/infrastructure/clients/scryfall_mapper
-import catalog/infrastructure/stores/catalog_dao
+import catalog/infrastructure/daos/catalog_dao
 import gleam/result
 import infrastructure/shell
 

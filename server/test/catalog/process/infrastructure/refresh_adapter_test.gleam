@@ -1,7 +1,7 @@
 import catalog/application/commands/refresh/handler
 import catalog/infrastructure/adapters/commands/refresh/adapter
 import catalog/infrastructure/clients/scryfall_client
-import catalog/infrastructure/stores/catalog_dao
+import catalog/infrastructure/daos/catalog_dao
 import gleam/list
 import gleam/string
 import infrastructure/stores/sqlite_store
