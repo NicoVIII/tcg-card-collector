@@ -1,5 +1,5 @@
-import common/os_runtime
 import gleam/string
+import shared/domain/os_runtime
 
 const timeout_seconds = "540"
 

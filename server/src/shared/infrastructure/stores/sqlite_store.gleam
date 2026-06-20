@@ -1,7 +1,7 @@
-import common/os_runtime
 import gleam/io
 import gleam/string
-import infrastructure/shell
+import shared/domain/os_runtime
+import shared/infrastructure/shell
 
 const default_db_file = "db/tcg-card-collector.db"
 

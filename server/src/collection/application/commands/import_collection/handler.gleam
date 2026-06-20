@@ -1,10 +1,10 @@
-import application/command_result
 import collection/application/commands/import_collection/ports as import_collection_ports
 import collection/domain/collection
 import collection/domain/import_status
 import collection/domain/physical_card
-import common/card_key
 import gleam/list
+import shared/application/command_result
+import shared/domain/card_key
 
 pub type ImportCollectionCommand {
   ImportCollectionCommand(

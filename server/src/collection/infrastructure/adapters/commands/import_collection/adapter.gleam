@@ -1,7 +1,7 @@
 import collection/application/commands/import_collection/ports
 import collection/infrastructure/daos/collection_dao
-import common/non_empty_string
 import gleam/list
+import shared/domain/non_empty_string
 
 pub fn new() -> ports.ImportCollectionPorts {
   ports.ImportCollectionPorts(

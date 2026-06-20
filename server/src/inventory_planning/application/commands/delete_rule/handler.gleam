@@ -1,5 +1,5 @@
-import application/command_result
 import inventory_planning/application/commands/delete_rule/ports
+import shared/application/command_result
 
 pub type DeleteInventoryRuleCommand {
   DeleteInventoryRuleCommand(id: String)

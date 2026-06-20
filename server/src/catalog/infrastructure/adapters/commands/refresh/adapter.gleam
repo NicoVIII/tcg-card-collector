@@ -4,7 +4,7 @@ import catalog/infrastructure/clients/scryfall_client
 import catalog/infrastructure/clients/scryfall_mapper
 import catalog/infrastructure/daos/catalog_dao
 import gleam/result
-import infrastructure/shell
+import shared/infrastructure/shell
 
 pub fn new() -> ports.RefreshCatalogPorts {
   new_with_downloader(scryfall_client.live_downloader())

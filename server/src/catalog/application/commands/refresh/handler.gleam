@@ -1,4 +1,3 @@
-import application/command_result
 import catalog/application/commands/refresh/ports.{RefreshCatalogError} as refresh_ports
 import catalog/domain/refresh_record.{
   type ProbeResult, Import, ProbeResult, Skip, Skipped, Succeeded,
@@ -7,6 +6,7 @@ import gleam/bool
 import gleam/option.{type Option, Some}
 import gleam/result
 import gleam/time/timestamp.{type Timestamp}
+import shared/application/command_result
 
 pub type RefreshCatalogCommand {
   RefreshCatalogCommand

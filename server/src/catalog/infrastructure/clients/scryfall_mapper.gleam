@@ -1,13 +1,13 @@
 import catalog/domain/card_printing
-import common/card_key
-import common/non_empty_string
 import gleam/dynamic/decode
 import gleam/int
 import gleam/io
 import gleam/json
 import gleam/list
 import gleam/string
-import infrastructure/shell
+import shared/domain/card_key
+import shared/domain/non_empty_string
+import shared/infrastructure/shell
 import simplifile
 
 fn log(message: String) -> Nil {

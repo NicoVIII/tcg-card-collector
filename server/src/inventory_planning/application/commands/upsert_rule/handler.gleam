@@ -1,6 +1,6 @@
-import application/command_result
 import inventory_planning/application/commands/upsert_rule/ports
 import inventory_planning/domain/rule_expression
+import shared/application/command_result
 
 pub type UpsertInventoryRuleCommand {
   UpsertInventoryRuleCommand(

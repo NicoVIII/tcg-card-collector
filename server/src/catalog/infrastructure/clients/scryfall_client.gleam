@@ -1,7 +1,7 @@
-import common/os_runtime
 import gleam/io
 import gleam/string
-import infrastructure/shell
+import shared/domain/os_runtime
+import shared/infrastructure/shell
 
 pub type Downloader {
   Downloader(download: fn(String) -> Result(String, String))

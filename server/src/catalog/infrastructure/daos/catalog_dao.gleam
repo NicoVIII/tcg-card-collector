@@ -5,8 +5,8 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import gleam/time/timestamp
-import infrastructure/shell
-import infrastructure/stores/sqlite_store
+import shared/infrastructure/shell
+import shared/infrastructure/stores/sqlite_store
 
 type CatalogRowTuple =
   #(String, String, String)

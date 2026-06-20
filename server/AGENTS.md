@@ -1,6 +1,6 @@
 # Backend Architecture
 
-Code is organized **context-first, then layer**: `server/src/<bounded_context>/{domain,application/{commands,queries},infrastructure/{adapters,daos},driver/{skir,http}}/`. Strict hexagonal layers apply within and across contexts — each layer may only import itself and layers below it: `domain` → `application` → `infrastructure`/`driver` → `composition`. `common` is available everywhere.
+Code is organized **context-first, then layer**: `server/src/<bounded_context>/{domain,application/{commands,queries},infrastructure/{adapters,daos},driver/{skir,http}}/`. Strict hexagonal layers apply within and across contexts — each layer may only import itself and layers below it: `domain` → `application` → `infrastructure`/`driver` → `composition`. `shared/domain` is available everywhere.
 
 Three bounded contexts under `server/src/`: **catalog**, **collection**, **inventory_planning**. Planning preferences live inside inventory_planning — there is no separate Settings context.
 
@@ -10,7 +10,7 @@ All three bounded contexts share the same driver pattern: drivers call use-case 
 
 **Request flow (http)**: `http/app_server.gleam` routing table → `server/src/<context>/driver/http/handler.gleam` → use-case handler → use-case port → domain + infrastructure. HTTP context drivers split into `handler.gleam` (route handlers) + `json_codec.gleam` (encoders/decoders).
 
-Shared cross-context code: `common/` (shared kernel), `application/command_result.gleam` (shared app type), `infrastructure/stores/sqlite_store.gleam` (shared infra). Database access objects for each context live in `<context>/infrastructure/daos/`. Shared transport aggregators: `skir/{router,setup}.gleam` + `skir/skirout/` (skir server loop + thin `make_service()` chaining context registers), `http/{app_server,json_codec,helpers}.gleam` (mist bootstrap, routing table, generic response helpers).
+Shared cross-context code lives under `server/src/shared/`: `shared/domain/` (shared kernel — `card_key`, `non_empty_string`, `os_runtime`), `shared/application/command_result.gleam` (shared app type), `shared/infrastructure/stores/sqlite_store.gleam` (shared infra). Database access objects for each context live in `<context>/infrastructure/daos/`. Setup/composition layer at the root: `skir/{router,setup}.gleam` + `skir/skirout/` (skir server loop + thin `make_service()` chaining context registers), `http/{app_server,json_codec,helpers}.gleam` (mist bootstrap, routing table, generic response helpers).
 
 ## Application Layer
 

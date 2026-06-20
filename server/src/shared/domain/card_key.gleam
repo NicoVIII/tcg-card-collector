@@ -1,5 +1,5 @@
-import common/non_empty_string.{type NonEmptyString}
 import gleam/result
+import shared/domain/non_empty_string.{type NonEmptyString}
 
 pub type CardKey {
   CardKey(set_code: NonEmptyString, collector_number: NonEmptyString)

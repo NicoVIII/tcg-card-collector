@@ -4,7 +4,7 @@ import catalog/infrastructure/clients/scryfall_client
 import catalog/infrastructure/daos/catalog_dao
 import gleam/list
 import gleam/string
-import infrastructure/stores/sqlite_store
+import shared/infrastructure/stores/sqlite_store
 import support/test_db
 
 const fixture_dir = "test/catalog/process/infrastructure/fixtures"

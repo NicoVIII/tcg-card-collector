@@ -1,5 +1,5 @@
-import application/command_result
 import inventory_planning/application/commands/update_preferences/ports
+import shared/application/command_result
 
 pub type UpdatePlanningPreferencesCommand {
   UpdatePlanningPreferencesCommand(

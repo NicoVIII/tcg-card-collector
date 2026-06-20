@@ -1,5 +1,5 @@
-import common/card_key.{type CardKey}
-import common/non_empty_string.{type NonEmptyString}
+import shared/domain/card_key.{type CardKey}
+import shared/domain/non_empty_string.{type NonEmptyString}
 
 pub type CardRarity {
   Common

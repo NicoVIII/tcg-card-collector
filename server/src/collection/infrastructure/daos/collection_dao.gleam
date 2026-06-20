@@ -3,7 +3,7 @@ import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
-import infrastructure/stores/sqlite_store
+import shared/infrastructure/stores/sqlite_store
 
 type SnapshotRowTuple =
   #(String, String, Int)
