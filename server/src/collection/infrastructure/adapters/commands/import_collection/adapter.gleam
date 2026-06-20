@@ -1,5 +1,5 @@
 import collection/application/commands/import_collection/ports
-import collection/infrastructure/stores/collection_store
+import collection/infrastructure/daos/collection_dao
 import common/non_empty_string
 import gleam/list
 
@@ -18,13 +18,13 @@ fn save_run_adapter() -> ports.SaveRunPort {
       status: status,
       row_count: row_count,
     ) = run
-    collection_store.save(id, source_name, status, row_count)
+    collection_dao.save(id, source_name, status, row_count)
   }
 }
 
 fn replace_rows_adapter() -> ports.ReplaceRowsPort {
   fn(import_run_id, rows) {
-    collection_store.replace_rows(
+    collection_dao.replace_rows(
       import_run_id,
       list.map(rows, fn(row) {
         let ports.SnapshotRowWriteModel(key: key, quantity: quantity) = row

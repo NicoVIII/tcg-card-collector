@@ -1,8 +1,16 @@
 import composition.{type Dependencies}
 import gleam/list
-import inventory_planning/application/handler as inventory_planning_handler
+import inventory_planning/application/commands/delete_rule/handler as delete_rule_handler
+import inventory_planning/application/commands/update_preferences/handler as update_preferences_handler
+import inventory_planning/application/commands/upsert_rule/handler as upsert_rule_handler
+import inventory_planning/application/queries/get_preferences/handler as get_preferences_handler
+import inventory_planning/application/queries/list_rules/handler as list_rules_handler
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
+import inventory_planning/application/queries/projection/handler as projection_handler
 import inventory_planning/application/queries/projection/ports as projection_ports
+import inventory_planning/domain/grouping_strategy
+import inventory_planning/domain/sort_strategy
+import inventory_planning/driver/skir/codec as inventory_planning_skir_codec
 import skir/skirout/inventory_planning/commands as inventory_planning_commands
 import skir/skirout/inventory_planning/queries as inventory_planning_queries
 import skir_client/service
@@ -49,28 +57,20 @@ fn handle_upsert_inventory_rule(
   Nil,
   Nil,
 ) {
-  case
-    inventory_planning_handler.upsert_inventory_rule(
+  let result =
+    upsert_rule_handler.execute(
+      upsert_rule_handler.UpsertInventoryRuleCommand(
+        id: req.id,
+        location_name: req.location_name,
+        expression: req.expression,
+      ),
       deps.upsert_inventory_rule_port,
-      req.id,
-      req.location_name,
-      req.expression,
     )
-  {
-    Ok(_) -> #(
-      Ok(inventory_planning_commands.UpsertInventoryRuleResponseSuccess),
-      req_meta,
-      Nil,
-    )
-    Error(_) -> #(
-      Error(service.ServiceError(
-        service.E400xBadRequest,
-        "invalid inventory rule expression",
-      )),
-      req_meta,
-      Nil,
-    )
-  }
+  #(
+    inventory_planning_skir_codec.map_upsert_inventory_rule_result(result),
+    req_meta,
+    Nil,
+  )
 }
 
 fn handle_delete_inventory_rule(
@@ -85,11 +85,11 @@ fn handle_delete_inventory_rule(
   Nil,
   Nil,
 ) {
-  inventory_planning_handler.delete_inventory_rule(
-    deps.delete_inventory_rule_port,
-    req.id,
-  )
-
+  let _ =
+    delete_rule_handler.execute(
+      delete_rule_handler.DeleteInventoryRuleCommand(id: req.id),
+      deps.delete_inventory_rule_port,
+    )
   #(
     Ok(inventory_planning_commands.DeleteInventoryRuleResponseSuccess),
     req_meta,
@@ -107,7 +107,8 @@ fn handle_list_inventory_rules(
   Nil,
 ) {
   let rules =
-    inventory_planning_handler.list_inventory_rules(
+    list_rules_handler.execute(
+      list_rules_handler.ListInventoryRulesQuery,
       deps.list_inventory_rules_port,
     )
   let response =
@@ -115,7 +116,6 @@ fn handle_list_inventory_rules(
       list.map(rules, map_inventory_rule),
       list.length(rules),
     )
-
   #(Ok(response), req_meta, Nil)
 }
 
@@ -128,33 +128,36 @@ fn handle_get_inventory_projection(
   Nil,
   Nil,
 ) {
-  let rows_result =
-    inventory_planning_handler.inventory_projection(
-      deps.inventory_projection_ports,
-      req.sort_by,
-      req.group_by,
-    )
-
-  case rows_result {
-    Ok(rows) -> {
-      let response =
-        inventory_planning_queries.inventory_projection_new(
-          list.map(rows, map_inventory_projection_row),
-          list.length(rows),
-        )
-
-      #(Ok(response), req_meta, Nil)
-    }
-    Error(inventory_planning_handler.InvalidSortBy) -> #(
+  case sort_strategy.parse(req.sort_by) {
+    Error(_) -> #(
       Error(service.ServiceError(service.E400xBadRequest, "invalid sort_by")),
       req_meta,
       Nil,
     )
-    Error(inventory_planning_handler.InvalidGroupBy) -> #(
-      Error(service.ServiceError(service.E400xBadRequest, "invalid group_by")),
-      req_meta,
-      Nil,
-    )
+    Ok(sort_by) ->
+      case grouping_strategy.parse(req.group_by) {
+        Error(_) -> #(
+          Error(service.ServiceError(
+            service.E400xBadRequest,
+            "invalid group_by",
+          )),
+          req_meta,
+          Nil,
+        )
+        Ok(group_by) -> {
+          let rows =
+            projection_handler.execute(
+              projection_handler.InventoryProjectionQuery(sort_by:, group_by:),
+              deps.inventory_projection_ports,
+            )
+          let response =
+            inventory_planning_queries.inventory_projection_new(
+              list.map(rows, map_inventory_projection_row),
+              list.length(rows),
+            )
+          #(Ok(response), req_meta, Nil)
+        }
+      }
   }
 }
 
@@ -168,7 +171,8 @@ fn handle_get_planning_preferences(
   Nil,
 ) {
   let current =
-    inventory_planning_handler.get_planning_preferences(
+    get_preferences_handler.execute(
+      get_preferences_handler.GetPlanningPreferencesQuery,
       deps.get_planning_preferences_port,
     )
   let response =
@@ -176,7 +180,6 @@ fn handle_get_planning_preferences(
       current.default_grouping,
       current.default_sort,
     )
-
   #(Ok(response), req_meta, Nil)
 }
 
@@ -192,12 +195,14 @@ fn handle_update_planning_preferences(
   Nil,
   Nil,
 ) {
-  inventory_planning_handler.update_planning_preferences(
-    deps.update_planning_preferences_port,
-    req.default_sort,
-    req.default_grouping,
-  )
-
+  let _ =
+    update_preferences_handler.execute(
+      update_preferences_handler.UpdatePlanningPreferencesCommand(
+        default_sort: req.default_sort,
+        default_grouping: req.default_grouping,
+      ),
+      deps.update_planning_preferences_port,
+    )
   #(
     Ok(inventory_planning_commands.UpdatePlanningPreferencesResponseSuccess),
     req_meta,

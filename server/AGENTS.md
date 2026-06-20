@@ -1,16 +1,16 @@
 # Backend Architecture
 
-Code is organized **context-first, then layer**: `server/src/<bounded_context>/{domain,application/{commands,queries},infrastructure/{adapters,stores},driver/{skir,http}}/`. Strict hexagonal layers apply within and across contexts — each layer may only import itself and layers below it: `domain` → `application` → `infrastructure`/`driver` → `composition`. `common` is available everywhere.
+Code is organized **context-first, then layer**: `server/src/<bounded_context>/{domain,application/{commands,queries},infrastructure/{adapters,daos},driver/{skir,http}}/`. Strict hexagonal layers apply within and across contexts — each layer may only import itself and layers below it: `domain` → `application` → `infrastructure`/`driver` → `composition`. `common` is available everywhere.
 
 Three bounded contexts under `server/src/`: **catalog**, **collection**, **inventory_planning**. Planning preferences live inside inventory_planning — there is no separate Settings context.
 
-**Context facade**: `collection` and `inventory_planning` expose a transport-agnostic service at `<context>/application/handler.gleam`. It calls use-case handlers and returns simplified types (`Success`/`Failed`, `Accepted`/`Rejected`, …). Both `driver/skir/handler.gleam` and `driver/http/handler.gleam` import it — no transport concern leaks into the application layer. `catalog` currently has no facade; its drivers call the use-case handlers directly.
+All three bounded contexts share the same driver pattern: drivers call use-case handlers directly — there is no intermediate application facade. Result mapping from domain types to RPC types lives in `driver/skir/codec.gleam`; route handlers and JSON encoding/decoding live in `driver/http/handler.gleam` and `driver/http/json_codec.gleam`.
 
-**Request flow (skir)**: `skir-src/*.skir` → generated `server/src/skir/skirout/` → `server/src/<context>/driver/skir/handler.gleam` → (context facade if present) → use-case port → domain + infrastructure.
+**Request flow (skir)**: `skir-src/*.skir` → generated `server/src/skir/skirout/` → `server/src/<context>/driver/skir/handler.gleam` → use-case handler → use-case port → domain + infrastructure. Result mapping to RPC types is done via `driver/skir/codec.gleam`.
 
-**Request flow (http)**: `http/app_server.gleam` routing table → `server/src/<context>/driver/http/handler.gleam` → (context facade if present) → use-case port → domain + infrastructure. HTTP context drivers split into `handler.gleam` (route handlers) + `json_codec.gleam` (encoders/decoders).
+**Request flow (http)**: `http/app_server.gleam` routing table → `server/src/<context>/driver/http/handler.gleam` → use-case handler → use-case port → domain + infrastructure. HTTP context drivers split into `handler.gleam` (route handlers) + `json_codec.gleam` (encoders/decoders).
 
-Shared cross-context code: `common/` (shared kernel), `application/command_result.gleam` (shared app type), `infrastructure/stores/sqlite_store.gleam` (shared infra). Shared transport aggregators: `skir/{router,setup}.gleam` + `skir/skirout/` (skir server loop + thin `make_service()` chaining context registers), `http/{app_server,json_codec,helpers}.gleam` (mist bootstrap, routing table, generic response helpers).
+Shared cross-context code: `common/` (shared kernel), `application/command_result.gleam` (shared app type), `infrastructure/stores/sqlite_store.gleam` (shared infra). Database access objects for each context live in `<context>/infrastructure/daos/`. Shared transport aggregators: `skir/{router,setup}.gleam` + `skir/skirout/` (skir server loop + thin `make_service()` chaining context registers), `http/{app_server,json_codec,helpers}.gleam` (mist bootstrap, routing table, generic response helpers).
 
 ## Application Layer
 

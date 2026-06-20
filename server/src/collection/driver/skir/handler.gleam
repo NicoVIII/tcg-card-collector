@@ -1,4 +1,7 @@
-import collection/application/handler as collection_handler
+import collection/application/commands/import_collection/handler as import_collection_handler
+import collection/application/commands/import_collection/ports as import_collection_ports
+import collection/application/queries/latest_status/handler as latest_status_handler
+import collection/driver/skir/codec as collection_skir_codec
 import composition.{type Dependencies}
 import gleam/list
 import skir/skirout/collection/commands as collection_commands
@@ -28,28 +31,18 @@ fn handle_import_collection(
   Nil,
   Nil,
 ) {
-  collection_handler.import_collection(
-    deps.import_collection_ports,
-    req.import_run_id,
-    req.source_name,
-    req.source_checksum,
-    req.row_count,
-    list.map(req.rows, map_import_collection_row),
-  )
-  |> fn(response) {
-    case response {
-      collection_handler.Accepted -> #(
-        Ok(collection_commands.ImportCollectionResponseAccepted),
-        req_meta,
-        Nil,
-      )
-      collection_handler.Rejected -> #(
-        Ok(collection_commands.ImportCollectionResponseRejected),
-        req_meta,
-        Nil,
-      )
-    }
-  }
+  let result =
+    import_collection_handler.execute(
+      import_collection_handler.ImportCollectionCommand(
+        import_run_id: req.import_run_id,
+        source_name: req.source_name,
+        source_checksum: req.source_checksum,
+        row_count: req.row_count,
+        rows: list.map(req.rows, map_import_collection_row),
+      ),
+      deps.import_collection_ports,
+    )
+  #(collection_skir_codec.map_import_collection_result(result), req_meta, Nil)
 }
 
 fn handle_get_latest_import_status(
@@ -57,35 +50,22 @@ fn handle_get_latest_import_status(
   req_meta: Nil,
   deps: Dependencies,
 ) -> #(Result(collection_queries.ImportStatus, service.ServiceError), Nil, Nil) {
-  let response =
-    collection_handler.get_latest_import_status(deps.latest_import_status_port)
-
-  case response {
-    collection_handler.ImportStatusFound(run) -> #(
-      Ok(collection_queries.import_status_new(
-        run.id,
-        run.row_count,
-        run.source_name,
-        collection_handler.status_to_string(run.status),
-      )),
-      req_meta,
-      Nil,
+  let result =
+    latest_status_handler.execute(
+      latest_status_handler.LatestImportStatusQuery,
+      deps.latest_import_status_port,
     )
-    collection_handler.ImportStatusNotFound -> #(
-      Error(service.ServiceError(
-        service.E404xNotFound,
-        "import status not found",
-      )),
-      req_meta,
-      Nil,
-    )
-  }
+  #(
+    collection_skir_codec.map_get_latest_import_status_result(result),
+    req_meta,
+    Nil,
+  )
 }
 
 fn map_import_collection_row(
   row: collection_commands.ImportCollectionRow,
-) -> collection_handler.ImportCollectionRow {
-  collection_handler.ImportCollectionRow(
+) -> import_collection_ports.ImportCollectionRow {
+  import_collection_ports.ImportCollectionRow(
     set_code: row.set_code,
     collector_number: row.collector_number,
     quantity: row.quantity,

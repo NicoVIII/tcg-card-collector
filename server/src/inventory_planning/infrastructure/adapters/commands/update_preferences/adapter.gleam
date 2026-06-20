@@ -1,5 +1,5 @@
 import inventory_planning/application/commands/update_preferences/ports
-import inventory_planning/infrastructure/stores/preferences_store
+import inventory_planning/infrastructure/daos/preferences_dao
 
 pub fn new() -> ports.UpdatePlanningPreferencesPort {
   ports.UpdatePlanningPreferencesPort(update: fn(prefs) {
@@ -7,6 +7,6 @@ pub fn new() -> ports.UpdatePlanningPreferencesPort {
       default_sort: default_sort,
       default_grouping: default_grouping,
     ) = prefs
-    preferences_store.update(default_sort, default_grouping)
+    preferences_dao.update(default_sort, default_grouping)
   })
 }

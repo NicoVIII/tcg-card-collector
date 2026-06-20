@@ -1,5 +1,5 @@
 import inventory_planning/application/commands/upsert_rule/ports
-import inventory_planning/infrastructure/stores/inventory_rules_store
+import inventory_planning/infrastructure/daos/inventory_rules_dao
 
 pub fn new() -> ports.UpsertInventoryRulePort {
   ports.UpsertInventoryRulePort(upsert_rule: fn(rule) {
@@ -8,6 +8,6 @@ pub fn new() -> ports.UpsertInventoryRulePort {
       location_name: location_name,
       expression: expression,
     ) = rule
-    inventory_rules_store.upsert(id, location_name, expression)
+    inventory_rules_dao.upsert(id, location_name, expression)
   })
 }

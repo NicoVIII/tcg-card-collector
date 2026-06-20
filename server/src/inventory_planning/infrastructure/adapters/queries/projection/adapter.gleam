@@ -1,9 +1,9 @@
 import catalog/infrastructure/daos/catalog_dao
-import collection/infrastructure/stores/collection_store
+import collection/infrastructure/daos/collection_dao
 import gleam/list
 import gleam/option.{None, Some}
 import inventory_planning/application/queries/projection/ports
-import inventory_planning/infrastructure/stores/inventory_rules_store
+import inventory_planning/infrastructure/daos/inventory_rules_dao
 
 pub fn new() -> ports.InventoryProjectionPorts {
   ports.InventoryProjectionPorts(
@@ -15,7 +15,7 @@ pub fn new() -> ports.InventoryProjectionPorts {
 
 fn snapshot_rows_adapter() -> ports.SnapshotRowsPort {
   fn() {
-    collection_store.snapshot_rows()
+    collection_dao.snapshot_rows()
     |> list.map(fn(row) {
       let #(set_code, collector_number, quantity) = row
       ports.SnapshotRow(
@@ -44,7 +44,7 @@ fn catalog_name_adapter() -> ports.CatalogNamePort {
 
 fn rules_adapter() -> ports.RulesPort {
   fn() {
-    inventory_rules_store.list()
+    inventory_rules_dao.list()
     |> list.map(fn(rule) {
       let #(_, location_name, expression) = rule
       ports.RuleRow(location_name: location_name, expression: expression)
