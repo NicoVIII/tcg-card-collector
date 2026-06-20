@@ -1,12 +1,12 @@
+import bootstrap/composition.{type Dependencies}
+import bootstrap/skir/skirout/card_catalog/commands as card_catalog_commands
+import bootstrap/skir/skirout/card_catalog/queries as card_catalog_queries
 import catalog/application/commands/refresh/handler.{RefreshCatalogCommand} as catalog_refresh_handler
 import catalog/application/queries/list_cards/handler.{ListCatalogCardsQuery} as catalog_list_cards_handler
 import catalog/application/queries/list_cards/ports as list_cards_ports
 import catalog/driver/skir/codec as catalog_skir_codec
-import composition.{type Dependencies}
 import gleam/io
 import gleam/list
-import skir/skirout/card_catalog/commands as card_catalog_commands
-import skir/skirout/card_catalog/queries as card_catalog_queries
 import skir_client/service
 
 pub fn register(

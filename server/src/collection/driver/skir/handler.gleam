@@ -1,11 +1,11 @@
+import bootstrap/composition.{type Dependencies}
+import bootstrap/skir/skirout/collection/commands as collection_commands
+import bootstrap/skir/skirout/collection/queries as collection_queries
 import collection/application/commands/import_collection/handler as import_collection_handler
 import collection/application/commands/import_collection/ports as import_collection_ports
 import collection/application/queries/latest_status/handler as latest_status_handler
 import collection/driver/skir/codec as collection_skir_codec
-import composition.{type Dependencies}
 import gleam/list
-import skir/skirout/collection/commands as collection_commands
-import skir/skirout/collection/queries as collection_queries
 import skir_client/service
 
 pub fn register(

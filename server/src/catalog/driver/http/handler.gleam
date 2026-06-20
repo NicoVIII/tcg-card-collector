@@ -1,11 +1,11 @@
+import bootstrap/composition.{type Dependencies}
+import bootstrap/http/helpers
 import catalog/application/commands/refresh/handler.{RefreshCatalogCommand} as catalog_refresh_handler
 import catalog/application/queries/list_cards/handler.{ListCatalogCardsQuery} as catalog_list_cards_handler
 import catalog/driver/http/json_codec as catalog_codec
-import composition.{type Dependencies}
 import gleam/erlang/process
 import gleam/http/response.{type Response}
 import gleam/io
-import http/helpers
 import mist
 
 pub fn handle_list_catalog_cards(

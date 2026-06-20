@@ -1,4 +1,6 @@
-import composition.{type Dependencies}
+import bootstrap/composition.{type Dependencies}
+import bootstrap/skir/skirout/inventory_planning/commands as inventory_planning_commands
+import bootstrap/skir/skirout/inventory_planning/queries as inventory_planning_queries
 import gleam/list
 import inventory_planning/application/commands/delete_rule/handler as delete_rule_handler
 import inventory_planning/application/commands/update_preferences/handler as update_preferences_handler
@@ -11,8 +13,6 @@ import inventory_planning/application/queries/projection/ports as projection_por
 import inventory_planning/domain/grouping_strategy
 import inventory_planning/domain/sort_strategy
 import inventory_planning/driver/skir/codec as inventory_planning_skir_codec
-import skir/skirout/inventory_planning/commands as inventory_planning_commands
-import skir/skirout/inventory_planning/queries as inventory_planning_queries
 import skir_client/service
 
 pub fn register(

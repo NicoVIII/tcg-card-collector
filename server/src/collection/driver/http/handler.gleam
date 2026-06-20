@@ -1,12 +1,12 @@
+import bootstrap/composition.{type Dependencies}
+import bootstrap/http/helpers
+import bootstrap/http/json_codec
 import collection/application/commands/import_collection/handler as import_collection_handler
 import collection/application/queries/latest_status/handler as latest_status_handler
 import collection/driver/http/json_codec as collection_codec
-import composition.{type Dependencies}
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/option.{None, Some}
-import http/helpers
-import http/json_codec
 import mist
 
 pub fn handle_import_collection(

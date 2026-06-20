@@ -1,3 +1,4 @@
+import bootstrap/skir/setup
 import gleam/bit_array
 import gleam/bytes_tree
 import gleam/erlang/process
@@ -9,7 +10,6 @@ import gleam/result
 import gleam/string
 import gleam/uri
 import mist
-import skir/setup
 import skir_client/service
 
 pub fn handle_request(

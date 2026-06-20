@@ -1,9 +1,9 @@
-import composition.{type Dependencies}
+import bootstrap/composition.{type Dependencies}
+import bootstrap/http/helpers
+import bootstrap/http/json_codec
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/result
-import http/helpers
-import http/json_codec
 import inventory_planning/application/commands/delete_rule/handler as delete_rule_handler
 import inventory_planning/application/commands/update_preferences/handler as update_preferences_handler
 import inventory_planning/application/commands/upsert_rule/handler as upsert_rule_handler

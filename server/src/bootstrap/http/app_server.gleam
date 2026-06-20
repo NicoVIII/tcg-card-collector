@@ -1,6 +1,10 @@
+import bootstrap/composition.{type Dependencies}
+import bootstrap/http/helpers
+import bootstrap/http/json_codec
+import bootstrap/skir/router as skir_router
+import bootstrap/skir/setup as skir_setup
 import catalog/driver/http/handler as catalog_http
 import collection/driver/http/handler as collection_http
-import composition.{type Dependencies}
 import gleam/erlang/process
 import gleam/http.{Delete, Get, Post, Put}
 import gleam/http/request.{type Request}
@@ -8,13 +12,9 @@ import gleam/http/response.{type Response}
 import gleam/int
 import gleam/result
 import gleam/string
-import http/helpers
-import http/json_codec
 import inventory_planning/driver/http/handler as inventory_http
 import mist
 import shared/domain/os_runtime
-import skir/router as skir_router
-import skir/setup as skir_setup
 
 pub fn start(deps: Dependencies) -> Nil {
   let port = read_port()

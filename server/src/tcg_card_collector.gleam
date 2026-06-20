@@ -1,5 +1,5 @@
-import composition
-import http/app_server
+import bootstrap/composition
+import bootstrap/http/app_server
 
 pub fn main() -> Nil {
   composition.log_boot_message()

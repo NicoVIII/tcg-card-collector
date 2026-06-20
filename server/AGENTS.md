@@ -6,11 +6,11 @@ Three bounded contexts under `server/src/`: **catalog**, **collection**, **inven
 
 All three bounded contexts share the same driver pattern: drivers call use-case handlers directly — there is no intermediate application facade. Result mapping from domain types to RPC types lives in `driver/skir/codec.gleam`; route handlers and JSON encoding/decoding live in `driver/http/handler.gleam` and `driver/http/json_codec.gleam`.
 
-**Request flow (skir)**: `skir-src/*.skir` → generated `server/src/skir/skirout/` → `server/src/<context>/driver/skir/handler.gleam` → use-case handler → use-case port → domain + infrastructure. Result mapping to RPC types is done via `driver/skir/codec.gleam`.
+**Request flow (skir)**: `skir-src/*.skir` → generated `server/src/bootstrap/skir/skirout/` → `server/src/<context>/driver/skir/handler.gleam` → use-case handler → use-case port → domain + infrastructure. Result mapping to RPC types is done via `driver/skir/codec.gleam`.
 
-**Request flow (http)**: `http/app_server.gleam` routing table → `server/src/<context>/driver/http/handler.gleam` → use-case handler → use-case port → domain + infrastructure. HTTP context drivers split into `handler.gleam` (route handlers) + `json_codec.gleam` (encoders/decoders).
+**Request flow (http)**: `bootstrap/http/app_server.gleam` routing table → `server/src/<context>/driver/http/handler.gleam` → use-case handler → use-case port → domain + infrastructure. HTTP context drivers split into `handler.gleam` (route handlers) + `json_codec.gleam` (encoders/decoders).
 
-Shared cross-context code lives under `server/src/shared/`: `shared/domain/` (shared kernel — `card_key`, `non_empty_string`, `os_runtime`), `shared/application/command_result.gleam` (shared app type), `shared/infrastructure/stores/sqlite_store.gleam` (shared infra). Database access objects for each context live in `<context>/infrastructure/daos/`. Setup/composition layer at the root: `skir/{router,setup}.gleam` + `skir/skirout/` (skir server loop + thin `make_service()` chaining context registers), `http/{app_server,json_codec,helpers}.gleam` (mist bootstrap, routing table, generic response helpers).
+Shared cross-context code lives under `server/src/shared/`: `shared/domain/` (shared kernel — `card_key`, `non_empty_string`, `os_runtime`), `shared/application/command_result.gleam` (shared app type), `shared/infrastructure/stores/sqlite_store.gleam` (shared infra). Database access objects for each context live in `<context>/infrastructure/daos/`. Bootstrap/composition layer under `server/src/bootstrap/`: `bootstrap/skir/{router,setup}.gleam` + `bootstrap/skir/skirout/` (skir server loop + thin `make_service()` chaining context registers), `bootstrap/http/{app_server,json_codec,helpers}.gleam` (mist bootstrap, routing table, generic response helpers), `bootstrap/composition.gleam` (DI wiring root).
 
 ## Application Layer
 

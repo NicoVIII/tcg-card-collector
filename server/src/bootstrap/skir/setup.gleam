@@ -1,6 +1,6 @@
+import bootstrap/composition.{type Dependencies}
 import catalog/driver/skir/handler as catalog_skir
 import collection/driver/skir/handler as collection_skir
-import composition.{type Dependencies}
 import gleam/erlang/process
 import inventory_planning/driver/skir/handler as inventory_skir
 import skir_client/service
