@@ -1,5 +1,5 @@
-import catalog/infrastructure/daos/catalog_dao
-import collection/infrastructure/daos/collection_dao
+import catalog/driver/gleam/catalog_api
+import collection/driver/gleam/collection_api
 import gleam/list
 import gleam/option.{None, Some}
 import inventory_planning/application/queries/projection/ports
@@ -15,7 +15,7 @@ pub fn new() -> ports.InventoryProjectionPorts {
 
 fn snapshot_rows_adapter() -> ports.SnapshotRowsPort {
   fn() {
-    collection_dao.snapshot_rows()
+    collection_api.snapshot_rows()
     |> list.map(fn(row) {
       let #(set_code, collector_number, quantity) = row
       ports.SnapshotRow(
@@ -29,7 +29,7 @@ fn snapshot_rows_adapter() -> ports.SnapshotRowsPort {
 
 fn catalog_name_adapter() -> ports.CatalogNamePort {
   fn(set_code, collector_number) {
-    let names = catalog_dao.name_lookup()
+    let names = catalog_api.name_lookup()
     case
       list.find(names, fn(entry) {
         let #(s, c, _) = entry

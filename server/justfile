@@ -19,7 +19,7 @@ type-check:
 
 [group('check')]
 lint-check:
-  gleam run -m glinter
+  gleam run -m lint
 
 [group('check')]
 check: format-check type-check lint-check

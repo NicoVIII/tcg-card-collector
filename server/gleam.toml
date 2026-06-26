@@ -17,6 +17,10 @@ gleam_time = ">= 1.8.0 and < 2.0.0"
 gleeunit = ">= 1.0.0 and < 2.0.0"
 glinter = ">= 2.19.0 and < 3.0.0"
 gleam_otp = ">= 1.2.0 and < 2.0.0"
+linting = { path = "./linting" }
 
 [tools.glinter]
 exclude = ["src/bootstrap/skir/skirout/"] # skip generated files entirely
+
+[tools.glinter.rules]
+depends_only_on = "error"
