@@ -2,7 +2,7 @@
 
 Code is organized **context-first, then layer**: `server/src/<bounded_context>/{domain,application/{commands,queries},infrastructure/{adapters,daos},driver/{skir,http}}/`. Strict hexagonal layers apply within and across contexts — each layer may only import itself and layers below it: `domain` → `application` → `infrastructure`/`driver` → `composition`. `shared/domain` is available everywhere.
 
-## Architecture Rules (enforced by glinter via `server/linting/`)
+## Architecture Rules (enforced by glinter via `server/vendor/gleam-libs/packages/glinter_arch`)
 
 `just server::lint-check` runs `gleam run -m lint` which applies a custom `depends_only_on` rule. Violations are build errors.
 

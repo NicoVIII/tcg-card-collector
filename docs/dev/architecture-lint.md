@@ -13,13 +13,13 @@ The backend follows strict layer boundaries inspired by full-house.
 
 ## Enforcement
 
-- Rule implementation reference: `server/linting/src/rules/depends_only_on.gleam`
-- Runtime architecture gate: `server/linting/check_architecture.sh`
-- Backend quality entrypoint: `just check-backend`
+- Rule framework: `server/vendor/gleam-libs/packages/glinter_arch` (git submodule)
+- Project-specific config (categorize/is_allowed/describe): `server/test/lint.gleam`
+- Runtime architecture gate: `just server::lint-check` (`gleam run -m lint`)
 
 ## Exception Policy
 
-Exceptions are documented in `server/linting/architecture_exceptions.txt`.
+Exceptions are declared in the `allowed_cross_bc` list in `server/test/lint.gleam`.
 
 Allowed:
 
@@ -29,7 +29,3 @@ Not allowed:
 
 - Wildcards or blanket layer bypasses.
 - Permanent exceptions without a follow-up task.
-
-Exception format:
-
-`source/module -> target/module`

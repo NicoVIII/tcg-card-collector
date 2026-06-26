@@ -1,0 +1,3 @@
+[submodule "server/vendor/gleam-libs"]
+	path = server/vendor/gleam-libs
+	url = https://github.com/NicoVIII/gleam-libs.git
