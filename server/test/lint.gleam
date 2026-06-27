@@ -1,6 +1,7 @@
 import gleam/string
 import glinter
 import glinter_arch/bounded_context
+import glinter_arch/cqrs
 import glinter_arch/depends_only_on
 import glinter_arch/hexagonal.{Application, Domain, Driver, Infrastructure}
 import glinter_arch/source_map
@@ -23,7 +24,7 @@ type DriverCategory {
 }
 
 type Layer =
-  hexagonal.Layer(DriverCategory)
+  hexagonal.Layer(cqrs.Application, DriverCategory)
 
 type External {
   GleamLibs
@@ -49,20 +50,36 @@ fn categorize(path: String) -> Category {
     ["catalog", ..tail] ->
       bounded_context.Bc(
         Catalog,
-        hexagonal.categorize_layer(categorize_driver, tail),
+        hexagonal.categorize_layer(
+          cqrs.categorize_application,
+          categorize_driver,
+          tail,
+        ),
       )
     ["collection", ..tail] ->
       bounded_context.Bc(
         Collection,
-        hexagonal.categorize_layer(categorize_driver, tail),
+        hexagonal.categorize_layer(
+          cqrs.categorize_application,
+          categorize_driver,
+          tail,
+        ),
       )
     ["inventory_planning", ..tail] ->
       bounded_context.Bc(
         InventoryPlanning,
-        hexagonal.categorize_layer(categorize_driver, tail),
+        hexagonal.categorize_layer(
+          cqrs.categorize_application,
+          categorize_driver,
+          tail,
+        ),
       )
     ["shared", ..tail] ->
-      bounded_context.Shared(hexagonal.categorize_layer(categorize_driver, tail))
+      bounded_context.Shared(hexagonal.categorize_layer(
+        cqrs.categorize_application,
+        categorize_driver,
+        tail,
+      ))
     ["bootstrap", ..] -> bounded_context.Bootstrap
     ["tcg_card_collector"] -> bounded_context.Bootstrap
     ["gleam", ..] -> bounded_context.External(GleamLibs)
@@ -73,17 +90,14 @@ fn categorize(path: String) -> Category {
   }
 }
 
-fn allowed_driver(driver: DriverCategory) -> List(DriverCategory) {
-  case driver {
-    Common -> [Common]
-    Driving(t) -> [Driving(t), Common]
-  }
+fn is_driver_allowed(from: DriverCategory, to: DriverCategory) -> Bool {
+  to == Common || from == to
 }
 
 fn allowed_externals(layer: Layer) -> List(External) {
   case layer {
     Domain -> []
-    Application -> []
+    Application(_) -> []
     Infrastructure -> [Simplifile]
     Driver(Common) -> []
     Driver(Driving(Http)) -> [MistLib]
@@ -110,7 +124,7 @@ fn describe_bc(bc: BoundedContext, layer: Layer) -> String {
   "BoundedContext("
   <> bc_str
   <> ", "
-  <> hexagonal.describe_layer(describe_driver, layer)
+  <> hexagonal.describe_layer(cqrs.describe_application, describe_driver, layer)
   <> ")"
 }
 
@@ -125,10 +139,22 @@ fn describe_external(ext: External) -> String {
 
 pub fn main() {
   let sm = source_map.build_source_map("./src")
-  let describe_layer_fn = hexagonal.describe_layer(describe_driver, _)
+  let describe_layer_fn = hexagonal.describe_layer(
+    cqrs.describe_application,
+    describe_driver,
+    _,
+  )
   let hex_config =
     bounded_context.Config(
-      allowed_layers: hexagonal.allowed_layers(allowed_driver, _),
+      is_layer_allowed: fn(from, to) {
+        hexagonal.is_layer_allowed(
+          cqrs.is_application_allowed,
+          cqrs.application_sees_domain,
+          is_driver_allowed,
+          from,
+          to,
+        )
+      },
       allowed_externals: allowed_externals,
       is_universally_allowed_ext: fn(ext) { ext == GleamLibs },
       is_cross_bc_link: fn(from_layer, to_layer) {
