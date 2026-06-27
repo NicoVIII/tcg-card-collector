@@ -1,6 +1,4 @@
 import bootstrap/composition.{type Dependencies}
-import bootstrap/http/helpers
-import bootstrap/http/json_codec
 import bootstrap/skir/router as skir_router
 import bootstrap/skir/setup as skir_setup
 import catalog/driver/http/handler as catalog_http
@@ -15,6 +13,8 @@ import gleam/string
 import inventory_planning/driver/http/handler as inventory_http
 import mist
 import shared/domain/os_runtime
+import shared/driver/http/helpers
+import shared/driver/http/json_codec
 
 pub fn start(deps: Dependencies) -> Nil {
   let port = read_port()
@@ -41,7 +41,11 @@ pub fn start(deps: Dependencies) -> Nil {
     |> mist.start
 
   let _ =
-    catalog_http.launch_catalog_refresh(deps, refresh_worker_name, "startup")
+    catalog_http.launch_catalog_refresh(
+      deps.catalog,
+      refresh_worker_name,
+      "startup",
+    )
 
   process.sleep_forever()
 }
@@ -61,22 +65,26 @@ fn handle_request(
   let path = path_without_query(req.path)
 
   case req.method, path {
-    Get, "/api/catalog/cards" -> catalog_http.handle_list_catalog_cards(deps)
+    Get, "/api/catalog/cards" ->
+      catalog_http.handle_list_catalog_cards(deps.catalog)
     Post, "/api/catalog/refresh" ->
-      catalog_http.handle_refresh_catalog(deps, refresh_worker_name)
-    Post, "/api/import" -> collection_http.handle_import_collection(req, deps)
+      catalog_http.handle_refresh_catalog(deps.catalog, refresh_worker_name)
+    Post, "/api/import" ->
+      collection_http.handle_import_collection(req, deps.collection)
     Get, "/api/import/latest" ->
-      collection_http.handle_latest_import_status(deps)
+      collection_http.handle_latest_import_status(deps.collection)
     Get, "/api/inventory/rules" ->
-      inventory_http.handle_list_inventory_rules(deps)
+      inventory_http.handle_list_inventory_rules(deps.inventory_planning)
     Put, "/api/inventory/rules" ->
-      inventory_http.handle_upsert_inventory_rule(req, deps)
+      inventory_http.handle_upsert_inventory_rule(req, deps.inventory_planning)
     Delete, "/api/inventory/rules" ->
-      inventory_http.handle_delete_inventory_rule(req, deps)
+      inventory_http.handle_delete_inventory_rule(req, deps.inventory_planning)
     Get, "/api/inventory/projection" ->
-      inventory_http.handle_inventory_projection(req, deps)
-    Get, "/api/settings" -> inventory_http.handle_get_settings(deps)
-    Put, "/api/settings" -> inventory_http.handle_update_settings(req, deps)
+      inventory_http.handle_inventory_projection(req, deps.inventory_planning)
+    Get, "/api/settings" ->
+      inventory_http.handle_get_settings(deps.inventory_planning)
+    Put, "/api/settings" ->
+      inventory_http.handle_update_settings(req, deps.inventory_planning)
     Get, "/api/skir" | Post, "/api/skir" ->
       skir_router.handle_request(req, server_name)
     _, _ -> helpers.json_response(404, json_codec.encode_error("not found"))

@@ -1,5 +1,5 @@
-import bootstrap/skir/skirout/inventory_planning/commands as inventory_planning_commands
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
+import shared/driver/skir/skirout/inventory_planning/commands as inventory_planning_commands
 import skir_client/service
 
 pub fn map_upsert_inventory_rule_result(

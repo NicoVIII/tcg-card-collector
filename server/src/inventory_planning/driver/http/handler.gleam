@@ -1,6 +1,3 @@
-import bootstrap/composition.{type Dependencies}
-import bootstrap/http/helpers
-import bootstrap/http/json_codec
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/result
@@ -12,8 +9,11 @@ import inventory_planning/application/queries/list_rules/handler as list_rules_h
 import inventory_planning/application/queries/projection/handler as projection_handler
 import inventory_planning/domain/grouping_strategy
 import inventory_planning/domain/sort_strategy
+import inventory_planning/driver/dependencies.{type Dependencies}
 import inventory_planning/driver/http/json_codec as inventory_codec
 import mist
+import shared/driver/http/helpers
+import shared/driver/http/json_codec
 
 pub fn handle_list_inventory_rules(
   deps: Dependencies,

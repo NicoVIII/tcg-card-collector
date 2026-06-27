@@ -21,9 +21,9 @@ pub type ServerState {
 
 pub fn make_service() -> RpcService {
   service.new(empty_message: Nil)
-  |> catalog_skir.register
-  |> collection_skir.register
-  |> inventory_skir.register
+  |> catalog_skir.register(fn(ctx: Dependencies) { ctx.catalog })
+  |> collection_skir.register(fn(ctx: Dependencies) { ctx.collection })
+  |> inventory_skir.register(fn(ctx: Dependencies) { ctx.inventory_planning })
 }
 
 fn handle_server_message(

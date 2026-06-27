@@ -1,6 +1,6 @@
-import bootstrap/skir/skirout/card_catalog/commands as card_catalog_commands
 import catalog/application/commands/refresh/ports as refresh_ports
 import catalog/driver/skir/codec as catalog_skir_codec
+import shared/driver/skir/skirout/card_catalog/commands as card_catalog_commands
 import skir_client/service
 
 pub fn ok_result_maps_to_response_success_test() {

@@ -1,4 +1,3 @@
-import bootstrap/http/json_codec
 import gleam/bit_array
 import gleam/bytes_tree
 import gleam/http/request.{type Request}
@@ -6,6 +5,7 @@ import gleam/http/response.{type Response}
 import gleam/list
 import gleam/string
 import mist
+import shared/driver/http/json_codec
 
 pub fn json_response(status: Int, body: String) -> Response(mist.ResponseData) {
   response.new(status)

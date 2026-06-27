@@ -1,5 +1,5 @@
-import bootstrap/skir/skirout/card_catalog/commands as card_catalog_commands
 import catalog/application/commands/refresh/ports as refresh_ports
+import shared/driver/skir/skirout/card_catalog/commands as card_catalog_commands
 import skir_client/service
 
 pub fn map_refresh_catalog_result(

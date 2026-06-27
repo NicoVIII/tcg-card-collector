@@ -1,6 +1,6 @@
 generators:
   - mod: skir-gleam-gen
-    outDir: ./server/src/bootstrap/skir/skirout
+    outDir: ./server/src/shared/driver/skir/skirout
     config: {}
   - mod: skir-typescript-gen
     outDir: ./client-web/src/data/skirout
