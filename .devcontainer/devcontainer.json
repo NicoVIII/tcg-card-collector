@@ -18,8 +18,8 @@
       "moby": false
     }
   },
-  "postCreateCommand": "sudo chmod +x ./.devcontainer/post_create.sh && ./.devcontainer/post_create.sh && cd client-web && bun install",
-  "postStartCommand": "lefthook install && cd client-web && bun install",
+  "postCreateCommand": "sudo chmod +x ./.devcontainer/post_create.sh && ./.devcontainer/post_create.sh && cd client-web && bun install && git submodule init",
+  "postStartCommand": "lefthook install && git submodule update && just skir-gen && cd client-web && bun install",
   "customizations": {
     "vscode": {
       "extensions": [
