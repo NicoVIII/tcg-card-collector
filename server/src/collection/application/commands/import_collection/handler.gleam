@@ -50,7 +50,7 @@ pub fn execute(
   let valid_cards =
     list.filter_map(rows, fn(row) {
       case
-        card_key.new(
+        card_key.from_user_input(
           set_code: row.set_code,
           collector_number: row.collector_number,
         )

@@ -69,6 +69,10 @@ fn parse_card_row(line: String) -> Result(card_printing.CardPrinting, String) {
               Error("id=" <> id <> " empty set_code")
             Error(card_key.EmptyCollectorNumber) ->
               Error("id=" <> id <> " empty collector_number")
+            Error(card_key.SetCodeNotCanonical) ->
+              Error("id=" <> id <> " set_code not canonical")
+            Error(card_key.CollectorNumberNotCanonical) ->
+              Error("id=" <> id <> " collector_number not canonical")
             Ok(key) ->
               case parse_rarity(rarity) {
                 Error(_) -> Error("id=" <> id <> " unknown rarity: " <> rarity)
