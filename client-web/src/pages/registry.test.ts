@@ -5,7 +5,7 @@ import { pageRegistry } from "./registry";
 describe("page registry", () => {
   it("exports an entry for every MVP route", () => {
     const keys = Object.keys(pageRegistry);
-    expect(keys).toEqual(["/import", "/catalog", "/inventory", "/settings"]);
+    expect(keys).toEqual(["/collection", "/catalog", "/inventory", "/settings"]);
   });
 
   it("all entries are functions (component constructors)", () => {

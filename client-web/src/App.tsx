@@ -4,7 +4,7 @@ import { pageRegistry } from "./pages/registry";
 import { routes } from "./routes";
 
 export default function App() {
-  const [path, setPath] = createSignal("/import");
+  const [path, setPath] = createSignal("/collection");
   const current = () => routes.find((route) => route.path === path()) ?? routes[0];
   const currentPage = () => pageRegistry[current().path];
 

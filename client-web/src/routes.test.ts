@@ -4,7 +4,7 @@ import { routes } from "./routes";
 describe("routes", () => {
   it("exposes the four MVP routes", () => {
     expect(routes.map((route) => route.path)).toEqual([
-      "/import",
+      "/collection",
       "/catalog",
       "/inventory",
       "/settings",

@@ -1,0 +1,136 @@
+import { For, Show, createMemo, createSignal } from "solid-js";
+import { mapError } from "../data/http/error";
+import { useImportCollectionMutation } from "../data/collection_import/mutation";
+import { useLatestImportStatusQuery } from "../data/collection_import/query";
+import { useCollectionCardsQuery } from "../data/collection/query";
+import { parseImportRowsCsv } from "./import_rows";
+
+export function CollectionPage() {
+  // import form state
+  const [sourceName, setSourceName] = createSignal("deckstats-export.csv");
+  const [rowsCsv, setRowsCsv] = createSignal("M11,146,2");
+  const [submitError, setSubmitError] = createSignal<string | null>(null);
+  const mutation = useImportCollectionMutation();
+  const statusQuery = useLatestImportStatusQuery();
+
+  // collection list state
+  const [offset, setOffset] = createSignal(0);
+  const [limit] = createSignal(25);
+  const cardsQuery = useCollectionCardsQuery(offset, limit);
+
+  const total = () => cardsQuery.data?.total ?? 0;
+  const hasMore = () => offset() + limit() < total();
+  const hasPrev = () => offset() > 0;
+
+  const statusMessage = createMemo(() => {
+    if (statusQuery.isLoading) {
+      return "Loading latest import status...";
+    }
+
+    if (statusQuery.isError) {
+      return mapError(statusQuery.error).message;
+    }
+
+    if (statusQuery.data?.kind !== "found") {
+      return "No import has been run yet.";
+    }
+
+    const run = statusQuery.data.run;
+    return `Last import ${run.importRunId} from ${run.sourceName} is ${run.status} (${run.rowCount} rows).`;
+  });
+
+  const submitImport = async () => {
+    setSubmitError(null);
+
+    const parsedRows = parseImportRowsCsv(rowsCsv());
+    if (parsedRows.error !== null) {
+      setSubmitError(parsedRows.error);
+      return;
+    }
+
+    try {
+      const response = await mutation.mutateAsync({
+        importRunId: crypto.randomUUID(),
+        sourceName: sourceName(),
+        sourceChecksum: "manual-upload",
+        rowCount: parsedRows.rows.length,
+        rows: parsedRows.rows,
+      });
+
+      if (!response.accepted) {
+        setSubmitError("Import request was rejected.");
+      }
+    } catch (error) {
+      setSubmitError(mapError(error).message);
+    }
+  };
+
+  return (
+    <section>
+      <h2>Collection</h2>
+      <details>
+        <summary>Import</summary>
+        <label>
+          Source name
+          <input
+            value={sourceName()}
+            onInput={(event) => setSourceName(event.currentTarget.value)}
+          />
+        </label>
+        <label>
+          Rows CSV (set_code,collector_number,quantity)
+          <textarea
+            value={rowsCsv()}
+            onInput={(event) => setRowsCsv(event.currentTarget.value)}
+            rows={6}
+          />
+        </label>
+        <button onClick={submitImport} disabled={mutation.isPending}>
+          Start import
+        </button>
+        <Show when={submitError() !== null}>
+          <p role="alert">{submitError()}</p>
+        </Show>
+        <p>{statusMessage()}</p>
+        <Show when={statusQuery.data?.kind === "found"}>
+          <pre>{JSON.stringify(statusQuery.data, null, 2)}</pre>
+        </Show>
+      </details>
+      <Show when={cardsQuery.isLoading}>
+        <p>Loading collection...</p>
+      </Show>
+      <Show when={cardsQuery.isError}>
+        <p role="alert">{mapError(cardsQuery.error).message}</p>
+      </Show>
+      <Show
+        when={(cardsQuery.data?.data?.length ?? 0) > 0}
+        fallback={
+          <Show when={!cardsQuery.isLoading}>
+            <p>No cards in collection.</p>
+          </Show>
+        }
+      >
+        <ul>
+          <For each={cardsQuery.data?.data}>
+            {(card) => (
+              <li>
+                {card.set_code} #{card.collector_number} &times;{card.quantity}
+              </li>
+            )}
+          </For>
+        </ul>
+        <div>
+          <button onClick={() => setOffset(offset() - limit())} disabled={!hasPrev()}>
+            Prev
+          </button>
+          <span>
+            {offset() + 1}–{Math.min(offset() + limit(), total())} of {total()}
+          </span>
+          <button onClick={() => setOffset(offset() + limit())} disabled={!hasMore()}>
+            Next
+          </button>
+        </div>
+      </Show>
+    </section>
+  );
+}

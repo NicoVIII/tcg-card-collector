@@ -1,6 +1,8 @@
 import collection/application/commands/import_collection/handler as import_collection_handler
 import collection/application/commands/import_collection/ports as import_collection_ports
 import collection/application/queries/latest_status/handler as latest_status_handler
+import collection/application/queries/list_cards/handler as list_collection_cards_handler
+import collection/application/queries/list_cards/ports as list_collection_cards_ports
 import collection/driver/dependencies.{type Dependencies}
 import collection/driver/skir/codec as collection_skir_codec
 import gleam/list
@@ -20,6 +22,10 @@ pub fn register(
   |> service.add_method(
     collection_queries.get_latest_import_status_method(),
     handle_get_latest_import_status(get_dependencies),
+  )
+  |> service.add_method(
+    collection_queries.list_collection_cards_method(),
+    handle_list_collection_cards(get_dependencies),
   )
 }
 
@@ -81,4 +87,83 @@ fn map_import_collection_row(
     collector_number: row.collector_number,
     quantity: row.quantity,
   )
+}
+
+fn handle_list_collection_cards(get_dependencies: fn(context) -> Dependencies) {
+  fn(
+    req: collection_queries.ListCollectionCardsRequest,
+    req_meta: Nil,
+    ctx: context,
+  ) -> #(
+    Result(collection_queries.CollectionCardList, service.ServiceError),
+    Nil,
+    Nil,
+  ) {
+    let all_cards =
+      list_collection_cards_handler.execute(
+        list_collection_cards_handler.ListCollectionCardsQuery,
+        get_dependencies(ctx).list_collection_cards_port,
+      )
+    let total = list.length(all_cards)
+    let paged_cards = paginate_cards(all_cards, req.offset, req.limit)
+    let response =
+      collection_queries.collection_card_list_new(
+        list.map(paged_cards, map_collection_card),
+        req.limit,
+        req.offset,
+        total,
+      )
+    #(Ok(response), req_meta, Nil)
+  }
+}
+
+fn map_collection_card(
+  card: list_collection_cards_ports.CollectionCardReadModel,
+) -> collection_queries.CollectionCard {
+  collection_queries.collection_card_new(
+    card.collector_number,
+    card.quantity,
+    card.set_code,
+  )
+}
+
+fn paginate_cards(
+  cards: List(list_collection_cards_ports.CollectionCardReadModel),
+  offset: Int,
+  limit: Int,
+) -> List(list_collection_cards_ports.CollectionCardReadModel) {
+  let normalized_offset = clamp_non_negative(offset)
+  let normalized_limit = clamp_non_negative(limit)
+
+  cards
+  |> drop_items(normalized_offset)
+  |> fn(remaining) {
+    case normalized_limit {
+      0 -> remaining
+      _ -> take_items(remaining, normalized_limit)
+    }
+  }
+}
+
+fn clamp_non_negative(value: Int) -> Int {
+  case value < 0 {
+    True -> 0
+    False -> value
+  }
+}
+
+fn drop_items(items: List(a), count: Int) -> List(a) {
+  case count <= 0, items {
+    True, _ -> items
+    False, [] -> []
+    False, [_first, ..rest] -> drop_items(rest, count - 1)
+  }
+}
+
+fn take_items(items: List(a), count: Int) -> List(a) {
+  case count <= 0, items {
+    True, _ -> []
+    False, [] -> []
+    False, [first, ..rest] -> [first, ..take_items(rest, count - 1)]
+  }
 }

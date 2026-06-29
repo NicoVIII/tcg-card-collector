@@ -12,3 +12,25 @@ struct GetLatestImportStatusRequest {
 method GetLatestImportStatus(
   GetLatestImportStatusRequest
 ): ImportStatus = 202;
+
+struct CollectionCard {
+  set_code: string = 0;
+  collector_number: string = 1;
+  quantity: int32 = 2;
+}
+
+struct CollectionCardList {
+  data: [CollectionCard] = 0;
+  total: int32 = 1;
+  offset: int32 = 2;
+  limit: int32 = 3;
+}
+
+struct ListCollectionCardsRequest {
+  offset: int32 = 0;
+  limit: int32 = 1;
+}
+
+method ListCollectionCards(
+  ListCollectionCardsRequest
+): CollectionCardList = 203;

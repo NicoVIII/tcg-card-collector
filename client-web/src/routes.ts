@@ -1,11 +1,11 @@
 export type AppRoute = {
-  path: "/import" | "/catalog" | "/inventory" | "/settings";
+  path: "/collection" | "/catalog" | "/inventory" | "/settings";
   label: string;
   description: string;
 };
 
 export const routes: AppRoute[] = [
-  { path: "/import", label: "Import", description: "Collection import flow will live here." },
+  { path: "/collection", label: "Collection", description: "Your card collection." },
   { path: "/catalog", label: "Catalog", description: "Catalog browse and search will live here." },
   {
     path: "/inventory",
