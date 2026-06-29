@@ -2,6 +2,7 @@ import catalog/driver/dependencies.{
   type Dependencies as CatalogDependencies, Dependencies as CatalogDependencies,
 } as _
 import catalog/infrastructure/adapters/commands/refresh/adapter as refresh_adapter
+import catalog/infrastructure/adapters/queries/get_cards/adapter as get_cards_adapter
 import catalog/infrastructure/adapters/queries/list_cards/adapter as list_cards_adapter
 import collection/driver/dependencies.{
   type Dependencies as CollectionDependencies,
@@ -43,6 +44,7 @@ pub fn dependencies() -> Dependencies {
     catalog: CatalogDependencies(
       refresh_catalog_ports: refresh_adapter.new(),
       list_catalog_cards_port: list_cards_adapter.new(),
+      get_catalog_cards_port: get_cards_adapter.new(),
     ),
     collection: CollectionDependencies(
       import_collection_ports: import_collection_adapter.new(),

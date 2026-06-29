@@ -1,50 +1,81 @@
 import { skirClient } from "../http/skir_rpc";
 import {
+  GetCatalogCards,
+  GetCatalogCardsRequest,
+  CatalogCardKey as RpcCatalogCardKey,
   ListCatalogCards,
   ListCatalogCardsRequest,
-  CatalogCardList as RpcCatalogCardList,
+  CatalogCardKeyList as RpcCatalogCardKeyList,
+  CatalogCard as RpcCatalogCard,
 } from "../skirout/card_catalog/queries.js";
 
-const refreshTimeoutMs = 90_000;
-const refreshEndpoint = "/api/catalog/refresh";
-
-export type CatalogCard = {
-  id: string;
-  name: string;
+export type CatalogCardKey = {
   set_code: string;
+  collector_number: string;
 };
 
-export type CatalogCardList = {
-  data: CatalogCard[];
+export type CatalogCard = {
+  set_code: string;
+  collector_number: string;
+  name: string;
+  image_uri: string;
+};
+
+export type CatalogCardKeyList = {
+  data: CatalogCardKey[];
   total: number;
   offset: number;
   limit: number;
 };
 
-function toCatalogCardList(response: RpcCatalogCardList): CatalogCardList {
+function toCatalogCardKey(rpc: RpcCatalogCardKey): CatalogCardKey {
+  return { set_code: rpc.setCode, collector_number: rpc.collectorNumber };
+}
+
+function toCatalogCard(rpc: RpcCatalogCard): CatalogCard {
   return {
-    data: response.data.map((card) => ({
-      id: card.id,
-      name: card.name,
-      set_code: card.setCode,
-    })),
+    set_code: rpc.setCode,
+    collector_number: rpc.collectorNumber,
+    name: rpc.name,
+    image_uri: rpc.imageUri,
+  };
+}
+
+function toCatalogCardKeyList(response: RpcCatalogCardKeyList): CatalogCardKeyList {
+  return {
+    data: response.data.map(toCatalogCardKey),
     total: response.total,
     offset: response.offset,
     limit: response.limit,
   };
 }
 
-export async function listCatalogCards(offset: number, limit: number): Promise<CatalogCardList> {
+export async function listCatalogCards(offset: number, limit: number): Promise<CatalogCardKeyList> {
   const response = await skirClient.invokeRemote(
     ListCatalogCards,
     ListCatalogCardsRequest.create({ offset, limit }),
     "POST",
   );
+  return toCatalogCardKeyList(response);
+}
 
-  return toCatalogCardList(response);
+export async function getCatalogCards(keys: CatalogCardKey[]): Promise<CatalogCard[]> {
+  const response = await skirClient.invokeRemote(
+    GetCatalogCards,
+    GetCatalogCardsRequest.create({
+      keys: keys.map((k) =>
+        RpcCatalogCardKey.create({ setCode: k.set_code, collectorNumber: k.collector_number }),
+      ),
+    }),
+    "POST",
+  );
+  return response.data.map(toCatalogCard);
 }
 
 export async function refreshCatalog(): Promise<{ success: boolean; message: string }> {
+  const refreshTimeoutMs = 90_000;
+  const refreshEndpoint = "/api/catalog/refresh";
+
   const response = await withTimeout(
     fetch(refreshEndpoint, { method: "POST" }),
     refreshTimeoutMs,

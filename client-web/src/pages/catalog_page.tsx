@@ -1,7 +1,8 @@
-import { For, Show, createSignal } from "solid-js";
+import { Show, createSignal } from "solid-js";
 import { useRefreshCatalogMutation } from "../data/card_catalog/mutation";
 import { useCatalogCardsQuery } from "../data/card_catalog/query";
 import { mapError } from "../data/http/error";
+import { CardGrid } from "../components/card_grid";
 
 export function CatalogPage() {
   const [offset, setOffset] = createSignal(0);
@@ -9,10 +10,10 @@ export function CatalogPage() {
   const [refreshFeedback, setRefreshFeedback] = createSignal<
     { kind: "success" | "error"; message: string } | undefined
   >(undefined);
-  const cardsQuery = useCatalogCardsQuery(offset, limit);
+  const keysQuery = useCatalogCardsQuery(offset, limit);
   const refreshMutation = useRefreshCatalogMutation();
 
-  const total = () => cardsQuery.data?.total ?? 0;
+  const total = () => keysQuery.data?.total ?? 0;
   const hasMore = () => offset() + limit() < total();
   const hasPrev = () => offset() > 0;
 
@@ -21,7 +22,7 @@ export function CatalogPage() {
 
     try {
       const response = await refreshMutation.mutateAsync();
-      await cardsQuery.refetch();
+      await keysQuery.refetch();
 
       if (!response.success) {
         setRefreshFeedback({
@@ -33,8 +34,8 @@ export function CatalogPage() {
 
       let message = response.message;
 
-      if ((cardsQuery.data?.total ?? 0) > 0) {
-        message = `${message} Current catalog rows: ${cardsQuery.data?.total ?? 0}.`;
+      if ((keysQuery.data?.total ?? 0) > 0) {
+        message = `${message} Current catalog rows: ${keysQuery.data?.total ?? 0}.`;
       }
 
       setRefreshFeedback({
@@ -63,29 +64,21 @@ export function CatalogPage() {
           <p role={feedback().kind === "error" ? "alert" : "status"}>{feedback().message}</p>
         )}
       </Show>
-      <Show when={cardsQuery.isLoading}>
+      <Show when={keysQuery.isLoading}>
         <p>Loading cards...</p>
       </Show>
-      <Show when={cardsQuery.isError}>
-        <p role="alert">{mapError(cardsQuery.error).message}</p>
+      <Show when={keysQuery.isError}>
+        <p role="alert">{mapError(keysQuery.error).message}</p>
       </Show>
       <Show
-        when={(cardsQuery.data?.data?.length ?? 0) > 0}
+        when={(keysQuery.data?.data?.length ?? 0) > 0}
         fallback={
-          <Show when={!cardsQuery.isLoading}>
+          <Show when={!keysQuery.isLoading}>
             <p>No cards found.</p>
           </Show>
         }
       >
-        <ul>
-          <For each={cardsQuery.data?.data}>
-            {(card) => (
-              <li>
-                {card.name} ({card.set_code})
-              </li>
-            )}
-          </For>
-        </ul>
+        <CardGrid cards={keysQuery.data?.data ?? []} />
         <div>
           <button onClick={() => setOffset(offset() - limit())} disabled={!hasPrev()}>
             Prev

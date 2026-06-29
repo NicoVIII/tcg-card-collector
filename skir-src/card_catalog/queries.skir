@@ -1,14 +1,24 @@
+struct CatalogCardKey {
+  set_code: string = 0;
+  collector_number: string = 1;
+}
+
 struct CatalogCard {
-  id: string = 0;
-  name: string = 1;
-  set_code: string = 2;
+  set_code: string = 0;
+  collector_number: string = 1;
+  name: string = 2;
+  image_uri: string = 3;
+}
+
+struct CatalogCardKeyList {
+  data: [CatalogCardKey] = 0;
+  total: int32 = 1;
+  offset: int32 = 2;
+  limit: int32 = 3;
 }
 
 struct CatalogCardList {
   data: [CatalogCard] = 0;
-  total: int32 = 1;
-  offset: int32 = 2;
-  limit: int32 = 3;
 }
 
 struct ListCatalogCardsRequest {
@@ -16,6 +26,14 @@ struct ListCatalogCardsRequest {
   limit: int32 = 1;
 }
 
+struct GetCatalogCardsRequest {
+  keys: [CatalogCardKey] = 0;
+}
+
 method ListCatalogCards(
   ListCatalogCardsRequest
-): CatalogCardList = 102;
+): CatalogCardKeyList = 102;
+
+method GetCatalogCards(
+  GetCatalogCardsRequest
+): CatalogCardList = 103;

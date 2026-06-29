@@ -56,3 +56,68 @@ h1 {
 h2 {
   margin-top: 0;
 }
+
+/* Card grid */
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.card-tile {
+  position: relative;
+  border: 1px solid #dce4ea;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.card-tile img {
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  object-fit: cover;
+  display: block;
+}
+
+.card-tile-name {
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-tile-placeholder {
+  aspect-ratio: 5 / 7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  font-size: 0.75rem;
+  color: #888;
+  text-align: center;
+}
+
+.card-tile-unknown {
+  font-style: italic;
+}
+
+.card-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 999px;
+  z-index: 1;
+}

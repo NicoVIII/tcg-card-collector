@@ -1,9 +1,10 @@
-import { For, Show, createMemo, createSignal } from "solid-js";
+import { Show, createMemo, createSignal } from "solid-js";
 import { mapError } from "../data/http/error";
 import { useImportCollectionMutation } from "../data/collection_import/mutation";
 import { useLatestImportStatusQuery } from "../data/collection_import/query";
 import { useCollectionCardsQuery } from "../data/collection/query";
 import { parseImportRowsCsv } from "./import_rows";
+import { CardGrid } from "../components/card_grid";
 
 export function CollectionPage() {
   // import form state
@@ -110,15 +111,7 @@ export function CollectionPage() {
           </Show>
         }
       >
-        <ul>
-          <For each={cardsQuery.data?.data}>
-            {(card) => (
-              <li>
-                {card.set_code} #{card.collector_number} &times;{card.quantity}
-              </li>
-            )}
-          </For>
-        </ul>
+        <CardGrid cards={cardsQuery.data?.data ?? []} />
         <div>
           <button onClick={() => setOffset(offset() - limit())} disabled={!hasPrev()}>
             Prev

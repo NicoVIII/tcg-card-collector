@@ -6,6 +6,7 @@
       "name": "tcg-card-collector-web",
       "dependencies": {
         "@tanstack/solid-query": "^5.59.18",
+        "@yornaath/batshit": "^0.14.0",
         "skir-client": "^1.0.19",
         "solid-js": "^1.9.3",
       },
@@ -361,6 +362,10 @@
     "@vitest/spy": ["@vitest/spy@2.1.9", "", { "dependencies": { "tinyspy": "^3.0.2" } }, "sha512-E1B35FwzXXTs9FHNK6bDszs7mtydNi5MIfUWpceJ8Xbfb1gBMscAnwLbEu+B44ed6W3XjL9/ehLPHR1fkf1KLQ=="],
 
     "@vitest/utils": ["@vitest/utils@2.1.9", "", { "dependencies": { "@vitest/pretty-format": "2.1.9", "loupe": "^3.1.2", "tinyrainbow": "^1.2.0" } }, "sha512-v0psaMSkNJ3A2NMrUEHFRzJtDPFn+/VWZ5WxImB21T9fjucJRmS7xCS3ppEnARb9y11OAzaD+P2Ps+b+BGX5iQ=="],
+
+    "@yornaath/batshit": ["@yornaath/batshit@0.14.0", "", { "dependencies": { "@yornaath/batshit-devtools": "^1.7.1" } }, "sha512-0I+xMi5JoRs3+qVXXhk2AmsEl43MwrG+L+VW+nqw/qQqMFtgRPszLaxhJCfsBKnjfJ0gJzTI1Q9Q9+y903HyHQ=="],
+
+    "@yornaath/batshit-devtools": ["@yornaath/batshit-devtools@1.7.1", "", {}, "sha512-AyttV1Njj5ug+XqEWY1smV45dTWMlWKtj1B8jcFYgBKUFyUlF/qEhD+iP1E5UaRYW6hQRYD9T2WNDwFTrOMWzQ=="],
 
     "acorn": ["acorn@8.16.0", "", { "bin": "bin/acorn" }, "sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw=="],
 

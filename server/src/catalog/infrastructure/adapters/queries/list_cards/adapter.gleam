@@ -6,8 +6,8 @@ pub fn new() -> ports.ListCatalogCardsPort {
   ports.ListCatalogCardsPort(list_cards: fn() {
     catalog_dao.list()
     |> list.map(fn(row) {
-      let #(id, name, set_code) = row
-      ports.CatalogCardReadModel(id:, name:, set_code:)
+      let #(set_code, collector_number) = row
+      ports.CatalogCardKeyReadModel(set_code:, collector_number:)
     })
   })
 }

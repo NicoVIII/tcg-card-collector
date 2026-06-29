@@ -1,4 +1,6 @@
 import catalog/application/commands/refresh/handler.{RefreshCatalogCommand} as catalog_refresh_handler
+import catalog/application/queries/get_cards/handler as get_catalog_cards_handler
+import catalog/application/queries/get_cards/ports as get_cards_ports
 import catalog/application/queries/list_cards/handler.{ListCatalogCardsQuery} as catalog_list_cards_handler
 import catalog/application/queries/list_cards/ports as list_cards_ports
 import catalog/driver/dependencies.{type Dependencies}
@@ -21,6 +23,10 @@ pub fn register(
   |> service.add_method(
     card_catalog_queries.list_catalog_cards_method(),
     handle_list_catalog_cards(get_dependencies),
+  )
+  |> service.add_method(
+    card_catalog_queries.get_catalog_cards_method(),
+    handle_get_catalog_cards(get_dependencies),
   )
 }
 
@@ -58,20 +64,20 @@ fn handle_list_catalog_cards(get_dependencies: fn(context) -> Dependencies) {
     req_meta: Nil,
     ctx: context,
   ) -> #(
-    Result(card_catalog_queries.CatalogCardList, service.ServiceError),
+    Result(card_catalog_queries.CatalogCardKeyList, service.ServiceError),
     Nil,
     Nil,
   ) {
-    let all_cards =
+    let all_keys =
       catalog_list_cards_handler.execute(
         ListCatalogCardsQuery,
         get_dependencies(ctx).list_catalog_cards_port,
       )
-    let total = list.length(all_cards)
-    let paged_cards = paginate_cards(all_cards, req.offset, req.limit)
+    let total = list.length(all_keys)
+    let paged_keys = paginate_keys(all_keys, req.offset, req.limit)
     let response =
-      card_catalog_queries.catalog_card_list_new(
-        list.map(paged_cards, map_catalog_card),
+      card_catalog_queries.catalog_card_key_list_new(
+        list.map(paged_keys, map_catalog_card_key),
         req.limit,
         req.offset,
         total,
@@ -81,21 +87,59 @@ fn handle_list_catalog_cards(get_dependencies: fn(context) -> Dependencies) {
   }
 }
 
-fn map_catalog_card(
-  card: list_cards_ports.CatalogCardReadModel,
-) -> card_catalog_queries.CatalogCard {
-  card_catalog_queries.catalog_card_new(card.id, card.name, card.set_code)
+fn map_catalog_card_key(
+  key: list_cards_ports.CatalogCardKeyReadModel,
+) -> card_catalog_queries.CatalogCardKey {
+  // arg order: collector_number, set_code (alphabetical per generated constructor)
+  card_catalog_queries.catalog_card_key_new(key.collector_number, key.set_code)
 }
 
-fn paginate_cards(
-  cards: List(list_cards_ports.CatalogCardReadModel),
+fn handle_get_catalog_cards(get_dependencies: fn(context) -> Dependencies) {
+  fn(
+    req: card_catalog_queries.GetCatalogCardsRequest,
+    req_meta: Nil,
+    ctx: context,
+  ) -> #(
+    Result(card_catalog_queries.CatalogCardList, service.ServiceError),
+    Nil,
+    Nil,
+  ) {
+    let keys = list.map(req.keys, fn(k) { #(k.set_code, k.collector_number) })
+    let cards =
+      get_catalog_cards_handler.execute(
+        get_catalog_cards_handler.GetCatalogCardsQuery(keys:),
+        get_dependencies(ctx).get_catalog_cards_port,
+      )
+    let response =
+      card_catalog_queries.catalog_card_list_new(list.map(
+        cards,
+        map_card_read_model,
+      ))
+    #(Ok(response), req_meta, Nil)
+  }
+}
+
+fn map_card_read_model(
+  card: get_cards_ports.CardReadModel,
+) -> card_catalog_queries.CatalogCard {
+  // arg order: collector_number, image_uri, name, set_code (alphabetical per generated constructor)
+  card_catalog_queries.catalog_card_new(
+    card.collector_number,
+    card.image_uri,
+    card.name,
+    card.set_code,
+  )
+}
+
+fn paginate_keys(
+  keys: List(list_cards_ports.CatalogCardKeyReadModel),
   offset: Int,
   limit: Int,
-) -> List(list_cards_ports.CatalogCardReadModel) {
+) -> List(list_cards_ports.CatalogCardKeyReadModel) {
   let normalized_offset = clamp_non_negative(offset)
   let normalized_limit = clamp_non_negative(limit)
 
-  cards
+  keys
   |> drop_items(normalized_offset)
   |> fn(remaining) {
     case normalized_limit {

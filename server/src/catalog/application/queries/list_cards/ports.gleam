@@ -1,7 +1,7 @@
-pub type ListCatalogCardsPort {
-  ListCatalogCardsPort(list_cards: fn() -> List(CatalogCardReadModel))
+pub type CatalogCardKeyReadModel {
+  CatalogCardKeyReadModel(set_code: String, collector_number: String)
 }
 
-pub type CatalogCardReadModel {
-  CatalogCardReadModel(id: String, name: String, set_code: String)
+pub type ListCatalogCardsPort {
+  ListCatalogCardsPort(list_cards: fn() -> List(CatalogCardKeyReadModel))
 }

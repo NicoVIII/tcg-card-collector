@@ -8,8 +8,11 @@ import gleam/time/timestamp
 import shared/infrastructure/shell
 import shared/infrastructure/stores/sqlite_store
 
-type CatalogRowTuple =
-  #(String, String, String)
+type CatalogKeyTuple =
+  #(String, String)
+
+type CatalogCardTuple =
+  #(String, String, String, String)
 
 fn log(message: String) -> Nil {
   io.println("[refresh] " <> message)
@@ -100,7 +103,7 @@ pub fn save_refresh_record(record: refresh_record.ProbeResult) -> Nil {
   sqlite_store.exec(sql)
 }
 
-fn parse_rows(output: String) -> List(CatalogRowTuple) {
+fn parse_key_rows(output: String) -> List(CatalogKeyTuple) {
   output
   |> string.split("\n")
   |> list.filter_map(fn(line) {
@@ -108,21 +111,65 @@ fn parse_rows(output: String) -> List(CatalogRowTuple) {
       True -> Error(Nil)
       False ->
         case string.split(line, "\t") {
-          [id, name, set_code] -> Ok(#(id, name, set_code))
+          [set_code, collector_number] -> Ok(#(set_code, collector_number))
           _ -> Error(Nil)
         }
     }
   })
 }
 
-pub fn list() -> List(CatalogRowTuple) {
+fn parse_card_rows(output: String) -> List(CatalogCardTuple) {
+  output
+  |> string.split("\n")
+  |> list.filter_map(fn(line) {
+    case line == "" {
+      True -> Error(Nil)
+      False ->
+        case string.split(line, "\t") {
+          [set_code, collector_number, name, image_uri] ->
+            Ok(#(set_code, collector_number, name, image_uri))
+          _ -> Error(Nil)
+        }
+    }
+  })
+}
+
+pub fn list() -> List(CatalogKeyTuple) {
   let output =
     sqlite_store.query(
-      "SELECT id, name, set_code "
+      "SELECT set_code, collector_number "
       <> "FROM catalog_cards "
-      <> "ORDER BY name ASC, set_code ASC, collector_number ASC, id ASC;",
+      <> "ORDER BY name ASC, set_code ASC, collector_number ASC;",
     )
-  parse_rows(output)
+  parse_key_rows(output)
+}
+
+pub fn get_by_keys(keys: List(CatalogKeyTuple)) -> List(CatalogCardTuple) {
+  case keys {
+    [] -> []
+    _ -> {
+      let in_clause =
+        keys
+        |> list.map(fn(key) {
+          let #(set_code, collector_number) = key
+          "("
+          <> sqlite_store.quote(set_code)
+          <> ","
+          <> sqlite_store.quote(collector_number)
+          <> ")"
+        })
+        |> string.join(", ")
+      let output =
+        sqlite_store.query(
+          "SELECT set_code, collector_number, name, image_uri "
+          <> "FROM catalog_cards "
+          <> "WHERE (set_code, collector_number) IN ("
+          <> in_clause
+          <> ");",
+        )
+      parse_card_rows(output)
+    }
+  }
 }
 
 pub fn name_lookup() -> List(#(String, String, String)) {

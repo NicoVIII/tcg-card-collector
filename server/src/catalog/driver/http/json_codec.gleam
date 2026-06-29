@@ -16,18 +16,17 @@ pub fn encode_refresh_launch(launch: CatalogRefreshLaunch) -> String {
 }
 
 pub fn encode_catalog_cards(
-  cards: List(list_cards_ports.CatalogCardReadModel),
+  cards: List(list_cards_ports.CatalogCardKeyReadModel),
 ) -> String {
-  json.array(cards, of: encode_catalog_card)
+  json.array(cards, of: encode_catalog_card_key)
   |> json.to_string
 }
 
-fn encode_catalog_card(
-  card: list_cards_ports.CatalogCardReadModel,
+fn encode_catalog_card_key(
+  key: list_cards_ports.CatalogCardKeyReadModel,
 ) -> json.Json {
   json.object([
-    #("id", json.string(card.id)),
-    #("name", json.string(card.name)),
-    #("set_code", json.string(card.set_code)),
+    #("set_code", json.string(key.set_code)),
+    #("collector_number", json.string(key.collector_number)),
   ])
 }
