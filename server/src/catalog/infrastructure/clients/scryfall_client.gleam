@@ -1,6 +1,6 @@
 import gleam/io
 import gleam/string
-import shared/domain/os_runtime
+import shared/infrastructure/os_runtime
 import shared/infrastructure/shell
 
 pub type Downloader {

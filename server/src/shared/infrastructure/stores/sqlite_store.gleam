@@ -1,54 +1,33 @@
-import gleam/io
-import gleam/string
-import shared/domain/os_runtime
-import shared/infrastructure/shell
+import gleam/dynamic/decode.{type Decoder}
+import shared/infrastructure/os_runtime
+import sqlight
 
 const default_db_file = "db/tcg-card-collector.db"
-
-pub fn exec(sql: String) -> Nil {
-  let inner =
-    "sqlite3 -noheader -separator '\t' "
-    <> shell.quote(db_file())
-    <> " "
-    <> shell.quote(sql)
-  let wrapped =
-    "set +e; " <> inner <> "; status=$?; printf '\\n__EXIT__:%s' \"$status\""
-  let output = os_runtime.cmd("sh -c " <> shell.quote(wrapped))
-  case string.split(output, "__EXIT__:") {
-    [body, status_raw] ->
-      case string.trim(status_raw) {
-        "0" -> Nil
-        _ -> io.println("[sqlite][error] exec failed: " <> string.trim(body))
-      }
-    _ ->
-      io.println(
-        "[sqlite][error] exec failed (no exit marker): " <> string.trim(output),
-      )
-  }
-}
-
-pub fn query(sql: String) -> String {
-  run(sql)
-}
-
-pub fn quote(value: String) -> String {
-  "'" <> escape_sql(value) <> "'"
-}
-
-fn run(sql: String) -> String {
-  let command =
-    "sqlite3 -noheader -separator '\t' "
-    <> shell.quote(db_file())
-    <> " "
-    <> shell.quote(sql)
-
-  os_runtime.cmd(command)
-}
 
 pub fn db_file() -> String {
   os_runtime.getenv_or("TCG_DB_FILE", default_db_file)
 }
 
-fn escape_sql(value: String) -> String {
-  string.replace(value, "'", "''")
+/// Run a parameterized statement for its side effect (INSERT/UPDATE/DELETE).
+pub fn exec(
+  sql: String,
+  params: List(sqlight.Value),
+) -> Result(Nil, sqlight.Error) {
+  use conn <- sqlight.with_connection(db_file())
+  case
+    sqlight.query(sql, on: conn, with: params, expecting: decode.success(Nil))
+  {
+    Ok(_) -> Ok(Nil)
+    Error(error) -> Error(error)
+  }
+}
+
+/// Run a parameterized SELECT and decode each row.
+pub fn query(
+  sql: String,
+  params: List(sqlight.Value),
+  decoder: Decoder(t),
+) -> Result(List(t), sqlight.Error) {
+  use conn <- sqlight.with_connection(db_file())
+  sqlight.query(sql, on: conn, with: params, expecting: decoder)
 }

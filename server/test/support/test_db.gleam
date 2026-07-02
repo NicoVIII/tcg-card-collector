@@ -1,6 +1,6 @@
 import gleam/erlang/charlist
 import gleam/string
-import shared/domain/os_runtime
+import shared/infrastructure/os_runtime
 
 @external(erlang, "os", "putenv")
 fn erl_putenv(name: charlist.Charlist, value: charlist.Charlist) -> Bool

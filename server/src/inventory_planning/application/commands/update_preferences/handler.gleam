@@ -1,3 +1,4 @@
+import gleam/result
 import inventory_planning/application/commands/update_preferences/ports
 import shared/application/command_result
 
@@ -20,5 +21,5 @@ pub fn execute(
     default_sort: default_sort,
     default_grouping: default_grouping,
   ))
-  Ok(Nil)
+  |> result.map_error(ports.UpdatePlanningPreferencesError)
 }

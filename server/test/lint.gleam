@@ -31,6 +31,7 @@ type External {
   MistLib
   Simplifile
   SkirLib
+  Sqlight
 }
 
 type Category =
@@ -86,6 +87,7 @@ fn categorize(path: String) -> Category {
     ["mist", ..] -> bounded_context.External(MistLib)
     ["skir_client", ..] -> bounded_context.External(SkirLib)
     ["simplifile", ..] -> bounded_context.External(Simplifile)
+    ["sqlight", ..] -> bounded_context.External(Sqlight)
     x -> panic as { "Unknown path: " <> string.join(x, "/") }
   }
 }
@@ -98,7 +100,7 @@ fn allowed_externals(layer: Layer) -> List(External) {
   case layer {
     Domain -> []
     Application(_) -> []
-    Infrastructure -> [Simplifile]
+    Infrastructure -> [Simplifile, Sqlight]
     Driver(Common) -> []
     Driver(Driving(Http)) -> [MistLib]
     Driver(Driving(Gleam)) -> []
@@ -134,6 +136,7 @@ fn describe_external(ext: External) -> String {
     MistLib -> "MistLib"
     SkirLib -> "SkirLib"
     Simplifile -> "Simplifile"
+    Sqlight -> "Sqlight"
   }
 }
 

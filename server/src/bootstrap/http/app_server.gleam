@@ -12,9 +12,9 @@ import gleam/result
 import gleam/string
 import inventory_planning/driver/http/handler as inventory_http
 import mist
-import shared/domain/os_runtime
 import shared/driver/http/helpers
 import shared/driver/http/json_codec
+import shared/infrastructure/os_runtime
 
 pub fn start(deps: Dependencies) -> Nil {
   let port = read_port()

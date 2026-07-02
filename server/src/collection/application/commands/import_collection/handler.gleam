@@ -30,20 +30,24 @@ pub fn execute(
 
   let actual_row_count = list.length(rows)
 
-  record_run(
-    ports,
-    import_run_id,
-    source_name,
-    import_status.Pending,
-    actual_row_count,
-  )
-  record_run(
-    ports,
-    import_run_id,
-    source_name,
-    import_status.Running,
-    actual_row_count,
-  )
+  // Progress markers are best-effort: a failure to record them doesn't block
+  // the import, it only means the intermediate status isn't observable.
+  let _ =
+    record_run(
+      ports,
+      import_run_id,
+      source_name,
+      import_status.Pending,
+      actual_row_count,
+    )
+  let _ =
+    record_run(
+      ports,
+      import_run_id,
+      source_name,
+      import_status.Running,
+      actual_row_count,
+    )
 
   // Build owned cards; rows with blank set_code/collector_number are dropped,
   // which triggers RowCountMismatch below.
@@ -62,33 +66,53 @@ pub fn execute(
     })
 
   case collection.from_cards(valid_cards, row_count) {
-    Ok(coll) -> {
-      ports.replace_rows(
-        import_run_id,
-        list.map(coll.cards, fn(card) {
-          import_collection_ports.SnapshotRowWriteModel(
-            key: card.key,
-            quantity: card.quantity,
-          )
-        }),
-      )
-      record_run(
-        ports,
-        import_run_id,
-        source_name,
-        import_status.Succeeded,
-        actual_row_count,
-      )
-      Ok(Nil)
-    }
+    Ok(coll) ->
+      case
+        ports.replace_rows(
+          import_run_id,
+          list.map(coll.cards, fn(card) {
+            import_collection_ports.SnapshotRowWriteModel(
+              key: card.key,
+              quantity: card.quantity,
+            )
+          }),
+        )
+      {
+        Ok(Nil) ->
+          case
+            record_run(
+              ports,
+              import_run_id,
+              source_name,
+              import_status.Succeeded,
+              actual_row_count,
+            )
+          {
+            Ok(Nil) -> Ok(Nil)
+            Error(reason) ->
+              Error(import_collection_ports.PersistenceFailed(reason))
+          }
+        Error(reason) -> {
+          let _ =
+            record_run(
+              ports,
+              import_run_id,
+              source_name,
+              import_status.Failed,
+              actual_row_count,
+            )
+          Error(import_collection_ports.PersistenceFailed(reason))
+        }
+      }
     Error(collection.RowCountMismatch) -> {
-      record_run(
-        ports,
-        import_run_id,
-        source_name,
-        import_status.Failed,
-        actual_row_count,
-      )
+      let _ =
+        record_run(
+          ports,
+          import_run_id,
+          source_name,
+          import_status.Failed,
+          actual_row_count,
+        )
       Error(import_collection_ports.RowCountMismatch)
     }
   }
@@ -100,7 +124,7 @@ fn record_run(
   source_name: String,
   status: import_status.ImportStatus,
   row_count: Int,
-) -> Nil {
+) -> Result(Nil, String) {
   ports.save_run(import_collection_ports.ImportRunWriteModel(
     id: id,
     source_name: source_name,

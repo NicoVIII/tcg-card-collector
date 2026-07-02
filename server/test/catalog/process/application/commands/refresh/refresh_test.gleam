@@ -27,11 +27,23 @@ fn build_ports(
   fetch_metadata fetch_metadata,
   import_cards import_cards,
 ) {
+  build_ports_with_save(repo:, fetch_metadata:, import_cards:, save: fn(record) {
+    ref.set(repo, Some(record))
+    Ok(Nil)
+  })
+}
+
+fn build_ports_with_save(
+  repo repo,
+  fetch_metadata fetch_metadata,
+  import_cards import_cards,
+  save save,
+) {
   refresh_ports.RefreshCatalogPorts(
     now: fn() { timestamp.from_unix_seconds(now) },
     record_repository: refresh_ports.RefreshRecordRepositoryPort(
       load: fn() { ref.get(repo) },
-      save: fn(record) { ref.set(repo, Some(record)) },
+      save:,
     ),
     fetch_metadata:,
     import_cards:,
@@ -210,4 +222,40 @@ pub fn import_fails_with_prior_persists_failed_test() {
       last_upstream_updated_at: Some("v0"),
       status: Failed(reason: "import error"),
     )
+}
+
+pub fn import_succeeds_but_persist_fails_reports_error_test() {
+  let repo = ref.new(None)
+  let result =
+    handler.execute(
+      handler.RefreshCatalogCommand,
+      build_ports_with_save(
+        repo:,
+        fetch_metadata: fetch_metadata_ok,
+        import_cards: import_cards_ok,
+        save: fn(_) { Error("disk full") },
+      ),
+    )
+  assert result
+    == Error(refresh_ports.RefreshCatalogError(
+      reason: "persist failed: disk full",
+    ))
+}
+
+pub fn fetch_fails_and_persist_also_fails_combines_reasons_test() {
+  let repo = ref.new(None)
+  let result =
+    handler.execute(
+      handler.RefreshCatalogCommand,
+      build_ports_with_save(
+        repo:,
+        fetch_metadata: fetch_metadata_fails,
+        import_cards: import_cards_ok,
+        save: fn(_) { Error("disk full") },
+      ),
+    )
+  assert result
+    == Error(refresh_ports.RefreshCatalogError(
+      reason: "network error (and failed to persist failure: disk full)",
+    ))
 }

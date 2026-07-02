@@ -77,17 +77,31 @@ pub fn execute(
   use meta <- result.try(case ports.fetch_metadata() {
     Ok(meta) -> Ok(meta)
     Error(reason) -> {
-      ports.record_repository.save(refresh_record.create_failed(
-        record,
-        now,
-        reason,
-      ))
-      Error(RefreshCatalogError(reason:))
+      let failed_record = refresh_record.create_failed(record, now, reason)
+      Error(
+        RefreshCatalogError(
+          reason: case ports.record_repository.save(failed_record) {
+            Ok(Nil) -> reason
+            Error(save_reason) ->
+              reason
+              <> " (and failed to persist failure: "
+              <> save_reason
+              <> ")"
+          },
+        ),
+      )
     }
   })
 
   let #(new_record, outcome) =
     apply_decision(record, meta, now, ports.import_cards)
-  ports.record_repository.save(new_record)
-  outcome
+  case ports.record_repository.save(new_record), outcome {
+    Ok(Nil), _ -> outcome
+    Error(save_reason), Ok(Nil) ->
+      Error(RefreshCatalogError(reason: "persist failed: " <> save_reason))
+    Error(save_reason), Error(RefreshCatalogError(reason:)) ->
+      Error(RefreshCatalogError(
+        reason: reason <> " (and failed to persist: " <> save_reason <> ")",
+      ))
+  }
 }

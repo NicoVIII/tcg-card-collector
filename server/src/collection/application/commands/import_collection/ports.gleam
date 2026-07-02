@@ -19,10 +19,10 @@ pub type SnapshotRowWriteModel {
 }
 
 pub type SaveRunPort =
-  fn(ImportRunWriteModel) -> Nil
+  fn(ImportRunWriteModel) -> Result(Nil, String)
 
 pub type ReplaceRowsPort =
-  fn(String, List(SnapshotRowWriteModel)) -> Nil
+  fn(String, List(SnapshotRowWriteModel)) -> Result(Nil, String)
 
 pub type ImportCollectionPorts {
   ImportCollectionPorts(save_run: SaveRunPort, replace_rows: ReplaceRowsPort)
@@ -30,4 +30,5 @@ pub type ImportCollectionPorts {
 
 pub type ImportCollectionError {
   RowCountMismatch
+  PersistenceFailed(reason: String)
 }

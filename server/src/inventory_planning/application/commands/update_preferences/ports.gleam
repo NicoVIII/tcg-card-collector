@@ -4,7 +4,7 @@ pub type PlanningPreferencesWriteModel {
 
 pub type UpdatePlanningPreferencesPort {
   UpdatePlanningPreferencesPort(
-    update: fn(PlanningPreferencesWriteModel) -> Nil,
+    update: fn(PlanningPreferencesWriteModel) -> Result(Nil, String),
   )
 }
 

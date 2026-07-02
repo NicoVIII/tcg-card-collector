@@ -18,7 +18,7 @@ pub type ImportCardsPort =
 pub type RefreshRecordRepositoryPort {
   RefreshRecordRepositoryPort(
     load: fn() -> Option(ProbeResult),
-    save: fn(ProbeResult) -> Nil,
+    save: fn(ProbeResult) -> Result(Nil, String),
   )
 }
 

@@ -1,12 +1,14 @@
 import catalog/domain/refresh_record
-import gleam/int
+import gleam/dynamic/decode
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/result
 import gleam/string
 import gleam/time/timestamp
 import shared/infrastructure/shell
 import shared/infrastructure/stores/sqlite_store
+import sqlight
 
 type CatalogKeyTuple =
   #(String, String)
@@ -22,181 +24,154 @@ fn log_error(stage: String, detail: String) -> Nil {
   io.println("[refresh][error] " <> stage <> ": " <> detail)
 }
 
+fn refresh_record_row_decoder() {
+  use epoch <- decode.field(0, decode.int)
+  use last_upstream_updated_at <- decode.field(
+    1,
+    decode.optional(decode.string),
+  )
+  use status_str <- decode.field(2, decode.string)
+  use error_msg <- decode.field(3, decode.optional(decode.string))
+  decode.success(#(epoch, last_upstream_updated_at, status_str, error_msg))
+}
+
 pub fn load_refresh_record() -> Option(refresh_record.ProbeResult) {
-  let output =
+  let rows =
     sqlite_store.query(
-      "SELECT strftime('%s', last_probe_at), last_upstream_updated_at, last_refresh_status, last_error_message "
-      <> "FROM catalog_sync_metadata WHERE id = 1 LIMIT 1;",
+      "SELECT CAST(strftime('%s', last_probe_at) AS INTEGER), "
+        <> "last_upstream_updated_at, last_refresh_status, last_error_message "
+        <> "FROM catalog_sync_metadata WHERE id = 1 LIMIT 1;",
+      [],
+      refresh_record_row_decoder(),
     )
-  // Split on newline first so the trailing tab for a NULL column is preserved
-  // when we subsequently split on tab. string.trim would eat the trailing tab.
-  let row =
-    string.split(output, "\n")
-    |> list.find(fn(line) { line != "" })
-  case row {
+  case rows {
     Error(_) -> None
-    Ok(line) ->
-      case string.split(line, "\t") {
-        [epoch_str, upstream_at, status_str, error_msg] ->
-          case int.parse(epoch_str) {
-            Error(_) -> None
-            Ok(epoch) -> {
-              let last_probe_at = timestamp.from_unix_seconds(epoch)
-              let last_upstream_updated_at = case upstream_at {
-                "" -> None
-                s -> Some(s)
-              }
-              let status = case status_str {
-                "succeeded" -> refresh_record.Succeeded
-                "skipped" -> refresh_record.Skipped
-                "failed" -> refresh_record.Failed(error_msg)
-                _ -> refresh_record.Failed("unknown status: " <> status_str)
-              }
-              Some(refresh_record.ProbeResult(
-                last_probe_at:,
-                last_upstream_updated_at:,
-                status:,
-              ))
-            }
-          }
-        _ -> None
+    Ok([]) -> None
+    Ok([#(epoch, last_upstream_updated_at, status_str, error_msg), ..]) -> {
+      let status = case status_str {
+        "succeeded" -> refresh_record.Succeeded
+        "skipped" -> refresh_record.Skipped
+        "failed" ->
+          refresh_record.Failed(option.unwrap(error_msg, "unknown error"))
+        _ -> refresh_record.Failed("unknown status: " <> status_str)
       }
+      Some(refresh_record.ProbeResult(
+        last_probe_at: timestamp.from_unix_seconds(epoch),
+        last_upstream_updated_at:,
+        status:,
+      ))
+    }
   }
 }
 
-pub fn save_refresh_record(record: refresh_record.ProbeResult) -> Nil {
+pub fn save_refresh_record(
+  record: refresh_record.ProbeResult,
+) -> Result(Nil, String) {
   let refresh_record.ProbeResult(
     last_probe_at:,
     last_upstream_updated_at:,
     status:,
   ) = record
   let #(epoch, _) = timestamp.to_unix_seconds_and_nanoseconds(last_probe_at)
-  let upstream_at_sql = case last_upstream_updated_at {
-    None -> "NULL"
-    Some(s) -> sqlite_store.quote(s)
-  }
-  let #(status_str, error_msg_sql) = case status {
-    refresh_record.Succeeded -> #("succeeded", "NULL")
-    refresh_record.Skipped -> #("skipped", "NULL")
-    refresh_record.Failed(reason) -> #("failed", sqlite_store.quote(reason))
+  let #(status_str, error_msg) = case status {
+    refresh_record.Succeeded -> #("succeeded", None)
+    refresh_record.Skipped -> #("skipped", None)
+    refresh_record.Failed(reason) -> #("failed", Some(reason))
   }
   let sql =
     "INSERT INTO catalog_sync_metadata ("
     <> "  id, last_probe_at, last_upstream_updated_at, last_refresh_status, last_error_message, updated_at"
     <> ") VALUES ("
-    <> "  1, datetime("
-    <> int.to_string(epoch)
-    <> ", 'unixepoch'), "
-    <> upstream_at_sql
-    <> ", "
-    <> sqlite_store.quote(status_str)
-    <> ", "
-    <> error_msg_sql
-    <> ", CURRENT_TIMESTAMP"
-    <> ") "
+    <> "  1, datetime(?, 'unixepoch'), ?, ?, ?, CURRENT_TIMESTAMP) "
     <> "ON CONFLICT(id) DO UPDATE SET "
     <> "  last_probe_at = excluded.last_probe_at,"
     <> "  last_upstream_updated_at = excluded.last_upstream_updated_at,"
     <> "  last_refresh_status = excluded.last_refresh_status,"
     <> "  last_error_message = excluded.last_error_message,"
     <> "  updated_at = CURRENT_TIMESTAMP;"
-  sqlite_store.exec(sql)
+  let params = [
+    sqlight.int(epoch),
+    sqlight.nullable(sqlight.text, last_upstream_updated_at),
+    sqlight.text(status_str),
+    sqlight.nullable(sqlight.text, error_msg),
+  ]
+  sqlite_store.exec(sql, params)
+  |> result.map_error(fn(error) { error.message })
 }
 
-fn parse_key_rows(output: String) -> List(CatalogKeyTuple) {
-  output
-  |> string.split("\n")
-  |> list.filter_map(fn(line) {
-    case line == "" {
-      True -> Error(Nil)
-      False ->
-        case string.split(line, "\t") {
-          [set_code, collector_number] -> Ok(#(set_code, collector_number))
-          _ -> Error(Nil)
-        }
-    }
-  })
+fn key_row_decoder() {
+  use set_code <- decode.field(0, decode.string)
+  use collector_number <- decode.field(1, decode.string)
+  decode.success(#(set_code, collector_number))
 }
 
-fn parse_card_rows(output: String) -> List(CatalogCardTuple) {
-  output
-  |> string.split("\n")
-  |> list.filter_map(fn(line) {
-    case line == "" {
-      True -> Error(Nil)
-      False ->
-        case string.split(line, "\t") {
-          [set_code, collector_number, name, image_uri] ->
-            Ok(#(set_code, collector_number, name, image_uri))
-          _ -> Error(Nil)
-        }
-    }
-  })
+fn card_row_decoder() {
+  use set_code <- decode.field(0, decode.string)
+  use collector_number <- decode.field(1, decode.string)
+  use name <- decode.field(2, decode.string)
+  use image_uri <- decode.field(3, decode.string)
+  decode.success(#(set_code, collector_number, name, image_uri))
 }
 
 pub fn list() -> List(CatalogKeyTuple) {
-  let output =
-    sqlite_store.query(
-      "SELECT set_code, collector_number "
+  sqlite_store.query(
+    "SELECT set_code, collector_number "
       <> "FROM catalog_cards "
       <> "ORDER BY name ASC, set_code ASC, collector_number ASC;",
-    )
-  parse_key_rows(output)
+    [],
+    key_row_decoder(),
+  )
+  |> result.unwrap([])
 }
 
 pub fn get_by_keys(keys: List(CatalogKeyTuple)) -> List(CatalogCardTuple) {
   case keys {
     [] -> []
     _ -> {
-      let in_clause =
+      let placeholders =
         keys
-        |> list.map(fn(key) {
-          let #(set_code, collector_number) = key
-          "("
-          <> sqlite_store.quote(set_code)
-          <> ","
-          <> sqlite_store.quote(collector_number)
-          <> ")"
-        })
+        |> list.map(fn(_) { "(?,?)" })
         |> string.join(", ")
-      let output =
-        sqlite_store.query(
-          "SELECT set_code, collector_number, name, image_uri "
+      let params =
+        keys
+        |> list.flat_map(fn(key) {
+          let #(set_code, collector_number) = key
+          [sqlight.text(set_code), sqlight.text(collector_number)]
+        })
+      sqlite_store.query(
+        "SELECT set_code, collector_number, name, image_uri "
           <> "FROM catalog_cards "
           <> "WHERE (set_code, collector_number) IN ("
-          <> in_clause
+          <> placeholders
           <> ");",
-        )
-      parse_card_rows(output)
+        params,
+        card_row_decoder(),
+      )
+      |> result.unwrap([])
     }
   }
 }
 
+fn name_row_decoder() {
+  use set_code <- decode.field(0, decode.string)
+  use collector_number <- decode.field(1, decode.string)
+  use name <- decode.field(2, decode.string)
+  decode.success(#(set_code, collector_number, name))
+}
+
 pub fn name_lookup() -> List(#(String, String, String)) {
-  let output =
-    sqlite_store.query(
-      "SELECT set_code, collector_number, name "
+  sqlite_store.query(
+    "SELECT set_code, collector_number, name "
       <> "FROM catalog_cards "
       <> "ORDER BY set_code ASC, collector_number ASC;",
-    )
-
-  output
-  |> string.split("\n")
-  |> list.filter_map(fn(line) {
-    case line == "" {
-      True -> Error(Nil)
-      False ->
-        case string.split(line, "\t") {
-          [set_code, collector_number, name] ->
-            Ok(#(set_code, collector_number, name))
-          _ -> Error(Nil)
-        }
-    }
-  })
+    [],
+    name_row_decoder(),
+  )
+  |> result.unwrap([])
 }
 
 pub fn bulk_load(csv_path: String) -> Result(Nil, String) {
-  let _ = sqlite_store.exec("SELECT 1;")
+  let _ = sqlite_store.exec("SELECT 1;", [])
   let sqlite_script =
     "set -e; "
     <> "sqltmp=$(mktemp); "

@@ -1,3 +1,4 @@
+import gleam/result
 import inventory_planning/application/commands/delete_rule/ports
 import shared/application/command_result
 
@@ -11,5 +12,5 @@ pub fn execute(
 ) -> command_result.CommandResult(ports.DeleteInventoryRuleError) {
   let DeleteInventoryRuleCommand(id: id) = command
   port.delete_rule(id)
-  Ok(Nil)
+  |> result.map_error(ports.DeleteInventoryRuleError)
 }
