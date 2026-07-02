@@ -8,7 +8,7 @@ Code is organized **context-first, then layer**: `server/src/<bounded_context>/{
 
 - **Bounded context isolation**: `catalog`, `collection`, and `inventory_planning` must not import from each other, except via the explicit cross-BC allowlist (see below). Only `bootstrap/composition` wires them together unconditionally.
 - **Layer ordering**: within any context (and within `shared/`), imports may only go inward — `driver`/`infrastructure` may import `application` and `domain`, but not the reverse.
-- **`driver/gleam/` is a cross-BC Gleam API layer** (`GleamDriver`): a thin facade that exposes a BC's capabilities to other BCs. A BC's `infrastructure` may import another BC's `driver/gleam/` only if the pair is declared in the allowlist in `test/lint.gleam`. Regular `driver/http/` and `driver/skir/` remain transport-only and are never cross-BC. `GleamDriver` may import its own BC's `domain`, `application`, and `infrastructure`.
+- **`driver/gleam/` is a cross-BC Gleam API layer** (`GleamDriver`): a thin facade that exposes a BC's capabilities to other BCs. A BC's `infrastructure` may import another BC's `driver/gleam/` only if the pair is declared in the allowlist in `test/lint.gleam`. Regular `driver/http/` and `driver/skir/` remain transport-only and are never cross-BC. `GleamDriver` may import its own BC's `domain`, `application`, and `infrastructure` — routing through the owning BC's query handler and adapter, not straight into the DAO, so it returns typed read models instead of raw tuples. **Known gap**: the vendored `glinter_arch` (a separate `gleam-libs` submodule) doesn't yet encode the Driver→own-BC-Infrastructure exception this rule describes, so `driver/gleam/*.gleam` files currently carry a `// nolint: depends_only_on` on the infrastructure import. Fixing the rule itself means changing that submodule.
 - **`shared/` is a shared kernel**: any bounded context may import `shared/`, but `shared/` must not import bounded contexts. Layer rules apply within `shared/` too.
 - **`bootstrap/` is the composition root**: it may import anything. Only `driver/` may import `bootstrap/` (DI injection seam).
 - **Excluded from linting**: `src/bootstrap/skir/skirout/` (generated code).
@@ -25,7 +25,11 @@ All three bounded contexts share the same driver pattern: drivers call use-case 
 
 **Request flow (http)**: `bootstrap/http/app_server.gleam` routing table → `server/src/<context>/driver/http/handler.gleam` → use-case handler → use-case port → domain + infrastructure. HTTP context drivers split into `handler.gleam` (route handlers) + `json_codec.gleam` (encoders/decoders).
 
-Shared cross-context code lives under `server/src/shared/`: `shared/domain/` (shared kernel — `card_key`, `non_empty_string`, `os_runtime`), `shared/application/command_result.gleam` (shared app type), `shared/infrastructure/stores/sqlite_store.gleam` (shared infra). Database access objects for each context live in `<context>/infrastructure/daos/`. Bootstrap/composition layer under `server/src/bootstrap/`: `bootstrap/skir/{router,setup}.gleam` + `bootstrap/skir/skirout/` (skir server loop + thin `make_service()` chaining context registers), `bootstrap/http/{app_server,json_codec,helpers}.gleam` (mist bootstrap, routing table, generic response helpers), `bootstrap/composition.gleam` (DI wiring root).
+Shared cross-context code lives under `server/src/shared/`: `shared/domain/` (shared kernel — `card_key`, `non_empty_string`; pure, no I/O), `shared/application/command_result.gleam` (shared app type), `shared/infrastructure/` (shared infra — `os_runtime` (raw `os:cmd`/`getenv`), `shell.gleam` (subprocess wrapper), `stores/sqlite_store.gleam` (parameterized queries over `sqlight`)). Database access objects for each context live in `<context>/infrastructure/daos/`. Bootstrap/composition layer under `server/src/bootstrap/`: `bootstrap/skir/{router,setup}.gleam` + `bootstrap/skir/skirout/` (skir server loop + thin `make_service()` chaining context registers), `bootstrap/http/{app_server,json_codec,helpers}.gleam` (mist bootstrap, routing table, generic response helpers), `bootstrap/composition.gleam` (DI wiring root).
+
+**Two transports, deliberately.** skir (contract-first RPC) is the primary, well-typed API the client-web app uses. A parallel REST API exists for third-party/scripted access where requiring the skir client isn't practical — it is not legacy and both are expected to stay. Because of this, a use case that has externally-visible side effects (e.g. spawning a background worker) must put that orchestration in a shared module both drivers call (e.g. `catalog/driver/refresh_launcher.gleam`), not duplicate it per transport — the two doors must behave identically, they just speak different wire formats.
+
+**`catalog_dao.bulk_load` is a deliberate exception to "no raw SQL strings, use sqlight"**: it shells out to the `sqlite3` CLI's `.import` for bulk-loading the ~90k-row Scryfall CSV dump. This is safe because the input is our own `scryfall_mapper` output, not user-supplied text — the injection risk that motivated moving everything else to `sqlight` doesn't apply here, and CLI bulk import is meaningfully faster than row-by-row parameterized inserts at this volume.
 
 ## Application Layer
 
@@ -41,7 +45,7 @@ Ports are **capability-narrow**: each function declares only what the use case n
 
 **Adapters wire one typed function per port** and assemble the `*Ports` record. Each per-port adapter function carries the port type alias as its return type annotation.
 
-**Handlers own orchestration.** The `execute` function in `handler.gleam` contains the use-case logic (branching, sequencing, error mapping). It must not be an empty pass-through to a single `ports.execute()` god-method. The handler composes the individual ports from the `*Ports` bundle.
+**Handlers own orchestration — for commands.** A command's `execute` must not be an empty pass-through to a single `ports.execute()` god-method; it contains the use-case logic (branching, sequencing, error mapping) and composes the individual ports from the `*Ports` bundle. **Queries are exempt**: a query handler that is a one-line `port.f()` (e.g. `ListCatalogCardsQuery`, `GetPlanningPreferencesQuery`) is not hiding logic — there just isn't any — and is the CQRS-orthodox shape for a read that has nothing to branch on. Don't invent branching in a query handler just to avoid looking thin.
 
 ## Infrastructure Layer
 
@@ -49,4 +53,4 @@ Ports are **capability-narrow**: each function declares only what the use case n
 
 ## Database
 
-SQLite. Set `TCG_DB_FILE` to the db path. Run migrations with `just dbmate-migrate`.
+SQLite via `sqlight` (parameterized queries, typed decoders) through `shared/infrastructure/stores/sqlite_store.gleam` — DAOs should not build SQL by string-interpolating values; use `?` placeholders and `sqlight.text`/`sqlight.int`/`sqlight.nullable`. Set `TCG_DB_FILE` to the db path. Run migrations with `just dbmate-migrate`. Write ports return `Result(Nil, String)`; the calling handler decides what a persistence failure means for its use case (e.g. a failed snapshot write fails the import, but a failed progress-marker write is swallowed on purpose since it's advisory only).
