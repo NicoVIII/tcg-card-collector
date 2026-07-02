@@ -89,13 +89,13 @@ fn handle_delete_inventory_rule(get_dependencies: fn(context) -> Dependencies) {
     Nil,
     Nil,
   ) {
-    let _ =
+    let result =
       delete_rule_handler.execute(
         delete_rule_handler.DeleteInventoryRuleCommand(id: req.id),
         get_dependencies(ctx).delete_inventory_rule_port,
       )
     #(
-      Ok(inventory_planning_commands.DeleteInventoryRuleResponseSuccess),
+      inventory_planning_skir_codec.map_delete_inventory_rule_result(result),
       req_meta,
       Nil,
     )
@@ -213,7 +213,7 @@ fn handle_update_planning_preferences(
     Nil,
     Nil,
   ) {
-    let _ =
+    let result =
       update_preferences_handler.execute(
         update_preferences_handler.UpdatePlanningPreferencesCommand(
           default_sort: req.default_sort,
@@ -222,7 +222,7 @@ fn handle_update_planning_preferences(
         get_dependencies(ctx).update_planning_preferences_port,
       )
     #(
-      Ok(inventory_planning_commands.UpdatePlanningPreferencesResponseSuccess),
+      inventory_planning_skir_codec.map_update_preferences_result(result),
       req_meta,
       Nil,
     )

@@ -53,7 +53,6 @@ export function CollectionPage() {
       const response = await mutation.mutateAsync({
         importRunId: crypto.randomUUID(),
         sourceName: sourceName(),
-        sourceChecksum: "manual-upload",
         rowCount: parsedRows.rows.length,
         rows: parsedRows.rows,
       });

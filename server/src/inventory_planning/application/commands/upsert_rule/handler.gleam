@@ -23,11 +23,11 @@ pub fn execute(
 
   case rule_expression.parse(expression) {
     Error(_) -> Error(ports.InvalidExpression)
-    Ok(_) ->
+    Ok(parsed) ->
       port.upsert_rule(ports.InventoryRuleWriteModel(
         id: id,
         location_name: location_name,
-        expression: expression,
+        expression: rule_expression.to_string(parsed),
       ))
       |> result.map_error(ports.PersistenceFailed)
   }

@@ -22,7 +22,6 @@ pub fn handle_import_collection(
           import_collection_handler.ImportCollectionCommand(
             import_run_id: b.import_run_id,
             source_name: b.source_name,
-            source_checksum: b.source_checksum,
             row_count: b.row_count,
             rows: [],
           ),

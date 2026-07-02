@@ -8,7 +8,6 @@ pub type ImportCollectionBody {
   ImportCollectionBody(
     import_run_id: String,
     source_name: String,
-    source_checksum: String,
     row_count: Int,
   )
 }
@@ -19,12 +18,10 @@ pub fn decode_import_collection_body(
   let decoder = {
     use import_run_id <- decode.field("import_run_id", decode.string)
     use source_name <- decode.field("source_name", decode.string)
-    use source_checksum <- decode.field("source_checksum", decode.string)
     use row_count <- decode.field("row_count", decode.int)
     decode.success(ImportCollectionBody(
       import_run_id:,
       source_name:,
-      source_checksum:,
       row_count:,
     ))
   }

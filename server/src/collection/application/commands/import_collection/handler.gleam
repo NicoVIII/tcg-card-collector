@@ -10,7 +10,6 @@ pub type ImportCollectionCommand {
   ImportCollectionCommand(
     import_run_id: String,
     source_name: String,
-    source_checksum: String,
     row_count: Int,
     rows: List(import_collection_ports.ImportCollectionRow),
   )
@@ -25,21 +24,12 @@ pub fn execute(
     source_name: source_name,
     row_count: row_count,
     rows: rows,
-    ..,
   ) = command
 
   let actual_row_count = list.length(rows)
 
-  // Progress markers are best-effort: a failure to record them doesn't block
-  // the import, it only means the intermediate status isn't observable.
-  let _ =
-    record_run(
-      ports,
-      import_run_id,
-      source_name,
-      import_status.Pending,
-      actual_row_count,
-    )
+  // Best-effort progress marker: a failure to record it doesn't block the
+  // import, it only means the intermediate status isn't observable.
   let _ =
     record_run(
       ports,
@@ -49,19 +39,20 @@ pub fn execute(
       actual_row_count,
     )
 
-  // Build owned cards; rows with blank set_code/collector_number are dropped,
-  // which triggers RowCountMismatch below.
+  // Build owned cards; rows with a blank set_code/collector_number or a
+  // non-positive quantity are dropped, which triggers RowCountMismatch below.
   let valid_cards =
     list.filter_map(rows, fn(row) {
       case
         card_key.from_user_input(
           set_code: row.set_code,
           collector_number: row.collector_number,
-        )
+        ),
+        physical_card.quantity_new(row.quantity)
       {
-        Error(_) -> Error(Nil)
-        Ok(key) ->
-          Ok(physical_card.PhysicalCard(key: key, quantity: row.quantity))
+        Ok(key), Ok(quantity) ->
+          Ok(physical_card.PhysicalCard(key: key, quantity: quantity))
+        _, _ -> Error(Nil)
       }
     })
 
@@ -73,7 +64,7 @@ pub fn execute(
           list.map(coll.cards, fn(card) {
             import_collection_ports.SnapshotRowWriteModel(
               key: card.key,
-              quantity: card.quantity,
+              quantity: physical_card.quantity_to_int(card.quantity),
             )
           }),
         )

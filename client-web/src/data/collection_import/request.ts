@@ -9,7 +9,6 @@ import {
 export type ImportCollectionPayload = {
   importRunId: string;
   sourceName: string;
-  sourceChecksum: string;
   rowCount: number;
   rows: Array<{
     setCode: string;
@@ -103,7 +102,6 @@ export async function postImportCollection(
     ImportCollectionRequest.create({
       importRunId: payload.importRunId,
       sourceName: payload.sourceName,
-      sourceChecksum: payload.sourceChecksum,
       rowCount: payload.rowCount,
       rows: payload.rows,
     }),

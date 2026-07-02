@@ -44,7 +44,6 @@ fn handle_import_collection(get_dependencies: fn(context) -> Dependencies) {
         import_collection_handler.ImportCollectionCommand(
           import_run_id: req.import_run_id,
           source_name: req.source_name,
-          source_checksum: req.source_checksum,
           row_count: req.row_count,
           rows: list.map(req.rows, map_import_collection_row),
         ),
@@ -136,11 +135,11 @@ fn paginate_cards(
   let normalized_limit = clamp_non_negative(limit)
 
   cards
-  |> drop_items(normalized_offset)
+  |> list.drop(normalized_offset)
   |> fn(remaining) {
     case normalized_limit {
       0 -> remaining
-      _ -> take_items(remaining, normalized_limit)
+      _ -> list.take(remaining, normalized_limit)
     }
   }
 }
@@ -149,21 +148,5 @@ fn clamp_non_negative(value: Int) -> Int {
   case value < 0 {
     True -> 0
     False -> value
-  }
-}
-
-fn drop_items(items: List(a), count: Int) -> List(a) {
-  case count <= 0, items {
-    True, _ -> items
-    False, [] -> []
-    False, [_first, ..rest] -> drop_items(rest, count - 1)
-  }
-}
-
-fn take_items(items: List(a), count: Int) -> List(a) {
-  case count <= 0, items {
-    True, _ -> []
-    False, [] -> []
-    False, [first, ..rest] -> [first, ..take_items(rest, count - 1)]
   }
 }

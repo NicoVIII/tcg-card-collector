@@ -9,5 +9,6 @@ pub type UpdatePlanningPreferencesPort {
 }
 
 pub type UpdatePlanningPreferencesError {
-  UpdatePlanningPreferencesError(message: String)
+  InvalidPreferences
+  PersistenceFailed(message: String)
 }

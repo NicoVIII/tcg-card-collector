@@ -8,7 +8,7 @@ struct ImportCollectionRow {
 struct ImportCollectionRequest {
   import_run_id: string = 0;
   source_name: string = 1;
-  source_checksum: string = 2;
+  removed 2;  // was source_checksum: unused, never persisted meaningfully
   row_count: int32 = 3;
   rows: [ImportCollectionRow] = 4;
 }

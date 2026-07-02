@@ -3,6 +3,7 @@ import gleam/http/response.{type Response}
 import gleam/result
 import inventory_planning/application/commands/delete_rule/handler as delete_rule_handler
 import inventory_planning/application/commands/update_preferences/handler as update_preferences_handler
+import inventory_planning/application/commands/update_preferences/ports as update_preferences_ports
 import inventory_planning/application/commands/upsert_rule/handler as upsert_rule_handler
 import inventory_planning/application/queries/get_preferences/handler as get_preferences_handler
 import inventory_planning/application/queries/list_rules/handler as list_rules_handler
@@ -62,14 +63,21 @@ pub fn handle_delete_inventory_rule(
   use body <- helpers.with_json_body(req)
   case inventory_codec.decode_delete_rule_body(body) {
     Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
-    Ok(b) -> {
-      let _ =
+    Ok(b) ->
+      case
         delete_rule_handler.execute(
           delete_rule_handler.DeleteInventoryRuleCommand(id: b.id),
           deps.delete_inventory_rule_port,
         )
-      helpers.json_response(200, json_codec.encode_ok("rule deleted"))
-    }
+      {
+        Ok(_) ->
+          helpers.json_response(200, json_codec.encode_ok("rule deleted"))
+        Error(_) ->
+          helpers.json_response(
+            500,
+            json_codec.encode_error("failed to delete inventory rule"),
+          )
+      }
   }
 }
 
@@ -123,8 +131,8 @@ pub fn handle_update_settings(
   use body <- helpers.with_json_body(req)
   case inventory_codec.decode_update_settings_body(body) {
     Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
-    Ok(b) -> {
-      let _ =
+    Ok(b) ->
+      case
         update_preferences_handler.execute(
           update_preferences_handler.UpdatePlanningPreferencesCommand(
             default_sort: b.default_sort,
@@ -132,7 +140,19 @@ pub fn handle_update_settings(
           ),
           deps.update_planning_preferences_port,
         )
-      helpers.json_response(200, json_codec.encode_ok("settings saved"))
-    }
+      {
+        Ok(_) ->
+          helpers.json_response(200, json_codec.encode_ok("settings saved"))
+        Error(update_preferences_ports.InvalidPreferences) ->
+          helpers.json_response(
+            400,
+            json_codec.encode_error("invalid settings"),
+          )
+        Error(update_preferences_ports.PersistenceFailed(_)) ->
+          helpers.json_response(
+            500,
+            json_codec.encode_error("failed to save settings"),
+          )
+      }
   }
 }
