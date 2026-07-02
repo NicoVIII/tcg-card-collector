@@ -1,4 +1,4 @@
-import gleam/option.{type Option}
+import gleam/dict.{type Dict}
 
 pub type InventoryProjectionReadModel {
   InventoryProjectionReadModel(
@@ -21,8 +21,10 @@ pub type RuleRow {
 pub type SnapshotRowsPort =
   fn() -> List(SnapshotRow)
 
-pub type CatalogNamePort =
-  fn(String, String) -> Option(String)
+/// Batch lookup: card name by (set_code, collector_number). Keys absent from
+/// the catalog are simply absent from the returned dict.
+pub type CatalogNamesPort =
+  fn(List(#(String, String))) -> Dict(#(String, String), String)
 
 pub type RulesPort =
   fn() -> List(RuleRow)
@@ -30,7 +32,7 @@ pub type RulesPort =
 pub type InventoryProjectionPorts {
   InventoryProjectionPorts(
     snapshot_rows: SnapshotRowsPort,
-    catalog_name: CatalogNamePort,
+    catalog_names: CatalogNamesPort,
     rules: RulesPort,
   )
 }

@@ -1,44 +1,38 @@
 import catalog/driver/gleam/catalog_api
 import collection/driver/gleam/collection_api
+import gleam/dict
 import gleam/list
-import gleam/option.{None, Some}
 import inventory_planning/application/queries/projection/ports
 import inventory_planning/infrastructure/daos/inventory_rules_dao
 
 pub fn new() -> ports.InventoryProjectionPorts {
   ports.InventoryProjectionPorts(
     snapshot_rows: snapshot_rows_adapter(),
-    catalog_name: catalog_name_adapter(),
+    catalog_names: catalog_names_adapter(),
     rules: rules_adapter(),
   )
 }
 
 fn snapshot_rows_adapter() -> ports.SnapshotRowsPort {
   fn() {
-    collection_api.snapshot_rows()
-    |> list.map(fn(row) {
-      let #(set_code, collector_number, quantity) = row
+    collection_api.list_cards()
+    |> list.map(fn(card) {
       ports.SnapshotRow(
-        set_code: set_code,
-        collector_number: collector_number,
-        quantity: quantity,
+        set_code: card.set_code,
+        collector_number: card.collector_number,
+        quantity: card.quantity,
       )
     })
   }
 }
 
-fn catalog_name_adapter() -> ports.CatalogNamePort {
-  fn(set_code, collector_number) {
-    let names = catalog_api.name_lookup()
-    case
-      list.find(names, fn(entry) {
-        let #(s, c, _) = entry
-        s == set_code && c == collector_number
-      })
-    {
-      Ok(#(_, _, name)) -> Some(name)
-      Error(_) -> None
-    }
+fn catalog_names_adapter() -> ports.CatalogNamesPort {
+  fn(keys) {
+    catalog_api.get_cards(keys)
+    |> list.map(fn(card) {
+      #(#(card.set_code, card.collector_number), card.name)
+    })
+    |> dict.from_list
   }
 }
 

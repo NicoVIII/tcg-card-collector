@@ -1,6 +1,9 @@
+import gleam/dict
+import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
+import gleam/result
 import gleam/string
 import inventory_planning/application/queries/projection/ports as projection_ports
 import inventory_planning/domain/grouping_strategy
@@ -34,27 +37,40 @@ pub fn execute(
       }
     })
 
-  ports.snapshot_rows()
-  |> list.filter_map(fn(row) {
-    case rule_set.location_for(rules, row.set_code) {
-      None -> Error(Nil)
-      Some(location_name) -> {
-        let card_name =
-          ports.catalog_name(row.set_code, row.collector_number)
-          |> option.unwrap("")
-        let group_value = case group_by {
-          grouping_strategy.BySet -> row.set_code
-          grouping_strategy.ByLocation -> location_name
-        }
-        Ok(projection_ports.InventoryProjectionReadModel(
-          location_name: location_name,
-          card_name: card_name,
-          set_code: row.set_code,
-          quantity: row.quantity,
-          group_value: group_value,
-        ))
+  let matched_rows =
+    ports.snapshot_rows()
+    |> list.filter_map(fn(row) {
+      case rule_set.location_for(rules, row.set_code) {
+        None -> Error(Nil)
+        Some(location_name) -> Ok(#(row, location_name))
       }
+    })
+
+  let names =
+    ports.catalog_names(
+      list.map(matched_rows, fn(pair) {
+        let #(row, _) = pair
+        #(row.set_code, row.collector_number)
+      }),
+    )
+
+  matched_rows
+  |> list.map(fn(pair) {
+    let #(row, location_name) = pair
+    let card_name =
+      dict.get(names, #(row.set_code, row.collector_number))
+      |> result.unwrap("")
+    let group_value = case group_by {
+      grouping_strategy.BySet -> row.set_code
+      grouping_strategy.ByLocation -> location_name
     }
+    projection_ports.InventoryProjectionReadModel(
+      location_name: location_name,
+      card_name: card_name,
+      set_code: row.set_code,
+      quantity: row.quantity,
+      group_value: group_value,
+    )
   })
   |> sort_results(sort_by)
 }
@@ -67,22 +83,11 @@ fn sort_results(
     let primary = case sort_by {
       sort_strategy.ByCardName -> string.compare(a.card_name, b.card_name)
       sort_strategy.BySetCode -> string.compare(a.set_code, b.set_code)
-      sort_strategy.ByQuantity -> int_compare(a.quantity, b.quantity)
+      sort_strategy.ByQuantity -> int.compare(a.quantity, b.quantity)
     }
     case primary {
       order.Eq -> string.compare(a.location_name, b.location_name)
       other -> other
     }
   })
-}
-
-fn int_compare(a: Int, b: Int) -> order.Order {
-  case a < b {
-    True -> order.Lt
-    False ->
-      case a > b {
-        True -> order.Gt
-        False -> order.Eq
-      }
-  }
 }
