@@ -2,6 +2,7 @@ import bootstrap/composition.{type Dependencies}
 import bootstrap/skir/router as skir_router
 import bootstrap/skir/setup as skir_setup
 import catalog/driver/http/handler as catalog_http
+import catalog/driver/refresh_launcher
 import collection/driver/http/handler as collection_http
 import gleam/erlang/process
 import gleam/http.{Delete, Get, Post, Put}
@@ -20,7 +21,6 @@ pub fn start(deps: Dependencies) -> Nil {
   let port = read_port()
   let rpc_service = skir_setup.make_service()
   let server_name = process.new_name("skir_rpc_server")
-  let refresh_worker_name = process.new_name("catalog_refresh_worker")
 
   let _server_pid =
     process.spawn(fn() {
@@ -31,7 +31,7 @@ pub fn start(deps: Dependencies) -> Nil {
     })
 
   let handler = fn(req: Request(mist.Connection)) -> Response(mist.ResponseData) {
-    handle_request(req, deps, server_name, refresh_worker_name)
+    handle_request(req, deps, server_name)
   }
 
   let assert Ok(_) =
@@ -41,9 +41,9 @@ pub fn start(deps: Dependencies) -> Nil {
     |> mist.start
 
   let _ =
-    catalog_http.launch_catalog_refresh(
+    refresh_launcher.launch(
       deps.catalog,
-      refresh_worker_name,
+      deps.catalog.refresh_worker_name,
       "startup",
     )
 
@@ -60,7 +60,6 @@ fn handle_request(
   req: Request(mist.Connection),
   deps: Dependencies,
   server_name: skir_setup.ServerName,
-  refresh_worker_name: process.Name(Nil),
 ) -> Response(mist.ResponseData) {
   let path = path_without_query(req.path)
 
@@ -68,7 +67,9 @@ fn handle_request(
     Get, "/api/catalog/cards" ->
       catalog_http.handle_list_catalog_cards(deps.catalog)
     Post, "/api/catalog/refresh" ->
-      catalog_http.handle_refresh_catalog(deps.catalog, refresh_worker_name)
+      catalog_http.handle_refresh_catalog(deps.catalog)
+    Get, "/api/catalog/refresh/latest" ->
+      catalog_http.handle_refresh_status(deps.catalog)
     Post, "/api/import" ->
       collection_http.handle_import_collection(req, deps.collection)
     Get, "/api/import/latest" ->

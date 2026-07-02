@@ -37,3 +37,18 @@ method ListCatalogCards(
 method GetCatalogCards(
   GetCatalogCardsRequest
 ): CatalogCardList = 103;
+
+struct CatalogRefreshStatus {
+  status: string = 0;
+  last_probe_at: string = 1;
+  last_upstream_updated_at: string = 2;
+  error_message: string = 3;
+}
+
+struct GetCatalogRefreshStatusRequest {
+  unit: bool = 0;
+}
+
+method GetCatalogRefreshStatus(
+  GetCatalogRefreshStatusRequest
+): CatalogRefreshStatus = 104;

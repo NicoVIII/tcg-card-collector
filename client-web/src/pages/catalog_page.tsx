@@ -1,6 +1,6 @@
 import { Show, createSignal } from "solid-js";
 import { useRefreshCatalogMutation } from "../data/card_catalog/mutation";
-import { useCatalogCardsQuery } from "../data/card_catalog/query";
+import { useCatalogCardsQuery, useCatalogRefreshStatusQuery } from "../data/card_catalog/query";
 import { mapError } from "../data/http/error";
 import { CardGrid } from "../components/card_grid";
 
@@ -12,6 +12,7 @@ export function CatalogPage() {
   >(undefined);
   const keysQuery = useCatalogCardsQuery(offset, limit);
   const refreshMutation = useRefreshCatalogMutation();
+  const refreshStatusQuery = useCatalogRefreshStatusQuery();
 
   const total = () => keysQuery.data?.total ?? 0;
   const hasMore = () => offset() + limit() < total();
@@ -63,6 +64,15 @@ export function CatalogPage() {
         {(feedback) => (
           <p role={feedback().kind === "error" ? "alert" : "status"}>{feedback().message}</p>
         )}
+      </Show>
+      <Show when={refreshStatusQuery.data && refreshStatusQuery.data.status !== "never_run"}>
+        <p>
+          Last refresh: {refreshStatusQuery.data?.status} ({refreshStatusQuery.data?.last_probe_at})
+          <Show when={refreshStatusQuery.data?.error_message}>
+            {" — "}
+            {refreshStatusQuery.data?.error_message}
+          </Show>
+        </p>
       </Show>
       <Show when={keysQuery.isLoading}>
         <p>Loading cards...</p>

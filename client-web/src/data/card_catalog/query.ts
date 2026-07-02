@@ -1,12 +1,24 @@
 import { createQuery } from "@tanstack/solid-query";
 import { cardBatcher } from "./batcher";
-import { type CatalogCard, type CatalogCardKey, listCatalogCards } from "./request";
+import {
+  type CatalogCard,
+  type CatalogCardKey,
+  getCatalogRefreshStatus,
+  listCatalogCards,
+} from "./request";
 import { queryKeys } from "../query-keys/factory";
 
 export function useCatalogCardsQuery(offset: () => number, limit: () => number) {
   return createQuery(() => ({
     queryKey: queryKeys.catalogList(offset(), limit()),
     queryFn: () => listCatalogCards(offset(), limit()),
+  }));
+}
+
+export function useCatalogRefreshStatusQuery() {
+  return createQuery(() => ({
+    queryKey: queryKeys.catalogRefreshStatus(),
+    queryFn: getCatalogRefreshStatus,
   }));
 }
 

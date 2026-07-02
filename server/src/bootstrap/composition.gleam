@@ -4,6 +4,7 @@ import catalog/driver/dependencies.{
 import catalog/infrastructure/adapters/commands/refresh/adapter as refresh_adapter
 import catalog/infrastructure/adapters/queries/get_cards/adapter as get_cards_adapter
 import catalog/infrastructure/adapters/queries/list_cards/adapter as list_cards_adapter
+import catalog/infrastructure/adapters/queries/refresh_status/adapter as refresh_status_adapter
 import collection/driver/dependencies.{
   type Dependencies as CollectionDependencies,
   Dependencies as CollectionDependencies,
@@ -11,6 +12,7 @@ import collection/driver/dependencies.{
 import collection/infrastructure/adapters/commands/import_collection/adapter as import_collection_adapter
 import collection/infrastructure/adapters/queries/latest_status/adapter as latest_status_adapter
 import collection/infrastructure/adapters/queries/list_cards/adapter as list_collection_cards_adapter
+import gleam/erlang/process
 import gleam/io
 import inventory_planning/driver/dependencies.{
   type Dependencies as InventoryPlanningDependencies,
@@ -45,6 +47,8 @@ pub fn dependencies() -> Dependencies {
       refresh_catalog_ports: refresh_adapter.new(),
       list_catalog_cards_port: list_cards_adapter.new(),
       get_catalog_cards_port: get_cards_adapter.new(),
+      get_refresh_status_port: refresh_status_adapter.new(),
+      refresh_worker_name: process.new_name("catalog_refresh_worker"),
     ),
     collection: CollectionDependencies(
       import_collection_ports: import_collection_adapter.new(),

@@ -3,6 +3,8 @@ import {
   GetCatalogCards,
   GetCatalogCardsRequest,
   CatalogCardKey as RpcCatalogCardKey,
+  GetCatalogRefreshStatus,
+  GetCatalogRefreshStatusRequest,
   ListCatalogCards,
   ListCatalogCardsRequest,
   CatalogCardKeyList as RpcCatalogCardKeyList,
@@ -70,6 +72,28 @@ export async function getCatalogCards(keys: CatalogCardKey[]): Promise<CatalogCa
     "POST",
   );
   return response.data.map(toCatalogCard);
+}
+
+export type CatalogRefreshStatus = {
+  status: string;
+  last_probe_at: string;
+  last_upstream_updated_at: string;
+  error_message: string;
+};
+
+export async function getCatalogRefreshStatus(): Promise<CatalogRefreshStatus> {
+  const response = await skirClient.invokeRemote(
+    GetCatalogRefreshStatus,
+    GetCatalogRefreshStatusRequest.create({ unit: true }),
+    "POST",
+  );
+
+  return {
+    status: response.status,
+    last_probe_at: response.lastProbeAt,
+    last_upstream_updated_at: response.lastUpstreamUpdatedAt,
+    error_message: response.errorMessage,
+  };
 }
 
 export async function refreshCatalog(): Promise<{ success: boolean; message: string }> {

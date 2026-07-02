@@ -1,17 +1,28 @@
 import catalog/application/queries/list_cards/ports as list_cards_ports
+import catalog/application/queries/refresh_status/ports as refresh_status_ports
+import catalog/driver/refresh_launcher.{RefreshAlreadyRunning, RefreshStarted}
 import gleam/json
 
-pub type CatalogRefreshLaunch {
-  RefreshStarted
-  RefreshAlreadyRunning
-}
-
-pub fn encode_refresh_launch(launch: CatalogRefreshLaunch) -> String {
+pub fn encode_refresh_launch(
+  launch: refresh_launcher.RefreshLaunchOutcome,
+) -> String {
   let message = case launch {
     RefreshStarted -> "catalog refresh started"
     RefreshAlreadyRunning -> "catalog refresh already running"
   }
   json.object([#("ok", json.string(message))])
+  |> json.to_string
+}
+
+pub fn encode_refresh_status(
+  status: refresh_status_ports.RefreshStatusReadModel,
+) -> String {
+  json.object([
+    #("status", json.string(status.status)),
+    #("last_probe_at", json.string(status.last_probe_at)),
+    #("last_upstream_updated_at", json.string(status.last_upstream_updated_at)),
+    #("error_message", json.string(status.error_message)),
+  ])
   |> json.to_string
 }
 

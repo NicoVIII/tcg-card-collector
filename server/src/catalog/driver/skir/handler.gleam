@@ -1,11 +1,13 @@
-import catalog/application/commands/refresh/handler.{RefreshCatalogCommand} as catalog_refresh_handler
 import catalog/application/queries/get_cards/handler as get_catalog_cards_handler
 import catalog/application/queries/get_cards/ports as get_cards_ports
 import catalog/application/queries/list_cards/handler.{ListCatalogCardsQuery} as catalog_list_cards_handler
 import catalog/application/queries/list_cards/ports as list_cards_ports
+import catalog/application/queries/refresh_status/handler.{
+  GetCatalogRefreshStatusQuery,
+} as refresh_status_handler
 import catalog/driver/dependencies.{type Dependencies}
+import catalog/driver/refresh_launcher
 import catalog/driver/skir/codec as catalog_skir_codec
-import gleam/io
 import gleam/list
 import shared/driver/skir/skirout/card_catalog/commands as card_catalog_commands
 import shared/driver/skir/skirout/card_catalog/queries as card_catalog_queries
@@ -28,6 +30,10 @@ pub fn register(
     card_catalog_queries.get_catalog_cards_method(),
     handle_get_catalog_cards(get_dependencies),
   )
+  |> service.add_method(
+    card_catalog_queries.get_catalog_refresh_status_method(),
+    handle_get_refresh_status(get_dependencies),
+  )
 }
 
 fn handle_refresh_catalog(get_dependencies: fn(context) -> Dependencies) {
@@ -40,22 +46,11 @@ fn handle_refresh_catalog(get_dependencies: fn(context) -> Dependencies) {
     Nil,
     Nil,
   ) {
-    log_rpc("started")
-    let result =
-      catalog_refresh_handler.execute(
-        RefreshCatalogCommand,
-        get_dependencies(ctx).refresh_catalog_ports,
-      )
-    case result {
-      Ok(_) -> log_rpc("finished successfully")
-      Error(_) -> log_rpc("finished with failure")
-    }
-    #(catalog_skir_codec.map_refresh_catalog_result(result), req_meta, Nil)
+    let deps = get_dependencies(ctx)
+    let outcome =
+      refresh_launcher.launch(deps, deps.refresh_worker_name, "skir")
+    #(Ok(catalog_skir_codec.map_refresh_launch_result(outcome)), req_meta, Nil)
   }
-}
-
-fn log_rpc(message: String) -> Nil {
-  io.println("[rpc][catalog-refresh] " <> message)
 }
 
 fn handle_list_catalog_cards(get_dependencies: fn(context) -> Dependencies) {
@@ -131,6 +126,25 @@ fn map_card_read_model(
   )
 }
 
+fn handle_get_refresh_status(get_dependencies: fn(context) -> Dependencies) {
+  fn(
+    _: card_catalog_queries.GetCatalogRefreshStatusRequest,
+    req_meta: Nil,
+    ctx: context,
+  ) -> #(
+    Result(card_catalog_queries.CatalogRefreshStatus, service.ServiceError),
+    Nil,
+    Nil,
+  ) {
+    let status =
+      refresh_status_handler.execute(
+        GetCatalogRefreshStatusQuery,
+        get_dependencies(ctx).get_refresh_status_port,
+      )
+    #(Ok(catalog_skir_codec.map_refresh_status_result(status)), req_meta, Nil)
+  }
+}
+
 fn paginate_keys(
   keys: List(list_cards_ports.CatalogCardKeyReadModel),
   offset: Int,
@@ -140,11 +154,11 @@ fn paginate_keys(
   let normalized_limit = clamp_non_negative(limit)
 
   keys
-  |> drop_items(normalized_offset)
+  |> list.drop(normalized_offset)
   |> fn(remaining) {
     case normalized_limit {
       0 -> remaining
-      _ -> take_items(remaining, normalized_limit)
+      _ -> list.take(remaining, normalized_limit)
     }
   }
 }
@@ -153,21 +167,5 @@ fn clamp_non_negative(value: Int) -> Int {
   case value < 0 {
     True -> 0
     False -> value
-  }
-}
-
-fn drop_items(items: List(a), count: Int) -> List(a) {
-  case count <= 0, items {
-    True, _ -> items
-    False, [] -> []
-    False, [_first, ..rest] -> drop_items(rest, count - 1)
-  }
-}
-
-fn take_items(items: List(a), count: Int) -> List(a) {
-  case count <= 0, items {
-    True, _ -> []
-    False, [] -> []
-    False, [first, ..rest] -> [first, ..take_items(rest, count - 1)]
   }
 }
