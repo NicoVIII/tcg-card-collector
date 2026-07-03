@@ -4,15 +4,13 @@ SolidJS + TypeScript web client for tcg-card-collector.
 
 MVP routes:
 
-- /import
+- /collection
 - /catalog
 - /inventory
 - /settings
 
 ## Quality
 
-- `bun run format`
-- `bun run lint`
-- `bun run typecheck`
-- `bun run test`
-- `bun run check`
+- `just client-web::check` — format-check + type-check + lint
+- `just client-web::test` — Vitest
+- `just client-web::format` — apply formatting
