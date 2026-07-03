@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(just:*)",
+      "Bash(gleam:*)",
+      "Bash(bun:*)",
+      "Bash(bunx:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(shellcheck:*)",
+      "Bash(lefthook install)"
+    ]
+  }
+}

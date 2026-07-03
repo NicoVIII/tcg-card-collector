@@ -4,3 +4,6 @@
 
 # Generated skir files
 skirout/
+
+# Claude Code per-user settings
+.claude/settings.local.json
