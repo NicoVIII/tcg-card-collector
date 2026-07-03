@@ -3,20 +3,20 @@ import { useRefreshCatalogMutation } from "../data/card_catalog/mutation";
 import { useCatalogCardsQuery, useCatalogRefreshStatusQuery } from "../data/card_catalog/query";
 import { mapError } from "../data/http/error";
 import { CardGrid } from "../components/card_grid";
+import { Pagination } from "../components/pagination";
+
+const PAGE_SIZE = 25;
 
 export function CatalogPage() {
   const [offset, setOffset] = createSignal(0);
-  const [limit] = createSignal(25);
   const [refreshFeedback, setRefreshFeedback] = createSignal<
     { kind: "success" | "error"; message: string } | undefined
   >(undefined);
-  const keysQuery = useCatalogCardsQuery(offset, limit);
+  const keysQuery = useCatalogCardsQuery(offset, () => PAGE_SIZE);
   const refreshMutation = useRefreshCatalogMutation();
   const refreshStatusQuery = useCatalogRefreshStatusQuery();
 
   const total = () => keysQuery.data?.total ?? 0;
-  const hasMore = () => offset() + limit() < total();
-  const hasPrev = () => offset() > 0;
 
   const refreshCatalog = async () => {
     setRefreshFeedback(undefined);
@@ -89,17 +89,12 @@ export function CatalogPage() {
         }
       >
         <CardGrid cards={keysQuery.data?.data ?? []} />
-        <div>
-          <button onClick={() => setOffset(offset() - limit())} disabled={!hasPrev()}>
-            Prev
-          </button>
-          <span>
-            {offset() + 1}–{Math.min(offset() + limit(), total())} of {total()}
-          </span>
-          <button onClick={() => setOffset(offset() + limit())} disabled={!hasMore()}>
-            Next
-          </button>
-        </div>
+        <Pagination
+          offset={offset()}
+          limit={PAGE_SIZE}
+          total={total()}
+          onOffsetChange={setOffset}
+        />
       </Show>
     </section>
   );

@@ -5,6 +5,9 @@ import { useLatestImportStatusQuery } from "../data/collection_import/query";
 import { useCollectionCardsQuery } from "../data/collection/query";
 import { parseImportRowsCsv } from "./import_rows";
 import { CardGrid } from "../components/card_grid";
+import { Pagination } from "../components/pagination";
+
+const PAGE_SIZE = 25;
 
 export function CollectionPage() {
   // import form state
@@ -16,12 +19,9 @@ export function CollectionPage() {
 
   // collection list state
   const [offset, setOffset] = createSignal(0);
-  const [limit] = createSignal(25);
-  const cardsQuery = useCollectionCardsQuery(offset, limit);
+  const cardsQuery = useCollectionCardsQuery(offset, () => PAGE_SIZE);
 
   const total = () => cardsQuery.data?.total ?? 0;
-  const hasMore = () => offset() + limit() < total();
-  const hasPrev = () => offset() > 0;
 
   const statusMessage = createMemo(() => {
     if (statusQuery.isLoading) {
@@ -111,17 +111,12 @@ export function CollectionPage() {
         }
       >
         <CardGrid cards={cardsQuery.data?.data ?? []} />
-        <div>
-          <button onClick={() => setOffset(offset() - limit())} disabled={!hasPrev()}>
-            Prev
-          </button>
-          <span>
-            {offset() + 1}–{Math.min(offset() + limit(), total())} of {total()}
-          </span>
-          <button onClick={() => setOffset(offset() + limit())} disabled={!hasMore()}>
-            Next
-          </button>
-        </div>
+        <Pagination
+          offset={offset()}
+          limit={PAGE_SIZE}
+          total={total()}
+          onOffsetChange={setOffset}
+        />
       </Show>
     </section>
   );
