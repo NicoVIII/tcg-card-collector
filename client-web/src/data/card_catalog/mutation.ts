@@ -8,9 +8,7 @@ export function useRefreshCatalogMutation() {
   return createMutation(() => ({
     mutationFn: refreshCatalog,
     onSuccess: async () => {
-      // Matches the ["card_catalog", "refresh_status"] key too (prefix match).
-      await queryClient.invalidateQueries({ queryKey: ["card_catalog"] });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.settings() });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.catalogRefreshStatus() });
     },
   }));
 }

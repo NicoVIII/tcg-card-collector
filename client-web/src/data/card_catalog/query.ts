@@ -15,10 +15,11 @@ export function useCatalogCardsQuery(offset: () => number, limit: () => number) 
   }));
 }
 
-export function useCatalogRefreshStatusQuery() {
+export function useCatalogRefreshStatusQuery(refetchIntervalMs?: () => number | false) {
   return createQuery(() => ({
     queryKey: queryKeys.catalogRefreshStatus(),
     queryFn: getCatalogRefreshStatus,
+    refetchInterval: refetchIntervalMs?.() ?? false,
   }));
 }
 

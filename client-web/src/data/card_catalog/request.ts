@@ -1,4 +1,5 @@
 import { skirClient } from "../http/skir_rpc";
+import { RefreshCatalog, RefreshCatalogRequest } from "../skirout/card_catalog/commands.js";
 import {
   GetCatalogCards,
   GetCatalogCardsRequest,
@@ -96,43 +97,12 @@ export async function getCatalogRefreshStatus(): Promise<CatalogRefreshStatus> {
   };
 }
 
-export async function refreshCatalog(): Promise<{ success: boolean; message: string }> {
-  const refreshTimeoutMs = 90_000;
-  const refreshEndpoint = "/api/catalog/refresh";
+export type RefreshCatalogResult = { kind: "started" | "already_running" };
 
-  const response = await withTimeout(
-    fetch(refreshEndpoint, { method: "POST" }),
-    refreshTimeoutMs,
-    "Catalog refresh is still running on the server. Please check again in a moment.",
+export async function refreshCatalog(): Promise<RefreshCatalogResult> {
+  const response = await skirClient.invokeRemote(
+    RefreshCatalog,
+    RefreshCatalogRequest.create({ unit: true }),
   );
-
-  const payload = (await response.json()) as { ok?: string; error?: string };
-
-  if (response.ok) {
-    return {
-      success: true,
-      message: payload.ok ?? "Catalog refresh started.",
-    };
-  }
-
-  throw new Error(payload.error ?? `Catalog refresh failed (status ${response.status})`);
-}
-
-async function withTimeout<T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  timeoutMessage: string,
-): Promise<T> {
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
-  });
-
-  try {
-    return await Promise.race([promise, timeoutPromise]);
-  } finally {
-    if (timeoutId !== undefined) {
-      clearTimeout(timeoutId);
-    }
-  }
+  return { kind: response.union.kind === "ALREADY_RUNNING" ? "already_running" : "started" };
 }
