@@ -28,6 +28,7 @@ MVP vertical slice is implemented end-to-end:
 
 - Backend: format, typecheck, unit tests, architecture lint
 - Frontend: format, lint, typecheck, tests
+- Migrations: storage smoke test (CI + on demand; needs sqlite3 + dbmate)
 
 Run locally:
 
@@ -35,6 +36,7 @@ Run locally:
 - `just client-web::check` — frontend checks
 - `just skir-check` — contract format + snapshot alignment
 - `just check` — all of the above
+- `just storage-smoke` — migration smoke test (not part of `just check`)
 
 ## Developer Feedback Loop
 

@@ -40,6 +40,11 @@ dbmate-install:
 dbmate-migrate:
   sh ./scripts/dbmate_up.sh
 
+# migration smoke test; needs sqlite3 + dbmate, so it runs in CI, not in `just check`
+[group('check')]
+storage-smoke:
+  sh ./scripts/check_storage_smoke.sh
+
 devcontainer-shellcheck:
   find .devcontainer container -type f -name '*.sh' -print0 | xargs -0r shellcheck
 

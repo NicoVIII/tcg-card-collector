@@ -44,7 +44,6 @@ INSERT INTO collection_snapshot (
   id,
   import_run_id,
   row_number,
-  card_name,
   set_code,
   collector_number,
   finish,
@@ -55,7 +54,6 @@ INSERT INTO collection_snapshot (
     'snap-1',
     'run-1',
     1,
-    'Lightning Bolt',
     'M11',
     '146',
     'nonfoil',
@@ -66,7 +64,6 @@ INSERT INTO collection_snapshot (
     'snap-2',
     'run-1',
     2,
-    'Counterspell',
     '2XM',
     '49',
     'foil',
@@ -76,22 +73,18 @@ INSERT INTO collection_snapshot (
 
 INSERT INTO catalog_cards (
   id,
-  oracle_id,
   name,
   set_code,
   collector_number,
   rarity,
-  image_small_uri,
-  image_normal_uri
+  image_uri
 ) VALUES (
   'card-1',
-  'oracle-1',
   'Lightning Bolt',
   'M11',
   '146',
   'common',
-  'https://img.example.com/bolt-small.jpg',
-  'https://img.example.com/bolt-normal.jpg'
+  'https://img.example.com/bolt.jpg'
 );
 
 INSERT INTO catalog_sync_metadata (
