@@ -14,9 +14,11 @@ export function SettingsPage() {
   const [saveError, setSaveError] = createSignal<string | null>(null);
   const [saved, setSaved] = createSignal(false);
 
+  let initializedFromServer = false;
   createEffect(() => {
     const data = settingsQuery.data;
-    if (data !== undefined) {
+    if (data !== undefined && !initializedFromServer) {
+      initializedFromServer = true;
       setDefaultSort(data.default_sort);
       setDefaultGrouping(data.default_grouping);
     }
@@ -54,14 +56,20 @@ export function SettingsPage() {
             Default sort
             <input
               value={defaultSort()}
-              onInput={(event) => setDefaultSort(event.currentTarget.value)}
+              onInput={(event) => {
+                setDefaultSort(event.currentTarget.value);
+                setSaved(false);
+              }}
             />
           </label>
           <label>
             Default grouping
             <input
               value={defaultGrouping()}
-              onInput={(event) => setDefaultGrouping(event.currentTarget.value)}
+              onInput={(event) => {
+                setDefaultGrouping(event.currentTarget.value);
+                setSaved(false);
+              }}
             />
           </label>
         </div>
