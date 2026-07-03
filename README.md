@@ -1,6 +1,6 @@
 # tcg-card-collector
 
-Self-hosted TCG collection service.
+Self-hosted TCG collection service. See [docs/vision.md](docs/vision.md) for project goals, direction, and non-goals.
 
 Stack:
 
