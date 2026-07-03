@@ -14,8 +14,8 @@ export function CollectionPage() {
   const queryClient = useQueryClient();
 
   // import form state
-  const [sourceName, setSourceName] = createSignal("deckstats-export.csv");
-  const [rowsCsv, setRowsCsv] = createSignal("M11,146,2");
+  const [sourceName, setSourceName] = createSignal("");
+  const [rowsCsv, setRowsCsv] = createSignal("");
   const [submitError, setSubmitError] = createSignal<string | null>(null);
   const mutation = useImportCollectionMutation();
   const [isRunPending, setIsRunPending] = createSignal(false);
@@ -64,11 +64,15 @@ export function CollectionPage() {
       setSubmitError(parsedRows.error);
       return;
     }
+    if (parsedRows.rows.length === 0) {
+      setSubmitError("Enter at least one row.");
+      return;
+    }
 
     try {
       const response = await mutation.mutateAsync({
         importRunId: crypto.randomUUID(),
-        sourceName: sourceName(),
+        sourceName: sourceName().trim().length > 0 ? sourceName() : "manual",
         rowCount: parsedRows.rows.length,
         rows: parsedRows.rows,
       });
@@ -91,6 +95,7 @@ export function CollectionPage() {
           <input
             value={sourceName()}
             onInput={(event) => setSourceName(event.currentTarget.value)}
+            placeholder="deckstats-export.csv"
           />
         </label>
         <label>
@@ -99,6 +104,7 @@ export function CollectionPage() {
             value={rowsCsv()}
             onInput={(event) => setRowsCsv(event.currentTarget.value)}
             rows={6}
+            placeholder="M11,146,2"
           />
         </label>
         <button onClick={submitImport} disabled={mutation.isPending}>

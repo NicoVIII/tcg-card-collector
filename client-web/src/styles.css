@@ -65,6 +65,78 @@ h2 {
   margin-top: 0;
 }
 
+/* Forms */
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+  font-weight: normal;
+  padding: 6px 10px;
+  border: 1px solid #c7d1d8;
+  border-radius: 8px;
+  background: #fff;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+.page-panel button {
+  font: inherit;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--brand);
+  background: var(--brand);
+  color: #fff;
+}
+
+.page-panel button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+}
+
+.pagination {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.rule-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+p[role="alert"] {
+  color: #b3261e;
+}
+
+.success {
+  color: var(--brand);
+}
+
 /* Card grid */
 
 .card-grid {

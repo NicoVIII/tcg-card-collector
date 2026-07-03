@@ -66,7 +66,7 @@ export function InventoryPage() {
   return (
     <section>
       <h2>Inventory</h2>
-      <div>
+      <div class="form-row">
         <label>
           Sort by
           <select value={sortBy()} onChange={(event) => setSortBy(event.currentTarget.value)}>
@@ -84,7 +84,7 @@ export function InventoryPage() {
           </select>
         </label>
       </div>
-      <div>
+      <div class="form-row">
         <label>
           Location name
           <input
@@ -117,7 +117,7 @@ export function InventoryPage() {
         <ul>
           <For each={rulesQuery.data?.data}>
             {(rule) => (
-              <li>
+              <li class="rule-row">
                 {rule.location_name}: {rule.expression}
                 <button
                   onClick={() =>

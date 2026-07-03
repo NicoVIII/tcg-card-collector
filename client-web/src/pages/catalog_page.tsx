@@ -65,7 +65,12 @@ export function CatalogPage() {
       </button>
       <Show when={refreshFeedback()}>
         {(feedback) => (
-          <p role={feedback().kind === "error" ? "alert" : "status"}>{feedback().message}</p>
+          <p
+            role={feedback().kind === "error" ? "alert" : "status"}
+            class={feedback().kind === "success" ? "success" : undefined}
+          >
+            {feedback().message}
+          </p>
         )}
       </Show>
       <Show when={refreshStatusQuery.data && refreshStatusQuery.data.status !== "never_run"}>

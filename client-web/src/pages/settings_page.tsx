@@ -52,7 +52,7 @@ export function SettingsPage() {
         <p role="alert">{mapError(settingsQuery.error).message}</p>
       </Show>
       <Show when={!settingsQuery.isLoading}>
-        <div>
+        <div class="form-row">
           <label>
             Default sort
             <select
@@ -89,7 +89,7 @@ export function SettingsPage() {
           <p role="alert">{saveError()}</p>
         </Show>
         <Show when={saved()}>
-          <p>Settings saved.</p>
+          <p class="success">Settings saved.</p>
         </Show>
       </Show>
     </section>
