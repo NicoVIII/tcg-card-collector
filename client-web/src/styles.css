@@ -38,6 +38,14 @@ nav {
   padding: 8px 12px;
   border-radius: 8px;
   cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.nav-btn.active {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
 }
 
 .page-panel {

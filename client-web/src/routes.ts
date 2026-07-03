@@ -1,20 +1,18 @@
+import type { Component } from "solid-js";
+import { CatalogPage } from "./pages/catalog_page";
+import { CollectionPage } from "./pages/collection_page";
+import { InventoryPage } from "./pages/inventory_page";
+import { SettingsPage } from "./pages/settings_page";
+
 export type AppRoute = {
   path: "/collection" | "/catalog" | "/inventory" | "/settings";
   label: string;
-  description: string;
+  component: Component;
 };
 
 export const routes: AppRoute[] = [
-  { path: "/collection", label: "Collection", description: "Your card collection." },
-  { path: "/catalog", label: "Catalog", description: "Catalog browse and search will live here." },
-  {
-    path: "/inventory",
-    label: "Inventory",
-    description: "Inventory planning and grouping will live here.",
-  },
-  {
-    path: "/settings",
-    label: "Settings",
-    description: "Runtime settings and manual refresh will live here.",
-  },
+  { path: "/collection", label: "Collection", component: CollectionPage },
+  { path: "/catalog", label: "Catalog", component: CatalogPage },
+  { path: "/inventory", label: "Inventory", component: InventoryPage },
+  { path: "/settings", label: "Settings", component: SettingsPage },
 ];

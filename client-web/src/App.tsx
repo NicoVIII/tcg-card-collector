@@ -1,13 +1,8 @@
-import { For, createSignal } from "solid-js";
-import { Dynamic } from "solid-js/web";
-import { pageRegistry } from "./pages/registry";
+import { For, type ParentProps } from "solid-js";
+import { A } from "@solidjs/router";
 import { routes } from "./routes";
 
-export default function App() {
-  const [path, setPath] = createSignal("/collection");
-  const current = () => routes.find((route) => route.path === path()) ?? routes[0];
-  const currentPage = () => pageRegistry[current().path];
-
+export default function App(props: ParentProps) {
   return (
     <main class="app-shell">
       <header class="app-header">
@@ -15,16 +10,14 @@ export default function App() {
         <nav>
           <For each={routes}>
             {(route) => (
-              <button class="nav-btn" onClick={() => setPath(route.path)}>
+              <A class="nav-btn" href={route.path}>
                 {route.label}
-              </button>
+              </A>
             )}
           </For>
         </nav>
       </header>
-      <section class="page-panel">
-        <Dynamic component={currentPage()} />
-      </section>
+      <section class="page-panel">{props.children}</section>
     </main>
   );
 }
