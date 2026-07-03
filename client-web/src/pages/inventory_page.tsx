@@ -1,13 +1,15 @@
-import { For, Show, createSignal } from "solid-js";
+import { For, Show, createEffect, createSignal } from "solid-js";
 import { mapError } from "../data/http/error";
 import {
   useDeleteInventoryRuleMutation,
   useUpsertInventoryRuleMutation,
 } from "../data/inventory_planning/mutation";
+import { GROUP_OPTIONS, SORT_OPTIONS } from "../data/inventory_planning/options";
 import {
   useInventoryProjectionQuery,
   useInventoryRulesQuery,
 } from "../data/inventory_planning/query";
+import { useSettingsQuery } from "../data/settings/query";
 
 export function InventoryPage() {
   const [sortBy, setSortBy] = createSignal("card_name");
@@ -20,6 +22,17 @@ export function InventoryPage() {
   const projectionQuery = useInventoryProjectionQuery(sortBy, groupBy);
   const upsertMutation = useUpsertInventoryRuleMutation();
   const deleteMutation = useDeleteInventoryRuleMutation();
+  const settingsQuery = useSettingsQuery();
+
+  let initializedFromSettings = false;
+  createEffect(() => {
+    const data = settingsQuery.data;
+    if (data !== undefined && !initializedFromSettings) {
+      initializedFromSettings = true;
+      setSortBy(data.default_sort);
+      setGroupBy(data.default_grouping);
+    }
+  });
 
   const addRule = () => {
     if (newRuleName().trim().length === 0) {
@@ -44,11 +57,19 @@ export function InventoryPage() {
       <div>
         <label>
           Sort by
-          <input value={sortBy()} onInput={(event) => setSortBy(event.currentTarget.value)} />
+          <select value={sortBy()} onChange={(event) => setSortBy(event.currentTarget.value)}>
+            <For each={SORT_OPTIONS}>
+              {(option) => <option value={option.value}>{option.label}</option>}
+            </For>
+          </select>
         </label>
         <label>
           Group by
-          <input value={groupBy()} onInput={(event) => setGroupBy(event.currentTarget.value)} />
+          <select value={groupBy()} onChange={(event) => setGroupBy(event.currentTarget.value)}>
+            <For each={GROUP_OPTIONS}>
+              {(option) => <option value={option.value}>{option.label}</option>}
+            </For>
+          </select>
         </label>
       </div>
       <div>

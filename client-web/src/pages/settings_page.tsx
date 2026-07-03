@@ -1,6 +1,7 @@
-import { Show, createEffect, createSignal } from "solid-js";
+import { For, Show, createEffect, createSignal } from "solid-js";
 import { useRefreshCatalogMutation } from "../data/card_catalog/mutation";
 import { mapError } from "../data/http/error";
+import { GROUP_OPTIONS, SORT_OPTIONS } from "../data/inventory_planning/options";
 import { useUpdateSettingsMutation } from "../data/settings/mutation";
 import { useSettingsQuery } from "../data/settings/query";
 
@@ -54,23 +55,31 @@ export function SettingsPage() {
         <div>
           <label>
             Default sort
-            <input
+            <select
               value={defaultSort()}
-              onInput={(event) => {
+              onChange={(event) => {
                 setDefaultSort(event.currentTarget.value);
                 setSaved(false);
               }}
-            />
+            >
+              <For each={SORT_OPTIONS}>
+                {(option) => <option value={option.value}>{option.label}</option>}
+              </For>
+            </select>
           </label>
           <label>
             Default grouping
-            <input
+            <select
               value={defaultGrouping()}
-              onInput={(event) => {
+              onChange={(event) => {
                 setDefaultGrouping(event.currentTarget.value);
                 setSaved(false);
               }}
-            />
+            >
+              <For each={GROUP_OPTIONS}>
+                {(option) => <option value={option.value}>{option.label}</option>}
+              </For>
+            </select>
           </label>
         </div>
         <button onClick={saveSettings} disabled={updateMutation.isPending}>
