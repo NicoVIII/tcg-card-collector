@@ -1,4 +1,5 @@
-import { Show, createMemo, createSignal } from "solid-js";
+import { Show, createEffect, createMemo, createSignal } from "solid-js";
+import { useQueryClient } from "@tanstack/solid-query";
 import { mapError } from "../data/http/error";
 import { useImportCollectionMutation } from "../data/collection_import/mutation";
 import { useLatestImportStatusQuery } from "../data/collection_import/query";
@@ -10,18 +11,33 @@ import { Pagination } from "../components/pagination";
 const PAGE_SIZE = 25;
 
 export function CollectionPage() {
+  const queryClient = useQueryClient();
+
   // import form state
   const [sourceName, setSourceName] = createSignal("deckstats-export.csv");
   const [rowsCsv, setRowsCsv] = createSignal("M11,146,2");
   const [submitError, setSubmitError] = createSignal<string | null>(null);
   const mutation = useImportCollectionMutation();
-  const statusQuery = useLatestImportStatusQuery();
+  const [isRunPending, setIsRunPending] = createSignal(false);
+  const statusQuery = useLatestImportStatusQuery(() => (isRunPending() ? 2000 : false));
 
   // collection list state
   const [offset, setOffset] = createSignal(0);
   const cardsQuery = useCollectionCardsQuery(offset, () => PAGE_SIZE);
 
   const total = () => cardsQuery.data?.total ?? 0;
+
+  let previousRunStatus: string | undefined;
+  createEffect(() => {
+    const data = statusQuery.data;
+    const status = data?.kind === "found" ? data.run.status : undefined;
+    setIsRunPending(status === "pending" || status === "running");
+
+    if (previousRunStatus !== status && (status === "succeeded" || status === "failed")) {
+      void queryClient.invalidateQueries({ queryKey: ["collection"] });
+    }
+    previousRunStatus = status;
+  });
 
   const statusMessage = createMemo(() => {
     if (statusQuery.isLoading) {
@@ -92,9 +108,6 @@ export function CollectionPage() {
           <p role="alert">{submitError()}</p>
         </Show>
         <p>{statusMessage()}</p>
-        <Show when={statusQuery.data?.kind === "found"}>
-          <pre>{JSON.stringify(statusQuery.data, null, 2)}</pre>
-        </Show>
       </details>
       <Show when={cardsQuery.isLoading}>
         <p>Loading collection...</p>
