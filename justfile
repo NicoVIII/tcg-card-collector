@@ -1,7 +1,9 @@
 mod server
 mod client-web
 
-skir_version := "1.2"
+# pinned exactly: a floating patch can change snapshot computation and cause
+# spurious drift (see issue #31); bump deliberately + re-snapshot
+skir_version := "1.2.19"
 
 default:
   just --list
@@ -30,7 +32,7 @@ skir-snapshot:
 [group('check')]
 skir-check:
   just skir format --ci
-  just skir snapshot --ci
+  sh ./scripts/check_skir_snapshot.sh {{skir_version}}
 
 [group('dbmate')]
 dbmate-install:
