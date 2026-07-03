@@ -4,9 +4,9 @@ This document defines the MVP bounded contexts and the shared language for each 
 
 ## Bounded Contexts
 
-- Card Catalog
-- Collection Import
-- Inventory Planning
+- Card Catalog (`server/src/catalog/`)
+- Collection Import (`server/src/collection/`)
+- Inventory Planning (`server/src/inventory_planning/`)
 
 ## Card Catalog
 
@@ -52,26 +52,4 @@ Core terms:
 Boundary notes:
 - Owns rule and projection semantics.
 - Consumes collection and catalog data as inputs through application ports.
-
-## Implementation Anchors
-
-Initial module boundaries are represented by:
-
-- `server/src/domain/contexts.gleam`
-- `server/src/domain/card_catalog/context.gleam`
-- `server/src/domain/collection_import/context.gleam`
-- `server/src/domain/inventory_planning/context.gleam`
-
-## Value Object Foundations
-
-Initial domain-only value objects and invariants:
-
-- Card Catalog
-	- `server/src/domain/card_catalog/card_name.gleam`
-	- `server/src/domain/card_catalog/set_code.gleam`
-- Collection Import
-	- `server/src/domain/collection_import/import_source.gleam`
-	- `server/src/domain/collection_import/import_status.gleam`
-- Inventory Planning
-	- `server/src/domain/inventory_planning/location_name.gleam`
-	- `server/src/domain/inventory_planning/grouping_strategy.gleam`
+- Also owns planning preferences — there is no separate Settings context.
