@@ -1,5 +1,6 @@
-import { For, Show, createEffect, createSignal } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
 import { mapError } from "../data/http/error";
+import type { InventoryProjectionRow } from "../data/inventory_planning/request";
 import {
   useDeleteInventoryRuleMutation,
   useUpsertInventoryRuleMutation,
@@ -32,6 +33,17 @@ export function InventoryPage() {
       setSortBy(data.default_sort);
       setGroupBy(data.default_grouping);
     }
+  });
+
+  const groupedProjection = createMemo(() => {
+    const rows = projectionQuery.data?.data ?? [];
+    const groups = new Map<string, InventoryProjectionRow[]>();
+    for (const row of rows) {
+      const group = groups.get(row.group_value) ?? [];
+      group.push(row);
+      groups.set(row.group_value, group);
+    }
+    return [...groups.entries()];
   });
 
   const addRule = () => {
@@ -133,7 +145,35 @@ export function InventoryPage() {
         when={!projectionQuery.isError && (projectionQuery.data?.data?.length ?? 0) > 0}
         fallback={<p>No projection data.</p>}
       >
-        <pre>{JSON.stringify(projectionQuery.data, null, 2)}</pre>
+        <For each={groupedProjection()}>
+          {([groupValue, rows]) => (
+            <div>
+              <h4>{groupValue}</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Card</th>
+                    <th>Set</th>
+                    <th>Location</th>
+                    <th>Qty</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <For each={rows}>
+                    {(row) => (
+                      <tr>
+                        <td>{row.card_name}</td>
+                        <td>{row.set_code}</td>
+                        <td>{row.location_name}</td>
+                        <td>{row.quantity}</td>
+                      </tr>
+                    )}
+                  </For>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </For>
       </Show>
     </section>
   );
