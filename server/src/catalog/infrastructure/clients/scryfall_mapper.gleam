@@ -118,9 +118,9 @@ fn card_to_csv_row(card: card_printing.CardPrinting) -> String {
   <> ","
   <> csv_field(non_empty_string.to_string(name))
   <> ","
-  <> csv_field(non_empty_string.to_string(key.set_code))
+  <> csv_field(card_key.set_code_string(key))
   <> ","
-  <> csv_field(non_empty_string.to_string(key.collector_number))
+  <> csv_field(card_key.collector_number_string(key))
   <> ","
   <> csv_field(rarity_to_string(rarity))
   <> ","

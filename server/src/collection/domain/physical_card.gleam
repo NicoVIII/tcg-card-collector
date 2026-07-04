@@ -1,6 +1,6 @@
 import shared/domain/card_key.{type CardKey}
 
-pub type Quantity {
+pub opaque type Quantity {
   Quantity(Int)
 }
 

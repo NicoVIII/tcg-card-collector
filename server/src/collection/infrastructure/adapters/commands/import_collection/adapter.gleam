@@ -3,7 +3,6 @@ import collection/infrastructure/daos/collection_dao
 import gleam/list
 import gleam/result
 import shared/domain/card_key
-import shared/domain/non_empty_string
 
 pub fn new() -> ports.ImportCollectionPorts {
   ports.ImportCollectionPorts(
@@ -33,8 +32,8 @@ fn replace_rows_adapter() -> ports.ReplaceRowsPort {
       list.map(rows, fn(row) {
         let ports.SnapshotRowWriteModel(key: key, quantity: quantity) = row
         #(
-          non_empty_string.to_string(key.set_code),
-          non_empty_string.to_string(key.collector_number),
+          card_key.set_code_string(key),
+          card_key.collector_number_string(key),
           quantity,
         )
       }),

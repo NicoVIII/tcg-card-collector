@@ -3,7 +3,7 @@ import gleam/result
 import gleam/string
 import shared/domain/non_empty_string.{type NonEmptyString}
 
-pub type CardKey {
+pub opaque type CardKey {
   CardKey(set_code: NonEmptyString, collector_number: NonEmptyString)
 }
 
