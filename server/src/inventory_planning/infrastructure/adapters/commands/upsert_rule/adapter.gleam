@@ -7,7 +7,15 @@ pub fn new() -> ports.UpsertInventoryRulePort {
       id: id,
       location_name: location_name,
       expression: expression,
+      position: position,
+      selector: selector,
     ) = rule
-    inventory_rules_dao.upsert(id, location_name, expression)
+    inventory_rules_dao.upsert(
+      id,
+      location_name,
+      expression,
+      position,
+      selector,
+    )
   })
 }

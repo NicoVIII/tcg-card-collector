@@ -1,7 +1,9 @@
 import gleam/list
 import inventory_planning/application/commands/delete_rule/handler as delete_rule_handler
+import inventory_planning/application/commands/update_bulk_spec/handler as update_bulk_spec_handler
 import inventory_planning/application/commands/update_preferences/handler as update_preferences_handler
 import inventory_planning/application/commands/upsert_rule/handler as upsert_rule_handler
+import inventory_planning/application/queries/get_bulk_spec/handler as get_bulk_spec_handler
 import inventory_planning/application/queries/get_preferences/handler as get_preferences_handler
 import inventory_planning/application/queries/list_rules/handler as list_rules_handler
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
@@ -44,6 +46,14 @@ pub fn register(
     inventory_planning_commands.update_planning_preferences_method(),
     handle_update_planning_preferences(get_dependencies),
   )
+  |> service.add_method(
+    inventory_planning_queries.get_bulk_spec_method(),
+    handle_get_bulk_spec(get_dependencies),
+  )
+  |> service.add_method(
+    inventory_planning_commands.update_bulk_spec_method(),
+    handle_update_bulk_spec(get_dependencies),
+  )
 }
 
 fn handle_upsert_inventory_rule(get_dependencies: fn(context) -> Dependencies) {
@@ -65,6 +75,8 @@ fn handle_upsert_inventory_rule(get_dependencies: fn(context) -> Dependencies) {
           id: req.id,
           location_name: req.location_name,
           expression: req.expression,
+          position: req.position,
+          selector: req.selector,
         ),
         get_dependencies(ctx).upsert_inventory_rule_port,
       )
@@ -248,6 +260,59 @@ fn handle_update_planning_preferences(
   }
 }
 
+fn handle_get_bulk_spec(get_dependencies: fn(context) -> Dependencies) {
+  fn(
+    _: inventory_planning_queries.GetBulkSpecRequest,
+    req_meta: Nil,
+    ctx: context,
+  ) -> #(
+    Result(inventory_planning_queries.BulkSpec, service.ServiceError),
+    Nil,
+    Nil,
+  ) {
+    let current =
+      get_bulk_spec_handler.execute(
+        get_bulk_spec_handler.GetBulkSpecQuery,
+        get_dependencies(ctx).get_bulk_spec_port,
+      )
+    let response =
+      inventory_planning_queries.bulk_spec_new(
+        current.location_name,
+        current.sort_keys,
+      )
+    #(Ok(response), req_meta, Nil)
+  }
+}
+
+fn handle_update_bulk_spec(get_dependencies: fn(context) -> Dependencies) {
+  fn(
+    req: inventory_planning_commands.UpdateBulkSpecRequest,
+    req_meta: Nil,
+    ctx: context,
+  ) -> #(
+    Result(
+      inventory_planning_commands.UpdateBulkSpecResponse,
+      service.ServiceError,
+    ),
+    Nil,
+    Nil,
+  ) {
+    let result =
+      update_bulk_spec_handler.execute(
+        update_bulk_spec_handler.UpdateBulkSpecCommand(
+          location_name: req.location_name,
+          sort_keys: req.sort_keys,
+        ),
+        get_dependencies(ctx).update_bulk_spec_port,
+      )
+    #(
+      inventory_planning_skir_codec.map_update_bulk_spec_result(result),
+      req_meta,
+      Nil,
+    )
+  }
+}
+
 fn map_inventory_rule(
   rule: list_rules_ports.InventoryRuleReadModel,
 ) -> inventory_planning_queries.InventoryRule {
@@ -255,6 +320,8 @@ fn map_inventory_rule(
     rule.expression,
     rule.id,
     rule.location_name,
+    rule.position,
+    rule.selector,
   )
 }
 

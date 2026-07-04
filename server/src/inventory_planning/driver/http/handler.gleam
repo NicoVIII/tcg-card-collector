@@ -2,9 +2,13 @@ import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/result
 import inventory_planning/application/commands/delete_rule/handler as delete_rule_handler
+import inventory_planning/application/commands/update_bulk_spec/handler as update_bulk_spec_handler
+import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/update_preferences/handler as update_preferences_handler
 import inventory_planning/application/commands/update_preferences/ports as update_preferences_ports
 import inventory_planning/application/commands/upsert_rule/handler as upsert_rule_handler
+import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
+import inventory_planning/application/queries/get_bulk_spec/handler as get_bulk_spec_handler
 import inventory_planning/application/queries/get_preferences/handler as get_preferences_handler
 import inventory_planning/application/queries/list_rules/handler as list_rules_handler
 import inventory_planning/application/queries/projection/handler as projection_handler
@@ -41,15 +45,27 @@ pub fn handle_upsert_inventory_rule(
             id: b.id,
             location_name: b.location_name,
             expression: b.expression,
+            position: b.position,
+            selector: b.selector,
           ),
           deps.upsert_inventory_rule_port,
         )
       {
         Ok(_) -> helpers.json_response(200, json_codec.encode_ok("rule saved"))
-        Error(_) ->
+        Error(upsert_rule_ports.InvalidExpression) ->
           helpers.json_response(
             400,
             json_codec.encode_error("invalid inventory rule expression"),
+          )
+        Error(upsert_rule_ports.InvalidSelector) ->
+          helpers.json_response(
+            400,
+            json_codec.encode_error("invalid inventory rule selector"),
+          )
+        Error(upsert_rule_ports.PersistenceFailed(_)) ->
+          helpers.json_response(
+            500,
+            json_codec.encode_error("failed to save inventory rule"),
           )
       }
     }
@@ -115,6 +131,48 @@ pub fn handle_inventory_projection(
             Error(reason) ->
               helpers.json_response(500, json_codec.encode_error(reason))
           }
+      }
+  }
+}
+
+pub fn handle_get_bulk_spec(deps: Dependencies) -> Response(mist.ResponseData) {
+  let spec =
+    get_bulk_spec_handler.execute(
+      get_bulk_spec_handler.GetBulkSpecQuery,
+      deps.get_bulk_spec_port,
+    )
+  helpers.json_response(200, inventory_codec.encode_bulk_spec(spec))
+}
+
+pub fn handle_update_bulk_spec(
+  req: Request(mist.Connection),
+  deps: Dependencies,
+) -> Response(mist.ResponseData) {
+  use body <- helpers.with_json_body(req)
+  case inventory_codec.decode_update_bulk_spec_body(body) {
+    Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
+    Ok(b) ->
+      case
+        update_bulk_spec_handler.execute(
+          update_bulk_spec_handler.UpdateBulkSpecCommand(
+            location_name: b.location_name,
+            sort_keys: b.sort_keys,
+          ),
+          deps.update_bulk_spec_port,
+        )
+      {
+        Ok(_) ->
+          helpers.json_response(200, json_codec.encode_ok("bulk spec saved"))
+        Error(update_bulk_spec_ports.InvalidSortKeys) ->
+          helpers.json_response(
+            400,
+            json_codec.encode_error("invalid bulk sort keys"),
+          )
+        Error(update_bulk_spec_ports.PersistenceFailed(_)) ->
+          helpers.json_response(
+            500,
+            json_codec.encode_error("failed to save bulk spec"),
+          )
       }
   }
 }

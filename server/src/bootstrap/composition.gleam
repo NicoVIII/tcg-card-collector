@@ -26,8 +26,10 @@ import inventory_planning/driver/dependencies.{
   Dependencies as InventoryPlanningDependencies,
 } as _
 import inventory_planning/infrastructure/adapters/commands/delete_rule/adapter as delete_rule_adapter
+import inventory_planning/infrastructure/adapters/commands/update_bulk_spec/adapter as update_bulk_spec_adapter
 import inventory_planning/infrastructure/adapters/commands/update_preferences/adapter as update_preferences_adapter
 import inventory_planning/infrastructure/adapters/commands/upsert_rule/adapter as upsert_rule_adapter
+import inventory_planning/infrastructure/adapters/queries/get_bulk_spec/adapter as get_bulk_spec_adapter
 import inventory_planning/infrastructure/adapters/queries/get_preferences/adapter as get_preferences_adapter
 import inventory_planning/infrastructure/adapters/queries/list_rules/adapter as list_rules_adapter
 import inventory_planning/infrastructure/adapters/queries/projection/adapter as projection_adapter
@@ -70,6 +72,8 @@ pub fn dependencies() -> Dependencies {
       inventory_projection_ports: projection_adapter.new(),
       update_planning_preferences_port: update_preferences_adapter.new(),
       get_planning_preferences_port: get_preferences_adapter.new(),
+      get_bulk_spec_port: get_bulk_spec_adapter.new(),
+      update_bulk_spec_port: update_bulk_spec_adapter.new(),
     ),
     insights: InsightsDependencies(
       mark_target_set_port: mark_target_set_adapter.new(),

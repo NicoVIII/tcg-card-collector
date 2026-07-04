@@ -85,6 +85,10 @@ fn handle_request(
       inventory_http.handle_delete_inventory_rule(req, deps.inventory_planning)
     Get, "/api/inventory/projection" ->
       inventory_http.handle_inventory_projection(req, deps.inventory_planning)
+    Get, "/api/inventory/bulk-spec" ->
+      inventory_http.handle_get_bulk_spec(deps.inventory_planning)
+    Put, "/api/inventory/bulk-spec" ->
+      inventory_http.handle_update_bulk_spec(req, deps.inventory_planning)
     Get, "/api/settings" ->
       inventory_http.handle_get_settings(deps.inventory_planning)
     Put, "/api/settings" ->

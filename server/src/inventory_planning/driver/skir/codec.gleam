@@ -1,4 +1,5 @@
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
+import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/update_preferences/ports as update_preferences_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
 import shared/driver/skir/skirout/inventory_planning/commands as inventory_planning_commands
@@ -12,10 +13,41 @@ pub fn map_upsert_inventory_rule_result(
 ) {
   case result {
     Ok(_) -> Ok(inventory_planning_commands.UpsertInventoryRuleResponseSuccess)
-    Error(_) ->
+    Error(upsert_rule_ports.InvalidExpression) ->
       Error(service.ServiceError(
         service.E400xBadRequest,
         "invalid inventory rule expression",
+      ))
+    Error(upsert_rule_ports.InvalidSelector) ->
+      Error(service.ServiceError(
+        service.E400xBadRequest,
+        "invalid inventory rule selector",
+      ))
+    Error(upsert_rule_ports.PersistenceFailed(_)) ->
+      Error(service.ServiceError(
+        service.E500xInternalServerError,
+        "failed to save inventory rule",
+      ))
+  }
+}
+
+pub fn map_update_bulk_spec_result(
+  result: Result(Nil, update_bulk_spec_ports.UpdateBulkSpecError),
+) -> Result(
+  inventory_planning_commands.UpdateBulkSpecResponse,
+  service.ServiceError,
+) {
+  case result {
+    Ok(_) -> Ok(inventory_planning_commands.UpdateBulkSpecResponseSuccess)
+    Error(update_bulk_spec_ports.InvalidSortKeys) ->
+      Error(service.ServiceError(
+        service.E400xBadRequest,
+        "invalid bulk sort keys",
+      ))
+    Error(update_bulk_spec_ports.PersistenceFailed(_)) ->
+      Error(service.ServiceError(
+        service.E500xInternalServerError,
+        "failed to save bulk spec",
       ))
   }
 }

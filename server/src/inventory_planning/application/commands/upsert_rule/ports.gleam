@@ -1,5 +1,11 @@
 pub type InventoryRuleWriteModel {
-  InventoryRuleWriteModel(id: String, location_name: String, expression: String)
+  InventoryRuleWriteModel(
+    id: String,
+    location_name: String,
+    expression: String,
+    position: Int,
+    selector: String,
+  )
 }
 
 pub type UpsertInventoryRulePort {
@@ -10,5 +16,6 @@ pub type UpsertInventoryRulePort {
 
 pub type UpsertInventoryRuleError {
   InvalidExpression
+  InvalidSelector
   PersistenceFailed(reason: String)
 }

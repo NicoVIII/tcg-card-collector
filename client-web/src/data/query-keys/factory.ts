@@ -6,6 +6,7 @@ export const queryKeys = {
     ["card_catalog", "card", set_code, collector_number] as const,
   collectionList: (offset: number, limit: number) => ["collection", "list", offset, limit] as const,
   inventoryRules: () => ["inventory_planning", "rules"] as const,
+  inventoryBulkSpec: () => ["inventory_planning", "bulk_spec"] as const,
   inventoryProjection: (sortBy: string, groupBy: string) =>
     ["inventory_planning", "projection", sortBy, groupBy] as const,
   settings: () => ["settings", "current"] as const,

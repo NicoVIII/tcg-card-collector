@@ -2,10 +2,15 @@ import { skirClient } from "../http/skir_rpc";
 import {
   DeleteInventoryRule,
   DeleteInventoryRuleRequest,
+  UpdateBulkSpec,
+  UpdateBulkSpecRequest,
   UpsertInventoryRule,
   UpsertInventoryRuleRequest,
 } from "../skirout/inventory_planning/commands.js";
 import {
+  BulkSpec as RpcBulkSpec,
+  GetBulkSpec,
+  GetBulkSpecRequest,
   GetInventoryProjection,
   InventoryProjection as RpcInventoryProjection,
   InventoryProjectionRequest,
@@ -18,6 +23,13 @@ export type InventoryRule = {
   id: string;
   location_name: string;
   expression: string;
+  position: number;
+  selector: string;
+};
+
+export type BulkSpec = {
+  location_name: string;
+  sort_keys: string;
 };
 
 export type InventoryRuleList = {
@@ -44,8 +56,17 @@ function toInventoryRuleList(response: RpcInventoryRuleList): InventoryRuleList 
       id: rule.id,
       location_name: rule.locationName,
       expression: rule.expression,
+      position: rule.position,
+      selector: rule.selector,
     })),
     total: response.total,
+  };
+}
+
+function toBulkSpec(response: RpcBulkSpec): BulkSpec {
+  return {
+    location_name: response.locationName,
+    sort_keys: response.sortKeys,
   };
 }
 
@@ -79,6 +100,8 @@ export async function upsertInventoryRule(rule: InventoryRule): Promise<{ succes
       id: rule.id,
       locationName: rule.location_name,
       expression: rule.expression,
+      position: rule.position,
+      selector: rule.selector,
     }),
   );
 
@@ -105,4 +128,26 @@ export async function getInventoryProjection(
   );
 
   return toInventoryProjection(response);
+}
+
+export async function getBulkSpec(): Promise<BulkSpec> {
+  const response = await skirClient.invokeRemote(
+    GetBulkSpec,
+    GetBulkSpecRequest.create({ unit: true }),
+    "POST",
+  );
+
+  return toBulkSpec(response);
+}
+
+export async function updateBulkSpec(spec: BulkSpec): Promise<{ success: boolean }> {
+  const response = await skirClient.invokeRemote(
+    UpdateBulkSpec,
+    UpdateBulkSpecRequest.create({
+      locationName: spec.location_name,
+      sortKeys: spec.sort_keys,
+    }),
+  );
+
+  return { success: response.union.kind === "SUCCESS" };
 }

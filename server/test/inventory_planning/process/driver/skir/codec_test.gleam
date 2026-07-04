@@ -1,4 +1,5 @@
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
+import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/update_preferences/ports as update_preferences_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
 import inventory_planning/driver/skir/codec as inventory_planning_skir_codec
@@ -17,6 +18,51 @@ pub fn upsert_invalid_expression_maps_to_bad_request_test() {
     == Error(service.ServiceError(
       service.E400xBadRequest,
       "invalid inventory rule expression",
+    ))
+}
+
+pub fn upsert_invalid_selector_maps_to_bad_request_test() {
+  assert inventory_planning_skir_codec.map_upsert_inventory_rule_result(Error(
+      upsert_rule_ports.InvalidSelector,
+    ))
+    == Error(service.ServiceError(
+      service.E400xBadRequest,
+      "invalid inventory rule selector",
+    ))
+}
+
+pub fn upsert_persistence_failure_maps_to_internal_server_error_test() {
+  assert inventory_planning_skir_codec.map_upsert_inventory_rule_result(
+      Error(upsert_rule_ports.PersistenceFailed("disk full")),
+    )
+    == Error(service.ServiceError(
+      service.E500xInternalServerError,
+      "failed to save inventory rule",
+    ))
+}
+
+pub fn update_bulk_spec_ok_maps_to_success_test() {
+  assert inventory_planning_skir_codec.map_update_bulk_spec_result(Ok(Nil))
+    == Ok(inventory_planning_commands.UpdateBulkSpecResponseSuccess)
+}
+
+pub fn update_bulk_spec_invalid_sort_keys_maps_to_bad_request_test() {
+  assert inventory_planning_skir_codec.map_update_bulk_spec_result(Error(
+      update_bulk_spec_ports.InvalidSortKeys,
+    ))
+    == Error(service.ServiceError(
+      service.E400xBadRequest,
+      "invalid bulk sort keys",
+    ))
+}
+
+pub fn update_bulk_spec_persistence_failure_maps_to_internal_server_error_test() {
+  assert inventory_planning_skir_codec.map_update_bulk_spec_result(
+      Error(update_bulk_spec_ports.PersistenceFailed("disk full")),
+    )
+    == Error(service.ServiceError(
+      service.E500xInternalServerError,
+      "failed to save bulk spec",
     ))
 }
 

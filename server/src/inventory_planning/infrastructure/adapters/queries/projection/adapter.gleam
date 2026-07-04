@@ -43,7 +43,7 @@ fn rules_adapter() -> ports.RulesPort {
   fn() {
     inventory_rules_dao.list()
     |> list.map(fn(rule) {
-      let #(_, location_name, expression) = rule
+      let #(_, location_name, expression, _, _) = rule
       ports.RuleRow(location_name: location_name, expression: expression)
     })
   }

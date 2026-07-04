@@ -6,9 +6,30 @@ pub fn tab_and_quote_in_location_name_round_trips_test() {
 
   let tricky_name = "Box\t1's \"shelf\"\nrow"
   let assert Ok(Nil) =
-    inventory_rules_dao.upsert("rule-1", tricky_name, "set_code=abc")
+    inventory_rules_dao.upsert(
+      "rule-1",
+      tricky_name,
+      "set_code in (abc)",
+      2,
+      "first_per_oracle",
+    )
 
-  let assert [#("rule-1", location_name, "set_code=abc")] =
+  let assert [#("rule-1", location_name, expression, position, selector)] =
     inventory_rules_dao.list()
   assert location_name == tricky_name
+  assert expression == "set_code in (abc)"
+  assert position == 2
+  assert selector == "first_per_oracle"
+}
+
+pub fn rules_list_orders_by_position_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) =
+    inventory_rules_dao.upsert("late", "Bulk", "set_code in (z)", 5, "all")
+  let assert Ok(Nil) =
+    inventory_rules_dao.upsert("early", "Binder", "set_code in (a)", 1, "all")
+
+  let assert [#("early", _, _, _, _), #("late", _, _, _, _)] =
+    inventory_rules_dao.list()
 }

@@ -3,10 +3,12 @@ import { mapError } from "../data/http/error";
 import type { InventoryProjectionRow } from "../data/inventory_planning/request";
 import {
   useDeleteInventoryRuleMutation,
+  useUpdateBulkSpecMutation,
   useUpsertInventoryRuleMutation,
 } from "../data/inventory_planning/mutation";
-import { GROUP_OPTIONS, SORT_OPTIONS } from "../data/inventory_planning/options";
+import { GROUP_OPTIONS, SELECTOR_OPTIONS, SORT_OPTIONS } from "../data/inventory_planning/options";
 import {
+  useBulkSpecQuery,
   useInventoryProjectionQuery,
   useInventoryRulesQuery,
 } from "../data/inventory_planning/query";
@@ -17,12 +19,18 @@ export function InventoryPage() {
   const [groupBy, setGroupBy] = createSignal("location_name");
   const [newRuleName, setNewRuleName] = createSignal("");
   const [newExpression, setNewExpression] = createSignal("set_code=M11");
+  const [newPosition, setNewPosition] = createSignal(0);
+  const [newSelector, setNewSelector] = createSignal("all");
+  const [bulkLocation, setBulkLocation] = createSignal("");
+  const [bulkSortKeys, setBulkSortKeys] = createSignal("");
   const [mutationError, setMutationError] = createSignal<string | null>(null);
 
   const rulesQuery = useInventoryRulesQuery();
   const projectionQuery = useInventoryProjectionQuery(sortBy, groupBy);
   const upsertMutation = useUpsertInventoryRuleMutation();
   const deleteMutation = useDeleteInventoryRuleMutation();
+  const bulkSpecQuery = useBulkSpecQuery();
+  const updateBulkSpecMutation = useUpdateBulkSpecMutation();
   const settingsQuery = useSettingsQuery();
 
   let initializedFromSettings = false;
@@ -32,6 +40,16 @@ export function InventoryPage() {
       initializedFromSettings = true;
       setSortBy(data.default_sort);
       setGroupBy(data.default_grouping);
+    }
+  });
+
+  let initializedFromBulkSpec = false;
+  createEffect(() => {
+    const data = bulkSpecQuery.data;
+    if (data !== undefined && !initializedFromBulkSpec) {
+      initializedFromBulkSpec = true;
+      setBulkLocation(data.location_name);
+      setBulkSortKeys(data.sort_keys);
     }
   });
 
@@ -56,6 +74,21 @@ export function InventoryPage() {
         id: crypto.randomUUID(),
         location_name: newRuleName(),
         expression: newExpression(),
+        position: newPosition(),
+        selector: newSelector(),
+      },
+      {
+        onError: (error) => setMutationError(mapError(error).message),
+      },
+    );
+  };
+
+  const saveBulkSpec = () => {
+    setMutationError(null);
+    updateBulkSpecMutation.mutate(
+      {
+        location_name: bulkLocation(),
+        sort_keys: bulkSortKeys(),
       },
       {
         onError: (error) => setMutationError(mapError(error).message),
@@ -86,11 +119,30 @@ export function InventoryPage() {
       </div>
       <div class="form-row">
         <label>
+          Position
+          <input
+            type="number"
+            value={newPosition()}
+            onInput={(event) => setNewPosition(Number(event.currentTarget.value))}
+          />
+        </label>
+        <label>
           Location name
           <input
             value={newRuleName()}
             onInput={(event) => setNewRuleName(event.currentTarget.value)}
           />
+        </label>
+        <label>
+          Selector
+          <select
+            value={newSelector()}
+            onChange={(event) => setNewSelector(event.currentTarget.value)}
+          >
+            <For each={SELECTOR_OPTIONS}>
+              {(option) => <option value={option.value}>{option.label}</option>}
+            </For>
+          </select>
         </label>
         <label>
           Expression
@@ -103,6 +155,11 @@ export function InventoryPage() {
           Add rule
         </button>
       </div>
+      <p class="hint">
+        Location name may fan out with a placeholder: <code>{"{set_code}"}</code>,{" "}
+        <code>{"{color_identity}"}</code> or <code>{"{type}"}</code> (e.g.{" "}
+        <code>binder {"{color_identity}"}</code>). Rules claim copies in position order.
+      </p>
       <Show when={mutationError() !== null}>
         <p role="alert">{mutationError()}</p>
       </Show>
@@ -118,7 +175,7 @@ export function InventoryPage() {
           <For each={rulesQuery.data?.data}>
             {(rule) => (
               <li class="rule-row">
-                {rule.location_name}: {rule.expression}
+                #{rule.position} {rule.location_name} [{rule.selector}]: {rule.expression}
                 <button
                   onClick={() =>
                     deleteMutation.mutate(rule.id, {
@@ -134,6 +191,33 @@ export function InventoryPage() {
           </For>
         </ul>
       </Show>
+      <h3>Bulk (leftover cards)</h3>
+      <Show when={bulkSpecQuery.isError}>
+        <p role="alert">{mapError(bulkSpecQuery.error).message}</p>
+      </Show>
+      <div class="form-row">
+        <label>
+          Location name
+          <input
+            value={bulkLocation()}
+            onInput={(event) => setBulkLocation(event.currentTarget.value)}
+          />
+        </label>
+        <label>
+          Sort keys
+          <input
+            value={bulkSortKeys()}
+            onInput={(event) => setBulkSortKeys(event.currentTarget.value)}
+          />
+        </label>
+        <button onClick={saveBulkSpec} disabled={updateBulkSpecMutation.isPending}>
+          Save bulk
+        </button>
+      </div>
+      <p class="hint">
+        Comma-separated sort keys ordering the leftover pile: <code>color_identity</code>,{" "}
+        <code>type</code>, <code>name</code>, <code>set_code</code>.
+      </p>
       <h3>Projection</h3>
       <Show when={projectionQuery.isLoading}>
         <p>Loading projection...</p>

@@ -1,6 +1,7 @@
 import gleam/dynamic/decode
 import gleam/json
 import gleam/result
+import inventory_planning/application/queries/get_bulk_spec/ports as bulk_spec_ports
 import inventory_planning/application/queries/get_preferences/ports as preferences_ports
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
@@ -19,6 +20,8 @@ fn encode_inventory_rule(
     #("id", json.string(rule.id)),
     #("location_name", json.string(rule.location_name)),
     #("expression", json.string(rule.expression)),
+    #("position", json.int(rule.position)),
+    #("selector", json.string(rule.selector)),
   ])
 }
 
@@ -69,7 +72,13 @@ pub fn decode_update_settings_body(
 }
 
 pub type UpsertRuleBody {
-  UpsertRuleBody(id: String, location_name: String, expression: String)
+  UpsertRuleBody(
+    id: String,
+    location_name: String,
+    expression: String,
+    position: Int,
+    selector: String,
+  )
 }
 
 pub fn decode_upsert_rule_body(
@@ -79,7 +88,40 @@ pub fn decode_upsert_rule_body(
     use id <- decode.field("id", decode.string)
     use location_name <- decode.field("location_name", decode.string)
     use expression <- decode.field("expression", decode.string)
-    decode.success(UpsertRuleBody(id:, location_name:, expression:))
+    use position <- decode.field("position", decode.int)
+    use selector <- decode.field("selector", decode.string)
+    decode.success(UpsertRuleBody(
+      id:,
+      location_name:,
+      expression:,
+      position:,
+      selector:,
+    ))
+  }
+
+  json.parse(from: json_string, using: decoder)
+  |> result.map_error(fn(_) { "invalid request body" })
+}
+
+pub fn encode_bulk_spec(model: bulk_spec_ports.BulkSpecReadModel) -> String {
+  json.object([
+    #("location_name", json.string(model.location_name)),
+    #("sort_keys", json.string(model.sort_keys)),
+  ])
+  |> json.to_string
+}
+
+pub type UpdateBulkSpecBody {
+  UpdateBulkSpecBody(location_name: String, sort_keys: String)
+}
+
+pub fn decode_update_bulk_spec_body(
+  json_string: String,
+) -> Result(UpdateBulkSpecBody, String) {
+  let decoder = {
+    use location_name <- decode.field("location_name", decode.string)
+    use sort_keys <- decode.field("sort_keys", decode.string)
+    decode.success(UpdateBulkSpecBody(location_name:, sort_keys:))
   }
 
   json.parse(from: json_string, using: decoder)

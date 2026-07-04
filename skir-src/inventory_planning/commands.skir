@@ -2,6 +2,8 @@ struct UpsertInventoryRuleRequest {
   id: string = 0;
   location_name: string = 1;
   expression: string = 2;
+  position: int32 = 3;
+  selector: string = 4;
 }
 
 enum UpsertInventoryRuleResponse {
@@ -39,3 +41,17 @@ enum UpdatePlanningPreferencesResponse {
 method UpdatePlanningPreferences(
   UpdatePlanningPreferencesRequest
 ): UpdatePlanningPreferencesResponse = 401;
+
+struct UpdateBulkSpecRequest {
+  location_name: string = 0;
+  sort_keys: string = 1;
+}
+
+enum UpdateBulkSpecResponse {
+  success = 1;
+  error = 2;
+}
+
+method UpdateBulkSpec(
+  UpdateBulkSpecRequest
+): UpdateBulkSpecResponse = 403;

@@ -2,6 +2,8 @@ struct InventoryRule {
   id: string = 0;
   location_name: string = 1;
   expression: string = 2;
+  position: int32 = 3;
+  selector: string = 4;
 }
 
 struct InventoryRuleList {
@@ -51,3 +53,16 @@ struct GetPlanningPreferencesRequest {
 method GetPlanningPreferences(
   GetPlanningPreferencesRequest
 ): PlanningPreferences = 402;
+
+struct BulkSpec {
+  location_name: string = 0;
+  sort_keys: string = 1;
+}
+
+struct GetBulkSpecRequest {
+  unit: bool = 0;
+}
+
+method GetBulkSpec(
+  GetBulkSpecRequest
+): BulkSpec = 305;
