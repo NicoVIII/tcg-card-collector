@@ -58,10 +58,13 @@ pub fn project(
   // 1. Canonical order — "prefer the oldest printing" for first-copy rules.
   let ordered = list.sort(cards, by: compare_canonical)
 
-  // 2. Remaining copies per printing.
+  // 2. Remaining copies per printing. Summed, not overwritten, so quantity
+  // conservation holds even if the input carries duplicate printing keys.
   let remaining0 =
     list.fold(ordered, dict.new(), fn(acc, card) {
-      dict.insert(acc, card_attributes.printing_key(card), card.quantity)
+      dict.upsert(acc, card_attributes.printing_key(card), fn(existing) {
+        option.unwrap(existing, 0) + card.quantity
+      })
     })
 
   // 3. Apply each rule in position order, threading the remaining pool.
@@ -167,16 +170,22 @@ fn build_bulk(
   ordered: List(PlannedCard),
   remaining: Dict(String, Int),
 ) -> List(Assignment) {
-  ordered
-  |> list.filter_map(fn(card) {
-    let available =
-      dict.get(remaining, card_attributes.printing_key(card))
-      |> result.unwrap(0)
-    case available > 0 {
-      True -> Ok(Assignment(bulk.location_name, None, card, available))
-      False -> Error(Nil)
-    }
-  })
+  // Threads the pool so a duplicated printing key drains it once instead of
+  // emitting its remainder per occurrence.
+  let #(_, assignments_rev) =
+    list.fold(ordered, #(remaining, []), fn(state, card) {
+      let #(remaining, acc) = state
+      let key = card_attributes.printing_key(card)
+      let available = dict.get(remaining, key) |> result.unwrap(0)
+      case available > 0 {
+        True -> #(dict.insert(remaining, key, 0), [
+          Assignment(bulk.location_name, None, card, available),
+          ..acc
+        ])
+        False -> state
+      }
+    })
+  assignments_rev
   |> list.sort(fn(a, b) {
     bulk_spec.compare_cards(bulk.sort_keys, a.card, b.card)
   })

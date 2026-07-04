@@ -219,6 +219,21 @@ pub fn conservation_across_generated_cases_test() {
   assert list.all(cases, conservation_holds)
 }
 
+// Duplicate printing keys in the input pool their quantities: nothing is
+// overwritten on intake and the remainder drains into bulk exactly once.
+pub fn duplicate_printing_keys_conserve_quantity_test() {
+  let cards = [
+    card("grn", "173", "Guildmage", 2, "2018-10-05", "o1", attrs.Rare, "R"),
+    card("grn", "173", "Guildmage", 3, "2018-10-05", "o1", attrs.Rare, "R"),
+  ]
+  assert conservation_holds(cards)
+
+  // 5 copies: 1 to the set binder, 1 to the color binder, 3 to bulk.
+  let buckets = rule_cascade.project(owner_cascade(), cards)
+  let bulk = find_bucket(buckets, "Bulk")
+  assert bulk.total_quantity == 3
+}
+
 // No bucket ever carries a negative total.
 pub fn no_negative_totals_test() {
   let cards = [
