@@ -4,6 +4,23 @@ export type ImportRow = {
   quantity: number;
 };
 
+export type ImportFormat = "simple" | "deckstats";
+
+// Autodetects the paste format: a deckstats export leads with a header naming
+// its columns; the bespoke format is bare `set_code,collector_number,quantity`
+// rows with no such header. Falls back to "simple" when unsure.
+export function detectImportFormat(text: string): ImportFormat {
+  const firstLine =
+    text
+      .split("\n")
+      .map((line) => line.trim())
+      .find((line) => line.length > 0) ?? "";
+  const lower = firstLine.toLowerCase();
+  const looksLikeDeckstatsHeader =
+    lower.includes("amount") && lower.includes("set_code") && lower.includes("collector_number");
+  return looksLikeDeckstatsHeader ? "deckstats" : "simple";
+}
+
 export function parseImportRowsCsv(rowsCsv: string): {
   rows: ImportRow[];
   error: string | null;

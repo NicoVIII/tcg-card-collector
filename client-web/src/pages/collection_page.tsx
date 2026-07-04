@@ -4,9 +4,32 @@ import { mapError } from "../data/http/error";
 import { useImportCollectionMutation } from "../data/collection_import/mutation";
 import { useLatestImportStatusQuery } from "../data/collection_import/query";
 import { useCollectionCardsQuery } from "../data/collection/query";
-import { parseImportRowsCsv } from "./import_rows";
+import { type ImportFormat, detectImportFormat, parseImportRowsCsv } from "./import_rows";
+import { parseDeckstatsCsv } from "./import_deckstats";
+import type { ImportRow } from "./import_rows";
 import { CardGrid } from "../components/card_grid";
 import { Pagination } from "../components/pagination";
+
+type ImportFormatChoice = "auto" | ImportFormat;
+
+// Parses the pasted text under the chosen format, returning normalized rows plus
+// a human-readable note about anything skipped (deckstats rejected lines).
+function parseImportText(
+  text: string,
+  choice: ImportFormatChoice,
+): { rows: ImportRow[]; error: string | null; note: string | null; sourceName: string } {
+  const format = choice === "auto" ? detectImportFormat(text) : choice;
+  if (format === "deckstats") {
+    const result = parseDeckstatsCsv(text);
+    const note =
+      result.rejected.length > 0
+        ? `${result.rejected.length} line(s) skipped (missing set code or collector number).`
+        : null;
+    return { rows: result.rows, error: result.error, note, sourceName: "deckstats-csv" };
+  }
+  const result = parseImportRowsCsv(text);
+  return { rows: result.rows, error: result.error, note: null, sourceName: "manual" };
+}
 
 const PAGE_SIZE = 25;
 
@@ -16,8 +39,10 @@ export function CollectionPage() {
   // import form state
   const [sourceName, setSourceName] = createSignal("");
   const [rowsCsv, setRowsCsv] = createSignal("");
+  const [format, setFormat] = createSignal<ImportFormatChoice>("auto");
   const [mode, setMode] = createSignal<"full" | "delta">("full");
   const [submitError, setSubmitError] = createSignal<string | null>(null);
+  const [submitNote, setSubmitNote] = createSignal<string | null>(null);
   const mutation = useImportCollectionMutation();
   const [isRunPending, setIsRunPending] = createSignal(false);
   const statusQuery = useLatestImportStatusQuery(() => (isRunPending() ? 2000 : false));
@@ -59,13 +84,15 @@ export function CollectionPage() {
 
   const submitImport = async () => {
     setSubmitError(null);
+    setSubmitNote(null);
 
-    const parsedRows = parseImportRowsCsv(rowsCsv());
-    if (parsedRows.error !== null) {
-      setSubmitError(parsedRows.error);
+    const parsed = parseImportText(rowsCsv(), format());
+    setSubmitNote(parsed.note);
+    if (parsed.error !== null) {
+      setSubmitError(parsed.error);
       return;
     }
-    if (parsedRows.rows.length === 0) {
+    if (parsed.rows.length === 0) {
       setSubmitError("Enter at least one row.");
       return;
     }
@@ -73,9 +100,9 @@ export function CollectionPage() {
     try {
       const response = await mutation.mutateAsync({
         importRunId: crypto.randomUUID(),
-        sourceName: sourceName().trim().length > 0 ? sourceName() : "manual",
-        rowCount: parsedRows.rows.length,
-        rows: parsedRows.rows,
+        sourceName: sourceName().trim().length > 0 ? sourceName() : parsed.sourceName,
+        rowCount: parsed.rows.length,
+        rows: parsed.rows,
         mode: mode(),
       });
 
@@ -101,7 +128,18 @@ export function CollectionPage() {
           />
         </label>
         <label>
-          Rows CSV (set_code,collector_number,quantity)
+          Format
+          <select
+            value={format()}
+            onChange={(event) => setFormat(event.currentTarget.value as ImportFormatChoice)}
+          >
+            <option value="auto">Auto-detect</option>
+            <option value="simple">Simple (set_code,collector_number,quantity)</option>
+            <option value="deckstats">deckstats.net export</option>
+          </select>
+        </label>
+        <label>
+          Rows (simple CSV or a pasted deckstats.net export)
           <textarea
             value={rowsCsv()}
             onInput={(event) => setRowsCsv(event.currentTarget.value)}
@@ -137,6 +175,9 @@ export function CollectionPage() {
         </button>
         <Show when={submitError() !== null}>
           <p role="alert">{submitError()}</p>
+        </Show>
+        <Show when={submitNote() !== null}>
+          <p>{submitNote()}</p>
         </Show>
         <p>{statusMessage()}</p>
       </details>
