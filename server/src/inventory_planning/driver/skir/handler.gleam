@@ -8,9 +8,6 @@ import inventory_planning/application/queries/get_preferences/handler as get_pre
 import inventory_planning/application/queries/list_rules/handler as list_rules_handler
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/projection/handler as projection_handler
-import inventory_planning/application/queries/projection/ports as projection_ports
-import inventory_planning/domain/grouping_strategy
-import inventory_planning/domain/sort_strategy
 import inventory_planning/driver/dependencies.{type Dependencies}
 import inventory_planning/driver/skir/codec as inventory_planning_skir_codec
 import shared/driver/skir/skirout/inventory_planning/commands as inventory_planning_commands
@@ -142,7 +139,7 @@ fn handle_get_inventory_projection(
   get_dependencies: fn(context) -> Dependencies,
 ) {
   fn(
-    req: inventory_planning_queries.InventoryProjectionRequest,
+    _: inventory_planning_queries.InventoryProjectionRequest,
     req_meta: Nil,
     ctx: context,
   ) -> #(
@@ -150,56 +147,23 @@ fn handle_get_inventory_projection(
     Nil,
     Nil,
   ) {
-    case sort_strategy.parse(req.sort_by) {
-      Error(_) -> #(
-        Error(service.ServiceError(service.E400xBadRequest, "invalid sort_by")),
+    case
+      projection_handler.execute(
+        projection_handler.InventoryProjectionQuery,
+        get_dependencies(ctx).inventory_projection_ports,
+      )
+    {
+      Ok(projection) -> #(
+        Ok(inventory_planning_skir_codec.map_projection(projection)),
         req_meta,
         Nil,
       )
-      Ok(sort_by) ->
-        case grouping_strategy.parse(req.group_by) {
-          Error(_) -> #(
-            Error(service.ServiceError(
-              service.E400xBadRequest,
-              "invalid group_by",
-            )),
-            req_meta,
-            Nil,
-          )
-          Ok(group_by) ->
-            execute_projection(
-              projection_handler.InventoryProjectionQuery(sort_by:, group_by:),
-              get_dependencies(ctx).inventory_projection_ports,
-              req_meta,
-            )
-        }
+      Error(reason) -> #(
+        Error(service.ServiceError(service.E500xInternalServerError, reason)),
+        req_meta,
+        Nil,
+      )
     }
-  }
-}
-
-fn execute_projection(
-  query: projection_handler.InventoryProjectionQuery,
-  ports: projection_ports.InventoryProjectionPorts,
-  req_meta: Nil,
-) -> #(
-  Result(inventory_planning_queries.InventoryProjection, service.ServiceError),
-  Nil,
-  Nil,
-) {
-  case projection_handler.execute(query, ports) {
-    Ok(rows) -> {
-      let response =
-        inventory_planning_queries.inventory_projection_new(
-          list.map(rows, map_inventory_projection_row),
-          list.length(rows),
-        )
-      #(Ok(response), req_meta, Nil)
-    }
-    Error(reason) -> #(
-      Error(service.ServiceError(service.E500xInternalServerError, reason)),
-      req_meta,
-      Nil,
-    )
   }
 }
 
@@ -322,17 +286,5 @@ fn map_inventory_rule(
     rule.location_name,
     rule.position,
     rule.selector,
-  )
-}
-
-fn map_inventory_projection_row(
-  row: projection_ports.InventoryProjectionReadModel,
-) -> inventory_planning_queries.InventoryProjectionRow {
-  inventory_planning_queries.inventory_projection_row_new(
-    row.card_name,
-    row.group_value,
-    row.location_name,
-    row.quantity,
-    row.set_code,
   )
 }

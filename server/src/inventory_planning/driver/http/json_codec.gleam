@@ -26,21 +26,34 @@ fn encode_inventory_rule(
 }
 
 pub fn encode_inventory_projection(
-  rows: List(projection_ports.InventoryProjectionReadModel),
+  projection: projection_ports.Projection,
 ) -> String {
-  json.array(rows, of: encode_projection_row)
+  json.object([
+    #("locations", json.array(projection.locations, of: encode_location)),
+    #("total_quantity", json.int(projection.total_quantity)),
+    #("unknown_count", json.int(projection.unknown_count)),
+  ])
   |> json.to_string
 }
 
-fn encode_projection_row(
-  row: projection_ports.InventoryProjectionReadModel,
-) -> json.Json {
+fn encode_location(location: projection_ports.ProjectionLocation) -> json.Json {
   json.object([
-    #("location_name", json.string(row.location_name)),
-    #("card_name", json.string(row.card_name)),
-    #("set_code", json.string(row.set_code)),
-    #("quantity", json.int(row.quantity)),
-    #("group_value", json.string(row.group_value)),
+    #("location_name", json.string(location.location_name)),
+    #("rule_id", json.string(location.rule_id)),
+    #("total_quantity", json.int(location.total_quantity)),
+    #("cards", json.array(location.cards, of: encode_card)),
+  ])
+}
+
+fn encode_card(card: projection_ports.ProjectionCard) -> json.Json {
+  json.object([
+    #("name", json.string(card.name)),
+    #("set_code", json.string(card.set_code)),
+    #("collector_number", json.string(card.collector_number)),
+    #("quantity", json.int(card.quantity)),
+    #("color_identity", json.string(card.color_identity)),
+    #("rarity", json.string(card.rarity)),
+    #("card_type", json.string(card.card_type)),
   ])
 }
 

@@ -2,9 +2,57 @@ import inventory_planning/application/commands/delete_rule/ports as delete_rule_
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/update_preferences/ports as update_preferences_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
+import inventory_planning/application/queries/projection/ports as projection_ports
 import inventory_planning/driver/skir/codec as inventory_planning_skir_codec
 import shared/driver/skir/skirout/inventory_planning/commands as inventory_planning_commands
+import shared/driver/skir/skirout/inventory_planning/queries as inventory_planning_queries
 import skir_client/service
+
+pub fn map_projection_nests_locations_and_cards_test() {
+  let projection =
+    projection_ports.Projection(unknown_count: 2, total_quantity: 1, locations: [
+      projection_ports.ProjectionLocation(
+        location_name: "Rare binder R",
+        rule_id: "r-rare",
+        total_quantity: 1,
+        cards: [
+          projection_ports.ProjectionCard(
+            name: "Lightning Bolt",
+            set_code: "m11",
+            collector_number: "146",
+            quantity: 1,
+            color_identity: "R",
+            rarity: "rare",
+            card_type: "instant",
+          ),
+        ],
+      ),
+    ])
+
+  assert inventory_planning_skir_codec.map_projection(projection)
+    == inventory_planning_queries.inventory_projection_new(
+      [
+        inventory_planning_queries.projection_location_new(
+          [
+            inventory_planning_queries.projection_card_new(
+              "instant",
+              "146",
+              "R",
+              "Lightning Bolt",
+              1,
+              "rare",
+              "m11",
+            ),
+          ],
+          "Rare binder R",
+          "r-rare",
+          1,
+        ),
+      ],
+      1,
+      2,
+    )
+}
 
 pub fn upsert_ok_maps_to_success_test() {
   assert inventory_planning_skir_codec.map_upsert_inventory_rule_result(Ok(Nil))

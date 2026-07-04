@@ -1,6 +1,5 @@
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
-import gleam/result
 import inventory_planning/application/commands/delete_rule/handler as delete_rule_handler
 import inventory_planning/application/commands/update_bulk_spec/handler as update_bulk_spec_handler
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
@@ -12,8 +11,6 @@ import inventory_planning/application/queries/get_bulk_spec/handler as get_bulk_
 import inventory_planning/application/queries/get_preferences/handler as get_preferences_handler
 import inventory_planning/application/queries/list_rules/handler as list_rules_handler
 import inventory_planning/application/queries/projection/handler as projection_handler
-import inventory_planning/domain/grouping_strategy
-import inventory_planning/domain/sort_strategy
 import inventory_planning/driver/dependencies.{type Dependencies}
 import inventory_planning/driver/http/json_codec as inventory_codec
 import mist
@@ -98,40 +95,20 @@ pub fn handle_delete_inventory_rule(
 }
 
 pub fn handle_inventory_projection(
-  req: Request(mist.Connection),
   deps: Dependencies,
 ) -> Response(mist.ResponseData) {
-  let raw_sort_by =
-    helpers.query_param(req, "sort_by") |> result.unwrap("card_name")
-  let raw_group_by =
-    helpers.query_param(req, "group_by") |> result.unwrap("location_name")
-
-  case sort_strategy.parse(raw_sort_by) {
-    Error(_) ->
-      helpers.json_response(400, json_codec.encode_error("invalid sort_by"))
-    Ok(sort_by) ->
-      case grouping_strategy.parse(raw_group_by) {
-        Error(_) ->
-          helpers.json_response(
-            400,
-            json_codec.encode_error("invalid group_by"),
-          )
-        Ok(group_by) ->
-          case
-            projection_handler.execute(
-              projection_handler.InventoryProjectionQuery(sort_by:, group_by:),
-              deps.inventory_projection_ports,
-            )
-          {
-            Ok(rows) ->
-              helpers.json_response(
-                200,
-                inventory_codec.encode_inventory_projection(rows),
-              )
-            Error(reason) ->
-              helpers.json_response(500, json_codec.encode_error(reason))
-          }
-      }
+  case
+    projection_handler.execute(
+      projection_handler.InventoryProjectionQuery,
+      deps.inventory_projection_ports,
+    )
+  {
+    Ok(projection) ->
+      helpers.json_response(
+        200,
+        inventory_codec.encode_inventory_projection(projection),
+      )
+    Error(reason) -> helpers.json_response(500, json_codec.encode_error(reason))
   }
 }
 

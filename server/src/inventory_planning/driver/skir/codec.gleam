@@ -1,9 +1,47 @@
+import gleam/list
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/update_preferences/ports as update_preferences_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
+import inventory_planning/application/queries/projection/ports as projection_ports
 import shared/driver/skir/skirout/inventory_planning/commands as inventory_planning_commands
+import shared/driver/skir/skirout/inventory_planning/queries as inventory_planning_queries
 import skir_client/service
+
+pub fn map_projection(
+  projection: projection_ports.Projection,
+) -> inventory_planning_queries.InventoryProjection {
+  inventory_planning_queries.inventory_projection_new(
+    list.map(projection.locations, map_projection_location),
+    projection.total_quantity,
+    projection.unknown_count,
+  )
+}
+
+fn map_projection_location(
+  location: projection_ports.ProjectionLocation,
+) -> inventory_planning_queries.ProjectionLocation {
+  inventory_planning_queries.projection_location_new(
+    list.map(location.cards, map_projection_card),
+    location.location_name,
+    location.rule_id,
+    location.total_quantity,
+  )
+}
+
+fn map_projection_card(
+  card: projection_ports.ProjectionCard,
+) -> inventory_planning_queries.ProjectionCard {
+  inventory_planning_queries.projection_card_new(
+    card.card_type,
+    card.collector_number,
+    card.color_identity,
+    card.name,
+    card.quantity,
+    card.rarity,
+    card.set_code,
+  )
+}
 
 pub fn map_upsert_inventory_rule_result(
   result: Result(Nil, upsert_rule_ports.UpsertInventoryRuleError),

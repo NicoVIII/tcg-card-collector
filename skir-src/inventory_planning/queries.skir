@@ -20,21 +20,30 @@ method ListInventoryRules(
 ): InventoryRuleList = 303;
 
 struct InventoryProjectionRequest {
-  sort_by: string = 0;
-  group_by: string = 1;
+  unit: bool = 0;
 }
 
-struct InventoryProjectionRow {
-  location_name: string = 0;
-  card_name: string = 1;
-  set_code: string = 2;
+struct ProjectionCard {
+  name: string = 0;
+  set_code: string = 1;
+  collector_number: string = 2;
   quantity: int32 = 3;
-  group_value: string = 4;
+  color_identity: string = 4;
+  rarity: string = 5;
+  card_type: string = 6;
+}
+
+struct ProjectionLocation {
+  location_name: string = 0;
+  rule_id: string = 1;
+  total_quantity: int32 = 2;
+  cards: [ProjectionCard] = 3;
 }
 
 struct InventoryProjection {
-  data: [InventoryProjectionRow] = 0;
-  total: int32 = 1;
+  locations: [ProjectionLocation] = 0;
+  total_quantity: int32 = 1;
+  unknown_count: int32 = 2;
 }
 
 method GetInventoryProjection(

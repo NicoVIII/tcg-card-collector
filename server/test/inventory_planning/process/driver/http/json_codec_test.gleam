@@ -1,6 +1,36 @@
 import inventory_planning/application/queries/get_bulk_spec/ports as bulk_spec_ports
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
+import inventory_planning/application/queries/projection/ports as projection_ports
 import inventory_planning/driver/http/json_codec
+
+pub fn encode_inventory_projection_nests_locations_and_cards_test() {
+  let projection =
+    projection_ports.Projection(unknown_count: 1, total_quantity: 2, locations: [
+      projection_ports.ProjectionLocation(
+        location_name: "Bulk",
+        rule_id: "",
+        total_quantity: 2,
+        cards: [
+          projection_ports.ProjectionCard(
+            name: "Grizzly Bears",
+            set_code: "m11",
+            collector_number: "182",
+            quantity: 2,
+            color_identity: "G",
+            rarity: "common",
+            card_type: "creature",
+          ),
+        ],
+      ),
+    ])
+
+  assert json_codec.encode_inventory_projection(projection)
+    == "{\"locations\":[{\"location_name\":\"Bulk\",\"rule_id\":\"\","
+    <> "\"total_quantity\":2,\"cards\":[{\"name\":\"Grizzly Bears\","
+    <> "\"set_code\":\"m11\",\"collector_number\":\"182\",\"quantity\":2,"
+    <> "\"color_identity\":\"G\",\"rarity\":\"common\",\"card_type\":\"creature\"}]}],"
+    <> "\"total_quantity\":2,\"unknown_count\":1}"
+}
 
 pub fn encode_inventory_rules_includes_position_and_selector_test() {
   let rules = [

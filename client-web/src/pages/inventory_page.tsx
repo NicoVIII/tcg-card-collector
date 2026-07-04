@@ -1,22 +1,18 @@
-import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
+import { For, Show, createEffect, createSignal } from "solid-js";
 import { mapError } from "../data/http/error";
-import type { InventoryProjectionRow } from "../data/inventory_planning/request";
 import {
   useDeleteInventoryRuleMutation,
   useUpdateBulkSpecMutation,
   useUpsertInventoryRuleMutation,
 } from "../data/inventory_planning/mutation";
-import { GROUP_OPTIONS, SELECTOR_OPTIONS, SORT_OPTIONS } from "../data/inventory_planning/options";
+import { SELECTOR_OPTIONS } from "../data/inventory_planning/options";
 import {
   useBulkSpecQuery,
   useInventoryProjectionQuery,
   useInventoryRulesQuery,
 } from "../data/inventory_planning/query";
-import { useSettingsQuery } from "../data/settings/query";
 
 export function InventoryPage() {
-  const [sortBy, setSortBy] = createSignal("card_name");
-  const [groupBy, setGroupBy] = createSignal("location_name");
   const [newRuleName, setNewRuleName] = createSignal("");
   const [newExpression, setNewExpression] = createSignal("set_code=M11");
   const [newPosition, setNewPosition] = createSignal(0);
@@ -26,22 +22,11 @@ export function InventoryPage() {
   const [mutationError, setMutationError] = createSignal<string | null>(null);
 
   const rulesQuery = useInventoryRulesQuery();
-  const projectionQuery = useInventoryProjectionQuery(sortBy, groupBy);
+  const projectionQuery = useInventoryProjectionQuery();
   const upsertMutation = useUpsertInventoryRuleMutation();
   const deleteMutation = useDeleteInventoryRuleMutation();
   const bulkSpecQuery = useBulkSpecQuery();
   const updateBulkSpecMutation = useUpdateBulkSpecMutation();
-  const settingsQuery = useSettingsQuery();
-
-  let initializedFromSettings = false;
-  createEffect(() => {
-    const data = settingsQuery.data;
-    if (data !== undefined && !initializedFromSettings) {
-      initializedFromSettings = true;
-      setSortBy(data.default_sort);
-      setGroupBy(data.default_grouping);
-    }
-  });
 
   let initializedFromBulkSpec = false;
   createEffect(() => {
@@ -51,17 +36,6 @@ export function InventoryPage() {
       setBulkLocation(data.location_name);
       setBulkSortKeys(data.sort_keys);
     }
-  });
-
-  const groupedProjection = createMemo(() => {
-    const rows = projectionQuery.data?.data ?? [];
-    const groups = new Map<string, InventoryProjectionRow[]>();
-    for (const row of rows) {
-      const group = groups.get(row.group_value) ?? [];
-      group.push(row);
-      groups.set(row.group_value, group);
-    }
-    return [...groups.entries()];
   });
 
   const addRule = () => {
@@ -99,24 +73,6 @@ export function InventoryPage() {
   return (
     <section>
       <h2>Inventory</h2>
-      <div class="form-row">
-        <label>
-          Sort by
-          <select value={sortBy()} onChange={(event) => setSortBy(event.currentTarget.value)}>
-            <For each={SORT_OPTIONS}>
-              {(option) => <option value={option.value}>{option.label}</option>}
-            </For>
-          </select>
-        </label>
-        <label>
-          Group by
-          <select value={groupBy()} onChange={(event) => setGroupBy(event.currentTarget.value)}>
-            <For each={GROUP_OPTIONS}>
-              {(option) => <option value={option.value}>{option.label}</option>}
-            </For>
-          </select>
-        </label>
-      </div>
       <div class="form-row">
         <label>
           Position
@@ -225,31 +181,47 @@ export function InventoryPage() {
       <Show when={projectionQuery.isError}>
         <p role="alert">{mapError(projectionQuery.error).message}</p>
       </Show>
+      <Show when={(projectionQuery.data?.unknown_count ?? 0) > 0}>
+        <p class="hint">
+          {projectionQuery.data?.unknown_count} collection card(s) unknown to the catalog — placed
+          in bulk without attributes.
+        </p>
+      </Show>
       <Show
-        when={!projectionQuery.isError && (projectionQuery.data?.data?.length ?? 0) > 0}
+        when={!projectionQuery.isError && (projectionQuery.data?.locations?.length ?? 0) > 0}
         fallback={<p>No projection data.</p>}
       >
-        <For each={groupedProjection()}>
-          {([groupValue, rows]) => (
-            <div>
-              <h4>{groupValue}</h4>
+        <For each={projectionQuery.data?.locations}>
+          {(location) => (
+            <div class="projection-location">
+              <h4>{location.location_name}</h4>
+              <p class="hint">
+                {location.rule_id === "" ? "Bulk remainder" : "Rule-assigned"} —{" "}
+                {location.total_quantity} card(s)
+              </p>
               <table>
                 <thead>
                   <tr>
                     <th>Card</th>
                     <th>Set</th>
-                    <th>Location</th>
+                    <th>#</th>
                     <th>Qty</th>
+                    <th>Color</th>
+                    <th>Rarity</th>
+                    <th>Type</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <For each={rows}>
-                    {(row) => (
+                  <For each={location.cards}>
+                    {(card) => (
                       <tr>
-                        <td>{row.card_name}</td>
-                        <td>{row.set_code}</td>
-                        <td>{row.location_name}</td>
-                        <td>{row.quantity}</td>
+                        <td>{card.name}</td>
+                        <td>{card.set_code}</td>
+                        <td>{card.collector_number}</td>
+                        <td>{card.quantity}</td>
+                        <td>{card.color_identity}</td>
+                        <td>{card.rarity}</td>
+                        <td>{card.card_type}</td>
                       </tr>
                     )}
                   </For>

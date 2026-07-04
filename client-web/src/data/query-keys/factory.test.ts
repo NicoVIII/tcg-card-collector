@@ -6,13 +6,8 @@ describe("query key factory", () => {
     expect(queryKeys.catalogList(0, 25)).toEqual(["card_catalog", "list", 0, 25]);
   });
 
-  it("builds projection keys with sort and group", () => {
-    expect(queryKeys.inventoryProjection("card_name", "location_name")).toEqual([
-      "inventory_planning",
-      "projection",
-      "card_name",
-      "location_name",
-    ]);
+  it("builds a deterministic projection key", () => {
+    expect(queryKeys.inventoryProjection()).toEqual(["inventory_planning", "projection"]);
   });
 
   it("builds a deterministic set completion key", () => {

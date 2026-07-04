@@ -42,16 +42,30 @@ Boundary notes:
 ## Inventory Planning
 
 Purpose:
-- Represent storage/location rules and produce grouped/sorted inventory projections.
+- Represent the physical-sorting scheme as an ordered, copy-consuming rule cascade and project a
+  collection through it into per-location pull-lists.
 
 Core terms:
-- InventoryRule: user-defined planning rule for location assignment.
-- InventoryLocation: destination concept for storage planning.
-- InventoryProjection: computed planning output grouped/sorted for execution.
-- GroupingStrategy: domain concept describing grouping behavior.
+- RuleCascade: the ordered waterfall of rules plus a bulk remainder. Rules apply in `position`
+  order and each **consumes** copies from what earlier rules left behind, so one copy is placed
+  exactly once.
+- InventoryRule / CascadeRule: one waterfall step — a `position`, a copy `selector`, a match
+  `predicate`, and a location `target`.
+- CopySelector: how many copies of a matching card a rule claims — all copies, the first copy per
+  printing, or the first copy per oracle identity.
+- Predicate: a rule's match condition — a conjunction (`and`) of set-code / rarity / color-identity /
+  type clauses over a card's attributes. A clause referencing an attribute the card lacks is false,
+  so the card cascades on.
+- LocationTarget: where a rule sends the copies it claims; a fixed name, or a template that fans one
+  rule across many locations via a `{set_code}` / `{color_identity}` / `{type}` placeholder.
+- BulkSpec: the single leftover-remainder location plus the sort-key list ordering its pile.
+- InventoryProjection: the computed placement — locations in cascade order, each with its cards and
+  total, plus a count of collection keys unknown to the catalog.
+- GroupingStrategy / SortStrategy: legacy planning-preference concepts. They survive **only** for the
+  default-sort/grouping preferences; the projection no longer groups or sorts by them.
 
 Boundary notes:
-- Owns rule and projection semantics.
+- Owns cascade, rule, and projection semantics.
 - Consumes collection and catalog data as inputs through application ports.
 - Also owns *planning* preferences (default sort/grouping) — there is no separate Settings
   context. Target-set preferences for completion tracking belong to Insights, not here.

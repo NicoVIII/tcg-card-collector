@@ -84,7 +84,7 @@ fn handle_request(
     Delete, "/api/inventory/rules" ->
       inventory_http.handle_delete_inventory_rule(req, deps.inventory_planning)
     Get, "/api/inventory/projection" ->
-      inventory_http.handle_inventory_projection(req, deps.inventory_planning)
+      inventory_http.handle_inventory_projection(deps.inventory_planning)
     Get, "/api/inventory/bulk-spec" ->
       inventory_http.handle_get_bulk_spec(deps.inventory_planning)
     Put, "/api/inventory/bulk-spec" ->

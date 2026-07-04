@@ -37,17 +37,27 @@ export type InventoryRuleList = {
   total: number;
 };
 
-export type InventoryProjectionRow = {
-  location_name: string;
-  card_name: string;
+export type ProjectionCard = {
+  name: string;
   set_code: string;
+  collector_number: string;
   quantity: number;
-  group_value: string;
+  color_identity: string;
+  rarity: string;
+  card_type: string;
+};
+
+export type ProjectionLocation = {
+  location_name: string;
+  rule_id: string;
+  total_quantity: number;
+  cards: ProjectionCard[];
 };
 
 export type InventoryProjection = {
-  data: InventoryProjectionRow[];
-  total: number;
+  locations: ProjectionLocation[];
+  total_quantity: number;
+  unknown_count: number;
 };
 
 function toInventoryRuleList(response: RpcInventoryRuleList): InventoryRuleList {
@@ -72,14 +82,22 @@ function toBulkSpec(response: RpcBulkSpec): BulkSpec {
 
 function toInventoryProjection(response: RpcInventoryProjection): InventoryProjection {
   return {
-    data: response.data.map((row) => ({
-      location_name: row.locationName,
-      card_name: row.cardName,
-      set_code: row.setCode,
-      quantity: row.quantity,
-      group_value: row.groupValue,
+    locations: response.locations.map((location) => ({
+      location_name: location.locationName,
+      rule_id: location.ruleId,
+      total_quantity: location.totalQuantity,
+      cards: location.cards.map((card) => ({
+        name: card.name,
+        set_code: card.setCode,
+        collector_number: card.collectorNumber,
+        quantity: card.quantity,
+        color_identity: card.colorIdentity,
+        rarity: card.rarity,
+        card_type: card.cardType,
+      })),
     })),
-    total: response.total,
+    total_quantity: response.totalQuantity,
+    unknown_count: response.unknownCount,
   };
 }
 
@@ -117,13 +135,10 @@ export async function deleteInventoryRule(id: string): Promise<{ success: boolea
   return { success: response.union.kind === "SUCCESS" };
 }
 
-export async function getInventoryProjection(
-  sortBy: string,
-  groupBy: string,
-): Promise<InventoryProjection> {
+export async function getInventoryProjection(): Promise<InventoryProjection> {
   const response = await skirClient.invokeRemote(
     GetInventoryProjection,
-    InventoryProjectionRequest.create({ sortBy, groupBy }),
+    InventoryProjectionRequest.create({ unit: true }),
     "POST",
   );
 

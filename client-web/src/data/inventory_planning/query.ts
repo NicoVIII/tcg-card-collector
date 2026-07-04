@@ -16,9 +16,9 @@ export function useBulkSpecQuery() {
   }));
 }
 
-export function useInventoryProjectionQuery(sortBy: () => string, groupBy: () => string) {
+export function useInventoryProjectionQuery() {
   return createQuery(() => ({
-    queryKey: queryKeys.inventoryProjection(sortBy(), groupBy()),
-    queryFn: () => getInventoryProjection(sortBy(), groupBy()),
+    queryKey: queryKeys.inventoryProjection(),
+    queryFn: getInventoryProjection,
   }));
 }
