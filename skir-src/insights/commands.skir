@@ -1,0 +1,25 @@
+struct MarkTargetSetRequest {
+  set_code: string = 0;
+}
+
+enum MarkTargetSetResponse {
+  success = 1;
+  error = 2;
+}
+
+method MarkTargetSet(
+  MarkTargetSetRequest
+): MarkTargetSetResponse = 501;
+
+struct UnmarkTargetSetRequest {
+  set_code: string = 0;
+}
+
+enum UnmarkTargetSetResponse {
+  success = 1;
+  error = 2;
+}
+
+method UnmarkTargetSet(
+  UnmarkTargetSetRequest
+): UnmarkTargetSetResponse = 502;

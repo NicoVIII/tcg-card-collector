@@ -3,11 +3,12 @@ import { describe, expect, it } from "vitest";
 import { routes } from "./routes";
 
 describe("routes", () => {
-  it("exposes the four MVP routes", () => {
+  it("exposes the five MVP routes", () => {
     expect(routes.map((route) => route.path)).toEqual([
       "/collection",
       "/catalog",
       "/inventory",
+      "/insights",
       "/settings",
     ]);
   });

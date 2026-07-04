@@ -10,6 +10,7 @@ type BoundedContext {
   Catalog
   Collection
   InventoryPlanning
+  Insights
 }
 
 type DriverType {
@@ -75,6 +76,15 @@ fn categorize(path: String) -> Category {
           tail,
         ),
       )
+    ["insights", ..tail] ->
+      bounded_context.Bc(
+        Insights,
+        hexagonal.categorize_layer(
+          cqrs.categorize_application,
+          categorize_driver,
+          tail,
+        ),
+      )
     ["shared", ..tail] ->
       bounded_context.Shared(hexagonal.categorize_layer(
         cqrs.categorize_application,
@@ -122,6 +132,7 @@ fn describe_bc(bc: BoundedContext, layer: Layer) -> String {
     Catalog -> "Catalog"
     Collection -> "Collection"
     InventoryPlanning -> "InventoryPlanning"
+    Insights -> "Insights"
   }
   "BoundedContext("
   <> bc_str
@@ -169,6 +180,8 @@ pub fn main() {
       allowed_cross_bc: [
         #(InventoryPlanning, Catalog),
         #(InventoryPlanning, Collection),
+        #(Insights, Catalog),
+        #(Insights, Collection),
       ],
     )
   let config =

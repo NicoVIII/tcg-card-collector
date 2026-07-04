@@ -7,6 +7,7 @@ This document defines the MVP bounded contexts and the shared language for each 
 - Card Catalog (`server/src/catalog/`)
 - Collection Import (`server/src/collection/`)
 - Inventory Planning (`server/src/inventory_planning/`)
+- Insights (`server/src/insights/`)
 
 ## Card Catalog
 
@@ -52,4 +53,26 @@ Core terms:
 Boundary notes:
 - Owns rule and projection semantics.
 - Consumes collection and catalog data as inputs through application ports.
-- Also owns planning preferences — there is no separate Settings context.
+- Also owns *planning* preferences (default sort/grouping) — there is no separate Settings
+  context. Target-set preferences for completion tracking belong to Insights, not here.
+
+## Insights
+
+Purpose:
+- Surface derived, cross-context views over the collection — starting with set completion
+  tracking. The future home of the vision's broader "collection insights" theme.
+
+Core terms:
+- TargetSet: a set (by set code) the user has marked as one they want to track completion for.
+- SetCompletion: the owned/total pair for one target set — "owned" is the count of distinct
+  `(set_code, collector_number)` keys from the target set that appear in the latest succeeded
+  collection snapshot (exact key match only, no name joins or base-set/variant filtering);
+  "total" is the count of distinct collector numbers the catalog has for that set. A target set
+  absent from the catalog has `total: 0`.
+
+Boundary notes:
+- Owns both sides of target-set tracking: the write side (marking/unmarking a target set) and
+  the completion read projection. This is deliberately not Inventory Planning, even though it
+  is also preference-shaped — target sets are about collection insight, not storage rules.
+- Consumes catalog data (distinct collector numbers per set) and collection data (owned cards)
+  as inputs through application ports, the same cross-BC pattern Inventory Planning uses.

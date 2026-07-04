@@ -152,6 +152,29 @@ pub fn get_by_keys(keys: List(CatalogKeyTuple)) -> List(CatalogCardTuple) {
   }
 }
 
+pub fn list_by_set_codes(set_codes: List(String)) -> List(CatalogKeyTuple) {
+  case set_codes {
+    [] -> []
+    _ -> {
+      let placeholders =
+        set_codes
+        |> list.map(fn(_) { "?" })
+        |> string.join(", ")
+      let params = list.map(set_codes, sqlight.text)
+      sqlite_store.query(
+        "SELECT DISTINCT set_code, collector_number "
+          <> "FROM catalog_cards "
+          <> "WHERE set_code IN ("
+          <> placeholders
+          <> ");",
+        params,
+        key_row_decoder(),
+      )
+      |> result.unwrap([])
+    }
+  }
+}
+
 fn name_row_decoder() {
   use set_code <- decode.field(0, decode.string)
   use collector_number <- decode.field(1, decode.string)

@@ -2,6 +2,7 @@ import bootstrap/composition.{type Dependencies}
 import catalog/driver/skir/handler as catalog_skir
 import collection/driver/skir/handler as collection_skir
 import gleam/erlang/process
+import insights/driver/skir/handler as insights_skir
 import inventory_planning/driver/skir/handler as inventory_skir
 import skir_client/service
 
@@ -24,6 +25,7 @@ pub fn make_service() -> RpcService {
   |> catalog_skir.register(fn(ctx: Dependencies) { ctx.catalog })
   |> collection_skir.register(fn(ctx: Dependencies) { ctx.collection })
   |> inventory_skir.register(fn(ctx: Dependencies) { ctx.inventory_planning })
+  |> insights_skir.register(fn(ctx: Dependencies) { ctx.insights })
 }
 
 fn handle_server_message(

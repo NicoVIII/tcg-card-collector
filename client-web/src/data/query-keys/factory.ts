@@ -9,4 +9,5 @@ export const queryKeys = {
   inventoryProjection: (sortBy: string, groupBy: string) =>
     ["inventory_planning", "projection", sortBy, groupBy] as const,
   settings: () => ["settings", "current"] as const,
+  setCompletion: () => ["insights", "set_completion"] as const,
 };

@@ -14,6 +14,13 @@ import collection/infrastructure/adapters/queries/latest_status/adapter as lates
 import collection/infrastructure/adapters/queries/list_cards/adapter as list_collection_cards_adapter
 import gleam/erlang/process
 import gleam/io
+import insights/driver/dependencies.{
+  type Dependencies as InsightsDependencies,
+  Dependencies as InsightsDependencies,
+} as _
+import insights/infrastructure/adapters/commands/mark_target_set/adapter as mark_target_set_adapter
+import insights/infrastructure/adapters/commands/unmark_target_set/adapter as unmark_target_set_adapter
+import insights/infrastructure/adapters/queries/set_completion/adapter as set_completion_adapter
 import inventory_planning/driver/dependencies.{
   type Dependencies as InventoryPlanningDependencies,
   Dependencies as InventoryPlanningDependencies,
@@ -30,6 +37,7 @@ pub type Dependencies {
     catalog: CatalogDependencies,
     collection: CollectionDependencies,
     inventory_planning: InventoryPlanningDependencies,
+    insights: InsightsDependencies,
   )
 }
 
@@ -62,6 +70,11 @@ pub fn dependencies() -> Dependencies {
       inventory_projection_ports: projection_adapter.new(),
       update_planning_preferences_port: update_preferences_adapter.new(),
       get_planning_preferences_port: get_preferences_adapter.new(),
+    ),
+    insights: InsightsDependencies(
+      mark_target_set_port: mark_target_set_adapter.new(),
+      unmark_target_set_port: unmark_target_set_adapter.new(),
+      set_completion_ports: set_completion_adapter.new(),
     ),
   )
 }

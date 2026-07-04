@@ -14,4 +14,8 @@ describe("query key factory", () => {
       "location_name",
     ]);
   });
+
+  it("builds a deterministic set completion key", () => {
+    expect(queryKeys.setCompletion()).toEqual(["insights", "set_completion"]);
+  });
 });

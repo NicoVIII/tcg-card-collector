@@ -1,0 +1,17 @@
+struct SetCompletion {
+  set_code: string = 0;
+  owned: int32 = 1;
+  total: int32 = 2;
+}
+
+struct SetCompletionList {
+  data: [SetCompletion] = 0;
+}
+
+struct GetSetCompletionRequest {
+  unit: bool = 0;
+}
+
+method GetSetCompletion(
+  GetSetCompletionRequest
+): SetCompletionList = 503;

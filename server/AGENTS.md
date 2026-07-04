@@ -6,7 +6,7 @@ Code is organized **context-first, then layer**: `server/src/<bounded_context>/{
 
 `just server::lint-check` runs `gleam run -m lint` which applies a custom `depends_only_on` rule. Violations are build errors.
 
-- **Bounded context isolation**: `catalog`, `collection`, and `inventory_planning` must not import from each other, except via the explicit cross-BC allowlist (see below). Only `bootstrap/composition` wires them together unconditionally.
+- **Bounded context isolation**: `catalog`, `collection`, `inventory_planning`, and `insights` must not import from each other, except via the explicit cross-BC allowlist (see below). Only `bootstrap/composition` wires them together unconditionally.
 - **Layer ordering**: within any context (and within `shared/`), imports may only go inward — `driver`/`infrastructure` may import `application` and `domain`, but not the reverse.
 - **`driver/gleam/` is a cross-BC Gleam API layer** (`GleamDriver`): a thin facade that exposes a BC's capabilities to other BCs. A BC's `infrastructure` may import another BC's `driver/gleam/` only if the pair is declared in the allowlist in `test/lint.gleam`. Regular `driver/http/` and `driver/skir/` remain transport-only and are never cross-BC. `GleamDriver` may import its own BC's `domain`, `application`, and `infrastructure` — routing through the owning BC's query handler and adapter, not straight into the DAO, so it returns typed read models instead of raw tuples. **Known gap**: the vendored `glinter_arch` (a separate `gleam-libs` submodule) doesn't yet encode the Driver→own-BC-Infrastructure exception this rule describes, so `driver/gleam/*.gleam` files currently carry a `// nolint: depends_only_on` on the infrastructure import. Fixing the rule itself means changing that submodule.
 - **`shared/` is a shared kernel**: any bounded context may import `shared/`, but `shared/` must not import bounded contexts. Layer rules apply within `shared/` too.
@@ -16,12 +16,14 @@ Code is organized **context-first, then layer**: `server/src/<bounded_context>/{
 **Current cross-BC allowlist** (declared in `test/lint.gleam`):
 - `inventory_planning/infrastructure` → `catalog/driver/gleam/` (via `catalog_api`)
 - `inventory_planning/infrastructure` → `collection/driver/gleam/` (via `collection_api`)
+- `insights/infrastructure` → `catalog/driver/gleam/` (via `catalog_api`)
+- `insights/infrastructure` → `collection/driver/gleam/` (via `collection_api`)
 
 Allowlist additions must stay explicit one-to-one context pairs — no wildcards or blanket layer bypasses.
 
-Three bounded contexts under `server/src/`: **catalog**, **collection**, **inventory_planning**. Planning preferences live inside inventory_planning — there is no separate Settings context. Domain vocabulary and context ownership rules: read `docs/dev/domain-ubiquitous-language.md` before touching domain code.
+Four bounded contexts under `server/src/`: **catalog**, **collection**, **inventory_planning**, **insights**. Planning preferences (default sort/grouping) live inside inventory_planning — there is no separate Settings context. Target-set / completion-tracking preferences live inside insights instead — see the boundary note in `docs/dev/domain-ubiquitous-language.md`. Domain vocabulary and context ownership rules: read `docs/dev/domain-ubiquitous-language.md` before touching domain code.
 
-All three bounded contexts share the same driver pattern: drivers call use-case handlers directly — there is no intermediate application facade. Result mapping from domain types to RPC types lives in `driver/skir/codec.gleam`; route handlers and JSON encoding/decoding live in `driver/http/handler.gleam` and `driver/http/json_codec.gleam`.
+All four bounded contexts share the same driver pattern: drivers call use-case handlers directly — there is no intermediate application facade. Result mapping from domain types to RPC types lives in `driver/skir/codec.gleam`; route handlers and JSON encoding/decoding live in `driver/http/handler.gleam` and `driver/http/json_codec.gleam`.
 
 **Request flow (skir)**: `skir-src/*.skir` → generated `server/src/shared/driver/skir/skirout/` → `server/src/<context>/driver/skir/handler.gleam` → use-case handler → use-case port → domain + infrastructure. Result mapping to RPC types is done via `driver/skir/codec.gleam`.
 

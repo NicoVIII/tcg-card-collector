@@ -11,6 +11,7 @@ import gleam/http/response.{type Response}
 import gleam/int
 import gleam/result
 import gleam/string
+import insights/driver/http/handler as insights_http
 import inventory_planning/driver/http/handler as inventory_http
 import mist
 import shared/driver/http/helpers
@@ -86,6 +87,12 @@ fn handle_request(
       inventory_http.handle_get_settings(deps.inventory_planning)
     Put, "/api/settings" ->
       inventory_http.handle_update_settings(req, deps.inventory_planning)
+    Get, "/api/insights/completion" ->
+      insights_http.handle_get_set_completion(deps.insights)
+    Put, "/api/insights/targets" ->
+      insights_http.handle_mark_target_set(req, deps.insights)
+    Delete, "/api/insights/targets" ->
+      insights_http.handle_unmark_target_set(req, deps.insights)
     Get, "/api/skir" | Post, "/api/skir" ->
       skir_router.handle_request(req, server_name)
     _, _ -> helpers.json_response(404, json_codec.encode_error("not found"))
