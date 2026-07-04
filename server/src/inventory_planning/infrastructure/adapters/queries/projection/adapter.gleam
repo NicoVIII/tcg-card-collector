@@ -2,6 +2,7 @@ import catalog/driver/gleam/catalog_api
 import collection/driver/gleam/collection_api
 import gleam/dict
 import gleam/list
+import gleam/result
 import inventory_planning/application/queries/projection/ports
 import inventory_planning/infrastructure/daos/inventory_rules_dao
 
@@ -15,14 +16,16 @@ pub fn new() -> ports.InventoryProjectionPorts {
 
 fn snapshot_rows_adapter() -> ports.SnapshotRowsPort {
   fn() {
-    collection_api.list_cards()
-    |> list.map(fn(card) {
-      ports.SnapshotRow(
-        set_code: card.set_code,
-        collector_number: card.collector_number,
-        quantity: card.quantity,
-      )
-    })
+    use cards <- result.try(collection_api.list_cards())
+    Ok(
+      list.map(cards, fn(card) {
+        ports.SnapshotRow(
+          set_code: card.set_code,
+          collector_number: card.collector_number,
+          quantity: card.quantity,
+        )
+      }),
+    )
   }
 }
 

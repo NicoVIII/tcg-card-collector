@@ -69,15 +69,16 @@ pub fn handle_latest_import_status(
       deps.latest_import_status_port,
     )
   {
-    Some(run) ->
+    Ok(Some(run)) ->
       helpers.json_response(
         200,
         collection_codec.encode_import_status_found(run),
       )
-    None ->
+    Ok(None) ->
       helpers.json_response(
         200,
         collection_codec.encode_import_status_not_found(),
       )
+    Error(reason) -> helpers.json_response(500, json_codec.encode_error(reason))
   }
 }

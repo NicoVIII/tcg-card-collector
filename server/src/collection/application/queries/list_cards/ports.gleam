@@ -7,5 +7,7 @@ pub type CollectionCardReadModel {
 }
 
 pub type ListCollectionCardsPort {
-  ListCollectionCardsPort(list_cards: fn() -> List(CollectionCardReadModel))
+  ListCollectionCardsPort(
+    list_cards: fn() -> Result(List(CollectionCardReadModel), String),
+  )
 }

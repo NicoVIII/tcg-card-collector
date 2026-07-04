@@ -11,7 +11,7 @@ fn build_ports(
   catalog catalog: List(#(#(String, String), String)),
 ) -> ports.InventoryProjectionPorts {
   ports.InventoryProjectionPorts(
-    snapshot_rows: fn() { snapshot_rows },
+    snapshot_rows: fn() { Ok(snapshot_rows) },
     rules: fn() { rules },
     catalog_names: fn(keys) {
       catalog
@@ -45,7 +45,7 @@ pub fn batches_matched_rows_into_a_single_names_lookup_test() {
     )
 
   assert result
-    == [
+    == Ok([
       ports.InventoryProjectionReadModel(
         location_name: "Box 1",
         card_name: "Card One",
@@ -60,7 +60,7 @@ pub fn batches_matched_rows_into_a_single_names_lookup_test() {
         quantity: 3,
         group_value: "Box 1",
       ),
-    ]
+    ])
 }
 
 pub fn rows_with_no_matching_rule_are_dropped_test() {
@@ -86,7 +86,7 @@ pub fn rows_with_no_matching_rule_are_dropped_test() {
       ports,
     )
 
-  assert result == []
+  assert result == Ok([])
 }
 
 pub fn card_missing_from_catalog_gets_empty_name_test() {
@@ -109,7 +109,7 @@ pub fn card_missing_from_catalog_gets_empty_name_test() {
     )
 
   assert result
-    == [
+    == Ok([
       ports.InventoryProjectionReadModel(
         location_name: "Box 1",
         card_name: "",
@@ -117,5 +117,25 @@ pub fn card_missing_from_catalog_gets_empty_name_test() {
         quantity: 1,
         group_value: "abc",
       ),
-    ]
+    ])
+}
+
+pub fn snapshot_rows_failure_propagates_as_error_test() {
+  let ports =
+    ports.InventoryProjectionPorts(
+      snapshot_rows: fn() { Error("db unavailable") },
+      rules: fn() { [] },
+      catalog_names: fn(_keys) { dict.new() },
+    )
+
+  let result =
+    handler.execute(
+      handler.InventoryProjectionQuery(
+        sort_by: sort_strategy.ByCardName,
+        group_by: grouping_strategy.ByLocation,
+      ),
+      ports,
+    )
+
+  assert result == Error("db unavailable")
 }

@@ -8,6 +8,6 @@ pub type LatestImportStatusQuery {
 pub fn execute(
   _query: LatestImportStatusQuery,
   port: ports.LatestImportStatusPort,
-) -> Option(ports.ImportRunReadModel) {
+) -> Result(Option(ports.ImportRunReadModel), String) {
   port.latest()
 }

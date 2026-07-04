@@ -21,7 +21,7 @@ pub type InventoryProjectionQuery {
 pub fn execute(
   query: InventoryProjectionQuery,
   ports: projection_ports.InventoryProjectionPorts,
-) -> List(projection_ports.InventoryProjectionReadModel) {
+) -> Result(List(projection_ports.InventoryProjectionReadModel), String) {
   let InventoryProjectionQuery(sort_by: sort_by, group_by: group_by) = query
 
   let raw_rules = ports.rules()
@@ -37,8 +37,10 @@ pub fn execute(
       }
     })
 
+  use snapshot_rows <- result.try(ports.snapshot_rows())
+
   let matched_rows =
-    ports.snapshot_rows()
+    snapshot_rows
     |> list.filter_map(fn(row) {
       case rule_set.location_for(rules, row.set_code) {
         None -> Error(Nil)
@@ -73,6 +75,7 @@ pub fn execute(
     )
   })
   |> sort_results(sort_by)
+  |> Ok
 }
 
 fn sort_results(

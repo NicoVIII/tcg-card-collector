@@ -30,20 +30,22 @@ pub fn map_import_collection_result(
 }
 
 pub fn map_get_latest_import_status_result(
-  result: Option(latest_status_ports.ImportRunReadModel),
+  result: Result(Option(latest_status_ports.ImportRunReadModel), String),
 ) -> Result(collection_queries.ImportStatus, service.ServiceError) {
   case result {
-    Some(run) ->
+    Ok(Some(run)) ->
       Ok(collection_queries.import_status_new(
         run.id,
         run.row_count,
         run.source_name,
         import_status.to_string(run.status),
       ))
-    None ->
+    Ok(None) ->
       Error(service.ServiceError(
         service.E404xNotFound,
         "import status not found",
       ))
+    Error(reason) ->
+      Error(service.ServiceError(service.E500xInternalServerError, reason))
   }
 }

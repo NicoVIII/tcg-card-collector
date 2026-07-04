@@ -11,5 +11,7 @@ pub type ImportRunReadModel {
 }
 
 pub type LatestImportStatusPort {
-  LatestImportStatusPort(latest: fn() -> Option(ImportRunReadModel))
+  LatestImportStatusPort(
+    latest: fn() -> Result(Option(ImportRunReadModel), String),
+  )
 }

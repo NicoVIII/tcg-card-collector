@@ -10,7 +10,7 @@ fn build_ports(
   ports.SetCompletionPorts(
     target_sets: fn() { target_sets },
     set_card_keys: fn(_set_codes) { catalog_keys },
-    owned_cards: fn() { owned_cards },
+    owned_cards: fn() { Ok(owned_cards) },
   )
 }
 
@@ -28,7 +28,7 @@ pub fn counts_owned_cards_against_the_catalog_denominator_test() {
   let result = handler.execute(handler.SetCompletionQuery, ports)
 
   assert result
-    == [ports.SetCompletionReadModel(set_code: "lea", owned: 2, total: 3)]
+    == Ok([ports.SetCompletionReadModel(set_code: "lea", owned: 2, total: 3)])
 }
 
 pub fn duplicate_owned_rows_are_deduplicated_test() {
@@ -45,7 +45,7 @@ pub fn duplicate_owned_rows_are_deduplicated_test() {
   let result = handler.execute(handler.SetCompletionQuery, ports)
 
   assert result
-    == [ports.SetCompletionReadModel(set_code: "lea", owned: 1, total: 1)]
+    == Ok([ports.SetCompletionReadModel(set_code: "lea", owned: 1, total: 1)])
 }
 
 pub fn set_absent_from_the_catalog_returns_zero_total_test() {
@@ -59,7 +59,9 @@ pub fn set_absent_from_the_catalog_returns_zero_total_test() {
   let result = handler.execute(handler.SetCompletionQuery, ports)
 
   assert result
-    == [ports.SetCompletionReadModel(set_code: "unknown", owned: 0, total: 0)]
+    == Ok([
+      ports.SetCompletionReadModel(set_code: "unknown", owned: 0, total: 0),
+    ])
 }
 
 pub fn owned_cards_outside_target_sets_are_ignored_test() {
@@ -76,5 +78,18 @@ pub fn owned_cards_outside_target_sets_are_ignored_test() {
   let result = handler.execute(handler.SetCompletionQuery, ports)
 
   assert result
-    == [ports.SetCompletionReadModel(set_code: "lea", owned: 1, total: 1)]
+    == Ok([ports.SetCompletionReadModel(set_code: "lea", owned: 1, total: 1)])
+}
+
+pub fn owned_cards_failure_propagates_as_error_test() {
+  let ports =
+    ports.SetCompletionPorts(
+      target_sets: fn() { ["lea"] },
+      set_card_keys: fn(_set_codes) { dict.from_list([#("lea", ["1"])]) },
+      owned_cards: fn() { Error("db unavailable") },
+    )
+
+  let result = handler.execute(handler.SetCompletionQuery, ports)
+
+  assert result == Error("db unavailable")
 }

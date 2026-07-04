@@ -69,7 +69,7 @@ fn latest_row_decoder() {
   decode.success(#(id, source_name, status_str, row_count))
 }
 
-pub fn latest() -> Option(LatestRunTuple) {
+pub fn latest() -> Result(Option(LatestRunTuple), String) {
   let rows =
     sqlite_store.query(
       "SELECT id, source_name, status, imported_row_count "
@@ -80,12 +80,13 @@ pub fn latest() -> Option(LatestRunTuple) {
       latest_row_decoder(),
     )
   case rows {
+    Ok([]) -> Ok(None)
     Ok([#(id, source_name, status_str, row_count), ..]) ->
       case import_status.from_string(status_str) {
-        Ok(status) -> Some(#(id, source_name, status, row_count))
-        Error(_) -> None
+        Ok(status) -> Ok(Some(#(id, source_name, status, row_count)))
+        Error(_) -> Error("invalid persisted import status: " <> status_str)
       }
-    _ -> None
+    Error(error) -> Error(error.message)
   }
 }
 
@@ -94,11 +95,6 @@ fn snapshot_row_decoder() {
   use collector_number <- decode.field(1, decode.string)
   use quantity <- decode.field(2, decode.int)
   decode.success(#(set_code, collector_number, quantity))
-}
-
-pub fn snapshot_rows() -> List(SnapshotRowTuple) {
-  latest_snapshot_rows()
-  |> result.unwrap([])
 }
 
 pub fn latest_snapshot_rows() -> Result(List(SnapshotRowTuple), String) {

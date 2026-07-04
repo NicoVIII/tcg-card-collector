@@ -11,7 +11,7 @@ pub type OwnedCard {
 }
 
 pub type OwnedCardsPort =
-  fn() -> List(OwnedCard)
+  fn() -> Result(List(OwnedCard), String)
 
 pub type SetCompletionReadModel {
   SetCompletionReadModel(set_code: String, owned: Int, total: Int)

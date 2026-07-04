@@ -64,14 +64,23 @@ fn handle_get_set_completion(get_dependencies: fn(context) -> Dependencies) {
     Nil,
     Nil,
   ) {
-    let rows =
+    case
       set_completion_handler.execute(
         set_completion_handler.SetCompletionQuery,
         get_dependencies(ctx).set_completion_ports,
       )
-    let response =
-      insights_queries.set_completion_list_new(list.map(rows, map_row))
-    #(Ok(response), req_meta, Nil)
+    {
+      Ok(rows) -> {
+        let response =
+          insights_queries.set_completion_list_new(list.map(rows, map_row))
+        #(Ok(response), req_meta, Nil)
+      }
+      Error(reason) -> #(
+        Error(service.ServiceError(service.E500xInternalServerError, reason)),
+        req_meta,
+        Nil,
+      )
+    }
   }
 }
 

@@ -38,7 +38,7 @@ pub fn latest_status_found_maps_run_fields_test() {
     )
 
   let assert Ok(mapped) =
-    collection_skir_codec.map_get_latest_import_status_result(Some(run))
+    collection_skir_codec.map_get_latest_import_status_result(Ok(Some(run)))
 
   assert mapped.import_run_id == "run-1"
   assert mapped.source_name == "test.csv"
@@ -47,9 +47,19 @@ pub fn latest_status_found_maps_run_fields_test() {
 }
 
 pub fn latest_status_not_found_maps_to_not_found_test() {
-  assert collection_skir_codec.map_get_latest_import_status_result(None)
+  assert collection_skir_codec.map_get_latest_import_status_result(Ok(None))
     == Error(service.ServiceError(
       service.E404xNotFound,
       "import status not found",
+    ))
+}
+
+pub fn latest_status_db_error_maps_to_service_error_test() {
+  assert collection_skir_codec.map_get_latest_import_status_result(Error(
+      "db unavailable",
+    ))
+    == Error(service.ServiceError(
+      service.E500xInternalServerError,
+      "db unavailable",
     ))
 }

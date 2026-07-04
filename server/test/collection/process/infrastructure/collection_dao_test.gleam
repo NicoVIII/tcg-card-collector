@@ -17,16 +17,16 @@ pub fn save_and_latest_round_trip_test() {
     )
 
   assert collection_dao.latest()
-    == Some(#("run-1", "test.csv", import_status.Succeeded, 2))
+    == Ok(Some(#("run-1", "test.csv", import_status.Succeeded, 2)))
 }
 
 pub fn latest_returns_none_when_no_runs_test() {
   use _db <- test_db.with_temp_db()
 
-  assert collection_dao.latest() == None
+  assert collection_dao.latest() == Ok(None)
 }
 
-pub fn replace_rows_and_snapshot_rows_round_trip_test() {
+pub fn replace_rows_and_latest_snapshot_rows_round_trip_test() {
   use _db <- test_db.with_temp_db()
 
   let assert Ok(Nil) =
@@ -43,12 +43,11 @@ pub fn replace_rows_and_snapshot_rows_round_trip_test() {
       #("lea", "2", 1),
     ])
 
-  assert collection_dao.snapshot_rows() == [#("lea", "1", 4), #("lea", "2", 1)]
   assert collection_dao.latest_snapshot_rows()
     == Ok([#("lea", "1", 4), #("lea", "2", 1)])
 }
 
-pub fn snapshot_rows_ignores_non_succeeded_runs_test() {
+pub fn latest_snapshot_rows_ignores_non_succeeded_runs_test() {
   use _db <- test_db.with_temp_db()
 
   let assert Ok(Nil) =
@@ -61,7 +60,7 @@ pub fn snapshot_rows_ignores_non_succeeded_runs_test() {
     )
   let assert Ok(Nil) = collection_dao.replace_rows("run-1", [#("lea", "1", 4)])
 
-  assert collection_dao.snapshot_rows() == []
+  assert collection_dao.latest_snapshot_rows() == Ok([])
 }
 
 pub fn replace_rows_discards_previous_rows_for_the_same_run_test() {
@@ -78,5 +77,5 @@ pub fn replace_rows_discards_previous_rows_for_the_same_run_test() {
   let assert Ok(Nil) = collection_dao.replace_rows("run-1", [#("lea", "1", 4)])
   let assert Ok(Nil) = collection_dao.replace_rows("run-1", [#("lea", "2", 9)])
 
-  assert collection_dao.snapshot_rows() == [#("lea", "2", 9)]
+  assert collection_dao.latest_snapshot_rows() == Ok([#("lea", "2", 9)])
 }

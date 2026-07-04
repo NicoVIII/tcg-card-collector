@@ -100,17 +100,21 @@ pub fn handle_inventory_projection(
             400,
             json_codec.encode_error("invalid group_by"),
           )
-        Ok(group_by) -> {
-          let rows =
+        Ok(group_by) ->
+          case
             projection_handler.execute(
               projection_handler.InventoryProjectionQuery(sort_by:, group_by:),
               deps.inventory_projection_ports,
             )
-          helpers.json_response(
-            200,
-            inventory_codec.encode_inventory_projection(rows),
-          )
-        }
+          {
+            Ok(rows) ->
+              helpers.json_response(
+                200,
+                inventory_codec.encode_inventory_projection(rows),
+              )
+            Error(reason) ->
+              helpers.json_response(500, json_codec.encode_error(reason))
+          }
       }
   }
 }

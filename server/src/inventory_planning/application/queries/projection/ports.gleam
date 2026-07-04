@@ -19,7 +19,7 @@ pub type RuleRow {
 }
 
 pub type SnapshotRowsPort =
-  fn() -> List(SnapshotRow)
+  fn() -> Result(List(SnapshotRow), String)
 
 /// Batch lookup: card name by (set_code, collector_number). Keys absent from
 /// the catalog are simply absent from the returned dict.

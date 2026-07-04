@@ -11,11 +11,13 @@ pub type SetCompletionQuery {
 pub fn execute(
   _query: SetCompletionQuery,
   ports: ports.SetCompletionPorts,
-) -> List(ports.SetCompletionReadModel) {
+) -> Result(List(ports.SetCompletionReadModel), String) {
   let target_sets = ports.target_sets()
   let catalog_keys = ports.set_card_keys(target_sets)
+
+  use owned_cards <- result.try(ports.owned_cards())
   let owned =
-    ports.owned_cards()
+    owned_cards
     |> list.map(fn(card) { #(card.set_code, card.collector_number) })
     |> set.from_list
 
@@ -33,4 +35,5 @@ pub fn execute(
       total: list.length(collector_numbers),
     )
   })
+  |> Ok
 }

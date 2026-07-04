@@ -154,19 +154,30 @@ fn handle_get_inventory_projection(
             req_meta,
             Nil,
           )
-          Ok(group_by) -> {
-            let rows =
+          Ok(group_by) ->
+            case
               projection_handler.execute(
                 projection_handler.InventoryProjectionQuery(sort_by:, group_by:),
                 get_dependencies(ctx).inventory_projection_ports,
               )
-            let response =
-              inventory_planning_queries.inventory_projection_new(
-                list.map(rows, map_inventory_projection_row),
-                list.length(rows),
+            {
+              Ok(rows) -> {
+                let response =
+                  inventory_planning_queries.inventory_projection_new(
+                    list.map(rows, map_inventory_projection_row),
+                    list.length(rows),
+                  )
+                #(Ok(response), req_meta, Nil)
+              }
+              Error(reason) -> #(
+                Error(service.ServiceError(
+                  service.E500xInternalServerError,
+                  reason,
+                )),
+                req_meta,
+                Nil,
               )
-            #(Ok(response), req_meta, Nil)
-          }
+            }
         }
     }
   }

@@ -112,21 +112,30 @@ fn handle_list_collection_cards(get_dependencies: fn(context) -> Dependencies) {
     Nil,
     Nil,
   ) {
-    let all_cards =
+    case
       list_collection_cards_handler.execute(
         list_collection_cards_handler.ListCollectionCardsQuery,
         get_dependencies(ctx).list_collection_cards_port,
       )
-    let total = list.length(all_cards)
-    let paged_cards = paginate_cards(all_cards, req.offset, req.limit)
-    let response =
-      collection_queries.collection_card_list_new(
-        list.map(paged_cards, map_collection_card),
-        req.limit,
-        req.offset,
-        total,
+    {
+      Ok(all_cards) -> {
+        let total = list.length(all_cards)
+        let paged_cards = paginate_cards(all_cards, req.offset, req.limit)
+        let response =
+          collection_queries.collection_card_list_new(
+            list.map(paged_cards, map_collection_card),
+            req.limit,
+            req.offset,
+            total,
+          )
+        #(Ok(response), req_meta, Nil)
+      }
+      Error(reason) -> #(
+        Error(service.ServiceError(service.E500xInternalServerError, reason)),
+        req_meta,
+        Nil,
       )
-    #(Ok(response), req_meta, Nil)
+    }
   }
 }
 
