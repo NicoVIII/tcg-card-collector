@@ -8,22 +8,8 @@ Self-hosted service for managing a Magic: The Gathering collection and planning 
 
 Gleam backend (Erlang target) + SolidJS/TypeScript frontend, connected by a Skir contract (contract-first RPC with code generation for both sides).
 
-## Task Runner
+## Development
 
-`just` with `::` module scoping. Key commands:
+Task runner is `just` with `::` module scoping (`just --list` for everything). The most-used commands: `just dev` (run backend + frontend), `just check` (all checks), `just skir-gen` (regenerate from contract).
 
-```sh
-just dev              # run backend + frontend
-just check            # all checks (skir + server + client-web)
-just server::test     # Gleam unit tests
-just client-web::test # Vitest tests
-just skir-gen         # regenerate code from skir-src/
-```
-
-Run `just --list` for the full list.
-
-## Environment Setup (fresh clone / new machine)
-
-- `git submodule update --init` — `server/vendor/gleam-libs` is required; `just server::lint-check` fails without it.
-- `just dbmate-install` then `just dbmate-migrate` — SQLite migrations via dbmate; the db path comes from `TCG_DB_FILE` (`just server::run` sets it to `server/db/tcg-card-collector.db`).
-- `lefthook install` — one-time, manual; pre-commit then runs the check suite on staged content.
+Environment setup for a fresh clone (submodules, dbmate, lefthook), repository layout, and the full quality-gate reference live in [docs/dev/development.md](docs/dev/development.md).

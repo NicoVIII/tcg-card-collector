@@ -1,48 +1,28 @@
 # tcg-card-collector
 
-Self-hosted TCG collection service. See [docs/vision.md](docs/vision.md) for project goals, direction, and non-goals.
+[![Last commit](https://img.shields.io/github/last-commit/NicoVIII/tcg-card-collector?style=flat-square)](https://github.com/NicoVIII/tcg-card-collector/commits/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
 
-Stack:
+A self-hosted service for managing a Magic: The Gathering card collection and planning its physical organization. Card metadata is synced from Scryfall, the owned collection is imported from CSV exports, and user-defined location rules turn the collection into grouped and sorted projections — a plan for sorting real cards into real storage.
 
-- Backend: Gleam with DDD + hexagonal architecture
-- Contract: Skir
-- Frontend: SolidJS + TypeScript + TanStack Query
+See [docs/vision.md](docs/vision.md) for why the project exists, where it is heading, and what it deliberately will not do.
 
-## Repository Layout
+## What works today
 
-- server: Gleam backend
-- client-web: Solid web client
-- skir-src: Skir contract source
-- container: container/runtime assets
+- Catalog sync from Scryfall
+- CSV collection import with immutable snapshots
+- Location rules and inventory projections for physical sorting
+- Planning preferences
+- All of it available over Skir RPC and REST
 
-## Current Status
+## Status
 
-MVP vertical slice is implemented end-to-end:
+The MVP vertical slice works end-to-end, but there is no packaged release yet — running it means running from source ([development guide](docs/dev/development.md)). The deployment model is a single user on a trusted network: the app has **no authentication**.
 
-- Contract-first SkirRPC backend/frontend integration
-- SQLite-backed persistence for catalog/import/inventory/settings
-- Inventory projection from latest succeeded import run and saved rules
-- Quality gates covering format/lint/typecheck/tests/storage smoke/contract checks
+## Architecture
 
-## Quality Gates
+Gleam backend (Erlang target) and SolidJS/TypeScript frontend, connected by a [Skir](https://github.com/gepheum/skir) contract — contract-first RPC with code generation for both sides. The backend follows hexagonal architecture with DDD bounded contexts, and the boundaries are lint-enforced. This rigor is deliberate: the project doubles as an architecture playground, not just a tool.
 
-- Backend: format, typecheck, unit tests, architecture lint
-- Frontend: format, lint, typecheck, tests
-- Migrations: storage smoke test (CI + on demand; needs sqlite3 + dbmate)
+## Development
 
-Run locally:
-
-- `just server::check` — backend checks (format, typecheck, lint)
-- `just client-web::check` — frontend checks
-- `just skir-check` — contract format + snapshot alignment
-- `just check` — all of the above
-- `just storage-smoke` — migration smoke test (not part of `just check`)
-
-## Developer Feedback Loop
-
-Install git hooks: `lefthook install`. Pre-commit hooks run the full check suite on staged content.
-
-Individual checks:
-
-- `just server::format-check`, `just server::type-check`, `just server::lint-check`
-- `just client-web::format-check`, `just client-web::type-check`, `just client-web::lint-check`
+Setup, commands, and quality gates are documented in the [development guide](docs/dev/development.md).
