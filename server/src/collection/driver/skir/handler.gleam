@@ -3,9 +3,12 @@ import collection/application/commands/import_collection/ports as import_collect
 import collection/application/queries/latest_status/handler as latest_status_handler
 import collection/application/queries/list_cards/handler as list_collection_cards_handler
 import collection/application/queries/list_cards/ports as list_collection_cards_ports
+import collection/domain/import_mode
 import collection/driver/dependencies.{type Dependencies}
 import collection/driver/skir/codec as collection_skir_codec
 import gleam/list
+import gleam/result
+import shared/domain/non_empty_string.{type NonEmptyString}
 import shared/driver/skir/skirout/collection/commands as collection_commands
 import shared/driver/skir/skirout/collection/queries as collection_queries
 import skir_client/service
@@ -39,13 +42,13 @@ fn handle_import_collection(get_dependencies: fn(context) -> Dependencies) {
     Nil,
     Nil,
   ) {
-    case collection_skir_codec.parse_import_mode(req.mode) {
-      Ok(mode) -> {
+    case parse_import_request(req) {
+      Ok(#(import_run_id, source_name, mode)) -> {
         let result =
           import_collection_handler.execute(
             import_collection_handler.ImportCollectionCommand(
-              import_run_id: req.import_run_id,
-              source_name: req.source_name,
+              import_run_id: import_run_id,
+              source_name: source_name,
               row_count: req.row_count,
               rows: list.map(req.rows, map_import_collection_row),
               mode: mode,
@@ -65,6 +68,15 @@ fn handle_import_collection(get_dependencies: fn(context) -> Dependencies) {
       )
     }
   }
+}
+
+fn parse_import_request(
+  req: collection_commands.ImportCollectionRequest,
+) -> Result(#(NonEmptyString, NonEmptyString, import_mode.ImportMode), Nil) {
+  use import_run_id <- result.try(non_empty_string.new(req.import_run_id))
+  use source_name <- result.try(non_empty_string.new(req.source_name))
+  use mode <- result.try(collection_skir_codec.parse_import_mode(req.mode))
+  Ok(#(import_run_id, source_name, mode))
 }
 
 fn handle_get_latest_import_status(

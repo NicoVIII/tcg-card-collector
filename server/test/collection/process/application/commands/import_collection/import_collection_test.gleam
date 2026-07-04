@@ -5,6 +5,7 @@ import collection/domain/import_status
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import shared/domain/card_key
+import shared/domain/non_empty_string.{type NonEmptyString}
 import support/ref
 
 fn build_ports(
@@ -52,6 +53,11 @@ fn assert_card_key(
   key
 }
 
+fn nes(value: String) -> NonEmptyString {
+  let assert Ok(value_nes) = non_empty_string.new(value)
+  value_nes
+}
+
 fn snapshot_row_quantity(
   rows: List(ports.SnapshotRowWriteModel),
   set_code: String,
@@ -78,8 +84,8 @@ pub fn valid_rows_succeed_and_persist_snapshot_test() {
   let result =
     handler.execute(
       handler.ImportCollectionCommand(
-        import_run_id: "run-1",
-        source_name: "test.csv",
+        import_run_id: nes("run-1"),
+        source_name: nes("test.csv"),
         row_count: 2,
         rows: [
           ports.ImportCollectionRow(
@@ -102,7 +108,8 @@ pub fn valid_rows_succeed_and_persist_snapshot_test() {
   assert last_run_status(runs) == import_status.Succeeded
 
   let assert Some(#("run-1", saved_rows)) = ref.get(last_snapshot)
-  assert list.map(saved_rows, fn(row) { row.quantity }) == [4, 1]
+  assert snapshot_row_quantity(saved_rows, "lea", "1") == Some(4)
+  assert snapshot_row_quantity(saved_rows, "lea", "2") == Some(1)
 }
 
 pub fn non_positive_quantity_drops_row_and_mismatches_test() {
@@ -119,8 +126,8 @@ pub fn non_positive_quantity_drops_row_and_mismatches_test() {
   let result =
     handler.execute(
       handler.ImportCollectionCommand(
-        import_run_id: "run-2",
-        source_name: "test.csv",
+        import_run_id: nes("run-2"),
+        source_name: nes("test.csv"),
         row_count: 1,
         rows: [
           ports.ImportCollectionRow(
@@ -153,8 +160,8 @@ pub fn blank_set_code_drops_row_and_mismatches_test() {
   let result =
     handler.execute(
       handler.ImportCollectionCommand(
-        import_run_id: "run-3",
-        source_name: "test.csv",
+        import_run_id: nes("run-3"),
+        source_name: nes("test.csv"),
         row_count: 1,
         rows: [
           ports.ImportCollectionRow(
@@ -186,8 +193,8 @@ pub fn snapshot_persistence_failure_reports_error_and_marks_failed_test() {
   let result =
     handler.execute(
       handler.ImportCollectionCommand(
-        import_run_id: "run-4",
-        source_name: "test.csv",
+        import_run_id: nes("run-4"),
+        source_name: nes("test.csv"),
         row_count: 1,
         rows: [
           ports.ImportCollectionRow(
@@ -222,8 +229,8 @@ pub fn delta_mode_adds_new_card_to_previous_snapshot_test() {
   let result =
     handler.execute(
       handler.ImportCollectionCommand(
-        import_run_id: "run-5",
-        source_name: "delta.csv",
+        import_run_id: nes("run-5"),
+        source_name: nes("delta.csv"),
         row_count: 1,
         rows: [
           ports.ImportCollectionRow(
@@ -262,8 +269,8 @@ pub fn delta_mode_sums_quantity_for_existing_card_test() {
   let result =
     handler.execute(
       handler.ImportCollectionCommand(
-        import_run_id: "run-6",
-        source_name: "delta.csv",
+        import_run_id: nes("run-6"),
+        source_name: nes("delta.csv"),
         row_count: 1,
         rows: [
           ports.ImportCollectionRow(
@@ -297,8 +304,8 @@ pub fn delta_mode_previous_rows_read_failure_fails_the_run_test() {
   let result =
     handler.execute(
       handler.ImportCollectionCommand(
-        import_run_id: "run-7",
-        source_name: "delta.csv",
+        import_run_id: nes("run-7"),
+        source_name: nes("delta.csv"),
         row_count: 1,
         rows: [
           ports.ImportCollectionRow(
@@ -315,4 +322,45 @@ pub fn delta_mode_previous_rows_read_failure_fails_the_run_test() {
   assert result == Error(ports.PersistenceFailed("db unavailable"))
   assert last_run_status(runs) == import_status.Failed
   assert ref.get(last_snapshot) == None
+}
+
+pub fn full_mode_sums_duplicate_keys_within_the_same_import_test() {
+  let runs = ref.new([])
+  let last_snapshot = ref.new(None)
+  let import_ports =
+    build_ports(
+      runs:,
+      last_snapshot:,
+      replace_rows_result: Ok(Nil),
+      latest_snapshot_rows_result: Ok([]),
+    )
+
+  let result =
+    handler.execute(
+      handler.ImportCollectionCommand(
+        import_run_id: nes("run-8"),
+        source_name: nes("test.csv"),
+        row_count: 2,
+        rows: [
+          ports.ImportCollectionRow(
+            set_code: "lea",
+            collector_number: "1",
+            quantity: 2,
+          ),
+          ports.ImportCollectionRow(
+            set_code: "lea",
+            collector_number: "1",
+            quantity: 3,
+          ),
+        ],
+        mode: import_mode.Full,
+      ),
+      import_ports,
+    )
+
+  assert result == Ok(Nil)
+
+  let assert Some(#("run-8", saved_rows)) = ref.get(last_snapshot)
+  assert list.length(saved_rows) == 1
+  assert snapshot_row_quantity(saved_rows, "lea", "1") == Some(5)
 }

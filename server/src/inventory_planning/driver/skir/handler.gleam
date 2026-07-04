@@ -155,31 +155,39 @@ fn handle_get_inventory_projection(
             Nil,
           )
           Ok(group_by) ->
-            case
-              projection_handler.execute(
-                projection_handler.InventoryProjectionQuery(sort_by:, group_by:),
-                get_dependencies(ctx).inventory_projection_ports,
-              )
-            {
-              Ok(rows) -> {
-                let response =
-                  inventory_planning_queries.inventory_projection_new(
-                    list.map(rows, map_inventory_projection_row),
-                    list.length(rows),
-                  )
-                #(Ok(response), req_meta, Nil)
-              }
-              Error(reason) -> #(
-                Error(service.ServiceError(
-                  service.E500xInternalServerError,
-                  reason,
-                )),
-                req_meta,
-                Nil,
-              )
-            }
+            execute_projection(
+              projection_handler.InventoryProjectionQuery(sort_by:, group_by:),
+              get_dependencies(ctx).inventory_projection_ports,
+              req_meta,
+            )
         }
     }
+  }
+}
+
+fn execute_projection(
+  query: projection_handler.InventoryProjectionQuery,
+  ports: projection_ports.InventoryProjectionPorts,
+  req_meta: Nil,
+) -> #(
+  Result(inventory_planning_queries.InventoryProjection, service.ServiceError),
+  Nil,
+  Nil,
+) {
+  case projection_handler.execute(query, ports) {
+    Ok(rows) -> {
+      let response =
+        inventory_planning_queries.inventory_projection_new(
+          list.map(rows, map_inventory_projection_row),
+          list.length(rows),
+        )
+      #(Ok(response), req_meta, Nil)
+    }
+    Error(reason) -> #(
+      Error(service.ServiceError(service.E500xInternalServerError, reason)),
+      req_meta,
+      Nil,
+    )
   }
 }
 

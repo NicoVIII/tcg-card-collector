@@ -9,6 +9,7 @@ import gleam/http/response.{type Response}
 import gleam/list
 import gleam/option.{None, Some}
 import mist
+import shared/domain/non_empty_string
 import shared/driver/http/helpers
 import shared/driver/http/json_codec
 
@@ -25,26 +26,39 @@ pub fn handle_import_collection(
           helpers.json_response(400, json_codec.encode_error("invalid mode"))
         Ok(mode) ->
           case
-            import_collection_handler.execute(
-              import_collection_handler.ImportCollectionCommand(
-                import_run_id: b.import_run_id,
-                source_name: b.source_name,
-                row_count: b.row_count,
-                rows: list.map(b.rows, map_import_collection_row),
-                mode: mode,
-              ),
-              deps.import_collection_ports,
-            )
+            non_empty_string.new(b.import_run_id),
+            non_empty_string.new(b.source_name)
           {
-            Ok(_) ->
-              helpers.json_response(200, json_codec.encode_ok("accepted"))
-            Error(import_collection_ports.RowCountMismatch) ->
+            Ok(import_run_id), Ok(source_name) ->
+              case
+                import_collection_handler.execute(
+                  import_collection_handler.ImportCollectionCommand(
+                    import_run_id: import_run_id,
+                    source_name: source_name,
+                    row_count: b.row_count,
+                    rows: list.map(b.rows, map_import_collection_row),
+                    mode: mode,
+                  ),
+                  deps.import_collection_ports,
+                )
+              {
+                Ok(_) ->
+                  helpers.json_response(200, json_codec.encode_ok("accepted"))
+                Error(import_collection_ports.RowCountMismatch) ->
+                  helpers.json_response(
+                    422,
+                    json_codec.encode_error("row count mismatch"),
+                  )
+                Error(import_collection_ports.PersistenceFailed(reason)) ->
+                  helpers.json_response(500, json_codec.encode_error(reason))
+              }
+            _, _ ->
               helpers.json_response(
-                422,
-                json_codec.encode_error("row count mismatch"),
+                400,
+                json_codec.encode_error(
+                  "import_run_id and source_name must not be empty",
+                ),
               )
-            Error(import_collection_ports.PersistenceFailed(reason)) ->
-              helpers.json_response(500, json_codec.encode_error(reason))
           }
       }
   }

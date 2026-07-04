@@ -3,16 +3,16 @@ import collection/domain/collection
 import collection/domain/import_mode.{type ImportMode}
 import collection/domain/import_status
 import collection/domain/physical_card
-import gleam/dict
 import gleam/list
-import gleam/option
+import gleam/result
 import shared/application/command_result
 import shared/domain/card_key
+import shared/domain/non_empty_string.{type NonEmptyString}
 
 pub type ImportCollectionCommand {
   ImportCollectionCommand(
-    import_run_id: String,
-    source_name: String,
+    import_run_id: NonEmptyString,
+    source_name: NonEmptyString,
     row_count: Int,
     rows: List(import_collection_ports.ImportCollectionRow),
     mode: ImportMode,
@@ -24,12 +24,15 @@ pub fn execute(
   ports: import_collection_ports.ImportCollectionPorts,
 ) -> command_result.CommandResult(import_collection_ports.ImportCollectionError) {
   let ImportCollectionCommand(
-    import_run_id: import_run_id,
-    source_name: source_name,
+    import_run_id: import_run_id_nes,
+    source_name: source_name_nes,
     row_count: row_count,
     rows: rows,
     mode: mode,
   ) = command
+
+  let import_run_id = non_empty_string.to_string(import_run_id_nes)
+  let source_name = non_empty_string.to_string(source_name_nes)
 
   let actual_row_count = list.length(rows)
 
@@ -103,19 +106,37 @@ fn apply_snapshot(
         source_name,
         actual_row_count,
         mode,
-        list.map(coll.cards, snapshot_row_from_card),
+        list.map(collection.to_cards(coll), snapshot_row_from_card),
       )
     import_mode.Delta ->
       case ports.latest_snapshot_rows() {
         Ok(previous) ->
-          persist_rows(
-            ports,
-            import_run_id,
-            source_name,
-            actual_row_count,
-            mode,
-            merge_delta(previous, coll.cards),
-          )
+          case build_previous_collection(previous) {
+            Ok(previous_coll) ->
+              persist_rows(
+                ports,
+                import_run_id,
+                source_name,
+                actual_row_count,
+                mode,
+                list.map(
+                  collection.to_cards(collection.merge(previous_coll, coll)),
+                  snapshot_row_from_card,
+                ),
+              )
+            Error(reason) -> {
+              let _ =
+                record_run(
+                  ports,
+                  import_run_id,
+                  source_name,
+                  import_status.Failed,
+                  actual_row_count,
+                  mode,
+                )
+              Error(import_collection_ports.PersistenceFailed(reason))
+            }
+          }
         Error(reason) -> {
           let _ =
             record_run(
@@ -180,32 +201,21 @@ fn snapshot_row_from_card(
   )
 }
 
-/// Merges delta cards into the previous snapshot, summing quantity per
-/// CardKey. Previous rows are trusted persisted state; delta cards are the
-/// newly validated rows from this import.
-fn merge_delta(
-  previous: List(import_collection_ports.LatestSnapshotRow),
-  delta: List(physical_card.PhysicalCard),
-) -> List(import_collection_ports.SnapshotRowWriteModel) {
-  let base =
-    list.fold(previous, dict.new(), fn(acc, row) {
-      dict.insert(acc, row.key, row.quantity)
+/// Converts previously persisted snapshot rows into a Collection. Previous
+/// rows are trusted state, but their quantity still has to pass through
+/// quantity_new so a corrupted row surfaces as an error instead of crashing.
+fn build_previous_collection(
+  rows: List(import_collection_ports.LatestSnapshotRow),
+) -> Result(collection.Collection, String) {
+  rows
+  |> list.try_map(fn(row) {
+    physical_card.quantity_new(row.quantity)
+    |> result.map(fn(quantity) {
+      physical_card.PhysicalCard(key: row.key, quantity: quantity)
     })
-
-  list.fold(delta, base, fn(acc, card) {
-    dict.upsert(acc, card.key, fn(existing) {
-      case existing {
-        option.Some(quantity) ->
-          quantity + physical_card.quantity_to_int(card.quantity)
-        option.None -> physical_card.quantity_to_int(card.quantity)
-      }
-    })
+    |> result.map_error(fn(_) { "invalid persisted quantity" })
   })
-  |> dict.to_list
-  |> list.map(fn(pair) {
-    let #(key, quantity) = pair
-    import_collection_ports.SnapshotRowWriteModel(key: key, quantity: quantity)
-  })
+  |> result.map(collection.from_trusted_cards)
 }
 
 fn record_run(

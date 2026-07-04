@@ -20,6 +20,12 @@ pub fn quantity_to_int(quantity: Quantity) -> Int {
   value
 }
 
+/// Sums two quantities. Closed over Quantity: both operands are already
+/// positive, so the sum is too.
+pub fn quantity_add(a: Quantity, b: Quantity) -> Quantity {
+  Quantity(quantity_to_int(a) + quantity_to_int(b))
+}
+
 pub type PhysicalCard {
   PhysicalCard(key: CardKey, quantity: Quantity)
 }
