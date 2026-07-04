@@ -4,6 +4,11 @@ pub type CardReadModel {
     collector_number: String,
     name: String,
     image_uri: String,
+    rarity: String,
+    oracle_id: String,
+    color_identity: String,
+    type_line: String,
+    released_at: String,
   )
 }
 

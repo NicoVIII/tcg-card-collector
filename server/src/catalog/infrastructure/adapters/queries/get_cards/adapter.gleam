@@ -11,8 +11,28 @@ fn get_cards_adapter() -> fn(List(#(String, String))) ->
   fn(keys) {
     catalog_dao.get_by_keys(keys)
     |> list.map(fn(row) {
-      let #(set_code, collector_number, name, image_uri) = row
-      ports.CardReadModel(set_code:, collector_number:, name:, image_uri:)
+      let #(
+        set_code,
+        collector_number,
+        name,
+        image_uri,
+        rarity,
+        oracle_id,
+        color_identity,
+        type_line,
+        released_at,
+      ) = row
+      ports.CardReadModel(
+        set_code:,
+        collector_number:,
+        name:,
+        image_uri:,
+        rarity:,
+        oracle_id:,
+        color_identity:,
+        type_line:,
+        released_at:,
+      )
     })
   }
 }

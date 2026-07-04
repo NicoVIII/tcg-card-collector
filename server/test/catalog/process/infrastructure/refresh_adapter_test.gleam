@@ -27,6 +27,9 @@ const metadata_fixture = fixture_dir <> "/scryfall_metadata.json"
 
 const bulk_fixture = fixture_dir <> "/scryfall_bulk_cards.json"
 
+const enriched_bulk_fixture = fixture_dir
+  <> "/scryfall_bulk_cards_enriched.json"
+
 const fixture_updated_at = "2024-01-01T00:00:00.000Z"
 
 // Returns the fixture metadata path for any URL except those containing
@@ -36,6 +39,15 @@ fn fake_downloader() -> scryfall_client.Downloader {
   scryfall_client.Downloader(download: fn(url) {
     case string.contains(url, "fixture.local") {
       True -> Ok(bulk_fixture)
+      False -> Ok(metadata_fixture)
+    }
+  })
+}
+
+fn enriched_downloader() -> scryfall_client.Downloader {
+  scryfall_client.Downloader(download: fn(url) {
+    case string.contains(url, "fixture.local") {
+      True -> Ok(enriched_bulk_fixture)
       False -> Ok(metadata_fixture)
     }
   })
@@ -68,6 +80,44 @@ pub fn import_succeeds_and_loads_cards_test() {
       "SELECT last_upstream_updated_at FROM catalog_sync_metadata WHERE id = 1;",
     )
   assert stored_updated_at == fixture_updated_at
+}
+
+// Exercises the enrichment projection end-to-end: jq extracts the new
+// attributes (with multi-face/reversible fallbacks), bulk_load stores them, and
+// get_by_keys reads them back.
+pub fn import_populates_enrichment_attributes_test() {
+  use _db <- test_db.with_temp_db()
+
+  let port = adapter.new_with_downloader(enriched_downloader())
+  let result = handler.execute(handler.RefreshCatalogCommand, port)
+  assert result == Ok(Nil)
+
+  let rows =
+    catalog_dao.get_by_keys([#("grn", "173"), #("sld", "1000"), #("mh1", "42")])
+  assert list.length(rows) == 3
+
+  // Normal card: multicolor identity joined, type_line and released_at present.
+  let assert Ok(guildmage) =
+    list.find(rows, fn(row) { row.0 == "grn" && row.1 == "173" })
+  assert guildmage.5 == "oracle-e1"
+  assert guildmage.6 == "WU"
+  assert guildmage.7 == "Creature — Human Wizard"
+  assert guildmage.8 == "2018-10-05"
+
+  // Reversible card: no top-level oracle_id/type_line/image_uris -> falls back
+  // to card_faces[0].
+  let assert Ok(reversible) =
+    list.find(rows, fn(row) { row.0 == "sld" && row.1 == "1000" })
+  assert reversible.3 == "https://cards.scryfall.io/small/enr-002-face.jpg"
+  assert reversible.5 == "oracle-e2"
+  assert reversible.6 == "G"
+  assert reversible.7 == "Legendary Creature — Elf"
+
+  // Colorless card: empty color_identity array joins to "".
+  let assert Ok(colorless) =
+    list.find(rows, fn(row) { row.0 == "mh1" && row.1 == "42" })
+  assert colorless.6 == ""
+  assert colorless.7 == "Artifact — Thopter"
 }
 
 pub fn unchanged_upstream_marks_skipped_test() {

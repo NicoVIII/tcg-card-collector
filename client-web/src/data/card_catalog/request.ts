@@ -28,6 +28,11 @@ const RpcCatalogCardSchema = z.object({
   collectorNumber: z.string(),
   name: z.string(),
   imageUri: z.string(),
+  rarity: z.string(),
+  oracleId: z.string(),
+  colorIdentity: z.string(),
+  typeLine: z.string(),
+  releasedAt: z.string(),
 });
 
 const RpcCatalogCardListSchema = z.object({
@@ -44,6 +49,11 @@ export type CatalogCard = {
   collector_number: string;
   name: string;
   image_uri: string;
+  rarity: string;
+  oracle_id: string;
+  color_identity: string;
+  type_line: string;
+  released_at: string;
 };
 
 export type CatalogCardKeyList = {
@@ -63,6 +73,11 @@ function toCatalogCard(rpc: z.infer<typeof RpcCatalogCardSchema>): CatalogCard {
     collector_number: rpc.collectorNumber,
     name: rpc.name,
     image_uri: rpc.imageUri,
+    rarity: rpc.rarity,
+    oracle_id: rpc.oracleId,
+    color_identity: rpc.colorIdentity,
+    type_line: rpc.typeLine,
+    released_at: rpc.releasedAt,
   };
 }
 

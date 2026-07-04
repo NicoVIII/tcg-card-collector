@@ -13,8 +13,15 @@ import sqlight
 type CatalogKeyTuple =
   #(String, String)
 
+// (set_code, collector_number, name, image_uri, rarity, oracle_id,
+//  color_identity, type_line, released_at)
 type CatalogCardTuple =
-  #(String, String, String, String)
+  #(String, String, String, String, String, String, String, String, String)
+
+// SQLite caps bound parameters (default 999); get_by_keys binds 2 per key, so a
+// real collection would overflow a single query. Mirror collection_dao's batch
+// size and chunk the lookup.
+const get_by_keys_batch_size = 100
 
 fn log(message: String) -> Nil {
   io.println("[refresh] " <> message)
@@ -110,7 +117,22 @@ fn card_row_decoder() {
   use collector_number <- decode.field(1, decode.string)
   use name <- decode.field(2, decode.string)
   use image_uri <- decode.field(3, decode.string)
-  decode.success(#(set_code, collector_number, name, image_uri))
+  use rarity <- decode.field(4, decode.string)
+  use oracle_id <- decode.field(5, decode.string)
+  use color_identity <- decode.field(6, decode.string)
+  use type_line <- decode.field(7, decode.string)
+  use released_at <- decode.field(8, decode.string)
+  decode.success(#(
+    set_code,
+    collector_number,
+    name,
+    image_uri,
+    rarity,
+    oracle_id,
+    color_identity,
+    type_line,
+    released_at,
+  ))
 }
 
 pub fn list() -> List(CatalogKeyTuple) {
@@ -125,6 +147,12 @@ pub fn list() -> List(CatalogKeyTuple) {
 }
 
 pub fn get_by_keys(keys: List(CatalogKeyTuple)) -> List(CatalogCardTuple) {
+  keys
+  |> list.sized_chunk(get_by_keys_batch_size)
+  |> list.flat_map(get_by_keys_chunk)
+}
+
+fn get_by_keys_chunk(keys: List(CatalogKeyTuple)) -> List(CatalogCardTuple) {
   case keys {
     [] -> []
     _ -> {
@@ -139,7 +167,8 @@ pub fn get_by_keys(keys: List(CatalogKeyTuple)) -> List(CatalogCardTuple) {
           [sqlight.text(set_code), sqlight.text(collector_number)]
         })
       sqlite_store.query(
-        "SELECT set_code, collector_number, name, image_uri "
+        "SELECT set_code, collector_number, name, image_uri, rarity, "
+          <> "oracle_id, color_identity, type_line, released_at "
           <> "FROM catalog_cards "
           <> "WHERE (set_code, collector_number) IN ("
           <> placeholders
@@ -207,7 +236,11 @@ pub fn bulk_load(csv_path: String) -> Result(Nil, String) {
     <> "\"  set_code TEXT,\" "
     <> "\"  collector_number TEXT,\" "
     <> "\"  rarity TEXT,\" "
-    <> "\"  image_uri TEXT\" "
+    <> "\"  image_uri TEXT,\" "
+    <> "\"  oracle_id TEXT,\" "
+    <> "\"  color_identity TEXT,\" "
+    <> "\"  type_line TEXT,\" "
+    <> "\"  released_at TEXT\" "
     <> "\");\" "
     <> "\".mode csv\" "
     <> "\".import "
@@ -215,10 +248,12 @@ pub fn bulk_load(csv_path: String) -> Result(Nil, String) {
     <> " _catalog_import\" "
     <> "\"DELETE FROM catalog_cards;\" "
     <> "\"INSERT INTO catalog_cards (\" "
-    <> "\"  id, name, set_code, collector_number, rarity, image_uri\" "
+    <> "\"  id, name, set_code, collector_number, rarity, image_uri,\" "
+    <> "\"  oracle_id, color_identity, type_line, released_at\" "
     <> "\")\" "
     <> "\"SELECT\" "
-    <> "\"  id, name, set_code, collector_number, rarity, image_uri\" "
+    <> "\"  id, name, set_code, collector_number, rarity, image_uri,\" "
+    <> "\"  oracle_id, color_identity, type_line, released_at\" "
     <> "\"FROM _catalog_import;\" "
     <> "\"DROP TABLE _catalog_import;\" "
     <> "\"COMMIT;\" > \"$sqltmp\"; "

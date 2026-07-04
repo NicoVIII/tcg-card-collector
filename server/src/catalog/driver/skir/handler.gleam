@@ -117,12 +117,19 @@ fn handle_get_catalog_cards(get_dependencies: fn(context) -> Dependencies) {
 fn map_card_read_model(
   card: get_cards_ports.CardReadModel,
 ) -> card_catalog_queries.CatalogCard {
-  // arg order: collector_number, image_uri, name, set_code (alphabetical per generated constructor)
+  // arg order is alphabetical per generated constructor:
+  // collector_number, color_identity, image_uri, name, oracle_id, rarity,
+  // released_at, set_code, type_line
   card_catalog_queries.catalog_card_new(
     card.collector_number,
+    card.color_identity,
     card.image_uri,
     card.name,
+    card.oracle_id,
+    card.rarity,
+    card.released_at,
     card.set_code,
+    card.type_line,
   )
 }
 

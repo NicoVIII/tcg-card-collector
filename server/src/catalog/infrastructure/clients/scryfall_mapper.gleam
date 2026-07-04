@@ -53,14 +53,40 @@ fn parse_card_row(line: String) -> Result(card_printing.CardPrinting, String) {
     use collector_number <- decode.field("collector_number", decode.string)
     use rarity <- decode.field("rarity", decode.string)
     use image_uri <- decode.field("image_uri", decode.string)
-    decode.success(#(id, name, set_code, collector_number, rarity, image_uri))
+    use oracle_id <- decode.field("oracle_id", decode.string)
+    use color_identity <- decode.field("color_identity", decode.string)
+    use type_line <- decode.field("type_line", decode.string)
+    use released_at <- decode.field("released_at", decode.string)
+    decode.success(#(
+      id,
+      name,
+      set_code,
+      collector_number,
+      rarity,
+      image_uri,
+      oracle_id,
+      color_identity,
+      type_line,
+      released_at,
+    ))
   }
   case json.parse(from: line, using: row_decoder) {
     Error(_) ->
       Error(
         "invalid json: " <> string.slice(from: line, at_index: 0, length: 80),
       )
-    Ok(#(id, name, set_code, collector_number, rarity, image_uri)) ->
+    Ok(#(
+      id,
+      name,
+      set_code,
+      collector_number,
+      rarity,
+      image_uri,
+      oracle_id,
+      color_identity,
+      type_line,
+      released_at,
+    )) ->
       case non_empty_string.new(name) {
         Error(_) -> Error("id=" <> id <> " empty name")
         Ok(name_nes) ->
@@ -80,12 +106,20 @@ fn parse_card_row(line: String) -> Result(card_printing.CardPrinting, String) {
                   case non_empty_string.new(image_uri) {
                     Error(_) -> Error("id=" <> id <> " empty image_uri")
                     Ok(image_uri_nes) ->
+                      // oracle_id/color_identity/type_line/released_at are
+                      // carried verbatim; empty values are tolerated (see
+                      // card_printing) because reversible/multi-face layouts
+                      // may expose no top-level value.
                       Ok(card_printing.CardPrinting(
                         id: card_printing.CardPrintingId(id),
                         key:,
                         name: name_nes,
                         rarity: rarity_val,
                         image_uri: image_uri_nes,
+                        oracle_id:,
+                        color_identity:,
+                        type_line:,
+                        released_at:,
                       ))
                   }
               }
@@ -113,6 +147,10 @@ fn card_to_csv_row(card: card_printing.CardPrinting) -> String {
     name: name,
     rarity: rarity,
     image_uri: image_uri,
+    oracle_id: oracle_id,
+    color_identity: color_identity,
+    type_line: type_line,
+    released_at: released_at,
   ) = card
   csv_field(id)
   <> ","
@@ -125,6 +163,14 @@ fn card_to_csv_row(card: card_printing.CardPrinting) -> String {
   <> csv_field(rarity_to_string(rarity))
   <> ","
   <> csv_field(non_empty_string.to_string(image_uri))
+  <> ","
+  <> csv_field(oracle_id)
+  <> ","
+  <> csv_field(color_identity)
+  <> ","
+  <> csv_field(type_line)
+  <> ","
+  <> csv_field(released_at)
 }
 
 fn validate_card_rows(lines: List(String)) -> List(card_printing.CardPrinting) {
@@ -145,8 +191,12 @@ fn validate_card_rows(lines: List(String)) -> List(card_printing.CardPrinting) {
 pub fn to_csv(download_path: String) -> Result(String, String) {
   let ndjson_path = download_path <> ".ndjson"
   let csv_path = download_path <> ".csv"
+  // Enrichment fields tolerate multi-face/reversible layouts that expose no
+  // top-level value: fall back to the first card face, then to "". color_identity
+  // is a WUBRG letter array joined into a canonical-ish string; planning
+  // re-canonicalizes at its port boundary.
   let jq_script =
-    "jq -c '.[] | {id: (.id // \"\"), name: (.name // \"\"), set_code: (.set // \"\"), collector_number: (.collector_number // \"\"), rarity: (.rarity // \"unknown\"), image_uri: (.image_uris.small // \"\")}' < "
+    "jq -c '.[] | {id: (.id // \"\"), name: (.name // \"\"), set_code: (.set // \"\"), collector_number: (.collector_number // \"\"), rarity: (.rarity // \"unknown\"), image_uri: (.image_uris.small // .card_faces[0].image_uris.small // \"\"), oracle_id: (.oracle_id // .card_faces[0].oracle_id // \"\"), color_identity: ((.color_identity // []) | join(\"\")), type_line: (.type_line // .card_faces[0].type_line // \"\"), released_at: (.released_at // \"\")}' < "
     <> shell.quote(download_path)
     <> " > "
     <> shell.quote(ndjson_path)

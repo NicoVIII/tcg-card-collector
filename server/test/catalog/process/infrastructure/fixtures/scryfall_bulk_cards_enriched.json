@@ -1,0 +1,48 @@
+[
+  {
+    "id": "test-enr-001",
+    "oracle_id": "oracle-e1",
+    "name": "Azorius Guildmage",
+    "set": "grn",
+    "collector_number": "173",
+    "rarity": "uncommon",
+    "color_identity": ["W", "U"],
+    "type_line": "Creature — Human Wizard",
+    "released_at": "2018-10-05",
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/enr-001.jpg"
+    }
+  },
+  {
+    "id": "test-enr-002",
+    "name": "Reversible Elf",
+    "set": "sld",
+    "collector_number": "1000",
+    "rarity": "rare",
+    "color_identity": ["G"],
+    "released_at": "2020-04-17",
+    "card_faces": [
+      {
+        "oracle_id": "oracle-e2",
+        "type_line": "Legendary Creature — Elf",
+        "image_uris": {
+          "small": "https://cards.scryfall.io/small/enr-002-face.jpg"
+        }
+      }
+    ]
+  },
+  {
+    "id": "test-enr-003",
+    "oracle_id": "oracle-e3",
+    "name": "Ornithopter",
+    "set": "mh1",
+    "collector_number": "42",
+    "rarity": "common",
+    "color_identity": [],
+    "type_line": "Artifact — Thopter",
+    "released_at": "2019-06-14",
+    "image_uris": {
+      "small": "https://cards.scryfall.io/small/enr-003.jpg"
+    }
+  }
+]
