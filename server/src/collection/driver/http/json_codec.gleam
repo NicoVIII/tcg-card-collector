@@ -9,6 +9,7 @@ pub type ImportCollectionBody {
     import_run_id: String,
     source_name: String,
     row_count: Int,
+    mode: String,
   )
 }
 
@@ -19,10 +20,12 @@ pub fn decode_import_collection_body(
     use import_run_id <- decode.field("import_run_id", decode.string)
     use source_name <- decode.field("source_name", decode.string)
     use row_count <- decode.field("row_count", decode.int)
+    use mode <- decode.optional_field("mode", "full", decode.string)
     decode.success(ImportCollectionBody(
       import_run_id:,
       source_name:,
       row_count:,
+      mode:,
     ))
   }
 

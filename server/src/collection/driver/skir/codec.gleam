@@ -1,10 +1,21 @@
 import collection/application/commands/import_collection/ports as import_collection_ports
 import collection/application/queries/latest_status/ports as latest_status_ports
+import collection/domain/import_mode
 import collection/domain/import_status
 import gleam/option.{type Option, None, Some}
 import shared/driver/skir/skirout/collection/commands as collection_commands
 import shared/driver/skir/skirout/collection/queries as collection_queries
 import skir_client/service
+
+pub fn parse_import_mode(
+  wire: collection_commands.ImportMode,
+) -> Result(import_mode.ImportMode, Nil) {
+  case wire {
+    collection_commands.ImportModeFull -> Ok(import_mode.Full)
+    collection_commands.ImportModeDelta -> Ok(import_mode.Delta)
+    collection_commands.ImportModeUnknown(_) -> Error(Nil)
+  }
+}
 
 pub fn map_import_collection_result(
   result: Result(Nil, import_collection_ports.ImportCollectionError),

@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { httpStatusFromError } from "../http/error";
 import { skirClient } from "../http/skir_rpc";
 import { ImportCollection, ImportCollectionRequest } from "../skirout/collection/commands.js";
@@ -5,6 +6,10 @@ import {
   GetLatestImportStatus,
   GetLatestImportStatusRequest,
 } from "../skirout/collection/queries.js";
+
+const ImportCollectionResponseSchema = z.object({
+  union: z.object({ kind: z.enum(["ACCEPTED", "REJECTED", "UNKNOWN"]) }),
+});
 
 export type ImportCollectionPayload = {
   importRunId: string;
@@ -15,6 +20,7 @@ export type ImportCollectionPayload = {
     collectorNumber: string;
     quantity: number;
   }>;
+  mode: "full" | "delta";
 };
 
 export type ImportStatus = {
@@ -38,10 +44,12 @@ export async function postImportCollection(
       sourceName: payload.sourceName,
       rowCount: payload.rowCount,
       rows: payload.rows,
+      mode: payload.mode === "delta" ? "DELTA" : "FULL",
     }),
   );
 
-  return { accepted: response.union.kind === "ACCEPTED" };
+  const validated = ImportCollectionResponseSchema.parse(response);
+  return { accepted: validated.union.kind === "ACCEPTED" };
 }
 
 export async function getLatestImportStatus(): Promise<LatestImportStatusResponse> {

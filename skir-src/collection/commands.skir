@@ -5,12 +5,18 @@ struct ImportCollectionRow {
   quantity: int32;
 }
 
+enum ImportMode {
+  full = 1;
+  delta = 2;
+}
+
 struct ImportCollectionRequest {
   import_run_id: string = 0;
   source_name: string = 1;
   removed 2;  // was source_checksum: unused, never persisted meaningfully
   row_count: int32 = 3;
   rows: [ImportCollectionRow] = 4;
+  mode: ImportMode = 5;
 }
 
 enum ImportCollectionResponse {

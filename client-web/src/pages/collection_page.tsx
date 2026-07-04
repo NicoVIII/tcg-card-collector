@@ -16,6 +16,7 @@ export function CollectionPage() {
   // import form state
   const [sourceName, setSourceName] = createSignal("");
   const [rowsCsv, setRowsCsv] = createSignal("");
+  const [mode, setMode] = createSignal<"full" | "delta">("full");
   const [submitError, setSubmitError] = createSignal<string | null>(null);
   const mutation = useImportCollectionMutation();
   const [isRunPending, setIsRunPending] = createSignal(false);
@@ -75,6 +76,7 @@ export function CollectionPage() {
         sourceName: sourceName().trim().length > 0 ? sourceName() : "manual",
         rowCount: parsedRows.rows.length,
         rows: parsedRows.rows,
+        mode: mode(),
       });
 
       if (!response.accepted) {
@@ -107,6 +109,29 @@ export function CollectionPage() {
             placeholder="M11,146,2"
           />
         </label>
+        <fieldset>
+          <legend>Import mode</legend>
+          <label>
+            <input
+              type="radio"
+              name="import-mode"
+              value="full"
+              checked={mode() === "full"}
+              onChange={() => setMode("full")}
+            />
+            Full snapshot (replaces the whole collection)
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="import-mode"
+              value="delta"
+              checked={mode() === "delta"}
+              onChange={() => setMode("delta")}
+            />
+            Delta (adds to the current collection)
+          </label>
+        </fieldset>
         <button onClick={submitImport} disabled={mutation.isPending}>
           Start import
         </button>

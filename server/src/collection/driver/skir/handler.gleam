@@ -39,17 +39,31 @@ fn handle_import_collection(get_dependencies: fn(context) -> Dependencies) {
     Nil,
     Nil,
   ) {
-    let result =
-      import_collection_handler.execute(
-        import_collection_handler.ImportCollectionCommand(
-          import_run_id: req.import_run_id,
-          source_name: req.source_name,
-          row_count: req.row_count,
-          rows: list.map(req.rows, map_import_collection_row),
-        ),
-        get_dependencies(ctx).import_collection_ports,
+    case collection_skir_codec.parse_import_mode(req.mode) {
+      Ok(mode) -> {
+        let result =
+          import_collection_handler.execute(
+            import_collection_handler.ImportCollectionCommand(
+              import_run_id: req.import_run_id,
+              source_name: req.source_name,
+              row_count: req.row_count,
+              rows: list.map(req.rows, map_import_collection_row),
+              mode: mode,
+            ),
+            get_dependencies(ctx).import_collection_ports,
+          )
+        #(
+          collection_skir_codec.map_import_collection_result(result),
+          req_meta,
+          Nil,
+        )
+      }
+      Error(Nil) -> #(
+        Ok(collection_commands.ImportCollectionResponseRejected),
+        req_meta,
+        Nil,
       )
-    #(collection_skir_codec.map_import_collection_result(result), req_meta, Nil)
+    }
   }
 }
 
