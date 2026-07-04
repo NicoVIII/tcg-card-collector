@@ -114,19 +114,20 @@ fn handle_list_collection_cards(get_dependencies: fn(context) -> Dependencies) {
   ) {
     case
       list_collection_cards_handler.execute(
-        list_collection_cards_handler.ListCollectionCardsQuery,
+        list_collection_cards_handler.ListCollectionCardsQuery(
+          offset: req.offset,
+          limit: req.limit,
+        ),
         get_dependencies(ctx).list_collection_cards_port,
       )
     {
-      Ok(all_cards) -> {
-        let total = list.length(all_cards)
-        let paged_cards = paginate_cards(all_cards, req.offset, req.limit)
+      Ok(page) -> {
         let response =
           collection_queries.collection_card_list_new(
-            list.map(paged_cards, map_collection_card),
+            list.map(page.cards, map_collection_card),
             req.limit,
             req.offset,
-            total,
+            page.total,
           )
         #(Ok(response), req_meta, Nil)
       }
@@ -147,29 +148,4 @@ fn map_collection_card(
     card.quantity,
     card.set_code,
   )
-}
-
-fn paginate_cards(
-  cards: List(list_collection_cards_ports.CollectionCardReadModel),
-  offset: Int,
-  limit: Int,
-) -> List(list_collection_cards_ports.CollectionCardReadModel) {
-  let normalized_offset = clamp_non_negative(offset)
-  let normalized_limit = clamp_non_negative(limit)
-
-  cards
-  |> list.drop(normalized_offset)
-  |> fn(remaining) {
-    case normalized_limit {
-      0 -> remaining
-      _ -> list.take(remaining, normalized_limit)
-    }
-  }
-}
-
-fn clamp_non_negative(value: Int) -> Int {
-  case value < 0 {
-    True -> 0
-    False -> value
-  }
 }

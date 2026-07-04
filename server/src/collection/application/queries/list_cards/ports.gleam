@@ -6,6 +6,10 @@ pub type CollectionCardReadModel {
   )
 }
 
+pub type CollectionCardPage {
+  CollectionCardPage(cards: List(CollectionCardReadModel), total: Int)
+}
+
 pub type ListCollectionCardsPort {
   ListCollectionCardsPort(
     list_cards: fn() -> Result(List(CollectionCardReadModel), String),
