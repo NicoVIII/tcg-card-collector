@@ -11,11 +11,21 @@ pub fn import_ok_maps_to_accepted_test() {
     == Ok(collection_commands.ImportCollectionResponseAccepted)
 }
 
-pub fn import_error_maps_to_rejected_test() {
+pub fn import_row_count_mismatch_maps_to_rejected_test() {
   assert collection_skir_codec.map_import_collection_result(Error(
       import_collection_ports.RowCountMismatch,
     ))
     == Ok(collection_commands.ImportCollectionResponseRejected)
+}
+
+pub fn import_persistence_failed_maps_to_service_error_test() {
+  assert collection_skir_codec.map_import_collection_result(
+      Error(import_collection_ports.PersistenceFailed("db unavailable")),
+    )
+    == Error(service.ServiceError(
+      service.E500xInternalServerError,
+      "db unavailable",
+    ))
 }
 
 pub fn latest_status_found_maps_run_fields_test() {

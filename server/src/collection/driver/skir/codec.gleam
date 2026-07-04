@@ -22,7 +22,10 @@ pub fn map_import_collection_result(
 ) -> Result(collection_commands.ImportCollectionResponse, service.ServiceError) {
   case result {
     Ok(_) -> Ok(collection_commands.ImportCollectionResponseAccepted)
-    Error(_) -> Ok(collection_commands.ImportCollectionResponseRejected)
+    Error(import_collection_ports.RowCountMismatch) ->
+      Ok(collection_commands.ImportCollectionResponseRejected)
+    Error(import_collection_ports.PersistenceFailed(reason)) ->
+      Error(service.ServiceError(service.E500xInternalServerError, reason))
   }
 }
 
