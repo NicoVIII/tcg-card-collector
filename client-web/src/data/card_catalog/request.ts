@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { skirClient } from "../http/skir_rpc";
 import { RefreshCatalog, RefreshCatalogRequest } from "../skirout/card_catalog/commands.js";
 import {
@@ -8,9 +9,30 @@ import {
   GetCatalogRefreshStatusRequest,
   ListCatalogCards,
   ListCatalogCardsRequest,
-  CatalogCardKeyList as RpcCatalogCardKeyList,
-  CatalogCard as RpcCatalogCard,
 } from "../skirout/card_catalog/queries.js";
+
+const RpcCatalogCardKeySchema = z.object({
+  setCode: z.string(),
+  collectorNumber: z.string(),
+});
+
+const RpcCatalogCardKeyListSchema = z.object({
+  data: z.array(RpcCatalogCardKeySchema),
+  total: z.number(),
+  offset: z.number(),
+  limit: z.number(),
+});
+
+const RpcCatalogCardSchema = z.object({
+  setCode: z.string(),
+  collectorNumber: z.string(),
+  name: z.string(),
+  imageUri: z.string(),
+});
+
+const RpcCatalogCardListSchema = z.object({
+  data: z.array(RpcCatalogCardSchema),
+});
 
 export type CatalogCardKey = {
   set_code: string;
@@ -31,11 +53,11 @@ export type CatalogCardKeyList = {
   limit: number;
 };
 
-function toCatalogCardKey(rpc: RpcCatalogCardKey): CatalogCardKey {
+function toCatalogCardKey(rpc: z.infer<typeof RpcCatalogCardKeySchema>): CatalogCardKey {
   return { set_code: rpc.setCode, collector_number: rpc.collectorNumber };
 }
 
-function toCatalogCard(rpc: RpcCatalogCard): CatalogCard {
+function toCatalogCard(rpc: z.infer<typeof RpcCatalogCardSchema>): CatalogCard {
   return {
     set_code: rpc.setCode,
     collector_number: rpc.collectorNumber,
@@ -44,7 +66,9 @@ function toCatalogCard(rpc: RpcCatalogCard): CatalogCard {
   };
 }
 
-function toCatalogCardKeyList(response: RpcCatalogCardKeyList): CatalogCardKeyList {
+function toCatalogCardKeyList(
+  response: z.infer<typeof RpcCatalogCardKeyListSchema>,
+): CatalogCardKeyList {
   return {
     data: response.data.map(toCatalogCardKey),
     total: response.total,
@@ -59,7 +83,7 @@ export async function listCatalogCards(offset: number, limit: number): Promise<C
     ListCatalogCardsRequest.create({ offset, limit }),
     "POST",
   );
-  return toCatalogCardKeyList(response);
+  return toCatalogCardKeyList(RpcCatalogCardKeyListSchema.parse(response));
 }
 
 export async function getCatalogCards(keys: CatalogCardKey[]): Promise<CatalogCard[]> {
@@ -72,7 +96,7 @@ export async function getCatalogCards(keys: CatalogCardKey[]): Promise<CatalogCa
     }),
     "POST",
   );
-  return response.data.map(toCatalogCard);
+  return RpcCatalogCardListSchema.parse(response).data.map(toCatalogCard);
 }
 
 export type CatalogRefreshStatus = {
