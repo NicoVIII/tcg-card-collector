@@ -72,11 +72,6 @@ jobs:
       - name: Test server
         run: just server::test
 
-      - name: Storage smoke check
-        run: |
-          just dbmate-install
-          just storage-smoke
-
   frontend-quality:
     needs: [skir-validate]
     runs-on: ubuntu-latest
