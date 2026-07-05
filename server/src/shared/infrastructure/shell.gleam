@@ -11,10 +11,7 @@ pub fn run(script: String) -> Result(String, String) {
   let wrapped =
     "set +e; " <> script <> "; status=$?; printf '\n__EXIT__:%s' \"$status\""
   let command =
-    "timeout -s TERM -k 10 "
-    <> timeout_seconds
-    <> " sh -c "
-    <> quote(wrapped)
+    "timeout -s TERM -k 10 " <> timeout_seconds <> " sh -c " <> quote(wrapped)
   let output = os_runtime.cmd(command)
   case string.split(output, "__EXIT__:") {
     [body, status_raw] ->
