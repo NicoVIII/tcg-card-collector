@@ -50,3 +50,12 @@ Individual checks:
 ## Git Hooks
 
 Install with `lefthook install`. Pre-commit hooks run the full check suite on staged content.
+
+## Building the container image locally
+
+Requires the submodule to be initialised (`git submodule update --init`), then:
+
+```sh
+docker build -t tcg-cc-local .
+docker run -d -p 8080:8080 -v tcg-dev-data:/data tcg-cc-local
+```

@@ -10,14 +10,26 @@ See [docs/vision.md](docs/vision.md) for why the project exists, where it is hea
 ## What works today
 
 - Catalog sync from Scryfall
-- CSV collection import with immutable snapshots
+- CSV collection import replacing the live collection
 - Location rules and inventory projections for physical sorting
 - Planning preferences
 - All of it available over Skir RPC and REST
 
 ## Status
 
-The MVP vertical slice works end-to-end, but there is no packaged release yet — running it means running from source ([development guide](docs/dev/development.md)). The deployment model is a single user on a trusted network: the app has **no authentication**.
+The MVP vertical slice works end-to-end. Docker images are published to [GHCR](https://ghcr.io/nicoviii/tcg-card-collector) on every push to `main` and on `v*` version tags. The deployment model is a single user on a trusted network: the app has **no authentication — do not expose it to untrusted networks**.
+
+## Self-hosting
+
+```
+docker run -d -p 8080:8080 -v tcg-data:/data ghcr.io/nicoviii/tcg-card-collector:latest
+```
+
+- SQLite database is stored at `/data/tcg-card-collector.db` (override with `TCG_DB_FILE`)
+- Migrations run automatically at container start
+- Back up by copying that single file
+- Bind mounts must be writable by the container user (`webapp`, uid 1000)
+- **No authentication — do not expose to untrusted networks**
 
 ## Architecture
 
