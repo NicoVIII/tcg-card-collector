@@ -1,0 +1,9 @@
+.git
+client-web/node_modules
+client-web/dist
+client-web/src/data/skirout
+server/build
+server/src/shared/driver/skir/skirout
+server/db/*.db
+.devcontainer
+docs
