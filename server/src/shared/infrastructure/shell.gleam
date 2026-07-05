@@ -11,7 +11,7 @@ pub fn run(script: String) -> Result(String, String) {
   let wrapped =
     "set +e; " <> script <> "; status=$?; printf '\n__EXIT__:%s' \"$status\""
   let command =
-    "timeout --signal=TERM --kill-after=10 "
+    "timeout -s TERM -k 10 "
     <> timeout_seconds
     <> " sh -c "
     <> quote(wrapped)
