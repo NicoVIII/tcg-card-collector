@@ -20,14 +20,19 @@ import shared/infrastructure/os_runtime
 
 pub fn start(deps: Dependencies) -> Nil {
   let port = read_port()
-  let rpc_service = skir_setup.make_service()
   let server_name = process.new_name("skir_rpc_server")
 
+  // The service term is a sharing-heavy DAG (flat size in the tens of GB);
+  // it must be built on the server-loop process itself, because capturing it
+  // in the spawn closure would flatten that sharing during the spawn copy.
   let _server_pid =
     process.spawn(fn() {
       skir_setup.start_server_loop(
         server_name,
-        skir_setup.ServerState(service: rpc_service, context: deps),
+        skir_setup.ServerState(
+          service: skir_setup.make_service(),
+          context: deps,
+        ),
       )
     })
 
