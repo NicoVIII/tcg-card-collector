@@ -1,6 +1,6 @@
 import { For, type ParentProps } from "solid-js";
 import { A } from "@solidjs/router";
-import { routes } from "./routes";
+import { navRoutes } from "./routes";
 
 export default function App(props: ParentProps) {
   return (
@@ -8,7 +8,7 @@ export default function App(props: ParentProps) {
       <header class="app-header">
         <h1>tcg-card-collector</h1>
         <nav>
-          <For each={routes}>
+          <For each={navRoutes}>
             {(route) => (
               <A class="nav-btn" href={route.path}>
                 {route.label}

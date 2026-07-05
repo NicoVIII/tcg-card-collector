@@ -8,7 +8,6 @@ pub fn decode_import_collection_body_with_rows_test() {
     <> "\"import_run_id\": \"run-1\","
     <> "\"source_name\": \"test.csv\","
     <> "\"row_count\": 2,"
-    <> "\"mode\": \"full\","
     <> "\"rows\": ["
     <> "  {\"set_code\": \"mh3\", \"collector_number\": \"1\", \"quantity\": 2},"
     <> "  {\"set_code\": \"mh3\", \"collector_number\": \"2\", \"quantity\": 1}"
@@ -21,7 +20,6 @@ pub fn decode_import_collection_body_with_rows_test() {
   assert body.import_run_id == "run-1"
   assert body.source_name == "test.csv"
   assert body.row_count == 2
-  assert body.mode == "full"
   assert body.rows
     == [
       collection_codec.ImportCollectionRow(
@@ -49,11 +47,44 @@ pub fn decode_import_collection_body_without_rows_defaults_to_empty_test() {
     collection_codec.decode_import_collection_body(json_string)
 
   assert body.rows == []
-  assert body.mode == "full"
 }
 
 pub fn decode_import_collection_body_invalid_json_test() {
   assert collection_codec.decode_import_collection_body("not json")
+    == Error("invalid request body")
+}
+
+pub fn decode_add_cards_body_with_rows_test() {
+  let json_string =
+    "{"
+    <> "\"add_run_id\": \"add-1\","
+    <> "\"rows\": ["
+    <> "  {\"set_code\": \"mh3\", \"collector_number\": \"1\", \"quantity\": 2}"
+    <> "]"
+    <> "}"
+
+  let assert Ok(body) = collection_codec.decode_add_cards_body(json_string)
+
+  assert body.add_run_id == "add-1"
+  assert body.rows
+    == [
+      collection_codec.AddCardsRow(
+        set_code: "mh3",
+        collector_number: "1",
+        quantity: 2,
+      ),
+    ]
+}
+
+pub fn decode_add_cards_body_without_rows_defaults_to_empty_test() {
+  let assert Ok(body) =
+    collection_codec.decode_add_cards_body("{\"add_run_id\": \"add-1\"}")
+
+  assert body.rows == []
+}
+
+pub fn decode_add_cards_body_invalid_json_test() {
+  assert collection_codec.decode_add_cards_body("not json")
     == Error("invalid request body")
 }
 

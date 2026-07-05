@@ -9,6 +9,7 @@ import collection/driver/dependencies.{
   type Dependencies as CollectionDependencies,
   Dependencies as CollectionDependencies,
 } as _
+import collection/infrastructure/adapters/commands/add_cards/adapter as add_cards_adapter
 import collection/infrastructure/adapters/commands/import_collection/adapter as import_collection_adapter
 import collection/infrastructure/adapters/queries/latest_status/adapter as latest_status_adapter
 import collection/infrastructure/adapters/queries/list_cards/adapter as list_collection_cards_adapter
@@ -62,6 +63,7 @@ pub fn dependencies() -> Dependencies {
     ),
     collection: CollectionDependencies(
       import_collection_ports: import_collection_adapter.new(),
+      add_cards_ports: add_cards_adapter.new(),
       latest_import_status_port: latest_status_adapter.new(),
       list_collection_cards_port: list_collection_cards_adapter.new(),
     ),

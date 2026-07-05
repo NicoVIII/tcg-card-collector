@@ -1,16 +1,22 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { routes } from "./routes";
+import { navRoutes, routes } from "./routes";
 
 describe("routes", () => {
-  it("exposes the five MVP routes", () => {
-    expect(routes.map((route) => route.path)).toEqual([
+  it("keeps the nav to the five daily-use routes", () => {
+    expect(navRoutes.map((route) => route.path)).toEqual([
       "/collection",
       "/catalog",
       "/inventory",
       "/insights",
       "/settings",
     ]);
+  });
+
+  it("routes the import page without putting it in the nav", () => {
+    const paths = routes.map((route) => route.path);
+    expect(paths).toContain("/collection/import");
+    expect(navRoutes.map((route) => route.path)).not.toContain("/collection/import");
   });
 
   it("keeps route labels non-empty", () => {

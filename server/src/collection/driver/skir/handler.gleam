@@ -1,9 +1,10 @@
+import collection/application/commands/add_cards/handler as add_cards_handler
+import collection/application/commands/add_cards/ports as add_cards_ports
 import collection/application/commands/import_collection/handler as import_collection_handler
 import collection/application/commands/import_collection/ports as import_collection_ports
 import collection/application/queries/latest_status/handler as latest_status_handler
 import collection/application/queries/list_cards/handler as list_collection_cards_handler
 import collection/application/queries/list_cards/ports as list_collection_cards_ports
-import collection/domain/import_mode
 import collection/driver/dependencies.{type Dependencies}
 import collection/driver/skir/codec as collection_skir_codec
 import gleam/list
@@ -13,22 +14,21 @@ import shared/driver/skir/skirout/collection/commands as collection_commands
 import shared/driver/skir/skirout/collection/queries as collection_queries
 import skir_client/service
 
-pub fn register(
-  svc: service.Service(Nil, context, Nil),
-  get_dependencies: fn(context) -> Dependencies,
-) -> service.Service(Nil, context, Nil) {
-  svc
-  |> service.add_method(
-    collection_commands.import_collection_method(),
-    handle_import_collection(get_dependencies),
-  )
-  |> service.add_method(
-    collection_queries.get_latest_import_status_method(),
-    handle_get_latest_import_status(get_dependencies),
-  )
-  |> service.add_method(
-    collection_queries.list_collection_cards_method(),
-    handle_list_collection_cards(get_dependencies),
+fn parse_import_request(
+  req: collection_commands.ImportCollectionRequest,
+) -> Result(#(NonEmptyString, NonEmptyString), Nil) {
+  use import_run_id <- result.try(non_empty_string.new(req.import_run_id))
+  use source_name <- result.try(non_empty_string.new(req.source_name))
+  Ok(#(import_run_id, source_name))
+}
+
+fn map_import_collection_row(
+  row: collection_commands.ImportCollectionRow,
+) -> import_collection_ports.ImportCollectionRow {
+  import_collection_ports.ImportCollectionRow(
+    set_code: row.set_code,
+    collector_number: row.collector_number,
+    quantity: row.quantity,
   )
 }
 
@@ -43,7 +43,7 @@ fn handle_import_collection(get_dependencies: fn(context) -> Dependencies) {
     Nil,
   ) {
     case parse_import_request(req) {
-      Ok(#(import_run_id, source_name, mode)) -> {
+      Ok(#(import_run_id, source_name)) -> {
         let result =
           import_collection_handler.execute(
             import_collection_handler.ImportCollectionCommand(
@@ -51,7 +51,6 @@ fn handle_import_collection(get_dependencies: fn(context) -> Dependencies) {
               source_name: source_name,
               row_count: req.row_count,
               rows: list.map(req.rows, map_import_collection_row),
-              mode: mode,
             ),
             get_dependencies(ctx).import_collection_ports,
           )
@@ -70,13 +69,41 @@ fn handle_import_collection(get_dependencies: fn(context) -> Dependencies) {
   }
 }
 
-fn parse_import_request(
-  req: collection_commands.ImportCollectionRequest,
-) -> Result(#(NonEmptyString, NonEmptyString, import_mode.ImportMode), Nil) {
-  use import_run_id <- result.try(non_empty_string.new(req.import_run_id))
-  use source_name <- result.try(non_empty_string.new(req.source_name))
-  use mode <- result.try(collection_skir_codec.parse_import_mode(req.mode))
-  Ok(#(import_run_id, source_name, mode))
+fn map_add_cards_row(
+  row: collection_commands.AddCardsRow,
+) -> add_cards_ports.AddCardsRow {
+  add_cards_ports.AddCardsRow(
+    set_code: row.set_code,
+    collector_number: row.collector_number,
+    quantity: row.quantity,
+  )
+}
+
+fn handle_add_cards(get_dependencies: fn(context) -> Dependencies) {
+  fn(req: collection_commands.AddCardsRequest, req_meta: Nil, ctx: context) -> #(
+    Result(collection_commands.AddCardsResponse, service.ServiceError),
+    Nil,
+    Nil,
+  ) {
+    case non_empty_string.new(req.add_run_id) {
+      Ok(add_run_id) -> {
+        let result =
+          add_cards_handler.execute(
+            add_cards_handler.AddCardsCommand(
+              add_run_id: add_run_id,
+              rows: list.map(req.rows, map_add_cards_row),
+            ),
+            get_dependencies(ctx).add_cards_ports,
+          )
+        #(collection_skir_codec.map_add_cards_result(result), req_meta, Nil)
+      }
+      Error(Nil) -> #(
+        Ok(collection_commands.AddCardsResponseRejected),
+        req_meta,
+        Nil,
+      )
+    }
+  }
 }
 
 fn handle_get_latest_import_status(
@@ -104,13 +131,13 @@ fn handle_get_latest_import_status(
   }
 }
 
-fn map_import_collection_row(
-  row: collection_commands.ImportCollectionRow,
-) -> import_collection_ports.ImportCollectionRow {
-  import_collection_ports.ImportCollectionRow(
-    set_code: row.set_code,
-    collector_number: row.collector_number,
-    quantity: row.quantity,
+fn map_collection_card(
+  card: list_collection_cards_ports.CollectionCardReadModel,
+) -> collection_queries.CollectionCard {
+  collection_queries.collection_card_new(
+    card.collector_number,
+    card.quantity,
+    card.set_code,
   )
 }
 
@@ -152,12 +179,25 @@ fn handle_list_collection_cards(get_dependencies: fn(context) -> Dependencies) {
   }
 }
 
-fn map_collection_card(
-  card: list_collection_cards_ports.CollectionCardReadModel,
-) -> collection_queries.CollectionCard {
-  collection_queries.collection_card_new(
-    card.collector_number,
-    card.quantity,
-    card.set_code,
+pub fn register(
+  svc: service.Service(Nil, context, Nil),
+  get_dependencies: fn(context) -> Dependencies,
+) -> service.Service(Nil, context, Nil) {
+  svc
+  |> service.add_method(
+    collection_commands.import_collection_method(),
+    handle_import_collection(get_dependencies),
+  )
+  |> service.add_method(
+    collection_commands.add_cards_method(),
+    handle_add_cards(get_dependencies),
+  )
+  |> service.add_method(
+    collection_queries.get_latest_import_status_method(),
+    handle_get_latest_import_status(get_dependencies),
+  )
+  |> service.add_method(
+    collection_queries.list_collection_cards_method(),
+    handle_list_collection_cards(get_dependencies),
   )
 }

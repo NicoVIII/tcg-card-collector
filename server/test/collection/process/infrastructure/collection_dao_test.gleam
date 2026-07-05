@@ -1,4 +1,3 @@
-import collection/domain/import_mode
 import collection/domain/import_status
 import collection/infrastructure/daos/collection_dao
 import gleam/option.{None, Some}
@@ -8,13 +7,7 @@ pub fn save_and_latest_round_trip_test() {
   use _db <- test_db.with_temp_db()
 
   let assert Ok(Nil) =
-    collection_dao.save(
-      "run-1",
-      "test.csv",
-      import_status.Succeeded,
-      2,
-      import_mode.Full,
-    )
+    collection_dao.save("run-1", "test.csv", import_status.Succeeded, 2)
 
   assert collection_dao.latest()
     == Ok(Some(#("run-1", "test.csv", import_status.Succeeded, 2)))
@@ -30,13 +23,7 @@ pub fn replace_rows_and_latest_snapshot_rows_round_trip_test() {
   use _db <- test_db.with_temp_db()
 
   let assert Ok(Nil) =
-    collection_dao.save(
-      "run-1",
-      "test.csv",
-      import_status.Succeeded,
-      2,
-      import_mode.Full,
-    )
+    collection_dao.save("run-1", "test.csv", import_status.Succeeded, 2)
   let assert Ok(Nil) =
     collection_dao.replace_rows("run-1", [
       #("lea", "1", 4),
@@ -51,13 +38,7 @@ pub fn latest_snapshot_rows_ignores_non_succeeded_runs_test() {
   use _db <- test_db.with_temp_db()
 
   let assert Ok(Nil) =
-    collection_dao.save(
-      "run-1",
-      "test.csv",
-      import_status.Failed,
-      1,
-      import_mode.Full,
-    )
+    collection_dao.save("run-1", "test.csv", import_status.Failed, 1)
   let assert Ok(Nil) = collection_dao.replace_rows("run-1", [#("lea", "1", 4)])
 
   assert collection_dao.latest_snapshot_rows() == Ok([])
@@ -67,13 +48,7 @@ pub fn replace_rows_discards_previous_rows_for_the_same_run_test() {
   use _db <- test_db.with_temp_db()
 
   let assert Ok(Nil) =
-    collection_dao.save(
-      "run-1",
-      "test.csv",
-      import_status.Succeeded,
-      1,
-      import_mode.Full,
-    )
+    collection_dao.save("run-1", "test.csv", import_status.Succeeded, 1)
   let assert Ok(Nil) = collection_dao.replace_rows("run-1", [#("lea", "1", 4)])
   let assert Ok(Nil) = collection_dao.replace_rows("run-1", [#("lea", "2", 9)])
 

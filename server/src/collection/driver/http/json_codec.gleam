@@ -13,7 +13,6 @@ pub type ImportCollectionBody {
     import_run_id: String,
     source_name: String,
     row_count: Int,
-    mode: String,
     rows: List(ImportCollectionRow),
   )
 }
@@ -32,7 +31,6 @@ pub fn decode_import_collection_body(
     use import_run_id <- decode.field("import_run_id", decode.string)
     use source_name <- decode.field("source_name", decode.string)
     use row_count <- decode.field("row_count", decode.int)
-    use mode <- decode.optional_field("mode", "full", decode.string)
     use rows <- decode.optional_field(
       "rows",
       [],
@@ -42,9 +40,42 @@ pub fn decode_import_collection_body(
       import_run_id:,
       source_name:,
       row_count:,
-      mode:,
       rows:,
     ))
+  }
+
+  json.parse(from: json_string, using: decoder)
+  |> result.map_error(fn(_) { "invalid request body" })
+}
+
+pub type AddCardsRow {
+  AddCardsRow(set_code: String, collector_number: String, quantity: Int)
+}
+
+pub type AddCardsBody {
+  AddCardsBody(add_run_id: String, rows: List(AddCardsRow))
+}
+
+fn add_cards_row_decoder() {
+  use set_code <- decode.field("set_code", decode.string)
+  use collector_number <- decode.field("collector_number", decode.string)
+  use quantity <- decode.field("quantity", decode.int)
+  decode.success(AddCardsRow(set_code:, collector_number:, quantity:))
+}
+
+pub fn decode_add_cards_body(
+  json_string: String,
+) -> Result(AddCardsBody, String) {
+  let decoder = {
+    use add_run_id <- decode.field("add_run_id", decode.string)
+    // Absent rows decode to an empty batch, which the handler rejects —
+    // mirrors the skir door, where an omitted list arrives empty.
+    use rows <- decode.optional_field(
+      "rows",
+      [],
+      decode.list(add_cards_row_decoder()),
+    )
+    decode.success(AddCardsBody(add_run_id:, rows:))
   }
 
   json.parse(from: json_string, using: decoder)

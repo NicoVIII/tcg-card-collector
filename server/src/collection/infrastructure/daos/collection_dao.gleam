@@ -1,4 +1,3 @@
-import collection/domain/import_mode
 import collection/domain/import_status
 import gleam/dynamic/decode
 import gleam/int
@@ -22,10 +21,8 @@ pub fn save(
   source_name: String,
   status: import_status.ImportStatus,
   row_count: Int,
-  mode: import_mode.ImportMode,
 ) -> Result(Nil, String) {
   let status_str = import_status.to_string(status)
-  let mode_str = import_mode.to_string(mode)
   let finished_at_sql = case status {
     import_status.Succeeded | import_status.Failed -> "CURRENT_TIMESTAMP"
     _ -> "NULL"
@@ -33,15 +30,14 @@ pub fn save(
 
   let sql =
     "INSERT INTO import_runs ("
-    <> "  id, source_name, source_checksum, status, mode, started_at, finished_at, imported_row_count"
-    <> ") VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, "
+    <> "  id, source_name, source_checksum, status, started_at, finished_at, imported_row_count"
+    <> ") VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, "
     <> finished_at_sql
     <> ", ?) "
     <> "ON CONFLICT(id) DO UPDATE SET "
     <> "  source_name = excluded.source_name,"
     <> "  source_checksum = excluded.source_checksum,"
     <> "  status = excluded.status,"
-    <> "  mode = excluded.mode,"
     <> "  imported_row_count = excluded.imported_row_count,"
     <> "  finished_at = "
     <> finished_at_sql
@@ -53,7 +49,6 @@ pub fn save(
     sqlight.text(source_name),
     sqlight.text("manual-upload"),
     sqlight.text(status_str),
-    sqlight.text(mode_str),
     sqlight.int(row_count),
   ]
 

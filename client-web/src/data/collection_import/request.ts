@@ -20,7 +20,6 @@ export type ImportCollectionPayload = {
     collectorNumber: string;
     quantity: number;
   }>;
-  mode: "full" | "delta";
 };
 
 export type ImportStatus = {
@@ -44,7 +43,6 @@ export async function postImportCollection(
       sourceName: payload.sourceName,
       rowCount: payload.rowCount,
       rows: payload.rows,
-      mode: payload.mode === "delta" ? "DELTA" : "FULL",
     }),
   );
 

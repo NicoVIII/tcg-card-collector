@@ -5,18 +5,13 @@ struct ImportCollectionRow {
   quantity: int32;
 }
 
-enum ImportMode {
-  full = 1;
-  delta = 2;
-}
-
 struct ImportCollectionRequest {
   import_run_id: string = 0;
   source_name: string = 1;
   removed 2;  // was source_checksum: unused, never persisted meaningfully
   row_count: int32 = 3;
   rows: [ImportCollectionRow] = 4;
-  mode: ImportMode = 5;
+  removed 5;  // was mode: import is always a full snapshot; adds go through AddCards
 }
 
 enum ImportCollectionResponse {
@@ -27,3 +22,23 @@ enum ImportCollectionResponse {
 method ImportCollection(
   ImportCollectionRequest
 ): ImportCollectionResponse = 201;
+
+struct AddCardsRow {
+  set_code: string = 0;
+  collector_number: string = 1;
+  quantity: int32 = 2;
+}
+
+struct AddCardsRequest {
+  add_run_id: string = 0;
+  rows: [AddCardsRow] = 1;
+}
+
+enum AddCardsResponse {
+  added = 1;
+  rejected = 2;
+}
+
+method AddCards(
+  AddCardsRequest
+): AddCardsResponse = 204;

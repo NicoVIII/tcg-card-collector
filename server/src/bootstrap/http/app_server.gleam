@@ -80,6 +80,8 @@ fn handle_request(
       catalog_http.handle_refresh_status(deps.catalog)
     Post, "/api/import" ->
       collection_http.handle_import_collection(req, deps.collection)
+    Post, "/api/collection/cards" ->
+      collection_http.handle_add_cards(req, deps.collection)
     Get, "/api/import/latest" ->
       collection_http.handle_latest_import_status(deps.collection)
     Get, "/api/inventory/rules" ->

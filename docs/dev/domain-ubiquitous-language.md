@@ -30,10 +30,11 @@ Purpose:
 - Parse, validate, and persist collection intake runs and resulting snapshots.
 
 Core terms:
-- ImportRun: one import execution with source metadata and outcome status.
-- CollectionSnapshot: immutable persisted view of imported collection rows for one run.
+- ImportRun: one import execution with source metadata and outcome status. An import always replaces the whole collection.
+- ManualAddition: an incremental, synchronous addition of staged cards (AddCards command). Persisted as a new full snapshot under an import run with source `manual-add`.
+- CollectionSnapshot: immutable persisted view of the full collection rows for one run.
 - ImportSource: source descriptor for the uploaded import file.
-- ImportStatus: domain status for an import run lifecycle.
+- ImportStatus: domain status for an import run lifecycle (shared by imports and manual additions).
 
 Boundary notes:
 - Owns import execution and snapshot semantics.

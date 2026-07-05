@@ -28,7 +28,7 @@ pub fn from_cards(
 }
 
 /// Build a Collection from already-persisted cards, with no row-count
-/// invariant to check — used for the previous snapshot in a delta import.
+/// invariant to check — used for the previous snapshot when adding cards.
 pub fn from_trusted_cards(cards: List(PhysicalCard)) -> Collection {
   Collection(entries: entries_from_cards(cards))
 }
@@ -57,7 +57,7 @@ pub fn to_cards(collection: Collection) -> List(PhysicalCard) {
 
 /// Merges `delta`'s cards into `base`, summing quantities for keys present
 /// in both. `base` is trusted persisted state; `delta` is the newly
-/// validated collection from the current import.
+/// validated collection being added on top of it.
 pub fn merge(base: Collection, delta: Collection) -> Collection {
   let merged =
     list.fold(dict.to_list(delta.entries), base.entries, fn(acc, pair) {
