@@ -74,7 +74,7 @@ RUN wget -qO /dbmate \
 
 FROM erlang:${ERLANG_VERSION}-alpine
 
-RUN adduser -D -H -h /app webapp
+RUN apk add --no-cache curl jq && adduser -D -H -h /app webapp
 
 COPY --from=server-builder --chown=webapp /app/build/erlang-shipment/ /app/
 COPY --from=frontend-builder --chown=webapp /app/dist/ /app/static/
