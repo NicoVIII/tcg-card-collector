@@ -10,6 +10,7 @@ export function useAddCardsMutation() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.collection() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.setCompletion() });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.placementGuidance() });
     },
   }));
 }

@@ -3,11 +3,12 @@ import { describe, expect, it } from "vitest";
 import { navRoutes, routes } from "./routes";
 
 describe("routes", () => {
-  it("keeps the nav to the five daily-use routes", () => {
+  it("keeps the nav to the daily-use routes", () => {
     expect(navRoutes.map((route) => route.path)).toEqual([
       "/collection",
       "/catalog",
       "/inventory",
+      "/placement",
       "/insights",
       "/settings",
     ]);

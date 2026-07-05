@@ -1,4 +1,5 @@
 import { For, Show, createSignal } from "solid-js";
+import { A } from "@solidjs/router";
 import { useCardQuery } from "../data/card_catalog/query";
 import { useAddCardsMutation } from "../data/collection_add/mutation";
 import { mapError } from "../data/http/error";
@@ -58,6 +59,7 @@ export function AddCardsPanel() {
   const [formError, setFormError] = createSignal<string | null>(null);
   const [submitError, setSubmitError] = createSignal<string | null>(null);
   const [successNote, setSuccessNote] = createSignal<string | null>(null);
+  const [placedCount, setPlacedCount] = createSignal(0);
   const mutation = useAddCardsMutation();
   let collectorNumberInput: HTMLInputElement | undefined;
 
@@ -94,6 +96,7 @@ export function AddCardsPanel() {
       }
       setStaged([]);
       setSuccessNote(`Added ${count} card(s) to the collection.`);
+      setPlacedCount(count);
     } catch (error) {
       setSubmitError(mapError(error).message);
     }
@@ -157,7 +160,9 @@ export function AddCardsPanel() {
         <p role="alert">{submitError()}</p>
       </Show>
       <Show when={successNote() !== null}>
-        <p class="success">{successNote()}</p>
+        <p class="success">
+          {successNote()} <A href="/placement">{placedCount()} card(s) to place</A>
+        </p>
       </Show>
     </div>
   );

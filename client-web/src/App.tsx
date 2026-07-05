@@ -1,5 +1,6 @@
-import { For, type ParentProps } from "solid-js";
+import { For, Show, type ParentProps } from "solid-js";
 import { A } from "@solidjs/router";
+import { UnplacedBadge } from "./components/unplaced_badge";
 import { navRoutes } from "./routes";
 
 export default function App(props: ParentProps) {
@@ -12,6 +13,9 @@ export default function App(props: ParentProps) {
             {(route) => (
               <A class="nav-btn" href={route.path}>
                 {route.label}
+                <Show when={route.path === "/placement"}>
+                  <UnplacedBadge />
+                </Show>
               </A>
             )}
           </For>

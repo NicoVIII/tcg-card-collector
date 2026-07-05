@@ -8,6 +8,7 @@ export const queryKeys = {
   inventoryRules: () => ["inventory_planning", "rules"] as const,
   inventoryBulkSpec: () => ["inventory_planning", "bulk_spec"] as const,
   inventoryProjection: () => ["inventory_planning", "projection"] as const,
+  placementGuidance: () => ["inventory_planning", "placement_guidance"] as const,
   settings: () => ["settings", "current"] as const,
   setCompletion: () => ["insights", "set_completion"] as const,
 };

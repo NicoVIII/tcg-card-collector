@@ -266,3 +266,68 @@ p[role="alert"] {
   background: transparent;
   color: var(--ink);
 }
+
+/* Placement */
+
+.nav-btn {
+  position: relative;
+}
+
+.nav-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 0.75em;
+  line-height: 1.5;
+}
+
+.placement-location {
+  margin-top: 16px;
+}
+
+.placement-location-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.placement-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+}
+
+.placement-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eef2f4;
+}
+
+.placement-row-done .placement-card-name,
+.placement-row-done .placement-card-key {
+  text-decoration: line-through;
+  color: #8a97a0;
+}
+
+.placement-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.placement-card-key {
+  color: #6b7780;
+  font-variant-numeric: tabular-nums;
+}
+
+.placement-card-hint {
+  color: #6b7780;
+  font-size: 0.85em;
+}
