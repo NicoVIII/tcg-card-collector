@@ -27,17 +27,16 @@ Boundary notes:
 ## Collection Import
 
 Purpose:
-- Parse, validate, and persist collection intake runs and resulting snapshots.
+- Parse, validate, and persist the owned collection and the queue of newly-added cards awaiting physical placement.
 
 Core terms:
-- ImportRun: one import execution with source metadata and outcome status. An import always replaces the whole collection.
-- ManualAddition: an incremental, synchronous addition of staged cards (AddCards command). Persisted as a new full snapshot under an import run with source `manual-add`.
-- CollectionSnapshot: immutable persisted view of the full collection rows for one run.
-- ImportSource: source descriptor for the uploaded import file.
-- ImportStatus: domain status for an import run lifecycle (shared by imports and manual additions).
+- Collection: the current owned cards (card key → quantity). The single source of truth other contexts read from.
+- UnplacedCards: the sorting queue of additions awaiting physical placement — same shape as Collection. AddCards enqueues here; an import clears it.
+- ManualAddition: an incremental, synchronous addition of staged cards (AddCards command). Upserts both the collection and the unplaced queue, summing quantities per key.
+- Import: a full statement of the collection (ImportCollection command). Replaces the collection outright and clears the unplaced queue — an import is not placement work.
 
 Boundary notes:
-- Owns import execution and snapshot semantics.
+- Owns collection and unplaced-queue semantics.
 - Delegates card enrichment language to Card Catalog.
 
 ## Inventory Planning
@@ -80,8 +79,8 @@ Purpose:
 Core terms:
 - TargetSet: a set (by set code) the user has marked as one they want to track completion for.
 - SetCompletion: the owned/total pair for one target set — "owned" is the count of distinct
-  `(set_code, collector_number)` keys from the target set that appear in the latest succeeded
-  collection snapshot (exact key match only, no name joins or base-set/variant filtering);
+  `(set_code, collector_number)` keys from the target set that appear in the
+  collection (exact key match only, no name joins or base-set/variant filtering);
   "total" is the count of distinct collector numbers the catalog has for that set. A target set
   absent from the catalog has `total: 0`.
 

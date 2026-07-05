@@ -1,5 +1,3 @@
-import collection/application/queries/latest_status/ports as import_ports
-import collection/domain/import_status
 import gleam/dynamic/decode
 import gleam/json
 import gleam/result
@@ -9,12 +7,7 @@ pub type ImportCollectionRow {
 }
 
 pub type ImportCollectionBody {
-  ImportCollectionBody(
-    import_run_id: String,
-    source_name: String,
-    row_count: Int,
-    rows: List(ImportCollectionRow),
-  )
+  ImportCollectionBody(rows: List(ImportCollectionRow))
 }
 
 fn import_collection_row_decoder() {
@@ -28,20 +21,14 @@ pub fn decode_import_collection_body(
   json_string: String,
 ) -> Result(ImportCollectionBody, String) {
   let decoder = {
-    use import_run_id <- decode.field("import_run_id", decode.string)
-    use source_name <- decode.field("source_name", decode.string)
-    use row_count <- decode.field("row_count", decode.int)
+    // Absent rows decode to an empty batch, which the handler rejects —
+    // mirrors the skir door, where an omitted list arrives empty.
     use rows <- decode.optional_field(
       "rows",
       [],
       decode.list(import_collection_row_decoder()),
     )
-    decode.success(ImportCollectionBody(
-      import_run_id:,
-      source_name:,
-      row_count:,
-      rows:,
-    ))
+    decode.success(ImportCollectionBody(rows:))
   }
 
   json.parse(from: json_string, using: decoder)
@@ -53,7 +40,7 @@ pub type AddCardsRow {
 }
 
 pub type AddCardsBody {
-  AddCardsBody(add_run_id: String, rows: List(AddCardsRow))
+  AddCardsBody(rows: List(AddCardsRow))
 }
 
 fn add_cards_row_decoder() {
@@ -67,41 +54,14 @@ pub fn decode_add_cards_body(
   json_string: String,
 ) -> Result(AddCardsBody, String) {
   let decoder = {
-    use add_run_id <- decode.field("add_run_id", decode.string)
-    // Absent rows decode to an empty batch, which the handler rejects —
-    // mirrors the skir door, where an omitted list arrives empty.
     use rows <- decode.optional_field(
       "rows",
       [],
       decode.list(add_cards_row_decoder()),
     )
-    decode.success(AddCardsBody(add_run_id:, rows:))
+    decode.success(AddCardsBody(rows:))
   }
 
   json.parse(from: json_string, using: decoder)
   |> result.map_error(fn(_) { "invalid request body" })
-}
-
-pub fn encode_import_status_found(
-  run: import_ports.ImportRunReadModel,
-) -> String {
-  json.object([
-    #("kind", json.string("found")),
-    #("run", encode_import_run(run)),
-  ])
-  |> json.to_string
-}
-
-pub fn encode_import_status_not_found() -> String {
-  json.object([#("kind", json.string("not_found"))])
-  |> json.to_string
-}
-
-fn encode_import_run(run: import_ports.ImportRunReadModel) -> json.Json {
-  json.object([
-    #("id", json.string(run.id)),
-    #("source_name", json.string(run.source_name)),
-    #("status", json.string(import_status.to_string(run.status))),
-    #("row_count", json.int(run.row_count)),
-  ])
 }

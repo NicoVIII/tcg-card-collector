@@ -86,7 +86,6 @@ export function AddCardsPanel() {
     const count = totalCards(staged());
     try {
       const response = await mutation.mutateAsync({
-        addRunId: crypto.randomUUID(),
         rows: toAddCardsRows(staged()),
       });
       if (!response.added) {

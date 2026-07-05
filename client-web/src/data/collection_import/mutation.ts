@@ -8,7 +8,7 @@ export function useImportCollectionMutation() {
   return createMutation(() => ({
     mutationFn: (payload: ImportCollectionPayload) => postImportCollection(payload),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.importStatus() });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.collection() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.setCompletion() });
     },
   }));

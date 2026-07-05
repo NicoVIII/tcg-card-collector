@@ -8,28 +8,12 @@ pub opaque type Collection {
   Collection(entries: Dict(CardKey, physical_card.Quantity))
 }
 
-pub type CollectionError {
-  RowCountMismatch
-}
-
-/// Build a Collection from a list of owned cards.
-/// Fails if the number of cards does not match the caller's expected count,
-/// enforcing the import invariant: what the client claims it sent is what
-/// actually arrived and was valid. Cards sharing a key are combined by
-/// summing their quantities, so key-uniqueness holds by construction.
-pub fn from_cards(
-  cards: List(PhysicalCard),
-  expected_count: Int,
-) -> Result(Collection, CollectionError) {
-  case list.length(cards) == expected_count {
-    True -> Ok(Collection(entries: entries_from_cards(cards)))
-    False -> Error(RowCountMismatch)
-  }
-}
-
-/// Build a Collection from already-persisted cards, with no row-count
-/// invariant to check — used for the previous snapshot when adding cards.
-pub fn from_trusted_cards(cards: List(PhysicalCard)) -> Collection {
+/// Normalizes a batch of owned cards into a Collection: cards sharing a key
+/// are combined by summing their quantities, so key-uniqueness holds by
+/// construction. Callers validate rows before building; there is no row-count
+/// invariant here — how the batch reaches storage (replace vs upsert) is the
+/// use case's concern, not the domain's.
+pub fn from_cards(cards: List(PhysicalCard)) -> Collection {
   Collection(entries: entries_from_cards(cards))
 }
 
@@ -53,22 +37,4 @@ pub fn to_cards(collection: Collection) -> List(PhysicalCard) {
     let #(key, quantity) = pair
     PhysicalCard(key: key, quantity: quantity)
   })
-}
-
-/// Merges `delta`'s cards into `base`, summing quantities for keys present
-/// in both. `base` is trusted persisted state; `delta` is the newly
-/// validated collection being added on top of it.
-pub fn merge(base: Collection, delta: Collection) -> Collection {
-  let merged =
-    list.fold(dict.to_list(delta.entries), base.entries, fn(acc, pair) {
-      let #(key, quantity) = pair
-      dict.upsert(acc, key, fn(existing) {
-        case existing {
-          Some(existing_quantity) ->
-            physical_card.quantity_add(existing_quantity, quantity)
-          None -> quantity
-        }
-      })
-    })
-  Collection(entries: merged)
 }

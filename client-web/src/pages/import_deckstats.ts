@@ -1,13 +1,17 @@
-import type { ImportRow } from "./import_rows";
+export type ImportRow = {
+  setCode: string;
+  collectorNumber: string;
+  quantity: number;
+};
 
 // Parses a deckstats.net collection CSV export into normalized import rows.
 //
 // deckstats exports many columns (foil, language, condition, comment, ...) in an
 // order that can drift, so we locate the three columns we care about by *name*
 // from the header (amount, set_code, collector_number) rather than by position.
-// Finish/language/condition are intentionally dropped: the backend snapshot
-// hardcodes nonfoil/en, so we collapse duplicate physical printings by summing
-// their quantities per (set_code, collector_number) key.
+// Finish/language/condition are intentionally dropped: the collection is keyed
+// only by (set_code, collector_number), so we collapse duplicate physical
+// printings by summing their quantities per key.
 
 export type RejectedLine = {
   lineNumber: number;

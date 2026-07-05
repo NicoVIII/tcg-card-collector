@@ -16,7 +16,7 @@ Three purposes, all first-class:
 
 ## Current status
 
-The MVP vertical slice works end-to-end: catalog sync from Scryfall, CSV collection import with immutable snapshots, inventory rules and projections, and planning preferences — over both Skir RPC and REST.
+The MVP vertical slice works end-to-end: catalog sync from Scryfall, CSV collection import plus incremental manual adds, inventory rules and projections, and planning preferences — over both Skir RPC and REST.
 
 ## Direction
 

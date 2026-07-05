@@ -1,167 +1,103 @@
-import collection/domain/import_status
 import gleam/dynamic/decode
-import gleam/int
 import gleam/list
-import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import shared/infrastructure/stores/sqlite_store
 import sqlight
 
-type SnapshotRowTuple =
+type CardRow =
   #(String, String, Int)
-
-type LatestRunTuple =
-  #(String, String, import_status.ImportStatus, Int)
 
 const insert_batch_size = 100
 
-pub fn save(
-  id: String,
-  source_name: String,
-  status: import_status.ImportStatus,
-  row_count: Int,
-) -> Result(Nil, String) {
-  let status_str = import_status.to_string(status)
-  let finished_at_sql = case status {
-    import_status.Succeeded | import_status.Failed -> "CURRENT_TIMESTAMP"
-    _ -> "NULL"
-  }
-
-  let sql =
-    "INSERT INTO import_runs ("
-    <> "  id, source_name, source_checksum, status, started_at, finished_at, imported_row_count"
-    <> ") VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, "
-    <> finished_at_sql
-    <> ", ?) "
-    <> "ON CONFLICT(id) DO UPDATE SET "
-    <> "  source_name = excluded.source_name,"
-    <> "  source_checksum = excluded.source_checksum,"
-    <> "  status = excluded.status,"
-    <> "  imported_row_count = excluded.imported_row_count,"
-    <> "  finished_at = "
-    <> finished_at_sql
-    <> ", "
-    <> "  updated_at = CURRENT_TIMESTAMP;"
-
-  let params = [
-    sqlight.text(id),
-    sqlight.text(source_name),
-    sqlight.text("manual-upload"),
-    sqlight.text(status_str),
-    sqlight.int(row_count),
-  ]
-
-  sqlite_store.exec(sql, params)
-  |> result.map_error(fn(error) { error.message })
-}
-
-fn latest_row_decoder() {
-  use id <- decode.field(0, decode.string)
-  use source_name <- decode.field(1, decode.string)
-  use status_str <- decode.field(2, decode.string)
-  use row_count <- decode.field(3, decode.int)
-  decode.success(#(id, source_name, status_str, row_count))
-}
-
-pub fn latest() -> Result(Option(LatestRunTuple), String) {
-  let rows =
-    sqlite_store.query(
-      "SELECT id, source_name, status, imported_row_count "
-        <> "FROM import_runs "
-        <> "ORDER BY updated_at DESC, created_at DESC, rowid DESC "
-        <> "LIMIT 1;",
-      [],
-      latest_row_decoder(),
-    )
-  case rows {
-    Ok([]) -> Ok(None)
-    Ok([#(id, source_name, status_str, row_count), ..]) ->
-      case import_status.from_string(status_str) {
-        Ok(status) -> Ok(Some(#(id, source_name, status, row_count)))
-        Error(_) -> Error("invalid persisted import status: " <> status_str)
-      }
-    Error(error) -> Error(error.message)
-  }
-}
-
-fn snapshot_row_decoder() {
+fn card_row_decoder() {
   use set_code <- decode.field(0, decode.string)
   use collector_number <- decode.field(1, decode.string)
   use quantity <- decode.field(2, decode.int)
   decode.success(#(set_code, collector_number, quantity))
 }
 
-pub fn latest_snapshot_rows() -> Result(List(SnapshotRowTuple), String) {
+pub fn list_cards() -> Result(List(CardRow), String) {
   sqlite_store.query(
-    "WITH latest_succeeded AS ("
-      <> "  SELECT id FROM import_runs"
-      <> "  WHERE status = 'succeeded'"
-      <> "  ORDER BY updated_at DESC, created_at DESC, rowid DESC"
-      <> "  LIMIT 1"
-      <> ") "
-      <> "SELECT s.set_code, s.collector_number, SUM(s.quantity) "
-      <> "FROM collection_snapshot s "
-      <> "JOIN latest_succeeded ls ON s.import_run_id = ls.id "
-      <> "GROUP BY s.set_code, s.collector_number;",
+    "SELECT set_code, collector_number, quantity FROM collection "
+      <> "ORDER BY set_code, collector_number;",
     [],
-    snapshot_row_decoder(),
+    card_row_decoder(),
   )
   |> result.map_error(fn(error) { error.message })
 }
 
-pub fn replace_rows(
-  import_run_id: String,
-  rows: List(SnapshotRowTuple),
-) -> Result(Nil, String) {
-  use _ <- result.try(
-    sqlite_store.exec(
-      "DELETE FROM collection_snapshot WHERE import_run_id = ?;",
-      [sqlight.text(import_run_id)],
-    )
-    |> result.map_error(fn(error) { error.message }),
-  )
-  insert_rows(import_run_id, rows)
-}
-
-fn insert_rows(
-  import_run_id: String,
-  rows: List(SnapshotRowTuple),
-) -> Result(Nil, String) {
-  let indexed = list.index_map(rows, fn(row, i) { #(row, i + 1) })
-  indexed
-  |> list.sized_chunk(insert_batch_size)
-  |> list.try_each(insert_batch(import_run_id, _))
-}
-
-fn insert_batch(
-  import_run_id: String,
-  batch: List(#(SnapshotRowTuple, Int)),
-) -> Result(Nil, String) {
+fn batch_values(batch: List(CardRow)) -> #(String, List(sqlight.Value)) {
   let placeholders =
     batch
-    |> list.map(fn(_) { "(?, ?, ?, ?, ?, 'nonfoil', 'en', ?)" })
+    |> list.map(fn(_) { "(?, ?, ?)" })
     |> string.join(", ")
   let params =
     batch
-    |> list.flat_map(fn(pair) {
-      let #(#(set_code, collector_number, quantity), row_number) = pair
-      let row_id = import_run_id <> "-row-" <> int.to_string(row_number)
+    |> list.flat_map(fn(row) {
+      let #(set_code, collector_number, quantity) = row
       [
-        sqlight.text(row_id),
-        sqlight.text(import_run_id),
-        sqlight.int(row_number),
         sqlight.text(set_code),
         sqlight.text(collector_number),
         sqlight.int(quantity),
       ]
     })
+  #(placeholders, params)
+}
+
+fn exec_batch(
+  table: String,
+  suffix: String,
+  batch: List(CardRow),
+) -> Result(Nil, String) {
+  let #(placeholders, params) = batch_values(batch)
   let sql =
-    "INSERT INTO collection_snapshot ("
-    <> "  id, import_run_id, row_number, set_code, collector_number, finish, language, quantity"
-    <> ") VALUES "
+    "INSERT INTO "
+    <> table
+    <> " (set_code, collector_number, quantity) VALUES "
     <> placeholders
-    <> ";"
+    <> suffix
   sqlite_store.exec(sql, params)
   |> result.map_error(fn(error) { error.message })
+}
+
+fn insert_rows(table: String, rows: List(CardRow)) -> Result(Nil, String) {
+  rows
+  |> list.sized_chunk(insert_batch_size)
+  |> list.try_each(exec_batch(table, ";", _))
+}
+
+fn upsert_rows(table: String, rows: List(CardRow)) -> Result(Nil, String) {
+  let suffix =
+    " ON CONFLICT(set_code, collector_number) "
+    <> "DO UPDATE SET quantity = quantity + excluded.quantity;"
+  rows
+  |> list.sized_chunk(insert_batch_size)
+  |> list.try_each(exec_batch(table, suffix, _))
+}
+
+fn delete_all(table: String) -> Result(Nil, String) {
+  sqlite_store.exec("DELETE FROM " <> table <> ";", [])
+  |> result.map_error(fn(error) { error.message })
+}
+
+// The writes below span several statements on separate connections
+// (sqlite_store opens one per call), so they are not wrapped in a transaction.
+// Acceptable for a single-user app: no concurrent writer can interleave, and a
+// mid-write failure surfaces as an error the calling handler reports.
+
+/// An import states the whole collection: truncate both the collection and the
+/// unplaced sorting queue, then refill only the collection. An import is not
+/// placement work, so it leaves the queue empty.
+pub fn replace_collection(rows: List(CardRow)) -> Result(Nil, String) {
+  use _ <- result.try(delete_all("collection"))
+  use _ <- result.try(delete_all("unplaced_cards"))
+  insert_rows("collection", rows)
+}
+
+/// An add grows the collection and enqueues the same cards for physical
+/// placement, so it sums each row's quantity into both tables identically.
+pub fn upsert_cards(rows: List(CardRow)) -> Result(Nil, String) {
+  use _ <- result.try(upsert_rows("collection", rows))
+  upsert_rows("unplaced_cards", rows)
 }

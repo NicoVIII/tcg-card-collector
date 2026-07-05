@@ -10,7 +10,7 @@ pub fn new() -> ports.ListCollectionCardsPort {
 fn list_cards_adapter() -> fn() ->
   Result(List(ports.CollectionCardReadModel), String) {
   fn() {
-    use rows <- result.try(collection_dao.latest_snapshot_rows())
+    use rows <- result.try(collection_dao.list_cards())
     Ok(
       list.map(rows, fn(row) {
         let #(set_code, collector_number, quantity) = row

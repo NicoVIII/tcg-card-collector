@@ -10,9 +10,6 @@ export function useAddCardsMutation() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.collection() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.setCompletion() });
-      // An add is persisted as an import run, so the import page's status
-      // line would go stale without this.
-      await queryClient.invalidateQueries({ queryKey: queryKeys.importStatus() });
     },
   }));
 }

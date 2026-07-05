@@ -1,56 +1,79 @@
-import collection/domain/import_status
 import collection/infrastructure/daos/collection_dao
-import gleam/option.{None, Some}
+import gleam/dynamic/decode
+import shared/infrastructure/stores/sqlite_store
 import support/test_db
 
-pub fn save_and_latest_round_trip_test() {
-  use _db <- test_db.with_temp_db()
+type CardRow =
+  #(String, String, Int)
 
-  let assert Ok(Nil) =
-    collection_dao.save("run-1", "test.csv", import_status.Succeeded, 2)
-
-  assert collection_dao.latest()
-    == Ok(Some(#("run-1", "test.csv", import_status.Succeeded, 2)))
+fn card_row_decoder() {
+  use set_code <- decode.field(0, decode.string)
+  use collector_number <- decode.field(1, decode.string)
+  use quantity <- decode.field(2, decode.int)
+  decode.success(#(set_code, collector_number, quantity))
 }
 
-pub fn latest_returns_none_when_no_runs_test() {
-  use _db <- test_db.with_temp_db()
-
-  assert collection_dao.latest() == Ok(None)
+fn rows_in(table: String) -> List(CardRow) {
+  let assert Ok(rows) =
+    sqlite_store.query(
+      "SELECT set_code, collector_number, quantity FROM "
+        <> table
+        <> " ORDER BY set_code, collector_number;",
+      [],
+      card_row_decoder(),
+    )
+  rows
 }
 
-pub fn replace_rows_and_latest_snapshot_rows_round_trip_test() {
+pub fn upsert_inserts_new_keys_test() {
   use _db <- test_db.with_temp_db()
 
   let assert Ok(Nil) =
-    collection_dao.save("run-1", "test.csv", import_status.Succeeded, 2)
+    collection_dao.upsert_cards([#("lea", "1", 4), #("lea", "2", 1)])
+
+  assert collection_dao.list_cards() == Ok([#("lea", "1", 4), #("lea", "2", 1)])
+}
+
+pub fn upsert_sums_into_existing_keys_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) = collection_dao.upsert_cards([#("lea", "1", 4)])
   let assert Ok(Nil) =
-    collection_dao.replace_rows("run-1", [
-      #("lea", "1", 4),
+    collection_dao.upsert_cards([#("lea", "1", 3), #("lea", "2", 1)])
+
+  assert collection_dao.list_cards() == Ok([#("lea", "1", 7), #("lea", "2", 1)])
+}
+
+pub fn upsert_writes_both_tables_identically_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) =
+    collection_dao.upsert_cards([#("lea", "1", 4), #("lea", "2", 1)])
+
+  assert rows_in("collection") == rows_in("unplaced_cards")
+  assert rows_in("unplaced_cards") == [#("lea", "1", 4), #("lea", "2", 1)]
+}
+
+pub fn replace_truncates_both_and_refills_only_collection_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) = collection_dao.upsert_cards([#("lea", "1", 4)])
+  let assert Ok(Nil) = collection_dao.replace_collection([#("blb", "9", 1)])
+
+  assert rows_in("collection") == [#("blb", "9", 1)]
+  assert rows_in("unplaced_cards") == []
+}
+
+pub fn list_cards_orders_by_key_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) =
+    collection_dao.replace_collection([
       #("lea", "2", 1),
+      #("blb", "9", 3),
+      #("lea", "1", 4),
     ])
 
-  assert collection_dao.latest_snapshot_rows()
-    == Ok([#("lea", "1", 4), #("lea", "2", 1)])
-}
-
-pub fn latest_snapshot_rows_ignores_non_succeeded_runs_test() {
-  use _db <- test_db.with_temp_db()
-
-  let assert Ok(Nil) =
-    collection_dao.save("run-1", "test.csv", import_status.Failed, 1)
-  let assert Ok(Nil) = collection_dao.replace_rows("run-1", [#("lea", "1", 4)])
-
-  assert collection_dao.latest_snapshot_rows() == Ok([])
-}
-
-pub fn replace_rows_discards_previous_rows_for_the_same_run_test() {
-  use _db <- test_db.with_temp_db()
-
-  let assert Ok(Nil) =
-    collection_dao.save("run-1", "test.csv", import_status.Succeeded, 1)
-  let assert Ok(Nil) = collection_dao.replace_rows("run-1", [#("lea", "1", 4)])
-  let assert Ok(Nil) = collection_dao.replace_rows("run-1", [#("lea", "2", 9)])
-
-  assert collection_dao.latest_snapshot_rows() == Ok([#("lea", "2", 9)])
+  assert collection_dao.list_cards()
+    == Ok([#("blb", "9", 3), #("lea", "1", 4), #("lea", "2", 1)])
 }

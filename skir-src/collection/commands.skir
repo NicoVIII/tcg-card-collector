@@ -6,10 +6,10 @@ struct ImportCollectionRow {
 }
 
 struct ImportCollectionRequest {
-  import_run_id: string = 0;
-  source_name: string = 1;
+  removed 0;  // was import_run_id: runs no longer exist
+  removed 1;  // was source_name: only consumer was the dropped status line
   removed 2;  // was source_checksum: unused, never persisted meaningfully
-  row_count: int32 = 3;
+  removed 3;  // was row_count: server counts the rows it received
   rows: [ImportCollectionRow] = 4;
   removed 5;  // was mode: import is always a full snapshot; adds go through AddCards
 }
@@ -30,7 +30,7 @@ struct AddCardsRow {
 }
 
 struct AddCardsRequest {
-  add_run_id: string = 0;
+  removed 0;  // was add_run_id: runs no longer exist
   rows: [AddCardsRow] = 1;
 }
 

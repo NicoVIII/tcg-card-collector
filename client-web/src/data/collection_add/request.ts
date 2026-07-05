@@ -7,7 +7,6 @@ const AddCardsResponseSchema = z.object({
 });
 
 export type AddCardsPayload = {
-  addRunId: string;
   rows: Array<{
     setCode: string;
     collectorNumber: string;
@@ -18,10 +17,7 @@ export type AddCardsPayload = {
 export async function postAddCards(payload: AddCardsPayload): Promise<{ added: boolean }> {
   const response = await skirClient.invokeRemote(
     AddCards,
-    AddCardsRequest.create({
-      addRunId: payload.addRunId,
-      rows: payload.rows,
-    }),
+    AddCardsRequest.create({ rows: payload.rows }),
   );
 
   const validated = AddCardsResponseSchema.parse(response);

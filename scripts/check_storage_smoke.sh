@@ -24,52 +24,20 @@ TCG_DB_FILE="$DB_FILE" sh ./scripts/dbmate_up.sh >/dev/null
 
 sqlite3 "$DB_FILE" <<'SQL'
 PRAGMA foreign_keys = ON;
-INSERT INTO import_runs (
-  id,
-  source_name,
-  source_checksum,
-  status,
-  started_at,
-  imported_row_count
-) VALUES (
-  'run-1',
-  'deckstats-export.csv',
-  'checksum-1',
-  'succeeded',
-  '2026-05-31T12:00:00Z',
-  2
-);
-
-INSERT INTO collection_snapshot (
-  id,
-  import_run_id,
-  row_number,
+INSERT INTO collection (
   set_code,
   collector_number,
-  finish,
-  language,
   quantity
 ) VALUES
-  (
-    'snap-1',
-    'run-1',
-    1,
-    'M11',
-    '146',
-    'nonfoil',
-    'en',
-    2
-  ),
-  (
-    'snap-2',
-    'run-1',
-    2,
-    '2XM',
-    '49',
-    'foil',
-    'en',
-    1
-  );
+  ('M11', '146', 2),
+  ('2XM', '49', 1);
+
+INSERT INTO unplaced_cards (
+  set_code,
+  collector_number,
+  quantity
+) VALUES
+  ('2XM', '49', 1);
 
 INSERT INTO catalog_cards (
   id,
@@ -112,21 +80,21 @@ INSERT INTO inventory_rules (
 );
 SQL
 
-import_runs_count=$(sqlite3 "$DB_FILE" "SELECT COUNT(*) FROM import_runs;")
-collection_snapshot_count=$(sqlite3 "$DB_FILE" "SELECT COUNT(*) FROM collection_snapshot;")
+collection_count=$(sqlite3 "$DB_FILE" "SELECT COUNT(*) FROM collection;")
+unplaced_cards_count=$(sqlite3 "$DB_FILE" "SELECT COUNT(*) FROM unplaced_cards;")
 catalog_cards_count=$(sqlite3 "$DB_FILE" "SELECT COUNT(*) FROM catalog_cards;")
 catalog_sync_metadata_count=$(sqlite3 "$DB_FILE" "SELECT COUNT(*) FROM catalog_sync_metadata;")
 inventory_rules_count=$(sqlite3 "$DB_FILE" "SELECT COUNT(*) FROM inventory_rules;")
 app_settings_count=$(sqlite3 "$DB_FILE" "SELECT COUNT(*) FROM app_settings;")
 default_grouping=$(sqlite3 "$DB_FILE" "SELECT default_grouping FROM app_settings WHERE id = 1;")
 
-if [ "$import_runs_count" != "1" ]; then
-  echo "Storage smoke check failed: expected 1 import_run, got $import_runs_count"
+if [ "$collection_count" != "2" ]; then
+  echo "Storage smoke check failed: expected 2 collection rows, got $collection_count"
   exit 1
 fi
 
-if [ "$collection_snapshot_count" != "2" ]; then
-  echo "Storage smoke check failed: expected 2 snapshot rows, got $collection_snapshot_count"
+if [ "$unplaced_cards_count" != "1" ]; then
+  echo "Storage smoke check failed: expected 1 unplaced_cards row, got $unplaced_cards_count"
   exit 1
 fi
 

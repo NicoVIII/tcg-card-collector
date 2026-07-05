@@ -3,24 +3,11 @@ import collection/infrastructure/daos/collection_dao
 import gleam/list
 import shared/domain/card_key
 
-fn save_run_adapter() -> ports.SaveRunPort {
-  fn(run) {
-    let ports.ImportRunWriteModel(
-      id: id,
-      source_name: source_name,
-      status: status,
-      row_count: row_count,
-    ) = run
-    collection_dao.save(id, source_name, status, row_count)
-  }
-}
-
-fn replace_rows_adapter() -> ports.ReplaceRowsPort {
-  fn(import_run_id, rows) {
-    collection_dao.replace_rows(
-      import_run_id,
+pub fn new() -> ports.ReplaceCollectionPort {
+  fn(rows) {
+    collection_dao.replace_collection(
       list.map(rows, fn(row) {
-        let ports.SnapshotRowWriteModel(key: key, quantity: quantity) = row
+        let ports.CollectionRowWriteModel(key: key, quantity: quantity) = row
         #(
           card_key.set_code_string(key),
           card_key.collector_number_string(key),
@@ -29,11 +16,4 @@ fn replace_rows_adapter() -> ports.ReplaceRowsPort {
       }),
     )
   }
-}
-
-pub fn new() -> ports.ImportCollectionPorts {
-  ports.ImportCollectionPorts(
-    save_run: save_run_adapter(),
-    replace_rows: replace_rows_adapter(),
-  )
 }

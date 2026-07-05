@@ -1,5 +1,4 @@
 export const queryKeys = {
-  importStatus: () => ["collection_import", "latest_status"] as const,
   catalogList: (offset: number, limit: number) => ["card_catalog", "list", offset, limit] as const,
   catalogRefreshStatus: () => ["card_catalog", "refresh_status"] as const,
   card: (set_code: string, collector_number: string) =>

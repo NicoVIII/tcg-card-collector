@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseDeckstatsCsv } from "./import_deckstats";
 import { DECKSTATS_FIXTURE_CSV } from "./import_deckstats.fixture";
-import { detectImportFormat } from "./import_rows";
 
 describe("parseDeckstatsCsv", () => {
   it("locates columns by name and aggregates duplicate keys", () => {
@@ -58,15 +57,5 @@ describe("parseDeckstatsCsv", () => {
     const csv = "collector_number,set_code,amount\n85,ISD,3";
     const result = parseDeckstatsCsv(csv);
     expect(result.rows).toEqual([{ setCode: "ISD", collectorNumber: "85", quantity: 3 }]);
-  });
-});
-
-describe("detectImportFormat", () => {
-  it("detects the deckstats header", () => {
-    expect(detectImportFormat(DECKSTATS_FIXTURE_CSV)).toBe("deckstats");
-  });
-
-  it("treats bare rows as the simple format", () => {
-    expect(detectImportFormat("M11,146,2\n2XM,49,1")).toBe("simple");
   });
 });
