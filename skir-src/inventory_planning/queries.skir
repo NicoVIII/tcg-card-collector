@@ -75,3 +75,38 @@ struct GetBulkSpecRequest {
 method GetBulkSpec(
   GetBulkSpecRequest
 ): BulkSpec = 305;
+
+struct PlacementGuidanceRequest {
+  unit: bool = 0;
+}
+
+struct PlacementNeighbor {
+  name: string = 0;
+  set_code: string = 1;
+  collector_number: string = 2;
+  already_placed: bool = 3;
+}
+
+struct PlacementCard {
+  name: string = 0;
+  set_code: string = 1;
+  collector_number: string = 2;
+  to_place_quantity: int32 = 3;
+  before: [PlacementNeighbor] = 4;
+  after: [PlacementNeighbor] = 5;
+}
+
+struct PlacementLocation {
+  location_name: string = 0;
+  total_quantity: int32 = 1;
+  cards: [PlacementCard] = 2;
+}
+
+struct PlacementGuidance {
+  locations: [PlacementLocation] = 0;
+  total_unplaced: int32 = 1;
+}
+
+method GetPlacementGuidance(
+  PlacementGuidanceRequest
+): PlacementGuidance = 306;

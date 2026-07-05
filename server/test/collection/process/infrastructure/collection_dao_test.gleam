@@ -44,24 +44,13 @@ pub fn upsert_sums_into_existing_keys_test() {
   assert collection_dao.list_cards() == Ok([#("lea", "1", 7), #("lea", "2", 1)])
 }
 
-pub fn upsert_writes_both_tables_identically_test() {
-  use _db <- test_db.with_temp_db()
-
-  let assert Ok(Nil) =
-    collection_dao.upsert_cards([#("lea", "1", 4), #("lea", "2", 1)])
-
-  assert rows_in("collection") == rows_in("unplaced_cards")
-  assert rows_in("unplaced_cards") == [#("lea", "1", 4), #("lea", "2", 1)]
-}
-
-pub fn replace_truncates_both_and_refills_only_collection_test() {
+pub fn replace_truncates_and_refills_collection_test() {
   use _db <- test_db.with_temp_db()
 
   let assert Ok(Nil) = collection_dao.upsert_cards([#("lea", "1", 4)])
   let assert Ok(Nil) = collection_dao.replace_collection([#("blb", "9", 1)])
 
   assert rows_in("collection") == [#("blb", "9", 1)]
-  assert rows_in("unplaced_cards") == []
 }
 
 pub fn list_cards_orders_by_key_test() {

@@ -55,3 +55,36 @@ enum UpdateBulkSpecResponse {
 method UpdateBulkSpec(
   UpdateBulkSpecRequest
 ): UpdateBulkSpecResponse = 403;
+
+struct CardPlacement {
+  set_code: string = 0;
+  collector_number: string = 1;
+  location_name: string = 2;
+  quantity: int32 = 3;
+}
+
+struct MarkCardsPlacedRequest {
+  placements: [CardPlacement] = 0;
+}
+
+enum MarkCardsPlacedResponse {
+  success = 1;
+  error = 2;
+}
+
+method MarkCardsPlaced(
+  MarkCardsPlacedRequest
+): MarkCardsPlacedResponse = 307;
+
+struct UnmarkCardsPlacedRequest {
+  placements: [CardPlacement] = 0;
+}
+
+enum UnmarkCardsPlacedResponse {
+  success = 1;
+  error = 2;
+}
+
+method UnmarkCardsPlaced(
+  UnmarkCardsPlacedRequest
+): UnmarkCardsPlacedResponse = 308;

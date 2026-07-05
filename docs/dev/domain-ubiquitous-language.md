@@ -27,16 +27,15 @@ Boundary notes:
 ## Collection Import
 
 Purpose:
-- Parse, validate, and persist the owned collection and the queue of newly-added cards awaiting physical placement.
+- Parse, validate, and persist the owned collection.
 
 Core terms:
 - Collection: the current owned cards (card key → quantity). The single source of truth other contexts read from.
-- UnplacedCards: the sorting queue of additions awaiting physical placement — same shape as Collection. AddCards enqueues here; an import clears it.
-- ManualAddition: an incremental, synchronous addition of staged cards (AddCards command). Upserts both the collection and the unplaced queue, summing quantities per key.
-- Import: a full statement of the collection (ImportCollection command). Replaces the collection outright and clears the unplaced queue — an import is not placement work.
+- ManualAddition: an incremental, synchronous addition of staged cards (AddCards command). Upserts the collection, summing quantities per key.
+- Import: a full statement of the collection (ImportCollection command). Replaces the collection outright.
 
 Boundary notes:
-- Owns collection and unplaced-queue semantics.
+- Owns collection semantics only. Placement — whether a card is physically sorted — is Inventory Planning's, derived from the collection; Collection holds no placement state.
 - Delegates card enrichment language to Card Catalog.
 
 ## Inventory Planning
@@ -61,11 +60,21 @@ Core terms:
 - BulkSpec: the single leftover-remainder location plus the sort-key list ordering its pile.
 - InventoryProjection: the computed placement — locations in cascade order, each with its cards and
   total, plus a count of collection keys unknown to the catalog.
+- PlacedCard: a ledger row recording that some copies of a key were physically placed in a location
+  (`(set_code, collector_number, location) → quantity`). The write side of placement — MarkCardsPlaced
+  adds to it, UnmarkCardsPlaced subtracts.
+- Placement: one validated MarkCardsPlaced/UnmarkCardsPlaced entry (canonical key, non-empty location,
+  positive quantity).
+- Unplaced: **always derived, never stored** — collection quantity minus placed quantity per key,
+  clamped at zero. Storing it would let a card silently become lost; deriving it is self-healing.
+- PlacementGuidance: the derived worklist — locations still holding unplaced copies (cascade order,
+  empty ones dropped), each card's copies-still-to-place plus its cascade-order neighbours for
+  physical orientation, and the grand total of unplaced copies.
 - GroupingStrategy / SortStrategy: legacy planning-preference concepts. They survive **only** for the
   default-sort/grouping preferences; the projection no longer groups or sorts by them.
 
 Boundary notes:
-- Owns cascade, rule, and projection semantics.
+- Owns cascade, rule, projection, and placement semantics.
 - Consumes collection and catalog data as inputs through application ports.
 - Also owns *planning* preferences (default sort/grouping) — there is no separate Settings
   context. Target-set preferences for completion tracking belong to Insights, not here.

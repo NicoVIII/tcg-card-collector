@@ -86,18 +86,16 @@ fn delete_all(table: String) -> Result(Nil, String) {
 // Acceptable for a single-user app: no concurrent writer can interleave, and a
 // mid-write failure surfaces as an error the calling handler reports.
 
-/// An import states the whole collection: truncate both the collection and the
-/// unplaced sorting queue, then refill only the collection. An import is not
-/// placement work, so it leaves the queue empty.
+/// An import states the whole collection: truncate the collection, then refill
+/// it. Placement state lives in inventory planning and derives from here.
 pub fn replace_collection(rows: List(CardRow)) -> Result(Nil, String) {
   use _ <- result.try(delete_all("collection"))
-  use _ <- result.try(delete_all("unplaced_cards"))
   insert_rows("collection", rows)
 }
 
-/// An add grows the collection and enqueues the same cards for physical
-/// placement, so it sums each row's quantity into both tables identically.
+/// An add grows the collection, summing each row's quantity into the existing
+/// key. Whether the new copies are physically placed is inventory planning's
+/// concern, derived from the collection rather than tracked here.
 pub fn upsert_cards(rows: List(CardRow)) -> Result(Nil, String) {
-  use _ <- result.try(upsert_rows("collection", rows))
-  upsert_rows("unplaced_cards", rows)
+  upsert_rows("collection", rows)
 }

@@ -1,6 +1,11 @@
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
+import gleam/list
 import inventory_planning/application/commands/delete_rule/handler as delete_rule_handler
+import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
+import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
+import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
+import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/handler as update_bulk_spec_handler
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/update_preferences/handler as update_preferences_handler
@@ -10,6 +15,7 @@ import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_
 import inventory_planning/application/queries/get_bulk_spec/handler as get_bulk_spec_handler
 import inventory_planning/application/queries/get_preferences/handler as get_preferences_handler
 import inventory_planning/application/queries/list_rules/handler as list_rules_handler
+import inventory_planning/application/queries/placement_guidance/handler as placement_guidance_handler
 import inventory_planning/application/queries/projection/handler as projection_handler
 import inventory_planning/driver/dependencies.{type Dependencies}
 import inventory_planning/driver/http/json_codec as inventory_codec
@@ -152,6 +158,111 @@ pub fn handle_update_bulk_spec(
           )
       }
   }
+}
+
+pub fn handle_placement_guidance(
+  deps: Dependencies,
+) -> Response(mist.ResponseData) {
+  case
+    placement_guidance_handler.execute(
+      placement_guidance_handler.GetPlacementGuidanceQuery,
+      deps.get_placement_guidance_ports,
+    )
+  {
+    Ok(guidance) ->
+      helpers.json_response(
+        200,
+        inventory_codec.encode_placement_guidance(guidance),
+      )
+    Error(reason) -> helpers.json_response(500, json_codec.encode_error(reason))
+  }
+}
+
+pub fn handle_mark_cards_placed(
+  req: Request(mist.Connection),
+  deps: Dependencies,
+) -> Response(mist.ResponseData) {
+  use body <- helpers.with_json_body(req)
+  case inventory_codec.decode_placements_body(body) {
+    Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
+    Ok(placements) ->
+      case
+        mark_cards_placed_handler.execute(
+          mark_cards_placed_handler.MarkCardsPlacedCommand(placements: list.map(
+            placements,
+            to_mark_raw_placement,
+          )),
+          deps.mark_cards_placed_port,
+        )
+      {
+        Ok(_) ->
+          helpers.json_response(200, json_codec.encode_ok("cards placed"))
+        Error(mark_cards_placed_ports.InvalidPlacements) ->
+          helpers.json_response(
+            400,
+            json_codec.encode_error("invalid placements"),
+          )
+        Error(mark_cards_placed_ports.PersistenceFailed(_)) ->
+          helpers.json_response(
+            500,
+            json_codec.encode_error("failed to mark cards placed"),
+          )
+      }
+  }
+}
+
+pub fn handle_unmark_cards_placed(
+  req: Request(mist.Connection),
+  deps: Dependencies,
+) -> Response(mist.ResponseData) {
+  use body <- helpers.with_json_body(req)
+  case inventory_codec.decode_placements_body(body) {
+    Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
+    Ok(placements) ->
+      case
+        unmark_cards_placed_handler.execute(
+          unmark_cards_placed_handler.UnmarkCardsPlacedCommand(
+            placements: list.map(placements, to_unmark_raw_placement),
+          ),
+          deps.unmark_cards_placed_port,
+        )
+      {
+        Ok(_) ->
+          helpers.json_response(200, json_codec.encode_ok("cards unplaced"))
+        Error(unmark_cards_placed_ports.InvalidPlacements) ->
+          helpers.json_response(
+            400,
+            json_codec.encode_error("invalid placements"),
+          )
+        Error(unmark_cards_placed_ports.PersistenceFailed(_)) ->
+          helpers.json_response(
+            500,
+            json_codec.encode_error("failed to unmark cards placed"),
+          )
+      }
+  }
+}
+
+fn to_mark_raw_placement(
+  body: inventory_codec.PlacementBody,
+) -> mark_cards_placed_handler.RawPlacement {
+  mark_cards_placed_handler.RawPlacement(
+    set_code: body.set_code,
+    collector_number: body.collector_number,
+    location_name: body.location_name,
+    quantity: body.quantity,
+  )
+}
+
+fn to_unmark_raw_placement(
+  body: inventory_codec.PlacementBody,
+) -> unmark_cards_placed_handler.RawPlacement {
+  unmark_cards_placed_handler.RawPlacement(
+    set_code: body.set_code,
+    collector_number: body.collector_number,
+    location_name: body.location_name,
+    quantity: body.quantity,
+  )
 }
 
 pub fn handle_get_settings(deps: Dependencies) -> Response(mist.ResponseData) {

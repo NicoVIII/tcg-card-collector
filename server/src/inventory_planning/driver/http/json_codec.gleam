@@ -4,6 +4,7 @@ import gleam/result
 import inventory_planning/application/queries/get_bulk_spec/ports as bulk_spec_ports
 import inventory_planning/application/queries/get_preferences/ports as preferences_ports
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
+import inventory_planning/application/queries/placement_guidance/ports as placement_guidance_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
 
 pub fn encode_inventory_rules(
@@ -55,6 +56,86 @@ fn encode_card(card: projection_ports.ProjectionCard) -> json.Json {
     #("rarity", json.string(card.rarity)),
     #("card_type", json.string(card.card_type)),
   ])
+}
+
+pub fn encode_placement_guidance(
+  guidance: placement_guidance_ports.PlacementGuidance,
+) -> String {
+  json.object([
+    #(
+      "locations",
+      json.array(guidance.locations, of: encode_placement_location),
+    ),
+    #("total_unplaced", json.int(guidance.total_unplaced)),
+  ])
+  |> json.to_string
+}
+
+fn encode_placement_location(
+  location: placement_guidance_ports.PlacementLocation,
+) -> json.Json {
+  json.object([
+    #("location_name", json.string(location.location_name)),
+    #("total_quantity", json.int(location.total_quantity)),
+    #("cards", json.array(location.cards, of: encode_placement_card)),
+  ])
+}
+
+fn encode_placement_card(
+  card: placement_guidance_ports.PlacementCard,
+) -> json.Json {
+  json.object([
+    #("name", json.string(card.name)),
+    #("set_code", json.string(card.set_code)),
+    #("collector_number", json.string(card.collector_number)),
+    #("to_place_quantity", json.int(card.to_place_quantity)),
+    #("before", json.array(card.before, of: encode_placement_neighbor)),
+    #("after", json.array(card.after, of: encode_placement_neighbor)),
+  ])
+}
+
+fn encode_placement_neighbor(
+  neighbor: placement_guidance_ports.PlacementNeighbor,
+) -> json.Json {
+  json.object([
+    #("name", json.string(neighbor.name)),
+    #("set_code", json.string(neighbor.set_code)),
+    #("collector_number", json.string(neighbor.collector_number)),
+    #("already_placed", json.bool(neighbor.already_placed)),
+  ])
+}
+
+pub type PlacementBody {
+  PlacementBody(
+    set_code: String,
+    collector_number: String,
+    location_name: String,
+    quantity: Int,
+  )
+}
+
+pub fn decode_placements_body(
+  json_string: String,
+) -> Result(List(PlacementBody), String) {
+  let placement_decoder = {
+    use set_code <- decode.field("set_code", decode.string)
+    use collector_number <- decode.field("collector_number", decode.string)
+    use location_name <- decode.field("location_name", decode.string)
+    use quantity <- decode.field("quantity", decode.int)
+    decode.success(PlacementBody(
+      set_code:,
+      collector_number:,
+      location_name:,
+      quantity:,
+    ))
+  }
+  let decoder = {
+    use placements <- decode.field("placements", decode.list(placement_decoder))
+    decode.success(placements)
+  }
+
+  json.parse(from: json_string, using: decoder)
+  |> result.map_error(fn(_) { "invalid request body" })
 }
 
 pub fn encode_settings(

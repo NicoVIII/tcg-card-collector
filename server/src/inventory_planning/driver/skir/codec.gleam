@@ -1,8 +1,11 @@
 import gleam/list
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
+import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
+import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/update_preferences/ports as update_preferences_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
+import inventory_planning/application/queries/placement_guidance/ports as placement_guidance_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
 import shared/driver/skir/skirout/inventory_planning/commands as inventory_planning_commands
 import shared/driver/skir/skirout/inventory_planning/queries as inventory_planning_queries
@@ -102,6 +105,85 @@ pub fn map_delete_inventory_rule_result(
       Error(service.ServiceError(
         service.E500xInternalServerError,
         "failed to delete inventory rule",
+      ))
+  }
+}
+
+pub fn map_placement_guidance(
+  guidance: placement_guidance_ports.PlacementGuidance,
+) -> inventory_planning_queries.PlacementGuidance {
+  inventory_planning_queries.placement_guidance_new(
+    list.map(guidance.locations, map_placement_location),
+    guidance.total_unplaced,
+  )
+}
+
+fn map_placement_location(
+  location: placement_guidance_ports.PlacementLocation,
+) -> inventory_planning_queries.PlacementLocation {
+  inventory_planning_queries.placement_location_new(
+    list.map(location.cards, map_placement_card),
+    location.location_name,
+    location.total_quantity,
+  )
+}
+
+fn map_placement_card(
+  card: placement_guidance_ports.PlacementCard,
+) -> inventory_planning_queries.PlacementCard {
+  inventory_planning_queries.placement_card_new(
+    list.map(card.after, map_placement_neighbor),
+    list.map(card.before, map_placement_neighbor),
+    card.collector_number,
+    card.name,
+    card.set_code,
+    card.to_place_quantity,
+  )
+}
+
+fn map_placement_neighbor(
+  neighbor: placement_guidance_ports.PlacementNeighbor,
+) -> inventory_planning_queries.PlacementNeighbor {
+  inventory_planning_queries.placement_neighbor_new(
+    neighbor.already_placed,
+    neighbor.collector_number,
+    neighbor.name,
+    neighbor.set_code,
+  )
+}
+
+pub fn map_mark_cards_placed_result(
+  result: Result(Nil, mark_cards_placed_ports.MarkCardsPlacedError),
+) -> Result(
+  inventory_planning_commands.MarkCardsPlacedResponse,
+  service.ServiceError,
+) {
+  case result {
+    Ok(_) -> Ok(inventory_planning_commands.MarkCardsPlacedResponseSuccess)
+    Error(mark_cards_placed_ports.InvalidPlacements) ->
+      Error(service.ServiceError(service.E400xBadRequest, "invalid placements"))
+    Error(mark_cards_placed_ports.PersistenceFailed(_)) ->
+      Error(service.ServiceError(
+        service.E500xInternalServerError,
+        "failed to mark cards placed",
+      ))
+  }
+}
+
+pub fn map_unmark_cards_placed_result(
+  result: Result(Nil, unmark_cards_placed_ports.UnmarkCardsPlacedError),
+) -> Result(
+  inventory_planning_commands.UnmarkCardsPlacedResponse,
+  service.ServiceError,
+) {
+  case result {
+    Ok(_) -> Ok(inventory_planning_commands.UnmarkCardsPlacedResponseSuccess)
+    Error(unmark_cards_placed_ports.InvalidPlacements) ->
+      Error(service.ServiceError(service.E400xBadRequest, "invalid placements"))
+    Error(unmark_cards_placed_ports.PersistenceFailed(_)) ->
+      Error(service.ServiceError(
+        service.E500xInternalServerError,
+        "failed to unmark cards placed",
       ))
   }
 }
