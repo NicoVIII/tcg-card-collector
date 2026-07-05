@@ -13,13 +13,7 @@ Code is organized **context-first, then layer**: `server/src/<bounded_context>/{
 - **`bootstrap/` is the composition root**: it may import anything. Only `driver/` may import `bootstrap/` (DI injection seam).
 - **Generated skir code** (`src/shared/driver/skir/skirout/`) is linted like handwritten code — it categorizes as shared `Driver(Skir)` and there is no lint exclusion. Only `gleam format` skips it (the `find ... ! -path '*/skirout/*'` in `server/justfile`).
 
-**Current cross-BC allowlist** (declared in `test/lint.gleam`):
-- `inventory_planning/infrastructure` → `catalog/driver/gleam/` (via `catalog_api`)
-- `inventory_planning/infrastructure` → `collection/driver/gleam/` (via `collection_api`)
-- `insights/infrastructure` → `catalog/driver/gleam/` (via `catalog_api`)
-- `insights/infrastructure` → `collection/driver/gleam/` (via `collection_api`)
-
-Allowlist additions must stay explicit one-to-one context pairs — no wildcards or blanket layer bypasses.
+**Current cross-BC allowlist**: declared in `test/lint.gleam` (`allowed_cross_bc`), documented with a diagram in [docs/dev/bounded-context-dependencies.md](../docs/dev/bounded-context-dependencies.md) — keep the doc in sync when the list changes. Additions must stay explicit one-to-one context pairs — no wildcards or blanket layer bypasses.
 
 Four bounded contexts under `server/src/`: **catalog**, **collection**, **inventory_planning**, **insights**. Planning preferences (default sort/grouping) live inside inventory_planning — there is no separate Settings context. Target-set / completion-tracking preferences live inside insights instead — see the boundary note in `docs/dev/domain-ubiquitous-language.md`. Domain vocabulary and context ownership rules: read `docs/dev/domain-ubiquitous-language.md` before touching domain code.
 
