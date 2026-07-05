@@ -16,10 +16,12 @@ import inventory_planning/driver/http/handler as inventory_http
 import mist
 import shared/driver/http/helpers
 import shared/driver/http/json_codec
+import shared/driver/http/static_files
 import shared/infrastructure/os_runtime
 
 pub fn start(deps: Dependencies) -> Nil {
   let port = read_port()
+  let static_root = read_static_root()
   let server_name = process.new_name("skir_rpc_server")
 
   // The service term is a sharing-heavy DAG (flat size in the tens of GB);
@@ -37,7 +39,7 @@ pub fn start(deps: Dependencies) -> Nil {
     })
 
   let handler = fn(req: Request(mist.Connection)) -> Response(mist.ResponseData) {
-    handle_request(req, deps, server_name)
+    handle_request(req, deps, server_name, static_root)
   }
 
   let assert Ok(_) =
@@ -62,10 +64,15 @@ fn read_port() -> Int {
   |> result.unwrap(8080)
 }
 
+fn read_static_root() -> String {
+  os_runtime.getenv_or("STATIC_DIR", "./static")
+}
+
 fn handle_request(
   req: Request(mist.Connection),
   deps: Dependencies,
   server_name: skir_setup.ServerName,
+  static_root: String,
 ) -> Response(mist.ResponseData) {
   let path = path_without_query(req.path)
 
@@ -112,7 +119,18 @@ fn handle_request(
       insights_http.handle_unmark_target_set(req, deps.insights)
     Get, "/api/skir" | Post, "/api/skir" ->
       skir_router.handle_request(req, server_name)
+    Get, path -> handle_get_fallback(path, static_root)
     _, _ -> helpers.json_response(404, json_codec.encode_error("not found"))
+  }
+}
+
+fn handle_get_fallback(
+  path: String,
+  static_root: String,
+) -> Response(mist.ResponseData) {
+  case string.starts_with(path, "/api") {
+    True -> helpers.json_response(404, json_codec.encode_error("not found"))
+    False -> static_files.serve(static_root, path)
   }
 }
 
