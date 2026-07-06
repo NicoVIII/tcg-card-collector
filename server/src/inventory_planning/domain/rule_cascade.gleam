@@ -194,57 +194,104 @@ fn build_bulk(
   })
 }
 
-// Bucket set date: prefer the catalog's table entry; fall back to the
-// representative card's released_at (cards in a {set_code} bucket share the same
-// set_code so their released_at is consistent), then to "" (sorts first).
-fn set_date(
+// A fanned-out bucket with the facts ordering needs precomputed, so the sort
+// comparator doesn't rescan the assignment list on every comparison. All
+// same-name assignments share the template attribute value by construction,
+// so the first one is a faithful witness for color/type comparisons.
+type FannedBucket {
+  FannedBucket(
+    name: String,
+    witness: Assignment,
+    set_date: String,
+    assignments: List(Assignment),
+  )
+}
+
+// Bucket set date: prefer the catalog's table entry; fall back to the minimum
+// non-empty released_at among the bucket's cards (card-level dates can vary
+// within a set, e.g. promos), then to "" (sorts first).
+fn bucket_set_date(
   set_code: String,
-  card_released_at: String,
+  assignments: List(Assignment),
   set_dates: Dict(String, String),
 ) -> String {
-  let from_dict = result.unwrap(dict.get(set_dates, set_code), "")
-  case from_dict {
-    "" -> card_released_at
-    d -> d
+  case result.unwrap(dict.get(set_dates, set_code), "") {
+    "" ->
+      assignments
+      |> list.filter_map(fn(a) {
+        case a.card.released_at {
+          "" -> Error(Nil)
+          date -> Ok(date)
+        }
+      })
+      |> list.sort(string.compare)
+      |> list.first
+      |> result.unwrap("")
+    date -> date
+  }
+}
+
+fn fanned_bucket(
+  name: String,
+  assignments: List(Assignment),
+  set_dates: Dict(String, String),
+) -> Result(FannedBucket, Nil) {
+  case assignments {
+    [] -> Error(Nil)
+    [witness, ..] ->
+      Ok(FannedBucket(
+        name:,
+        witness:,
+        set_date: bucket_set_date(
+          card_key.set_code_string(witness.card.key),
+          assignments,
+          set_dates,
+        ),
+        assignments:,
+      ))
   }
 }
 
 fn compare_by_attribute(
   attribute: location_target.TemplateAttribute,
-  set_dates: Dict(String, String),
-  l: Assignment,
-  r: Assignment,
+  l: FannedBucket,
+  r: FannedBucket,
 ) -> order.Order {
   case attribute {
-    location_target.SetCodeAttribute -> {
-      let code_l = card_key.set_code_string(l.card.key)
-      let code_r = card_key.set_code_string(r.card.key)
-      let date_l = set_date(code_l, l.card.released_at, set_dates)
-      let date_r = set_date(code_r, r.card.released_at, set_dates)
+    location_target.SetCodeAttribute ->
       order.break_tie(
-        string.compare(date_l, date_r),
-        string.compare(code_l, code_r),
+        string.compare(l.set_date, r.set_date),
+        string.compare(
+          card_key.set_code_string(l.witness.card.key),
+          card_key.set_code_string(r.witness.card.key),
+        ),
       )
-    }
     location_target.ColorIdentityAttribute ->
-      sort_spec.compare_cards([sort_spec.ByColorIdentity], l.card, r.card)
+      sort_spec.compare_cards(
+        [sort_spec.ByColorIdentity],
+        l.witness.card,
+        r.witness.card,
+      )
     location_target.TypeAttribute ->
-      sort_spec.compare_cards([sort_spec.ByCardType], l.card, r.card)
+      sort_spec.compare_cards(
+        [sort_spec.ByCardType],
+        l.witness.card,
+        r.witness.card,
+      )
   }
 }
 
 fn compare_buckets(
   target: location_target.LocationTarget,
-  set_dates: Dict(String, String),
-  l: Assignment,
-  r: Assignment,
+  l: FannedBucket,
+  r: FannedBucket,
 ) -> order.Order {
   case target {
-    location_target.Fixed(_) -> string.compare(l.location_name, r.location_name)
+    location_target.Fixed(_) -> string.compare(l.name, r.name)
     location_target.Template(_, attribute, _) ->
       order.break_tie(
-        compare_by_attribute(attribute, set_dates, l, r),
-        string.compare(l.location_name, r.location_name),
+        compare_by_attribute(attribute, l, r),
+        string.compare(l.name, r.name),
       )
   }
 }
@@ -258,27 +305,21 @@ fn buckets_for_rule(
   assignments: List(Assignment),
   set_release_dates: Dict(String, String),
 ) -> List(LocationBucket) {
-  let names = assignments |> list.map(fn(a) { a.location_name }) |> list.unique
-  names
-  |> list.sort(fn(name_a, name_b) {
-    // All same-name assignments share the template attribute value; first is a
-    // faithful representative for ordering.
-    let rep_a = list.find(assignments, fn(a) { a.location_name == name_a })
-    let rep_b = list.find(assignments, fn(a) { a.location_name == name_b })
-    case rep_a, rep_b {
-      Ok(a), Ok(b) -> compare_buckets(rule.target, set_release_dates, a, b)
-      _, _ -> string.compare(name_a, name_b)
-    }
+  assignments
+  |> list.map(fn(a) { a.location_name })
+  |> list.unique
+  |> list.filter_map(fn(name) {
+    let bucket = list.filter(assignments, fn(a) { a.location_name == name })
+    fanned_bucket(name, bucket, set_release_dates)
   })
-  |> list.map(fn(name) {
+  |> list.sort(fn(l, r) { compare_buckets(rule.target, l, r) })
+  |> list.map(fn(bucket) {
     let cards =
-      assignments
-      |> list.filter(fn(a) { a.location_name == name })
-      |> list.sort(fn(a, b) {
+      list.sort(bucket.assignments, fn(a, b) {
         sort_spec.compare_cards(rule.sort_keys, a.card, b.card)
       })
     LocationBucket(
-      location_name: name,
+      location_name: bucket.name,
       rule_id: Some(rule.id),
       total_quantity: total_quantity(cards),
       cards:,

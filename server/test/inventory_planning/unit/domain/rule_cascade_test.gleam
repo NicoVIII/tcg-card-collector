@@ -413,6 +413,38 @@ pub fn set_fan_out_dict_overrides_card_date_test() {
   assert names == ["Binder aaa", "Binder zzz"]
 }
 
+// The card-date fallback takes the minimum non-empty released_at among the
+// bucket's cards — a date-less card (which is canonically first and would be
+// the bucket witness) must not drag the bucket's date down to "unknown".
+pub fn set_fan_out_fallback_skips_empty_card_dates_test() {
+  let cards = [
+    // "zzz" bucket: one date-less card + one dated 2015 → bucket date 2015
+    card("zzz", "1", "Dateless", 1, "", "o1", attrs.Common, "R"),
+    card("zzz", "2", "Dated Late", 1, "2015-01-01", "o2", attrs.Common, "R"),
+    card("aaa", "3", "Dated Early", 1, "2010-01-01", "o3", attrs.Common, "R"),
+  ]
+  let buckets = rule_cascade.project(set_binder_cascade(), cards, dict.new())
+  let names = list.map(buckets, fn(b) { b.location_name })
+  // aaa (2010) before zzz (2015); witness-date semantics would put zzz ("")
+  // first instead.
+  assert names == ["Binder aaa", "Binder zzz"]
+}
+
+// Mixed sources compare against each other: one set's date from the dict, the
+// other falling back to its card date.
+pub fn set_fan_out_mixed_dict_and_fallback_test() {
+  // "zzz" only in the dict (2005) — its card date is empty, so the dict is the
+  // sole source; "aaa" absent from the dict → card date (2010).
+  let dates = dict.from_list([#("zzz", "2005-01-01")])
+  let cards = [
+    card("zzz", "1", "Dict Card", 1, "", "o1", attrs.Common, "R"),
+    card("aaa", "2", "Fallback Card", 1, "2010-01-01", "o2", attrs.Common, "R"),
+  ]
+  let buckets = rule_cascade.project(set_binder_cascade(), cards, dates)
+  let names = list.map(buckets, fn(b) { b.location_name })
+  assert names == ["Binder zzz", "Binder aaa"]
+}
+
 // Same date → alphabetical set_code tie-break.
 pub fn set_fan_out_same_date_alphabetical_tiebreak_test() {
   let dates = dict.from_list([#("bbb", "2000-01-01"), #("aaa", "2000-01-01")])
