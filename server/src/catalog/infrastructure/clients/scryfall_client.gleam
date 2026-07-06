@@ -1,13 +1,25 @@
+import catalog/domain/card_set
+import catalog/infrastructure/clients/scryfall_mapper
 import gleam/io
+import gleam/list
+import gleam/option.{None, Some}
 import gleam/string
 import shared/infrastructure/os_runtime
 import shared/infrastructure/shell
+import simplifile
 
 pub type Downloader {
   Downloader(download: fn(String) -> Result(String, String))
 }
 
 const bulk_metadata_url = "https://api.scryfall.com/bulk-data/default_cards"
+
+const sets_url = "https://api.scryfall.com/sets"
+
+// Scryfall /sets is one page today; the loop cap guards against malformed
+// responses producing infinite chains. No inter-request delay: the set list
+// is tiny and runs strictly after the card bulk import consumed its download.
+const page_cap = 50
 
 fn log(message: String) -> Nil {
   io.println("[refresh] " <> message)
@@ -92,6 +104,58 @@ pub fn fetch_metadata(io: Downloader) -> Result(#(String, String), String) {
           }
       }
     }
+  }
+}
+
+pub fn fetch_sets(io: Downloader) -> Result(List(card_set.CardSet), String) {
+  fetch_sets_loop(io, sets_url, [], 0)
+}
+
+fn fetch_sets_loop(
+  io: Downloader,
+  url: String,
+  acc: List(card_set.CardSet),
+  page: Int,
+) -> Result(List(card_set.CardSet), String) {
+  case page >= page_cap {
+    True -> {
+      log("sets: page cap reached")
+      Ok(acc)
+    }
+    False ->
+      case io.download(url) {
+        Error(reason) -> {
+          let simplified = shell.simplify_error(reason)
+          log_error("sets download", simplified)
+          Error(simplified)
+        }
+        Ok(path) ->
+          case simplifile.read(path) {
+            Error(err) -> {
+              let msg = "failed to read sets page: " <> string.inspect(err)
+              log_error("sets read", msg)
+              Error(msg)
+            }
+            Ok(content) ->
+              case scryfall_mapper.parse_sets_page(content) {
+                Error(reason) -> {
+                  log_error("sets parse", reason)
+                  Error(reason)
+                }
+                Ok(#(sets, next_page)) ->
+                  case next_page {
+                    None -> Ok(list.append(acc, sets))
+                    Some(next_url) ->
+                      fetch_sets_loop(
+                        io,
+                        next_url,
+                        list.append(acc, sets),
+                        page + 1,
+                      )
+                  }
+              }
+          }
+      }
   }
 }
 

@@ -22,21 +22,47 @@ fn import_cards_ok(_) {
   Ok(Nil)
 }
 
+fn import_sets_ok() {
+  Ok(Nil)
+}
+
 fn build_ports(
   repo repo,
   fetch_metadata fetch_metadata,
   import_cards import_cards,
 ) {
-  build_ports_with_save(repo:, fetch_metadata:, import_cards:, save: fn(record) {
-    ref.set(repo, Some(record))
-    Ok(Nil)
-  })
+  build_ports_full(
+    repo:,
+    fetch_metadata:,
+    import_cards:,
+    import_sets: import_sets_ok,
+    save: fn(record) {
+      ref.set(repo, Some(record))
+      Ok(Nil)
+    },
+  )
 }
 
 fn build_ports_with_save(
   repo repo,
   fetch_metadata fetch_metadata,
   import_cards import_cards,
+  save save,
+) {
+  build_ports_full(
+    repo:,
+    fetch_metadata:,
+    import_cards:,
+    import_sets: import_sets_ok,
+    save:,
+  )
+}
+
+fn build_ports_full(
+  repo repo,
+  fetch_metadata fetch_metadata,
+  import_cards import_cards,
+  import_sets import_sets,
   save save,
 ) {
   refresh_ports.RefreshCatalogPorts(
@@ -47,6 +73,7 @@ fn build_ports_with_save(
     ),
     fetch_metadata:,
     import_cards:,
+    import_sets:,
   )
 }
 
@@ -240,6 +267,93 @@ pub fn import_succeeds_but_persist_fails_reports_error_test() {
     == Error(refresh_ports.RefreshCatalogError(
       reason: "persist failed: disk full",
     ))
+}
+
+// Sets failure hard-fails the import: persists Failed with the prior
+// last_upstream_updated_at, ensuring the next probe re-imports and retries.
+pub fn sets_import_fails_persists_failed_test() {
+  let prior =
+    ProbeResult(
+      last_probe_at: timestamp.from_unix_seconds(0),
+      last_upstream_updated_at: Some("v0"),
+      status: Succeeded,
+    )
+  let repo = ref.new(Some(prior))
+  let result =
+    handler.execute(
+      handler.RefreshCatalogCommand,
+      build_ports_full(
+        repo:,
+        fetch_metadata: fetch_metadata_ok,
+        import_cards: import_cards_ok,
+        import_sets: fn() { Error("sets network error") },
+        save: fn(record) {
+          ref.set(repo, Some(record))
+          Ok(Nil)
+        },
+      ),
+    )
+  assert result
+    == Error(refresh_ports.RefreshCatalogError(reason: "sets network error"))
+
+  let assert Some(saved) = ref.get(repo)
+  // create_failed preserves the prior's last_upstream_updated_at — "v0" not
+  // the newly-fetched "v1" — so the next probe re-imports and retries sets.
+  assert saved
+    == ProbeResult(
+      last_probe_at: timestamp.from_unix_seconds(now),
+      last_upstream_updated_at: Some("v0"),
+      status: Failed(reason: "sets network error"),
+    )
+}
+
+// Probe-not-due path never runs import_sets (no contact with upstream).
+pub fn probe_not_due_does_not_call_import_sets_test() {
+  let recent_probe =
+    ProbeResult(
+      last_probe_at: timestamp.from_unix_seconds(now - 1),
+      last_upstream_updated_at: Some("v1"),
+      status: Succeeded,
+    )
+  let repo = ref.new(Some(recent_probe))
+  let result =
+    handler.execute(
+      handler.RefreshCatalogCommand,
+      build_ports_full(
+        repo:,
+        fetch_metadata: fn() { panic },
+        import_cards: fn(_) { panic },
+        import_sets: fn() { panic },
+        save: fn(_) { panic },
+      ),
+    )
+  assert result == Ok(Nil)
+}
+
+// Skip path (upstream unchanged) also does not call import_sets.
+pub fn skip_path_does_not_call_import_sets_test() {
+  let prior =
+    ProbeResult(
+      last_probe_at: timestamp.from_unix_seconds(0),
+      last_upstream_updated_at: Some("v1"),
+      status: Succeeded,
+    )
+  let repo = ref.new(Some(prior))
+  let result =
+    handler.execute(
+      handler.RefreshCatalogCommand,
+      build_ports_full(
+        repo:,
+        fetch_metadata: fetch_metadata_ok,
+        import_cards: fn(_) { panic },
+        import_sets: fn() { panic },
+        save: fn(record) {
+          ref.set(repo, Some(record))
+          Ok(Nil)
+        },
+      ),
+    )
+  assert result == Ok(Nil)
 }
 
 pub fn fetch_fails_and_persist_also_fails_combines_reasons_test() {

@@ -1,3 +1,4 @@
+import catalog/domain/card_set
 import catalog/domain/refresh_record
 import gleam/dynamic/decode
 import gleam/io
@@ -220,6 +221,88 @@ pub fn name_lookup() -> List(#(String, String, String)) {
     name_row_decoder(),
   )
   |> result.unwrap([])
+}
+
+// 5 params per row; stay under the SQLite 999-param cap.
+const replace_sets_chunk_size = 150
+
+pub fn replace_sets(sets: List(card_set.CardSet)) -> Result(Nil, String) {
+  use _ <- result.try(
+    sqlite_store.exec("DELETE FROM catalog_sets;", [])
+    |> result.map_error(fn(e) { e.message }),
+  )
+  sets
+  |> list.sized_chunk(replace_sets_chunk_size)
+  |> list.try_each(insert_sets_chunk)
+}
+
+fn insert_sets_chunk(chunk: List(card_set.CardSet)) -> Result(Nil, String) {
+  case chunk {
+    [] -> Ok(Nil)
+    _ -> {
+      let placeholders =
+        chunk
+        |> list.map(fn(_) { "(?,?,?,?,?)" })
+        |> string.join(", ")
+      let params =
+        chunk
+        |> list.flat_map(fn(s: card_set.CardSet) {
+          [
+            sqlight.text(s.code),
+            sqlight.text(s.name),
+            sqlight.text(s.released_at),
+            sqlight.int(s.card_count),
+            sqlight.text(s.icon_svg_uri),
+          ]
+        })
+      sqlite_store.exec(
+        "INSERT INTO catalog_sets (set_code, name, released_at, card_count, icon_svg_uri) VALUES "
+          <> placeholders
+          <> ";",
+        params,
+      )
+      |> result.map_error(fn(e) { e.message })
+    }
+  }
+}
+
+fn set_date_row_decoder() {
+  use set_code <- decode.field(0, decode.string)
+  use released_at <- decode.field(1, decode.string)
+  decode.success(#(set_code, released_at))
+}
+
+pub fn get_set_release_dates(
+  set_codes: List(String),
+) -> List(#(String, String)) {
+  case set_codes {
+    [] -> []
+    _ ->
+      set_codes
+      |> list.sized_chunk(get_by_keys_batch_size)
+      |> list.flat_map(get_set_release_dates_chunk)
+  }
+}
+
+fn get_set_release_dates_chunk(codes: List(String)) -> List(#(String, String)) {
+  case codes {
+    [] -> []
+    _ -> {
+      let placeholders =
+        codes
+        |> list.map(fn(_) { "?" })
+        |> string.join(", ")
+      let params = list.map(codes, sqlight.text)
+      sqlite_store.query(
+        "SELECT set_code, released_at FROM catalog_sets WHERE set_code IN ("
+          <> placeholders
+          <> ");",
+        params,
+        set_date_row_decoder(),
+      )
+      |> result.unwrap([])
+    }
+  }
 }
 
 pub fn bulk_load(csv_path: String) -> Result(Nil, String) {

@@ -1,9 +1,11 @@
 import catalog/domain/card_printing
+import catalog/domain/card_set
 import gleam/dynamic/decode
 import gleam/int
 import gleam/io
 import gleam/json
 import gleam/list
+import gleam/option.{type Option, None}
 import gleam/string
 import shared/domain/card_key
 import shared/domain/non_empty_string
@@ -183,6 +185,70 @@ fn validate_card_rows(lines: List(String)) -> List(card_printing.CardPrinting) {
       }
     }
   })
+}
+
+fn set_object_decoder() {
+  use code <- decode.field("code", decode.string)
+  use name <- decode.field("name", decode.string)
+  use released_at <- decode.field("released_at", decode.optional(decode.string))
+  use card_count <- decode.field("card_count", decode.int)
+  use icon_svg_uri <- decode.field(
+    "icon_svg_uri",
+    decode.optional(decode.string),
+  )
+  decode.success(#(
+    code,
+    name,
+    option.unwrap(released_at, ""),
+    card_count,
+    option.unwrap(icon_svg_uri, ""),
+  ))
+}
+
+// Decodes one page of the Scryfall /sets response. Returns the sets on this
+// page and the next-page URL (Some only when has_more is true).
+pub fn parse_sets_page(
+  json_str: String,
+) -> Result(#(List(card_set.CardSet), Option(String)), String) {
+  let page_decoder = {
+    use has_more <- decode.field("has_more", decode.bool)
+    use next_page <- decode.optional_field(
+      "next_page",
+      None,
+      decode.optional(decode.string),
+    )
+    use data <- decode.field("data", decode.list(set_object_decoder()))
+    decode.success(#(has_more, next_page, data))
+  }
+  case json.parse(from: json_str, using: page_decoder) {
+    Error(e) -> Error("invalid sets json: " <> string.inspect(e))
+    Ok(#(has_more, next_page, raw_sets)) -> {
+      let sets =
+        list.filter_map(raw_sets, fn(raw) {
+          let #(code, name, released_at, card_count, icon_svg_uri) = raw
+          case
+            card_set.from_raw(
+              code: code,
+              name: name,
+              released_at: released_at,
+              card_count: card_count,
+              icon_svg_uri: icon_svg_uri,
+            )
+          {
+            Ok(s) -> Ok(s)
+            Error(reason) -> {
+              log_warn("skipped invalid set: " <> reason)
+              Error(Nil)
+            }
+          }
+        })
+      let next = case has_more {
+        True -> next_page
+        False -> None
+      }
+      Ok(#(sets, next))
+    }
+  }
 }
 
 // Transforms a downloaded Scryfall bulk-cards JSON file into a CSV ready for

@@ -1,0 +1,23 @@
+{
+  "object": "list",
+  "has_more": true,
+  "next_page": "https://fixture.local/sets?page=2",
+  "data": [
+    {
+      "object": "set",
+      "code": "lea",
+      "name": "Limited Edition Alpha",
+      "released_at": "1993-08-05",
+      "card_count": 295,
+      "icon_svg_uri": "https://svgs.scryfall.io/sets/lea.svg"
+    },
+    {
+      "object": "set",
+      "code": "grn",
+      "name": "Guilds of Ravnica",
+      "released_at": null,
+      "card_count": 259,
+      "icon_svg_uri": "https://svgs.scryfall.io/sets/grn.svg"
+    }
+  ]
+}

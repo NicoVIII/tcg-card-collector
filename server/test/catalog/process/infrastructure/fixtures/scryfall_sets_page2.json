@@ -1,0 +1,14 @@
+{
+  "object": "list",
+  "has_more": false,
+  "data": [
+    {
+      "object": "set",
+      "code": "m11",
+      "name": "Magic 2011",
+      "released_at": "2010-07-16",
+      "card_count": 249,
+      "icon_svg_uri": "https://svgs.scryfall.io/sets/m11.svg"
+    }
+  ]
+}

@@ -15,6 +15,9 @@ pub type FetchMetadataPort =
 pub type ImportCardsPort =
   fn(String) -> Result(Nil, String)
 
+pub type ImportSetsPort =
+  fn() -> Result(Nil, String)
+
 pub type RefreshRecordRepositoryPort {
   RefreshRecordRepositoryPort(
     load: fn() -> Option(ProbeResult),
@@ -28,6 +31,7 @@ pub type RefreshCatalogPorts {
     record_repository: RefreshRecordRepositoryPort,
     fetch_metadata: FetchMetadataPort,
     import_cards: ImportCardsPort,
+    import_sets: ImportSetsPort,
   )
 }
 

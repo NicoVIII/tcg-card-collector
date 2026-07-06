@@ -18,6 +18,7 @@ pub fn new_with_downloader(
     record_repository: record_repository_adapter(),
     fetch_metadata: fetch_metadata_adapter(downloader),
     import_cards: import_cards_adapter(downloader),
+    import_sets: import_sets_adapter(downloader),
   )
 }
 
@@ -50,5 +51,15 @@ fn import_cards_adapter(
     // Orchestrator owns the csv lifecycle; mapper handled its own ndjson.
     let _ = shell.run("rm -f " <> shell.quote(csv_path))
     outcome
+  }
+}
+
+fn import_sets_adapter(
+  downloader: scryfall_client.Downloader,
+) -> ports.ImportSetsPort {
+  // Sets run strictly after cards consumed the download path — safe to reuse.
+  fn() {
+    use sets <- result.try(scryfall_client.fetch_sets(downloader))
+    catalog_dao.replace_sets(sets)
   }
 }

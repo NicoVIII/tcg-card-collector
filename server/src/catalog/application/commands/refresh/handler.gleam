@@ -17,11 +17,15 @@ fn import_and_mark(
   meta: refresh_ports.BulkMetadata,
   now: Timestamp,
   import_cards: refresh_ports.ImportCardsPort,
+  import_sets: refresh_ports.ImportSetsPort,
 ) -> #(
   ProbeResult,
   command_result.CommandResult(refresh_ports.RefreshCatalogError),
 ) {
-  case import_cards(meta.download_uri) {
+  let outcome =
+    import_cards(meta.download_uri)
+    |> result.try(fn(_) { import_sets() })
+  case outcome {
     Ok(Nil) -> #(
       ProbeResult(
         last_probe_at: now,
@@ -42,6 +46,7 @@ fn apply_decision(
   meta: refresh_ports.BulkMetadata,
   now: Timestamp,
   import_cards: refresh_ports.ImportCardsPort,
+  import_sets: refresh_ports.ImportSetsPort,
 ) -> #(
   ProbeResult,
   command_result.CommandResult(refresh_ports.RefreshCatalogError),
@@ -57,7 +62,7 @@ fn apply_decision(
       ),
       Ok(Nil),
     )
-    Import -> import_and_mark(record, meta, now, import_cards)
+    Import -> import_and_mark(record, meta, now, import_cards, import_sets)
   }
 }
 
@@ -94,7 +99,7 @@ pub fn execute(
   })
 
   let #(new_record, outcome) =
-    apply_decision(record, meta, now, ports.import_cards)
+    apply_decision(record, meta, now, ports.import_cards, ports.import_sets)
   case ports.record_repository.save(new_record), outcome {
     Ok(Nil), _ -> outcome
     Error(save_reason), Ok(Nil) ->

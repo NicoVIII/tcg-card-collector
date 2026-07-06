@@ -4,6 +4,7 @@ import catalog/infrastructure/clients/scryfall_client
 import catalog/infrastructure/daos/catalog_dao
 import gleam/dynamic/decode
 import gleam/list
+import gleam/result
 import gleam/string
 import shared/infrastructure/stores/sqlite_store
 import sqlight
@@ -30,26 +31,41 @@ const bulk_fixture = fixture_dir <> "/scryfall_bulk_cards.json"
 const enriched_bulk_fixture = fixture_dir
   <> "/scryfall_bulk_cards_enriched.json"
 
+const sets_page1_fixture = fixture_dir <> "/scryfall_sets_page1.json"
+
+const sets_page2_fixture = fixture_dir <> "/scryfall_sets_page2.json"
+
 const fixture_updated_at = "2024-01-01T00:00:00.000Z"
 
-// Returns the fixture metadata path for any URL except those containing
-// "fixture.local" (the download_uri in scryfall_metadata.json), which get
-// the bulk cards fixture.
+// URL routing for fake downloaders:
+// - "fixture.local/bulk"   → bulk cards fixture (the download_uri in metadata.json)
+// - "fixture.local/sets"   → sets page 2 (next_page URL from page1 fixture)
+// - "scryfall.com/sets"    → sets page 1 (the /sets endpoint the client calls)
+// - anything else          → metadata fixture
+fn route_url(url: String, bulk: String) -> String {
+  case string.contains(url, "fixture.local/bulk") {
+    True -> bulk
+    False ->
+      case string.contains(url, "fixture.local/sets") {
+        True -> sets_page2_fixture
+        False ->
+          case string.contains(url, "scryfall.com/sets") {
+            True -> sets_page1_fixture
+            False -> metadata_fixture
+          }
+      }
+  }
+}
+
 fn fake_downloader() -> scryfall_client.Downloader {
   scryfall_client.Downloader(download: fn(url) {
-    case string.contains(url, "fixture.local") {
-      True -> Ok(bulk_fixture)
-      False -> Ok(metadata_fixture)
-    }
+    Ok(route_url(url, bulk_fixture))
   })
 }
 
 fn enriched_downloader() -> scryfall_client.Downloader {
   scryfall_client.Downloader(download: fn(url) {
-    case string.contains(url, "fixture.local") {
-      True -> Ok(enriched_bulk_fixture)
-      False -> Ok(metadata_fixture)
-    }
+    Ok(route_url(url, enriched_bulk_fixture))
   })
 }
 
@@ -120,6 +136,93 @@ pub fn import_populates_enrichment_attributes_test() {
   assert colorless.7 == "Artifact — Thopter"
 }
 
+fn query_set_codes() -> List(String) {
+  let decoder = {
+    use code <- decode.field(0, decode.string)
+    decode.success(code)
+  }
+  sqlite_store.query(
+    "SELECT set_code FROM catalog_sets ORDER BY set_code;",
+    [],
+    decoder,
+  )
+  |> result.unwrap([])
+}
+
+fn query_set_released_at(set_code: String) -> String {
+  let decoder = {
+    use released_at <- decode.field(0, decode.string)
+    decode.success(released_at)
+  }
+  case
+    sqlite_store.query(
+      "SELECT released_at FROM catalog_sets WHERE set_code = ?;",
+      [sqlight.text(set_code)],
+      decoder,
+    )
+  {
+    Ok([value, ..]) -> value
+    _ -> ""
+  }
+}
+
+// A full import populates catalog_sets with all sets from both fixture pages.
+pub fn import_populates_catalog_sets_from_all_pages_test() {
+  use _db <- test_db.with_temp_db()
+
+  let port = adapter.new_with_downloader(fake_downloader())
+  let result = handler.execute(handler.RefreshCatalogCommand, port)
+  assert result == Ok(Nil)
+
+  // page1 has "lea" + "grn"; page2 has "m11" → all three should be present
+  let codes = query_set_codes()
+  assert list.contains(codes, "lea")
+  assert list.contains(codes, "grn")
+  assert list.contains(codes, "m11")
+}
+
+// A null released_at in the Scryfall response is stored as '' (empty string).
+pub fn null_released_at_stored_as_empty_string_test() {
+  use _db <- test_db.with_temp_db()
+
+  let port = adapter.new_with_downloader(fake_downloader())
+  let result = handler.execute(handler.RefreshCatalogCommand, port)
+  assert result == Ok(Nil)
+
+  // "grn" in page1 has "released_at": null → stored as ''
+  assert query_set_released_at("grn") == ""
+  // "lea" in page1 has a real date
+  assert query_set_released_at("lea") == "1993-08-05"
+}
+
+// replace_sets is idempotent: a second import replaces stale rows entirely.
+pub fn import_replaces_stale_catalog_sets_test() {
+  use _db <- test_db.with_temp_db()
+
+  // Seed a stale set not present in any fixture
+  let assert Ok(Nil) =
+    sqlite_store.exec(
+      "INSERT INTO catalog_sets (set_code, name, released_at, card_count, icon_svg_uri) VALUES (?, ?, ?, ?, ?);",
+      [
+        sqlight.text("stale"),
+        sqlight.text("Stale Set"),
+        sqlight.text("2001-01-01"),
+        sqlight.int(0),
+        sqlight.text(""),
+      ],
+    )
+
+  let port = adapter.new_with_downloader(fake_downloader())
+  let result = handler.execute(handler.RefreshCatalogCommand, port)
+  assert result == Ok(Nil)
+
+  // Stale set is gone; fixture sets are present
+  let codes = query_set_codes()
+  assert !list.contains(codes, "stale")
+  assert list.contains(codes, "lea")
+}
+
+// The skip path (upstream unchanged) does not touch catalog_sets.
 pub fn unchanged_upstream_marks_skipped_test() {
   use _db <- test_db.with_temp_db()
 
