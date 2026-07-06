@@ -57,6 +57,9 @@ Core terms:
   so the card cascades on.
 - LocationTarget: where a rule sends the copies it claims; a fixed name, or a template that fans one
   rule across many locations via a `{set_code}` / `{color_identity}` / `{type}` placeholder.
+  Fan-out locations are ordered semantically within each rule: `{set_code}` by catalog release date
+  ascending (falling back to the card's `released_at` when the set is not yet synced), `{color_identity}`
+  by WUBRG → multicolor → colorless, `{type}` by type rank (land first). Fixed targets sort alphabetically.
 - BulkSpec: the single leftover-remainder location plus the sort-key list ordering its pile.
 - InventoryProjection: the computed placement — locations in cascade order, each with its cards and
   total, plus a count of collection keys unknown to the catalog.

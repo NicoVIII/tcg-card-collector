@@ -180,7 +180,9 @@ export function InventoryPage() {
       <p class="hint">
         Location name may fan out with a placeholder: <code>{"{set_code}"}</code>,{" "}
         <code>{"{color_identity}"}</code> or <code>{"{type}"}</code> (e.g.{" "}
-        <code>binder {"{color_identity}"}</code>). Rules claim copies in position order.
+        <code>binder {"{color_identity}"}</code>). Rules claim copies in position order. Fanned
+        locations are ordered by set release date, WUBRG→multicolor→colorless, or type rank (land
+        first) respectively.
       </p>
       <p class="hint">
         Expression is one or more conditions joined by <code>and</code>:{" "}
