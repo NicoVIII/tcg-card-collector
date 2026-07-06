@@ -58,7 +58,7 @@ function RuleRow(props: RuleRowProps) {
 
 export function InventoryPage() {
   const [newRuleName, setNewRuleName] = createSignal("");
-  const [newExpression, setNewExpression] = createSignal("set_code=M11");
+  const [newExpression, setNewExpression] = createSignal("set_code in (m11)");
   const [newPosition, setNewPosition] = createSignal(0);
   const [newSelector, setNewSelector] = createSignal("all");
   const [newSortKeys, setNewSortKeys] = createSignal("");
@@ -181,6 +181,13 @@ export function InventoryPage() {
         Location name may fan out with a placeholder: <code>{"{set_code}"}</code>,{" "}
         <code>{"{color_identity}"}</code> or <code>{"{type}"}</code> (e.g.{" "}
         <code>binder {"{color_identity}"}</code>). Rules claim copies in position order.
+      </p>
+      <p class="hint">
+        Expression is one or more conditions joined by <code>and</code>:{" "}
+        <code>set_code in (grn, m19)</code>, <code>rarity {">"}= rare</code>,{" "}
+        <code>rarity in (common, uncommon)</code>, <code>color_identity = WU</code> (or{" "}
+        <code>colorless</code>), <code>type = creature</code> — e.g.{" "}
+        <code>set_code in (grn, m19) and rarity {">"}= rare</code>.
       </p>
       <p class="hint">
         Sort keys are a comma-separated list ordering the cards within each location:{" "}
