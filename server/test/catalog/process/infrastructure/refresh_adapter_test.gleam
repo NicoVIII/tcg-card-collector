@@ -181,7 +181,8 @@ pub fn import_populates_catalog_sets_from_all_pages_test() {
   assert list.contains(codes, "m11")
 }
 
-// A null released_at in the Scryfall response is stored as '' (empty string).
+// A null or absent released_at in the Scryfall response is stored as ''
+// (Scryfall may omit nullable keys instead of sending null).
 pub fn null_released_at_stored_as_empty_string_test() {
   use _db <- test_db.with_temp_db()
 
@@ -191,6 +192,10 @@ pub fn null_released_at_stored_as_empty_string_test() {
 
   // "grn" in page1 has "released_at": null → stored as ''
   assert query_set_released_at("grn") == ""
+  // "fut" in page2 has no released_at key at all → still imported, stored as ''
+  // (query_set_released_at alone can't tell "empty" from "missing row")
+  assert list.contains(query_set_codes(), "fut")
+  assert query_set_released_at("fut") == ""
   // "lea" in page1 has a real date
   assert query_set_released_at("lea") == "1993-08-05"
 }

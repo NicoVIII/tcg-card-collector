@@ -190,10 +190,19 @@ fn validate_card_rows(lines: List(String)) -> List(card_printing.CardPrinting) {
 fn set_object_decoder() {
   use code <- decode.field("code", decode.string)
   use name <- decode.field("name", decode.string)
-  use released_at <- decode.field("released_at", decode.optional(decode.string))
+  // Scryfall documents released_at and icon_svg_uri as nullable and may omit
+  // the key instead of sending null; treat both shapes as unknown. A decode
+  // failure here would hard-fail the refresh and re-trigger the full card bulk
+  // import on every probe until fixed, so tolerate the cheap variants.
+  use released_at <- decode.optional_field(
+    "released_at",
+    None,
+    decode.optional(decode.string),
+  )
   use card_count <- decode.field("card_count", decode.int)
-  use icon_svg_uri <- decode.field(
+  use icon_svg_uri <- decode.optional_field(
     "icon_svg_uri",
+    None,
     decode.optional(decode.string),
   )
   decode.success(#(
