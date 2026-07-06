@@ -55,13 +55,15 @@ fn rules_adapter() -> ports.RulesPort {
     let rules =
       inventory_rules_dao.list()
       |> list.map(fn(rule) {
-        let #(id, location_name, expression, position, selector) = rule
+        let #(id, location_name, expression, position, selector, sort_keys) =
+          rule
         ports.RuleRow(
           id: id,
           position: position,
           selector: selector,
           expression: expression,
           location_name: location_name,
+          sort_keys: sort_keys,
         )
       })
     let #(bulk_location, bulk_sort_keys) = bulk_spec_dao.get()

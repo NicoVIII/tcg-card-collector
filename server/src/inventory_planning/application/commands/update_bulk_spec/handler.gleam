@@ -1,6 +1,6 @@
 import gleam/result
 import inventory_planning/application/commands/update_bulk_spec/ports
-import inventory_planning/domain/bulk_spec
+import inventory_planning/domain/sort_spec
 import shared/application/command_result
 
 pub type UpdateBulkSpecCommand {
@@ -15,13 +15,13 @@ pub fn execute(
     command
 
   use keys <- result.try(
-    bulk_spec.parse_sort_keys(sort_keys)
+    sort_spec.parse_sort_keys(sort_keys)
     |> result.replace_error(ports.InvalidSortKeys),
   )
 
   port.update(ports.BulkSpecWriteModel(
     location_name: location_name,
-    sort_keys: bulk_spec.sort_keys_to_string(keys),
+    sort_keys: sort_spec.sort_keys_to_string(keys),
   ))
   |> result.map_error(ports.PersistenceFailed)
 }

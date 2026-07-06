@@ -25,6 +25,7 @@ export type InventoryRule = {
   expression: string;
   position: number;
   selector: string;
+  sort_keys: string;
 };
 
 export type BulkSpec = {
@@ -68,6 +69,7 @@ function toInventoryRuleList(response: RpcInventoryRuleList): InventoryRuleList 
       expression: rule.expression,
       position: rule.position,
       selector: rule.selector,
+      sort_keys: rule.sortKeys,
     })),
     total: response.total,
   };
@@ -120,6 +122,7 @@ export async function upsertInventoryRule(rule: InventoryRule): Promise<{ succes
       expression: rule.expression,
       position: rule.position,
       selector: rule.selector,
+      sortKeys: rule.sort_keys,
     }),
   );
 

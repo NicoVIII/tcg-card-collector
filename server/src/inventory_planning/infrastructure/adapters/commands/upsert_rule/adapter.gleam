@@ -9,6 +9,7 @@ pub fn new() -> ports.UpsertInventoryRulePort {
       expression: expression,
       position: position,
       selector: selector,
+      sort_keys: sort_keys,
     ) = rule
     inventory_rules_dao.upsert(
       id,
@@ -16,6 +17,7 @@ pub fn new() -> ports.UpsertInventoryRulePort {
       expression,
       position,
       selector,
+      sort_keys,
     )
   })
 }

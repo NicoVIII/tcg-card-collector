@@ -107,6 +107,7 @@ fn sample_ports() -> ports.InventoryProjectionPorts {
           selector: "first_per_printing",
           expression: "set_code in (lea)",
           location_name: "Binder {set_code}",
+          sort_keys: "",
         ),
         ports.RuleRow(
           id: "r-rare",
@@ -114,6 +115,7 @@ fn sample_ports() -> ports.InventoryProjectionPorts {
           selector: "first_per_oracle",
           expression: "rarity >= rare",
           location_name: "Rare binder {color_identity}",
+          sort_keys: "",
         ),
         ports.RuleRow(
           id: "r-box",
@@ -121,6 +123,7 @@ fn sample_ports() -> ports.InventoryProjectionPorts {
           selector: "first_per_oracle",
           expression: "rarity in (common, uncommon)",
           location_name: "Box {color_identity}",
+          sort_keys: "",
         ),
       ],
       bulk: ports.BulkSpecRow(
@@ -233,6 +236,7 @@ pub fn unparseable_rule_propagates_as_error_test() {
             selector: "all",
             expression: "rarity >= legendary",
             location_name: "Nowhere",
+            sort_keys: "",
           ),
         ],
         bulk: ports.BulkSpecRow(location_name: "Bulk", sort_keys: ""),
@@ -277,6 +281,85 @@ pub fn keys_missing_from_catalog_are_counted_and_bulked_test() {
         ),
       ]),
     )
+}
+
+// A rule's sort keys reorder the cards within its location — here by name, so
+// the alphabetically-first card leads despite being the newer printing.
+pub fn rule_sort_keys_order_cards_within_location_test() {
+  let ports =
+    build_ports(
+      snapshot: [
+        ports.SnapshotRow(set_code: "aaa", collector_number: "1", quantity: 1),
+        ports.SnapshotRow(set_code: "bbb", collector_number: "2", quantity: 1),
+      ],
+      catalog: [
+        #(
+          #("aaa", "1"),
+          attrs(
+            name: "Zebra",
+            rarity: "common",
+            oracle: "o-zebra",
+            color: "R",
+            type_line: "Creature",
+            released: "2000-01-01",
+          ),
+        ),
+        #(
+          #("bbb", "2"),
+          attrs(
+            name: "Apple",
+            rarity: "common",
+            oracle: "o-apple",
+            color: "R",
+            type_line: "Creature",
+            released: "2001-01-01",
+          ),
+        ),
+      ],
+      rules: ports.RulesModel(
+        rules: [
+          ports.RuleRow(
+            id: "shelf",
+            position: 0,
+            selector: "all",
+            expression: "rarity >= common",
+            location_name: "Shelf",
+            sort_keys: "name",
+          ),
+        ],
+        bulk: ports.BulkSpecRow(location_name: "Bulk", sort_keys: ""),
+      ),
+    )
+
+  let assert Ok(projection) =
+    handler.execute(handler.InventoryProjectionQuery, ports)
+  let assert [location] = projection.locations
+  assert location.location_name == "Shelf"
+  assert list.map(location.cards, fn(c) { c.name }) == ["Apple", "Zebra"]
+}
+
+pub fn invalid_stored_rule_sort_keys_propagate_as_error_test() {
+  let ports =
+    build_ports(
+      snapshot: [],
+      catalog: [],
+      rules: ports.RulesModel(
+        rules: [
+          ports.RuleRow(
+            id: "bad",
+            position: 0,
+            selector: "all",
+            expression: "rarity >= rare",
+            location_name: "Nowhere",
+            sort_keys: "power",
+          ),
+        ],
+        bulk: ports.BulkSpecRow(location_name: "Bulk", sort_keys: ""),
+      ),
+    )
+
+  assert handler.execute(handler.InventoryProjectionQuery, ports)
+    == Error("invalid rule sort keys: power")
 }
 
 pub fn snapshot_rows_failure_propagates_as_error_test() {

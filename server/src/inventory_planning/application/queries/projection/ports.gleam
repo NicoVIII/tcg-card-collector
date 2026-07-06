@@ -57,7 +57,8 @@ pub type CatalogAttributes {
 }
 
 // A stored rule, still textual: `expression` is the predicate DSL, `selector`
-// the copy-selector DSL, `location_name` the (possibly templated) target.
+// the copy-selector DSL, `sort_keys` the sort DSL, `location_name` the (possibly
+// templated) target.
 pub type RuleRow {
   RuleRow(
     id: String,
@@ -65,6 +66,7 @@ pub type RuleRow {
     selector: String,
     expression: String,
     location_name: String,
+    sort_keys: String,
   )
 }
 

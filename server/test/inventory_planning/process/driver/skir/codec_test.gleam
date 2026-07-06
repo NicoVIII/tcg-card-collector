@@ -181,6 +181,16 @@ pub fn upsert_invalid_selector_maps_to_bad_request_test() {
     ))
 }
 
+pub fn upsert_invalid_sort_keys_maps_to_bad_request_test() {
+  assert inventory_planning_skir_codec.map_upsert_inventory_rule_result(Error(
+      upsert_rule_ports.InvalidSortKeys,
+    ))
+    == Error(service.ServiceError(
+      service.E400xBadRequest,
+      "invalid inventory rule sort keys",
+    ))
+}
+
 pub fn upsert_persistence_failure_maps_to_internal_server_error_test() {
   assert inventory_planning_skir_codec.map_upsert_inventory_rule_result(
       Error(upsert_rule_ports.PersistenceFailed("disk full")),

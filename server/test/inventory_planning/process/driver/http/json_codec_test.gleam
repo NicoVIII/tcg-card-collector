@@ -88,7 +88,7 @@ pub fn decode_placements_body_rejects_missing_placements_test() {
     == Error("invalid request body")
 }
 
-pub fn encode_inventory_rules_includes_position_and_selector_test() {
+pub fn encode_inventory_rules_includes_position_selector_and_sort_keys_test() {
   let rules = [
     list_rules_ports.InventoryRuleReadModel(
       id: "r1",
@@ -96,18 +96,19 @@ pub fn encode_inventory_rules_includes_position_and_selector_test() {
       expression: "set_code in (m11)",
       position: 3,
       selector: "first_per_oracle",
+      sort_keys: "name,set_code",
     ),
   ]
   assert json_codec.encode_inventory_rules(rules)
     == "[{\"id\":\"r1\",\"location_name\":\"Set binder {set_code}\","
     <> "\"expression\":\"set_code in (m11)\",\"position\":3,"
-    <> "\"selector\":\"first_per_oracle\"}]"
+    <> "\"selector\":\"first_per_oracle\",\"sort_keys\":\"name,set_code\"}]"
 }
 
-pub fn decode_upsert_rule_body_reads_position_and_selector_test() {
+pub fn decode_upsert_rule_body_reads_position_selector_and_sort_keys_test() {
   let body =
     "{\"id\":\"r1\",\"location_name\":\"Bulk\",\"expression\":\"set_code=m11\","
-    <> "\"position\":2,\"selector\":\"all\"}"
+    <> "\"position\":2,\"selector\":\"all\",\"sort_keys\":\"name\"}"
   assert json_codec.decode_upsert_rule_body(body)
     == Ok(json_codec.UpsertRuleBody(
       id: "r1",
@@ -115,12 +116,14 @@ pub fn decode_upsert_rule_body_reads_position_and_selector_test() {
       expression: "set_code=m11",
       position: 2,
       selector: "all",
+      sort_keys: "name",
     ))
 }
 
-pub fn decode_upsert_rule_body_rejects_missing_position_test() {
+pub fn decode_upsert_rule_body_rejects_missing_sort_keys_test() {
   let body =
-    "{\"id\":\"r1\",\"location_name\":\"Bulk\",\"expression\":\"set_code=m11\"}"
+    "{\"id\":\"r1\",\"location_name\":\"Bulk\",\"expression\":\"set_code=m11\","
+    <> "\"position\":2,\"selector\":\"all\"}"
   assert json_codec.decode_upsert_rule_body(body)
     == Error("invalid request body")
 }

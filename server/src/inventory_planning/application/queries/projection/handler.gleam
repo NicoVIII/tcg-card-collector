@@ -9,6 +9,7 @@ import inventory_planning/domain/card_predicate
 import inventory_planning/domain/copy_selector
 import inventory_planning/domain/location_target
 import inventory_planning/domain/rule_cascade
+import inventory_planning/domain/sort_spec
 import shared/domain/card_key
 
 pub type InventoryProjectionQuery {
@@ -56,7 +57,7 @@ fn build_cascade(
 ) -> Result(rule_cascade.RuleCascade, String) {
   use rules <- result.try(list.try_map(model.rules, parse_rule))
   use sort_keys <- result.try(
-    bulk_spec.parse_sort_keys(model.bulk.sort_keys)
+    sort_spec.parse_sort_keys(model.bulk.sort_keys)
     |> result.replace_error("invalid bulk sort keys: " <> model.bulk.sort_keys),
   )
   Ok(rule_cascade.RuleCascade(
@@ -79,12 +80,17 @@ fn parse_rule(
     card_predicate.parse(row.expression)
     |> result.replace_error("invalid rule expression: " <> row.expression),
   )
+  use sort_keys <- result.try(
+    sort_spec.parse_sort_keys(row.sort_keys)
+    |> result.replace_error("invalid rule sort keys: " <> row.sort_keys),
+  )
   Ok(rule_cascade.CascadeRule(
     id: row.id,
     position: row.position,
     selector: selector,
     predicate: predicate,
     target: location_target.parse(row.location_name),
+    sort_keys: sort_keys,
   ))
 }
 

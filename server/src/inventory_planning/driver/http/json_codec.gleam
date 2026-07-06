@@ -23,6 +23,7 @@ fn encode_inventory_rule(
     #("expression", json.string(rule.expression)),
     #("position", json.int(rule.position)),
     #("selector", json.string(rule.selector)),
+    #("sort_keys", json.string(rule.sort_keys)),
   ])
 }
 
@@ -172,6 +173,7 @@ pub type UpsertRuleBody {
     expression: String,
     position: Int,
     selector: String,
+    sort_keys: String,
   )
 }
 
@@ -184,12 +186,14 @@ pub fn decode_upsert_rule_body(
     use expression <- decode.field("expression", decode.string)
     use position <- decode.field("position", decode.int)
     use selector <- decode.field("selector", decode.string)
+    use sort_keys <- decode.field("sort_keys", decode.string)
     decode.success(UpsertRuleBody(
       id:,
       location_name:,
       expression:,
       position:,
       selector:,
+      sort_keys:,
     ))
   }
 

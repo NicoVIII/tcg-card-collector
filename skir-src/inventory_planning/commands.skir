@@ -4,6 +4,7 @@ struct UpsertInventoryRuleRequest {
   expression: string = 2;
   position: int32 = 3;
   selector: string = 4;
+  sort_keys: string = 5;
 }
 
 enum UpsertInventoryRuleResponse {

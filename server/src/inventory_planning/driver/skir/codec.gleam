@@ -64,6 +64,11 @@ pub fn map_upsert_inventory_rule_result(
         service.E400xBadRequest,
         "invalid inventory rule selector",
       ))
+    Error(upsert_rule_ports.InvalidSortKeys) ->
+      Error(service.ServiceError(
+        service.E400xBadRequest,
+        "invalid inventory rule sort keys",
+      ))
     Error(upsert_rule_ports.PersistenceFailed(_)) ->
       Error(service.ServiceError(
         service.E500xInternalServerError,

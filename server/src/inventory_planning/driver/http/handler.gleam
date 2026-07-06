@@ -50,6 +50,7 @@ pub fn handle_upsert_inventory_rule(
             expression: b.expression,
             position: b.position,
             selector: b.selector,
+            sort_keys: b.sort_keys,
           ),
           deps.upsert_inventory_rule_port,
         )
@@ -64,6 +65,11 @@ pub fn handle_upsert_inventory_rule(
           helpers.json_response(
             400,
             json_codec.encode_error("invalid inventory rule selector"),
+          )
+        Error(upsert_rule_ports.InvalidSortKeys) ->
+          helpers.json_response(
+            400,
+            json_codec.encode_error("invalid inventory rule sort keys"),
           )
         Error(upsert_rule_ports.PersistenceFailed(_)) ->
           helpers.json_response(

@@ -8,6 +8,7 @@ import inventory_planning/domain/location_target
 import inventory_planning/domain/rule_cascade.{
   type CascadeRule, type RuleCascade, CascadeRule, RuleCascade,
 }
+import inventory_planning/domain/sort_spec
 import shared/domain/card_key
 
 fn card(
@@ -41,6 +42,17 @@ fn rule(
   predicate_src: String,
   target_src: String,
 ) -> CascadeRule {
+  sorted_rule(id, position, selector, predicate_src, target_src, [])
+}
+
+fn sorted_rule(
+  id: String,
+  position: Int,
+  selector: copy_selector.CopySelector,
+  predicate_src: String,
+  target_src: String,
+  sort_keys: List(sort_spec.SortKey),
+) -> CascadeRule {
   let assert Ok(predicate) = card_predicate.parse(predicate_src)
   CascadeRule(
     id:,
@@ -48,6 +60,7 @@ fn rule(
     selector:,
     predicate:,
     target: location_target.parse(target_src),
+    sort_keys:,
   )
 }
 
@@ -79,9 +92,9 @@ fn owner_cascade() -> RuleCascade {
       ),
     ],
     bulk: bulk_spec.BulkSpec("Bulk", [
-      bulk_spec.ByColorIdentity,
-      bulk_spec.ByCardType,
-      bulk_spec.ByName,
+      sort_spec.ByColorIdentity,
+      sort_spec.ByCardType,
+      sort_spec.ByName,
     ]),
   )
 }
@@ -232,6 +245,79 @@ pub fn duplicate_printing_keys_conserve_quantity_test() {
   let buckets = rule_cascade.project(owner_cascade(), cards)
   let bulk = find_bucket(buckets, "Bulk")
   assert bulk.total_quantity == 3
+}
+
+// A single all-copies rule claiming every card into one fixed location, laid
+// out by the rule's sort keys.
+fn shelf_cascade(sort_keys: List(sort_spec.SortKey)) -> RuleCascade {
+  RuleCascade(
+    rules: [
+      sorted_rule(
+        "shelf",
+        1,
+        copy_selector.AllCopies,
+        "rarity >= common",
+        "Shelf",
+        sort_keys,
+      ),
+    ],
+    bulk: bulk_spec.BulkSpec("Bulk", []),
+  )
+}
+
+// A rule laying its bucket out by name reorders cards away from the canonical
+// (release-date) order they were claimed in.
+pub fn rule_bucket_sorted_by_name_differs_from_canonical_test() {
+  let cards = [
+    card("aaa", "1", "Zebra", 1, "2000-01-01", "o1", attrs.Common, "R"),
+    card("bbb", "2", "Apple", 1, "2001-01-01", "o2", attrs.Common, "R"),
+  ]
+  let shelf =
+    find_bucket(
+      rule_cascade.project(shelf_cascade([sort_spec.ByName]), cards),
+      "Shelf",
+    )
+  assert list.map(shelf.cards, fn(a) { a.card.name }) == ["Apple", "Zebra"]
+}
+
+// Empty sort keys leave the canonical order (release date asc) untouched.
+pub fn rule_bucket_empty_sort_keys_keep_canonical_order_test() {
+  let cards = [
+    card("aaa", "1", "Zebra", 1, "2000-01-01", "o1", attrs.Common, "R"),
+    card("bbb", "2", "Apple", 1, "2001-01-01", "o2", attrs.Common, "R"),
+  ]
+  let shelf =
+    find_bucket(rule_cascade.project(shelf_cascade([]), cards), "Shelf")
+  assert list.map(shelf.cards, fn(a) { a.card.name }) == ["Zebra", "Apple"]
+}
+
+// A template rule sorts each fanned-out bucket independently.
+pub fn template_fan_out_buckets_sorted_independently_test() {
+  let cascade =
+    RuleCascade(
+      rules: [
+        sorted_rule(
+          "binders",
+          1,
+          copy_selector.AllCopies,
+          "rarity >= common",
+          "Binder {color_identity}",
+          [sort_spec.ByName],
+        ),
+      ],
+      bulk: bulk_spec.BulkSpec("Bulk", []),
+    )
+  let cards = [
+    card("aaa", "1", "Zebra", 1, "2000-01-01", "o1", attrs.Common, "R"),
+    card("bbb", "2", "Apple", 1, "2001-01-01", "o2", attrs.Common, "R"),
+    card("ccc", "3", "Yak", 1, "2000-01-01", "o3", attrs.Common, "G"),
+    card("ddd", "4", "Bear", 1, "2001-01-01", "o4", attrs.Common, "G"),
+  ]
+  let buckets = rule_cascade.project(cascade, cards)
+  let red = find_bucket(buckets, "Binder R")
+  let green = find_bucket(buckets, "Binder G")
+  assert list.map(red.cards, fn(a) { a.card.name }) == ["Apple", "Zebra"]
+  assert list.map(green.cards, fn(a) { a.card.name }) == ["Bear", "Yak"]
 }
 
 // No bucket ever carries a negative total.

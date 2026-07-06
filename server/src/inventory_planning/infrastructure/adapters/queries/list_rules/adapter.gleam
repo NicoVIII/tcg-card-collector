@@ -6,13 +6,14 @@ pub fn new() -> ports.ListInventoryRulesPort {
   ports.ListInventoryRulesPort(list_rules: fn() {
     inventory_rules_dao.list()
     |> list.map(fn(row) {
-      let #(id, location_name, expression, position, selector) = row
+      let #(id, location_name, expression, position, selector, sort_keys) = row
       ports.InventoryRuleReadModel(
         id:,
         location_name:,
         expression:,
         position:,
         selector:,
+        sort_keys:,
       )
     })
   })

@@ -5,6 +5,7 @@ pub type InventoryRuleReadModel {
     expression: String,
     position: Int,
     selector: String,
+    sort_keys: String,
   )
 }
 

@@ -5,6 +5,7 @@ pub type InventoryRuleWriteModel {
     expression: String,
     position: Int,
     selector: String,
+    sort_keys: String,
   )
 }
 
@@ -17,5 +18,6 @@ pub type UpsertInventoryRulePort {
 pub type UpsertInventoryRuleError {
   InvalidExpression
   InvalidSelector
+  InvalidSortKeys
   PersistenceFailed(reason: String)
 }

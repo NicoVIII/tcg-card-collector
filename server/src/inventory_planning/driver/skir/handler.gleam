@@ -89,6 +89,7 @@ fn handle_upsert_inventory_rule(get_dependencies: fn(context) -> Dependencies) {
           expression: req.expression,
           position: req.position,
           selector: req.selector,
+          sort_keys: req.sort_keys,
         ),
         get_dependencies(ctx).upsert_inventory_rule_port,
       )
@@ -412,5 +413,6 @@ fn map_inventory_rule(
     rule.location_name,
     rule.position,
     rule.selector,
+    rule.sort_keys,
   )
 }

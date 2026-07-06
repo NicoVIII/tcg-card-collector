@@ -11,6 +11,7 @@ import inventory_planning/domain/card_attributes.{type PlannedCard}
 import inventory_planning/domain/card_predicate.{type Predicate}
 import inventory_planning/domain/copy_selector.{type CopySelector}
 import inventory_planning/domain/location_target.{type LocationTarget}
+import inventory_planning/domain/sort_spec
 import shared/domain/card_key
 
 // One rule in the ordered waterfall. Rules are applied in `position` order and
@@ -22,6 +23,7 @@ pub type CascadeRule {
     selector: CopySelector,
     predicate: Predicate,
     target: LocationTarget,
+    sort_keys: List(sort_spec.SortKey),
   )
 }
 
@@ -187,13 +189,14 @@ fn build_bulk(
     })
   assignments_rev
   |> list.sort(fn(a, b) {
-    bulk_spec.compare_cards(bulk.sort_keys, a.card, b.card)
+    sort_spec.compare_cards(bulk.sort_keys, a.card, b.card)
   })
 }
 
 // A template rule fans out across the distinct location names it rendered;
-// buckets within a rule are ordered by name, cards within a bucket keep the
-// canonical order they were assigned in.
+// buckets within a rule are ordered by name, cards within a bucket by the rule's
+// sort keys. `list.sort` is stable and empty keys compare `Eq`, so an empty spec
+// leaves the canonical order the cards were assigned in untouched.
 fn buckets_for_rule(
   rule: CascadeRule,
   assignments: List(Assignment),
@@ -203,7 +206,12 @@ fn buckets_for_rule(
   |> list.unique
   |> list.sort(string.compare)
   |> list.map(fn(name) {
-    let cards = list.filter(assignments, fn(a) { a.location_name == name })
+    let cards =
+      assignments
+      |> list.filter(fn(a) { a.location_name == name })
+      |> list.sort(fn(a, b) {
+        sort_spec.compare_cards(rule.sort_keys, a.card, b.card)
+      })
     LocationBucket(
       location_name: name,
       rule_id: Some(rule.id),
