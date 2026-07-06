@@ -10,6 +10,15 @@ fn build_ports(
   catalog catalog: List(#(#(String, String), ports.CatalogAttributes)),
   rules rules: ports.RulesModel,
 ) -> ports.InventoryProjectionPorts {
+  build_ports_with_dates(snapshot:, catalog:, rules:, set_dates: [])
+}
+
+fn build_ports_with_dates(
+  snapshot snapshot: List(ports.SnapshotRow),
+  catalog catalog: List(#(#(String, String), ports.CatalogAttributes)),
+  rules rules: ports.RulesModel,
+  set_dates set_dates: List(#(String, String)),
+) -> ports.InventoryProjectionPorts {
   ports.InventoryProjectionPorts(
     snapshot_rows: fn() { Ok(snapshot) },
     catalog_attributes: fn(keys) {
@@ -18,6 +27,7 @@ fn build_ports(
       |> dict.from_list
     },
     rules: fn() { rules },
+    set_release_dates: fn(_codes) { dict.from_list(set_dates) },
   )
 }
 
@@ -362,6 +372,62 @@ pub fn invalid_stored_rule_sort_keys_propagate_as_error_test() {
     == Error("invalid rule sort keys: power")
 }
 
+// set_release_dates port feeds through to bucket ordering: two sets whose dict
+// dates reverse alphabetical order end up in date order in the projection.
+pub fn set_dates_port_wired_to_bucket_ordering_test() {
+  let p =
+    build_ports_with_dates(
+      snapshot: [
+        ports.SnapshotRow(set_code: "zzz", collector_number: "1", quantity: 1),
+        ports.SnapshotRow(set_code: "aaa", collector_number: "2", quantity: 1),
+      ],
+      catalog: [
+        #(
+          #("zzz", "1"),
+          attrs(
+            name: "Old Card",
+            rarity: "common",
+            oracle: "o-old",
+            color: "R",
+            type_line: "Creature",
+            released: "2000-01-01",
+          ),
+        ),
+        #(
+          #("aaa", "2"),
+          attrs(
+            name: "New Card",
+            rarity: "common",
+            oracle: "o-new",
+            color: "R",
+            type_line: "Creature",
+            released: "2010-01-01",
+          ),
+        ),
+      ],
+      rules: ports.RulesModel(
+        rules: [
+          ports.RuleRow(
+            id: "r-sets",
+            position: 0,
+            selector: "all",
+            expression: "rarity >= common",
+            location_name: "Binder {set_code}",
+            sort_keys: "",
+          ),
+        ],
+        bulk: ports.BulkSpecRow(location_name: "Bulk", sort_keys: ""),
+      ),
+      // Dict dates reverse alphabetical: zzz is older than aaa
+      set_dates: [#("zzz", "2000-01-01"), #("aaa", "2010-01-01")],
+    )
+  let assert Ok(projection) =
+    handler.execute(handler.InventoryProjectionQuery, p)
+  let names = list.map(projection.locations, fn(l) { l.location_name })
+  // Date order: zzz (2000) before aaa (2010), even though "aaa" < "zzz" alphabetically
+  assert names == ["Binder zzz", "Binder aaa"]
+}
+
 pub fn snapshot_rows_failure_propagates_as_error_test() {
   let ports =
     ports.InventoryProjectionPorts(
@@ -373,6 +439,7 @@ pub fn snapshot_rows_failure_propagates_as_error_test() {
           bulk: ports.BulkSpecRow(location_name: "Bulk", sort_keys: ""),
         )
       },
+      set_release_dates: fn(_codes) { dict.new() },
     )
 
   assert handler.execute(handler.InventoryProjectionQuery, ports)

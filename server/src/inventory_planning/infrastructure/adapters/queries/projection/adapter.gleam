@@ -12,6 +12,7 @@ pub fn new() -> ports.InventoryProjectionPorts {
     snapshot_rows: snapshot_rows_adapter(),
     catalog_attributes: catalog_attributes_adapter(),
     rules: rules_adapter(),
+    set_release_dates: set_release_dates_adapter(),
   )
 }
 
@@ -48,6 +49,10 @@ fn catalog_attributes_adapter() -> ports.CatalogAttributesPort {
     })
     |> dict.from_list
   }
+}
+
+fn set_release_dates_adapter() -> ports.SetReleaseDatesPort {
+  fn(set_codes) { catalog_api.get_set_release_dates(set_codes) }
 }
 
 fn rules_adapter() -> ports.RulesPort {

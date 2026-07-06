@@ -37,8 +37,13 @@ pub fn execute(
       |> result.is_error
     })
 
+  let set_codes =
+    list.map(planned, fn(c) { card_key.set_code_string(c.key) })
+    |> list.unique
+  let set_dates = ports.set_release_dates(set_codes)
+
   let locations =
-    rule_cascade.project(cascade, planned)
+    rule_cascade.project(cascade, planned, set_dates)
     |> list.map(to_location)
 
   Ok(projection_ports.Projection(

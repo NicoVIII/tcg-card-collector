@@ -90,10 +90,14 @@ pub type CatalogAttributesPort =
 pub type RulesPort =
   fn() -> RulesModel
 
+pub type SetReleaseDatesPort =
+  fn(List(String)) -> Dict(String, String)
+
 pub type InventoryProjectionPorts {
   InventoryProjectionPorts(
     snapshot_rows: SnapshotRowsPort,
     catalog_attributes: CatalogAttributesPort,
     rules: RulesPort,
+    set_release_dates: SetReleaseDatesPort,
   )
 }
