@@ -6,6 +6,7 @@ import {
   useUpsertInventoryRuleMutation,
 } from "../data/inventory_planning/mutation";
 import { SELECTOR_OPTIONS } from "../data/inventory_planning/options";
+import { randomUUID } from "../lib/uuid";
 import type { InventoryRule } from "../data/inventory_planning/request";
 import {
   useBulkSpecQuery,
@@ -90,7 +91,7 @@ export function InventoryPage() {
     setMutationError(null);
     upsertMutation.mutate(
       {
-        id: crypto.randomUUID(),
+        id: randomUUID(),
         location_name: newRuleName(),
         expression: newExpression(),
         position: newPosition(),
