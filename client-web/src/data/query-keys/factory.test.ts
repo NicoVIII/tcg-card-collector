@@ -6,6 +6,10 @@ describe("query key factory", () => {
     expect(queryKeys.catalogList(0, 25)).toEqual(["card_catalog", "list", 0, 25]);
   });
 
+  it("keeps the catalog list prefix aligned with the paged keys", () => {
+    expect(queryKeys.catalogList(0, 25).slice(0, 2)).toEqual([...queryKeys.catalogListAll()]);
+  });
+
   it("builds a deterministic projection key", () => {
     expect(queryKeys.inventoryProjection()).toEqual(["inventory_planning", "projection"]);
   });

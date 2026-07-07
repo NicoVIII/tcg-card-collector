@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/solid-query";
 import { useRefreshCatalogMutation } from "../data/card_catalog/mutation";
 import { useCatalogCardsQuery, useCatalogRefreshStatusQuery } from "../data/card_catalog/query";
 import { mapError } from "../data/http/error";
+import { queryKeys } from "../data/query-keys/factory";
 import { CardGrid } from "../components/card_grid";
 import { Pagination } from "../components/pagination";
 
@@ -48,7 +49,7 @@ export function CatalogPage() {
     if (baseline === null || status === undefined) return;
     if (status.status !== "never_run" && status.last_probe_at !== baseline) {
       setPollBaseline(null);
-      void queryClient.invalidateQueries({ queryKey: ["card_catalog", "list"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.catalogListAll() });
       setRefreshFeedback(
         status.status === "failed"
           ? { kind: "error", message: `Catalog refresh failed: ${status.error_message}` }

@@ -15,7 +15,7 @@ export function useUpsertInventoryRuleMutation() {
     mutationFn: (rule: InventoryRule) => upsertInventoryRule(rule),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryRules() });
-      await queryClient.invalidateQueries({ queryKey: ["inventory_planning", "projection"] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryProjection() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.placementGuidance() });
     },
   }));
@@ -28,7 +28,7 @@ export function useDeleteInventoryRuleMutation() {
     mutationFn: (id: string) => deleteInventoryRule(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryRules() });
-      await queryClient.invalidateQueries({ queryKey: ["inventory_planning", "projection"] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryProjection() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.placementGuidance() });
     },
   }));
@@ -41,7 +41,7 @@ export function useUpdateBulkSpecMutation() {
     mutationFn: (spec: BulkSpec) => updateBulkSpec(spec),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryBulkSpec() });
-      await queryClient.invalidateQueries({ queryKey: ["inventory_planning", "projection"] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryProjection() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.placementGuidance() });
     },
   }));
