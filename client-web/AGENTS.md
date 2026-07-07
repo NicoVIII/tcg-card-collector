@@ -21,4 +21,4 @@ Rules:
 ## Structure & Testing
 
 - `pages/` (route components, wired in `routes.ts` via @solidjs/router), `components/` (shared UI). Filenames are snake_case.
-- Tests are colocated `*.test.ts` next to the module. Testable logic is extracted into plain non-JSX modules (e.g. `pages/import_rows.ts`, `routes.ts`) so it runs in the node environment — no component/DOM tests currently; don't add DOM-dependent logic to `.ts` modules.
+- Tests are colocated `*.test.ts` next to the module. Testable logic is extracted into plain non-JSX modules (e.g. `pages/import_deckstats.ts`, `routes.ts`) so it runs in the node environment — no component/DOM tests currently; don't add DOM-dependent logic to `.ts` modules.
