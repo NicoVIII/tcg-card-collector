@@ -14,7 +14,8 @@ Everything needed to set up a working environment, run the service locally, and 
 - `client-web` — SolidJS/TypeScript web client
 - `skir-src` — Skir contract source (code is generated for both sides)
 - `container` — container/runtime assets
-- `docs` — vision, ubiquitous language, this guide
+- `scripts` — helper scripts backing just recipes (dbmate install/run, skir snapshot check)
+- `docs` — vision, architecture, ubiquitous language, this guide
 
 ## Task Runner
 

@@ -178,6 +178,8 @@ export function InventoryPage() {
           Add rule
         </button>
       </div>
+      {/* These hints restate the DSL grammar owned by the parsers in
+          server/src/inventory_planning/domain/ — keep them in sync. */}
       <p class="hint">
         Location name may fan out with a placeholder: <code>{"{set_code}"}</code>,{" "}
         <code>{"{color_identity}"}</code> or <code>{"{type}"}</code> (e.g.{" "}
