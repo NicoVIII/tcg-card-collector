@@ -4,7 +4,7 @@ This document defines the MVP bounded contexts and the shared language for each 
 
 ## Bounded Contexts
 
-- Card Catalog (`server/src/catalog/`)
+- Card Catalog (`server/src/card_catalog/`)
 - Collection Import (`server/src/collection/`)
 - Inventory Planning (`server/src/inventory_planning/`)
 - Insights (`server/src/insights/`)

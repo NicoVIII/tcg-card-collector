@@ -1,4 +1,4 @@
-import catalog/driver/gleam/catalog_api
+import card_catalog/driver/gleam/catalog_api
 import collection/driver/gleam/collection_api
 import gleam/dict
 import gleam/list

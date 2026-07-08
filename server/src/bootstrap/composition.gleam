@@ -1,10 +1,10 @@
-import catalog/driver/dependencies.{
+import card_catalog/driver/dependencies.{
   type Dependencies as CatalogDependencies, Dependencies as CatalogDependencies,
 } as _
-import catalog/infrastructure/adapters/commands/refresh/adapter as refresh_adapter
-import catalog/infrastructure/adapters/queries/get_cards/adapter as get_cards_adapter
-import catalog/infrastructure/adapters/queries/list_cards/adapter as list_cards_adapter
-import catalog/infrastructure/adapters/queries/refresh_status/adapter as refresh_status_adapter
+import card_catalog/infrastructure/adapters/commands/refresh/adapter as refresh_adapter
+import card_catalog/infrastructure/adapters/queries/get_cards/adapter as get_cards_adapter
+import card_catalog/infrastructure/adapters/queries/list_cards/adapter as list_cards_adapter
+import card_catalog/infrastructure/adapters/queries/refresh_status/adapter as refresh_status_adapter
 import collection/driver/dependencies.{
   type Dependencies as CollectionDependencies,
   Dependencies as CollectionDependencies,

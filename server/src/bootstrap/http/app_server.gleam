@@ -1,8 +1,8 @@
 import bootstrap/composition.{type Dependencies}
 import bootstrap/skir/router as skir_router
 import bootstrap/skir/setup as skir_setup
-import catalog/driver/http/handler as catalog_http
-import catalog/driver/refresh_launcher
+import card_catalog/driver/http/handler as catalog_http
+import card_catalog/driver/refresh_launcher
 import collection/driver/http/handler as collection_http
 import gleam/erlang/process
 import gleam/http.{Delete, Get, Post, Put}

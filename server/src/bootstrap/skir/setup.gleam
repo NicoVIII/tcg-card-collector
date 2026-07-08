@@ -1,5 +1,5 @@
 import bootstrap/composition.{type Dependencies}
-import catalog/driver/skir/handler as catalog_skir
+import card_catalog/driver/skir/handler as catalog_skir
 import collection/driver/skir/handler as collection_skir
 import gleam/erlang/process
 import insights/driver/skir/handler as insights_skir

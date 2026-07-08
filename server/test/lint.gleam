@@ -7,7 +7,7 @@ import glinter_arch/hexagonal.{Application, Domain, Driver, Infrastructure}
 import glinter_arch/source_map
 
 type BoundedContext {
-  Catalog
+  CardCatalog
   Collection
   InventoryPlanning
   Insights
@@ -49,9 +49,9 @@ fn categorize_driver(tail: List(String)) -> DriverCategory {
 
 fn categorize(path: String) -> Category {
   case string.split(path, "/") {
-    ["catalog", ..tail] ->
+    ["card_catalog", ..tail] ->
       bounded_context.Bc(
-        Catalog,
+        CardCatalog,
         hexagonal.categorize_layer(
           cqrs.categorize_application,
           categorize_driver,
@@ -129,7 +129,7 @@ fn describe_driver(driver: DriverCategory) -> String {
 
 fn describe_bc(bc: BoundedContext, layer: Layer) -> String {
   let bc_str = case bc {
-    Catalog -> "Catalog"
+    CardCatalog -> "CardCatalog"
     Collection -> "Collection"
     InventoryPlanning -> "InventoryPlanning"
     Insights -> "Insights"
@@ -180,9 +180,9 @@ pub fn main() {
       // Documented with a diagram in docs/dev/bounded-context-dependencies.md
       // — update it when this list changes.
       allowed_cross_bc: [
-        #(InventoryPlanning, Catalog),
+        #(InventoryPlanning, CardCatalog),
         #(InventoryPlanning, Collection),
-        #(Insights, Catalog),
+        #(Insights, CardCatalog),
         #(Insights, Collection),
       ],
     )
