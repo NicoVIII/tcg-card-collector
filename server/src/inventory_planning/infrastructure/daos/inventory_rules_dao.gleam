@@ -46,7 +46,7 @@ fn rule_row_decoder() {
   decode.success(#(id, location_name, expression, position, selector, sort_keys))
 }
 
-pub fn list() -> List(RuleTuple) {
+pub fn list() -> Result(List(RuleTuple), String) {
   sqlite_store.query(
     "SELECT id, location_name, expression, position, selector, sort_keys "
       <> "FROM inventory_rules "
@@ -54,7 +54,7 @@ pub fn list() -> List(RuleTuple) {
     [],
     rule_row_decoder(),
   )
-  |> result.unwrap([])
+  |> result.map_error(fn(error) { error.message })
 }
 
 pub fn delete(id: String) -> Result(Nil, String) {

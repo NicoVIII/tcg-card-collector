@@ -3,5 +3,5 @@ pub type BulkSpecReadModel {
 }
 
 pub type GetBulkSpecPort {
-  GetBulkSpecPort(current: fn() -> BulkSpecReadModel)
+  GetBulkSpecPort(current: fn() -> Result(BulkSpecReadModel, String))
 }

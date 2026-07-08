@@ -20,7 +20,7 @@ pub type ImportSetsPort =
 
 pub type RefreshRecordRepositoryPort {
   RefreshRecordRepositoryPort(
-    load: fn() -> Option(ProbeResult),
+    load: fn() -> Result(Option(ProbeResult), String),
     save: fn(ProbeResult) -> Result(Nil, String),
   )
 }

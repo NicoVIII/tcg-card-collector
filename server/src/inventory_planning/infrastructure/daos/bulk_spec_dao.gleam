@@ -14,20 +14,21 @@ fn bulk_spec_row_decoder() {
 }
 
 // Returns the seeded defaults when the singleton row is somehow missing, so the
-// cascade always has a bulk location to fall back on.
-pub fn get() -> #(String, String) {
-  sqlite_store.query(
-    "SELECT location_name, sort_keys "
-      <> "FROM inventory_bulk_spec WHERE id = 1 LIMIT 1;",
-    [],
-    bulk_spec_row_decoder(),
+// cascade always has a bulk location to fall back on. A query *error* is a
+// genuine read failure and propagates — only the empty-rows case defaults.
+pub fn get() -> Result(#(String, String), String) {
+  use rows <- result.map(
+    sqlite_store.query(
+      "SELECT location_name, sort_keys "
+        <> "FROM inventory_bulk_spec WHERE id = 1 LIMIT 1;",
+      [],
+      bulk_spec_row_decoder(),
+    )
+    |> result.map_error(fn(error) { error.message }),
   )
-  |> result.unwrap([])
-  |> fn(rows) {
-    case rows {
-      [row, ..] -> row
-      [] -> #(default_location_name, default_sort_keys)
-    }
+  case rows {
+    [row, ..] -> row
+    [] -> #(default_location_name, default_sort_keys)
   }
 }
 

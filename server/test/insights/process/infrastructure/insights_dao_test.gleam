@@ -7,7 +7,7 @@ pub fn mark_and_list_round_trip_test() {
   let assert Ok(Nil) = insights_dao.mark("lea")
   let assert Ok(Nil) = insights_dao.mark("2xm")
 
-  assert insights_dao.list() == ["2xm", "lea"]
+  assert insights_dao.list() == Ok(["2xm", "lea"])
 }
 
 pub fn marking_the_same_set_code_twice_is_idempotent_test() {
@@ -16,7 +16,7 @@ pub fn marking_the_same_set_code_twice_is_idempotent_test() {
   let assert Ok(Nil) = insights_dao.mark("lea")
   let assert Ok(Nil) = insights_dao.mark("lea")
 
-  assert insights_dao.list() == ["lea"]
+  assert insights_dao.list() == Ok(["lea"])
 }
 
 pub fn unmark_removes_the_set_code_test() {
@@ -25,5 +25,5 @@ pub fn unmark_removes_the_set_code_test() {
   let assert Ok(Nil) = insights_dao.mark("lea")
   let assert Ok(Nil) = insights_dao.unmark("lea")
 
-  assert insights_dao.list() == []
+  assert insights_dao.list() == Ok([])
 }

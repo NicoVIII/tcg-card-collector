@@ -14,6 +14,7 @@ pub type CardReadModel {
 
 pub type GetCatalogCardsPort {
   GetCatalogCardsPort(
-    get_cards: fn(List(#(String, String))) -> List(CardReadModel),
+    get_cards: fn(List(#(String, String))) ->
+      Result(List(CardReadModel), String),
   )
 }

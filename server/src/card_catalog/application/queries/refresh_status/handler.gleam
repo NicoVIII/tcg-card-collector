@@ -3,6 +3,7 @@ import card_catalog/domain/refresh_record.{
   Failed, ProbeResult, Skipped, Succeeded,
 }
 import gleam/option.{None, Some}
+import gleam/result
 import gleam/time/duration
 import gleam/time/timestamp
 
@@ -13,8 +14,9 @@ pub type GetCatalogRefreshStatusQuery {
 pub fn execute(
   _query: GetCatalogRefreshStatusQuery,
   port: ports.GetCatalogRefreshStatusPort,
-) -> ports.RefreshStatusReadModel {
-  case port.load_refresh_record() {
+) -> Result(ports.RefreshStatusReadModel, String) {
+  use record <- result.map(port.load_refresh_record())
+  case record {
     None ->
       ports.RefreshStatusReadModel(
         status: "never_run",

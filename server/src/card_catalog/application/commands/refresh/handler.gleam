@@ -71,7 +71,12 @@ pub fn execute(
   ports: refresh_ports.RefreshCatalogPorts,
 ) -> command_result.CommandResult(refresh_ports.RefreshCatalogError) {
   let now = ports.now()
-  let record = ports.record_repository.load()
+  // A metadata read failure aborts rather than masquerading as "never probed"
+  // — which would trigger a full, network-heavy refresh on every broken read.
+  use record <- result.try(
+    ports.record_repository.load()
+    |> result.map_error(fn(reason) { RefreshCatalogError(reason:) }),
+  )
 
   // No save: upstream was never contacted, so there is nothing to record.
   // The probe interval must count from the last actual upstream contact.

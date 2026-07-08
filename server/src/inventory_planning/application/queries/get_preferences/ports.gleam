@@ -3,5 +3,7 @@ pub type PlanningPreferencesReadModel {
 }
 
 pub type GetPlanningPreferencesPort {
-  GetPlanningPreferencesPort(current: fn() -> PlanningPreferencesReadModel)
+  GetPlanningPreferencesPort(
+    current: fn() -> Result(PlanningPreferencesReadModel, String),
+  )
 }

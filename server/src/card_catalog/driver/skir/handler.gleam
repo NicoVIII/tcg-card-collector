@@ -65,22 +65,30 @@ fn handle_list_catalog_cards(get_dependencies: fn(context) -> Dependencies) {
     Nil,
     Nil,
   ) {
-    let all_keys =
+    case
       catalog_list_cards_handler.execute(
         ListCatalogCardsQuery,
         get_dependencies(ctx).list_catalog_cards_port,
       )
-    let total = list.length(all_keys)
-    let paged_keys = paginate_keys(all_keys, req.offset, req.limit)
-    let response =
-      card_catalog_queries.catalog_card_key_list_new(
-        list.map(paged_keys, map_catalog_card_key),
-        req.limit,
-        req.offset,
-        total,
+    {
+      Ok(all_keys) -> {
+        let total = list.length(all_keys)
+        let paged_keys = paginate_keys(all_keys, req.offset, req.limit)
+        let response =
+          card_catalog_queries.catalog_card_key_list_new(
+            list.map(paged_keys, map_catalog_card_key),
+            req.limit,
+            req.offset,
+            total,
+          )
+        #(Ok(response), req_meta, Nil)
+      }
+      Error(reason) -> #(
+        Error(service.ServiceError(service.E500xInternalServerError, reason)),
+        req_meta,
+        Nil,
       )
-
-    #(Ok(response), req_meta, Nil)
+    }
   }
 }
 
@@ -102,17 +110,26 @@ fn handle_get_catalog_cards(get_dependencies: fn(context) -> Dependencies) {
     Nil,
   ) {
     let keys = list.map(req.keys, fn(k) { #(k.set_code, k.collector_number) })
-    let cards =
+    case
       get_catalog_cards_handler.execute(
         get_catalog_cards_handler.GetCatalogCardsQuery(keys:),
         get_dependencies(ctx).get_catalog_cards_port,
       )
-    let response =
-      card_catalog_queries.catalog_card_list_new(list.map(
-        cards,
-        map_card_read_model,
-      ))
-    #(Ok(response), req_meta, Nil)
+    {
+      Ok(cards) -> {
+        let response =
+          card_catalog_queries.catalog_card_list_new(list.map(
+            cards,
+            map_card_read_model,
+          ))
+        #(Ok(response), req_meta, Nil)
+      }
+      Error(reason) -> #(
+        Error(service.ServiceError(service.E500xInternalServerError, reason)),
+        req_meta,
+        Nil,
+      )
+    }
   }
 }
 
@@ -145,12 +162,23 @@ fn handle_get_refresh_status(get_dependencies: fn(context) -> Dependencies) {
     Nil,
     Nil,
   ) {
-    let status =
+    case
       refresh_status_handler.execute(
         GetCatalogRefreshStatusQuery,
         get_dependencies(ctx).get_refresh_status_port,
       )
-    #(Ok(catalog_skir_codec.map_refresh_status_result(status)), req_meta, Nil)
+    {
+      Ok(status) -> #(
+        Ok(catalog_skir_codec.map_refresh_status_result(status)),
+        req_meta,
+        Nil,
+      )
+      Error(reason) -> #(
+        Error(service.ServiceError(service.E500xInternalServerError, reason)),
+        req_meta,
+        Nil,
+      )
+    }
   }
 }
 

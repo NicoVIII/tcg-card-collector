@@ -8,6 +8,6 @@ pub type GetSetReleaseDatesQuery {
 pub fn execute(
   query: GetSetReleaseDatesQuery,
   port: ports.GetSetReleaseDatesPort,
-) -> Dict(String, String) {
+) -> Result(Dict(String, String), String) {
   port(query.set_codes)
 }

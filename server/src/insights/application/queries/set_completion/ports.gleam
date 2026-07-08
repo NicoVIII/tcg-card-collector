@@ -1,10 +1,10 @@
 import gleam/dict.{type Dict}
 
 pub type TargetSetsPort =
-  fn() -> List(String)
+  fn() -> Result(List(String), String)
 
 pub type SetCardKeysPort =
-  fn(List(String)) -> Dict(String, List(String))
+  fn(List(String)) -> Result(Dict(String, List(String)), String)
 
 pub type OwnedCard {
   OwnedCard(set_code: String, collector_number: String)

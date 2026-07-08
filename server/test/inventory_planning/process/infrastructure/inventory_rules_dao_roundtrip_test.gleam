@@ -15,9 +15,9 @@ pub fn tab_and_quote_in_location_name_round_trips_test() {
       "name,set_code",
     )
 
-  let assert [
+  let assert Ok([
     #("rule-1", location_name, expression, position, selector, sort_keys),
-  ] = inventory_rules_dao.list()
+  ]) = inventory_rules_dao.list()
   assert location_name == tricky_name
   assert expression == "set_code in (abc)"
   assert position == 2
@@ -40,6 +40,6 @@ pub fn rules_list_orders_by_position_test() {
       "",
     )
 
-  let assert [#("early", _, _, _, _, _), #("late", _, _, _, _, _)] =
+  let assert Ok([#("early", _, _, _, _, _), #("late", _, _, _, _, _)]) =
     inventory_rules_dao.list()
 }

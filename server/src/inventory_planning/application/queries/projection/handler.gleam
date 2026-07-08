@@ -21,14 +21,17 @@ pub fn execute(
   ports: projection_ports.InventoryProjectionPorts,
 ) -> Result(projection_ports.Projection, String) {
   // A rule that no longer parses is a configuration error, not a card to drop:
-  // surface it rather than silently omit placements the user expects.
-  use cascade <- result.try(build_cascade(ports.rules()))
+  // surface it rather than silently omit placements the user expects. A broken
+  // rules read is likewise an error, not an empty cascade that bulks everything.
+  use rules_model <- result.try(ports.rules())
+  use cascade <- result.try(build_cascade(rules_model))
   use snapshot_rows <- result.try(ports.snapshot_rows())
 
-  let attributes =
+  use attributes <- result.try(
     ports.catalog_attributes(
       list.map(snapshot_rows, fn(row) { #(row.set_code, row.collector_number) }),
-    )
+    ),
+  )
 
   let planned = list.filter_map(snapshot_rows, plan_card(_, attributes))
   let unknown_count =
@@ -40,7 +43,7 @@ pub fn execute(
   let set_codes =
     list.map(planned, fn(c) { card_key.set_code_string(c.key) })
     |> list.unique
-  let set_dates = ports.set_release_dates(set_codes)
+  use set_dates <- result.try(ports.set_release_dates(set_codes))
 
   let locations =
     rule_cascade.project(cascade, planned, set_dates)

@@ -25,9 +25,10 @@ fn build_ports_with_dates(
       catalog
       |> list.filter(fn(entry) { list.contains(keys, entry.0) })
       |> dict.from_list
+      |> Ok
     },
-    rules: fn() { rules },
-    set_release_dates: fn(_codes) { dict.from_list(set_dates) },
+    rules: fn() { Ok(rules) },
+    set_release_dates: fn(_codes) { Ok(dict.from_list(set_dates)) },
   )
 }
 
@@ -432,16 +433,31 @@ pub fn snapshot_rows_failure_propagates_as_error_test() {
   let ports =
     ports.InventoryProjectionPorts(
       snapshot_rows: fn() { Error("db unavailable") },
-      catalog_attributes: fn(_keys) { dict.new() },
+      catalog_attributes: fn(_keys) { Ok(dict.new()) },
       rules: fn() {
-        ports.RulesModel(
+        Ok(ports.RulesModel(
           rules: [],
           bulk: ports.BulkSpecRow(location_name: "Bulk", sort_keys: ""),
-        )
+        ))
       },
-      set_release_dates: fn(_codes) { dict.new() },
+      set_release_dates: fn(_codes) { Ok(dict.new()) },
     )
 
   assert handler.execute(handler.InventoryProjectionQuery, ports)
     == Error("db unavailable")
+}
+
+// A broken rules read must surface as an error — not an empty cascade that
+// silently sweeps the whole collection into bulk (the #43 worst case).
+pub fn rules_failure_propagates_as_error_test() {
+  let ports =
+    ports.InventoryProjectionPorts(
+      snapshot_rows: fn() { Ok([]) },
+      catalog_attributes: fn(_keys) { Ok(dict.new()) },
+      rules: fn() { Error("rules table unreadable") },
+      set_release_dates: fn(_codes) { Ok(dict.new()) },
+    )
+
+  assert handler.execute(handler.InventoryProjectionQuery, ports)
+    == Error("rules table unreadable")
 }

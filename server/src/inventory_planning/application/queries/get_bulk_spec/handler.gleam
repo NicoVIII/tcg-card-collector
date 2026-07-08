@@ -7,6 +7,6 @@ pub type GetBulkSpecQuery {
 pub fn execute(
   _query: GetBulkSpecQuery,
   port: ports.GetBulkSpecPort,
-) -> ports.BulkSpecReadModel {
+) -> Result(ports.BulkSpecReadModel, String) {
   port.current()
 }

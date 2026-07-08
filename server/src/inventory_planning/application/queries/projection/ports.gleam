@@ -83,15 +83,17 @@ pub type SnapshotRowsPort =
   fn() -> Result(List(SnapshotRow), String)
 
 /// Batch lookup: catalog attributes by (set_code, collector_number). Keys absent
-/// from the catalog are simply absent from the returned dict.
+/// from the catalog are simply absent from the returned dict; a read error
+/// propagates rather than collapsing to "no attributes".
 pub type CatalogAttributesPort =
-  fn(List(#(String, String))) -> Dict(#(String, String), CatalogAttributes)
+  fn(List(#(String, String))) ->
+    Result(Dict(#(String, String), CatalogAttributes), String)
 
 pub type RulesPort =
-  fn() -> RulesModel
+  fn() -> Result(RulesModel, String)
 
 pub type SetReleaseDatesPort =
-  fn(List(String)) -> Dict(String, String)
+  fn(List(String)) -> Result(Dict(String, String), String)
 
 pub type InventoryProjectionPorts {
   InventoryProjectionPorts(

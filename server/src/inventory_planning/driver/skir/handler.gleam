@@ -137,17 +137,26 @@ fn handle_list_inventory_rules(get_dependencies: fn(context) -> Dependencies) {
     Nil,
     Nil,
   ) {
-    let rules =
+    case
       list_rules_handler.execute(
         list_rules_handler.ListInventoryRulesQuery,
         get_dependencies(ctx).list_inventory_rules_port,
       )
-    let response =
-      inventory_planning_queries.inventory_rule_list_new(
-        list.map(rules, map_inventory_rule),
-        list.length(rules),
+    {
+      Ok(rules) -> {
+        let response =
+          inventory_planning_queries.inventory_rule_list_new(
+            list.map(rules, map_inventory_rule),
+            list.length(rules),
+          )
+        #(Ok(response), req_meta, Nil)
+      }
+      Error(reason) -> #(
+        Error(service.ServiceError(service.E500xInternalServerError, reason)),
+        req_meta,
+        Nil,
       )
-    #(Ok(response), req_meta, Nil)
+    }
   }
 }
 
@@ -195,17 +204,26 @@ fn handle_get_planning_preferences(
     Nil,
     Nil,
   ) {
-    let current =
+    case
       get_preferences_handler.execute(
         get_preferences_handler.GetPlanningPreferencesQuery,
         get_dependencies(ctx).get_planning_preferences_port,
       )
-    let response =
-      inventory_planning_queries.planning_preferences_new(
-        current.default_grouping,
-        current.default_sort,
+    {
+      Ok(current) -> {
+        let response =
+          inventory_planning_queries.planning_preferences_new(
+            current.default_grouping,
+            current.default_sort,
+          )
+        #(Ok(response), req_meta, Nil)
+      }
+      Error(reason) -> #(
+        Error(service.ServiceError(service.E500xInternalServerError, reason)),
+        req_meta,
+        Nil,
       )
-    #(Ok(response), req_meta, Nil)
+    }
   }
 }
 
@@ -250,17 +268,26 @@ fn handle_get_bulk_spec(get_dependencies: fn(context) -> Dependencies) {
     Nil,
     Nil,
   ) {
-    let current =
+    case
       get_bulk_spec_handler.execute(
         get_bulk_spec_handler.GetBulkSpecQuery,
         get_dependencies(ctx).get_bulk_spec_port,
       )
-    let response =
-      inventory_planning_queries.bulk_spec_new(
-        current.location_name,
-        current.sort_keys,
+    {
+      Ok(current) -> {
+        let response =
+          inventory_planning_queries.bulk_spec_new(
+            current.location_name,
+            current.sort_keys,
+          )
+        #(Ok(response), req_meta, Nil)
+      }
+      Error(reason) -> #(
+        Error(service.ServiceError(service.E500xInternalServerError, reason)),
+        req_meta,
+        Nil,
       )
-    #(Ok(response), req_meta, Nil)
+    }
   }
 }
 

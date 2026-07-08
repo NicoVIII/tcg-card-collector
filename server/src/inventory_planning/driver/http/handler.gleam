@@ -26,12 +26,16 @@ import shared/driver/http/json_codec
 pub fn handle_list_inventory_rules(
   deps: Dependencies,
 ) -> Response(mist.ResponseData) {
-  let rules =
+  case
     list_rules_handler.execute(
       list_rules_handler.ListInventoryRulesQuery,
       deps.list_inventory_rules_port,
     )
-  helpers.json_response(200, inventory_codec.encode_inventory_rules(rules))
+  {
+    Ok(rules) ->
+      helpers.json_response(200, inventory_codec.encode_inventory_rules(rules))
+    Error(reason) -> helpers.json_response(500, json_codec.encode_error(reason))
+  }
 }
 
 pub fn handle_upsert_inventory_rule(
@@ -125,12 +129,16 @@ pub fn handle_inventory_projection(
 }
 
 pub fn handle_get_bulk_spec(deps: Dependencies) -> Response(mist.ResponseData) {
-  let spec =
+  case
     get_bulk_spec_handler.execute(
       get_bulk_spec_handler.GetBulkSpecQuery,
       deps.get_bulk_spec_port,
     )
-  helpers.json_response(200, inventory_codec.encode_bulk_spec(spec))
+  {
+    Ok(spec) ->
+      helpers.json_response(200, inventory_codec.encode_bulk_spec(spec))
+    Error(reason) -> helpers.json_response(500, json_codec.encode_error(reason))
+  }
 }
 
 pub fn handle_update_bulk_spec(
@@ -272,12 +280,16 @@ fn to_unmark_raw_placement(
 }
 
 pub fn handle_get_settings(deps: Dependencies) -> Response(mist.ResponseData) {
-  let prefs =
+  case
     get_preferences_handler.execute(
       get_preferences_handler.GetPlanningPreferencesQuery,
       deps.get_planning_preferences_port,
     )
-  helpers.json_response(200, inventory_codec.encode_settings(prefs))
+  {
+    Ok(prefs) ->
+      helpers.json_response(200, inventory_codec.encode_settings(prefs))
+    Error(reason) -> helpers.json_response(500, json_codec.encode_error(reason))
+  }
 }
 
 pub fn handle_update_settings(

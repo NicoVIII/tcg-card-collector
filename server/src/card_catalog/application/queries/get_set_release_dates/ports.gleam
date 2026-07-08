@@ -1,7 +1,7 @@
 import gleam/dict.{type Dict}
 
-// Infallible: absence and error both mean "no date known", which the domain
-// handles via its card-date fallback; propagating errors here would add
-// complexity without changing the outcome for any caller.
+// A missing set is a legitimate absence (empty entry, handled by the domain's
+// card-date fallback); a read *error* is a genuine failure and propagates
+// rather than masquerading as "no dates known".
 pub type GetSetReleaseDatesPort =
-  fn(List(String)) -> Dict(String, String)
+  fn(List(String)) -> Result(Dict(String, String), String)

@@ -7,6 +7,6 @@ pub type ListCatalogCardsQuery {
 pub fn execute(
   _query: ListCatalogCardsQuery,
   port: ports.ListCatalogCardsPort,
-) -> List(ports.CatalogCardKeyReadModel) {
+) -> Result(List(ports.CatalogCardKeyReadModel), String) {
   port.list_cards()
 }

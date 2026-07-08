@@ -17,12 +17,16 @@ import shared/driver/http/json_codec
 pub fn handle_list_catalog_cards(
   deps: Dependencies,
 ) -> Response(mist.ResponseData) {
-  let cards =
+  case
     catalog_list_cards_handler.execute(
       ListCatalogCardsQuery,
       deps.list_catalog_cards_port,
     )
-  helpers.json_response(200, catalog_codec.encode_catalog_cards(cards))
+  {
+    Ok(cards) ->
+      helpers.json_response(200, catalog_codec.encode_catalog_cards(cards))
+    Error(reason) -> helpers.json_response(500, json_codec.encode_error(reason))
+  }
 }
 
 pub fn handle_get_catalog_cards(
@@ -32,17 +36,21 @@ pub fn handle_get_catalog_cards(
   use body <- helpers.with_json_body(req)
   case catalog_codec.decode_get_cards_body(body) {
     Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
-    Ok(b) -> {
-      let cards =
+    Ok(b) ->
+      case
         get_catalog_cards_handler.execute(
           get_catalog_cards_handler.GetCatalogCardsQuery(keys: b.keys),
           deps.get_catalog_cards_port,
         )
-      helpers.json_response(
-        200,
-        catalog_codec.encode_catalog_card_details(cards),
-      )
-    }
+      {
+        Ok(cards) ->
+          helpers.json_response(
+            200,
+            catalog_codec.encode_catalog_card_details(cards),
+          )
+        Error(reason) ->
+          helpers.json_response(500, json_codec.encode_error(reason))
+      }
   }
 }
 
@@ -57,10 +65,14 @@ pub fn handle_refresh_catalog(
 pub fn handle_refresh_status(
   deps: Dependencies,
 ) -> Response(mist.ResponseData) {
-  let status =
+  case
     refresh_status_handler.execute(
       GetCatalogRefreshStatusQuery,
       deps.get_refresh_status_port,
     )
-  helpers.json_response(200, catalog_codec.encode_refresh_status(status))
+  {
+    Ok(status) ->
+      helpers.json_response(200, catalog_codec.encode_refresh_status(status))
+    Error(reason) -> helpers.json_response(500, json_codec.encode_error(reason))
+  }
 }

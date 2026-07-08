@@ -8,6 +8,6 @@ pub type ListSetCardKeysQuery {
 pub fn execute(
   query: ListSetCardKeysQuery,
   port: ports.ListSetCardKeysPort,
-) -> Dict(String, List(String)) {
+) -> Result(Dict(String, List(String)), String) {
   port.list_set_card_keys(query.set_codes)
 }

@@ -24,11 +24,11 @@ fn set_code_decoder() {
   decode.success(set_code)
 }
 
-pub fn list() -> List(String) {
+pub fn list() -> Result(List(String), String) {
   sqlite_store.query(
     "SELECT set_code FROM target_sets ORDER BY set_code ASC;",
     [],
     set_code_decoder(),
   )
-  |> result.unwrap([])
+  |> result.map_error(fn(error) { error.message })
 }

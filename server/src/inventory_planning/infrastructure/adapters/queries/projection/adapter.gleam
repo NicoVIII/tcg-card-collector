@@ -33,7 +33,8 @@ fn snapshot_rows_adapter() -> ports.SnapshotRowsPort {
 
 fn catalog_attributes_adapter() -> ports.CatalogAttributesPort {
   fn(keys) {
-    catalog_api.get_cards(keys)
+    use cards <- result.map(catalog_api.get_cards(keys))
+    cards
     |> list.map(fn(card) {
       #(
         #(card.set_code, card.collector_number),
@@ -57,8 +58,10 @@ fn set_release_dates_adapter() -> ports.SetReleaseDatesPort {
 
 fn rules_adapter() -> ports.RulesPort {
   fn() {
+    use rule_tuples <- result.try(inventory_rules_dao.list())
+    use #(bulk_location, bulk_sort_keys) <- result.map(bulk_spec_dao.get())
     let rules =
-      inventory_rules_dao.list()
+      rule_tuples
       |> list.map(fn(rule) {
         let #(id, location_name, expression, position, selector, sort_keys) =
           rule
@@ -71,7 +74,6 @@ fn rules_adapter() -> ports.RulesPort {
           sort_keys: sort_keys,
         )
       })
-    let #(bulk_location, bulk_sort_keys) = bulk_spec_dao.get()
     ports.RulesModel(
       rules: rules,
       bulk: ports.BulkSpecRow(

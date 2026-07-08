@@ -70,7 +70,7 @@ fn build_ports_full(
   refresh_ports.RefreshCatalogPorts(
     now: fn() { timestamp.from_unix_seconds(now) },
     record_repository: refresh_ports.RefreshRecordRepositoryPort(
-      load: fn() { ref.get(repo) },
+      load: fn() { Ok(ref.get(repo)) },
       save:,
     ),
     fetch_metadata:,

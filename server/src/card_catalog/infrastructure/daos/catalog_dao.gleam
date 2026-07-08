@@ -43,8 +43,13 @@ fn refresh_record_row_decoder() {
   decode.success(#(epoch, last_upstream_updated_at, status_str, error_msg))
 }
 
-pub fn load_refresh_record() -> Option(refresh_record.ProbeResult) {
-  let rows =
+// A read error propagates (metadata is unreadable); an empty result is the
+// legitimate "never probed" case and maps to None.
+pub fn load_refresh_record() -> Result(
+  Option(refresh_record.ProbeResult),
+  String,
+) {
+  use rows <- result.map(
     sqlite_store.query(
       "SELECT CAST(strftime('%s', last_probe_at) AS INTEGER), "
         <> "last_upstream_updated_at, last_refresh_status, last_error_message "
@@ -52,10 +57,11 @@ pub fn load_refresh_record() -> Option(refresh_record.ProbeResult) {
       [],
       refresh_record_row_decoder(),
     )
+    |> result.map_error(fn(error) { error.message }),
+  )
   case rows {
-    Error(_) -> None
-    Ok([]) -> None
-    Ok([#(epoch, last_upstream_updated_at, status_str, error_msg), ..]) -> {
+    [] -> None
+    [#(epoch, last_upstream_updated_at, status_str, error_msg), ..] -> {
       let status = case status_str {
         "succeeded" -> refresh_record.Succeeded
         "skipped" -> refresh_record.Skipped
@@ -136,7 +142,7 @@ fn card_row_decoder() {
   ))
 }
 
-pub fn list() -> List(CatalogKeyTuple) {
+pub fn list() -> Result(List(CatalogKeyTuple), String) {
   sqlite_store.query(
     "SELECT set_code, collector_number "
       <> "FROM catalog_cards "
@@ -144,18 +150,23 @@ pub fn list() -> List(CatalogKeyTuple) {
     [],
     key_row_decoder(),
   )
-  |> result.unwrap([])
+  |> result.map_error(fn(error) { error.message })
 }
 
-pub fn get_by_keys(keys: List(CatalogKeyTuple)) -> List(CatalogCardTuple) {
+pub fn get_by_keys(
+  keys: List(CatalogKeyTuple),
+) -> Result(List(CatalogCardTuple), String) {
   keys
   |> list.sized_chunk(get_by_keys_batch_size)
-  |> list.flat_map(get_by_keys_chunk)
+  |> list.try_map(get_by_keys_chunk)
+  |> result.map(list.flatten)
 }
 
-fn get_by_keys_chunk(keys: List(CatalogKeyTuple)) -> List(CatalogCardTuple) {
+fn get_by_keys_chunk(
+  keys: List(CatalogKeyTuple),
+) -> Result(List(CatalogCardTuple), String) {
   case keys {
-    [] -> []
+    [] -> Ok([])
     _ -> {
       let placeholders =
         keys
@@ -177,14 +188,16 @@ fn get_by_keys_chunk(keys: List(CatalogKeyTuple)) -> List(CatalogCardTuple) {
         params,
         card_row_decoder(),
       )
-      |> result.unwrap([])
+      |> result.map_error(fn(error) { error.message })
     }
   }
 }
 
-pub fn list_by_set_codes(set_codes: List(String)) -> List(CatalogKeyTuple) {
+pub fn list_by_set_codes(
+  set_codes: List(String),
+) -> Result(List(CatalogKeyTuple), String) {
   case set_codes {
-    [] -> []
+    [] -> Ok([])
     _ -> {
       let placeholders =
         set_codes
@@ -200,7 +213,7 @@ pub fn list_by_set_codes(set_codes: List(String)) -> List(CatalogKeyTuple) {
         params,
         key_row_decoder(),
       )
-      |> result.unwrap([])
+      |> result.map_error(fn(error) { error.message })
     }
   }
 }
@@ -212,7 +225,7 @@ fn name_row_decoder() {
   decode.success(#(set_code, collector_number, name))
 }
 
-pub fn name_lookup() -> List(#(String, String, String)) {
+pub fn name_lookup() -> Result(List(#(String, String, String)), String) {
   sqlite_store.query(
     "SELECT set_code, collector_number, name "
       <> "FROM catalog_cards "
@@ -220,7 +233,7 @@ pub fn name_lookup() -> List(#(String, String, String)) {
     [],
     name_row_decoder(),
   )
-  |> result.unwrap([])
+  |> result.map_error(fn(error) { error.message })
 }
 
 // 5 params per row; stay under the SQLite 999-param cap.
@@ -274,19 +287,22 @@ fn set_date_row_decoder() {
 
 pub fn get_set_release_dates(
   set_codes: List(String),
-) -> List(#(String, String)) {
+) -> Result(List(#(String, String)), String) {
   case set_codes {
-    [] -> []
+    [] -> Ok([])
     _ ->
       set_codes
       |> list.sized_chunk(get_by_keys_batch_size)
-      |> list.flat_map(get_set_release_dates_chunk)
+      |> list.try_map(get_set_release_dates_chunk)
+      |> result.map(list.flatten)
   }
 }
 
-fn get_set_release_dates_chunk(codes: List(String)) -> List(#(String, String)) {
+fn get_set_release_dates_chunk(
+  codes: List(String),
+) -> Result(List(#(String, String)), String) {
   case codes {
-    [] -> []
+    [] -> Ok([])
     _ -> {
       let placeholders =
         codes
@@ -300,7 +316,7 @@ fn get_set_release_dates_chunk(codes: List(String)) -> List(#(String, String)) {
         params,
         set_date_row_decoder(),
       )
-      |> result.unwrap([])
+      |> result.map_error(fn(error) { error.message })
     }
   }
 }

@@ -15,14 +15,16 @@ import card_catalog/infrastructure/adapters/queries/list_set_card_keys/adapter a
 
 pub fn get_cards(
   keys: List(#(String, String)),
-) -> List(get_cards_ports.CardReadModel) {
+) -> Result(List(get_cards_ports.CardReadModel), String) {
   get_cards_handler.execute(
     get_cards_handler.GetCatalogCardsQuery(keys:),
     get_cards_adapter.new(),
   )
 }
 
-pub fn get_set_release_dates(set_codes: List(String)) -> Dict(String, String) {
+pub fn get_set_release_dates(
+  set_codes: List(String),
+) -> Result(Dict(String, String), String) {
   get_set_release_dates_handler.execute(
     get_set_release_dates_handler.GetSetReleaseDatesQuery(set_codes:),
     get_set_release_dates_adapter.new(),
@@ -31,7 +33,7 @@ pub fn get_set_release_dates(set_codes: List(String)) -> Dict(String, String) {
 
 pub fn list_set_card_keys(
   set_codes: List(String),
-) -> Dict(String, List(String)) {
+) -> Result(Dict(String, List(String)), String) {
   list_set_card_keys_handler.execute(
     list_set_card_keys_handler.ListSetCardKeysQuery(set_codes:),
     list_set_card_keys_adapter.new(),

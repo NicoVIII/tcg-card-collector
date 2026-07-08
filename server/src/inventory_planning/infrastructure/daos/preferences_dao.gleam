@@ -13,19 +13,21 @@ fn preferences_row_decoder() {
   decode.success(#(sort, grouping))
 }
 
-pub fn get() -> #(String, String) {
-  sqlite_store.query(
-    "SELECT default_sort, default_grouping "
-      <> "FROM app_settings WHERE id = 1 LIMIT 1;",
-    [],
-    preferences_row_decoder(),
+// A query error is a genuine read failure and propagates; only the empty-rows
+// case falls back to the seeded defaults.
+pub fn get() -> Result(#(String, String), String) {
+  use rows <- result.map(
+    sqlite_store.query(
+      "SELECT default_sort, default_grouping "
+        <> "FROM app_settings WHERE id = 1 LIMIT 1;",
+      [],
+      preferences_row_decoder(),
+    )
+    |> result.map_error(fn(error) { error.message }),
   )
-  |> result.unwrap([])
-  |> fn(rows) {
-    case rows {
-      [row, ..] -> row
-      [] -> #(default_sort, default_grouping)
-    }
+  case rows {
+    [row, ..] -> row
+    [] -> #(default_sort, default_grouping)
   }
 }
 

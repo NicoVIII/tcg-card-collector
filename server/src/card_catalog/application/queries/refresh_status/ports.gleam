@@ -11,7 +11,7 @@ pub type RefreshStatusReadModel {
 }
 
 pub type LoadRefreshRecordPort =
-  fn() -> Option(ProbeResult)
+  fn() -> Result(Option(ProbeResult), String)
 
 pub type GetCatalogRefreshStatusPort {
   GetCatalogRefreshStatusPort(load_refresh_record: LoadRefreshRecordPort)

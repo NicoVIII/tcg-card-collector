@@ -7,6 +7,6 @@ pub type GetPlanningPreferencesQuery {
 pub fn execute(
   _query: GetPlanningPreferencesQuery,
   port: ports.GetPlanningPreferencesPort,
-) -> ports.PlanningPreferencesReadModel {
+) -> Result(ports.PlanningPreferencesReadModel, String) {
   port.current()
 }

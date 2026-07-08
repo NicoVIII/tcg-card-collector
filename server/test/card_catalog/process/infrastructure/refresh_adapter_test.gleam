@@ -81,7 +81,7 @@ pub fn import_succeeds_and_loads_cards_test() {
 
   // 4 cards in the fixture but test-id-004 has rarity "mythical_rare" (unknown)
   // and must be skipped; only 3 valid cards should be persisted
-  let cards = catalog_dao.list()
+  let assert Ok(cards) = catalog_dao.list()
   assert list.length(cards) == 3
 
   // Metadata should reflect succeeded
@@ -108,7 +108,7 @@ pub fn import_populates_enrichment_attributes_test() {
   let result = handler.execute(handler.RefreshCatalogCommand, port)
   assert result == Ok(Nil)
 
-  let rows =
+  let assert Ok(rows) =
     catalog_dao.get_by_keys([#("grn", "173"), #("sld", "1000"), #("mh1", "42")])
   assert list.length(rows) == 3
 
@@ -246,7 +246,7 @@ pub fn unchanged_upstream_marks_skipped_test() {
   assert result == Ok(Nil)
 
   // No cards should have been imported
-  assert catalog_dao.list() == []
+  assert catalog_dao.list() == Ok([])
 
   // Metadata should be skipped
   let status =

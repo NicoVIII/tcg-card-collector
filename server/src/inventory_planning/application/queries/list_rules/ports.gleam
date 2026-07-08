@@ -10,5 +10,7 @@ pub type InventoryRuleReadModel {
 }
 
 pub type ListInventoryRulesPort {
-  ListInventoryRulesPort(list_rules: fn() -> List(InventoryRuleReadModel))
+  ListInventoryRulesPort(
+    list_rules: fn() -> Result(List(InventoryRuleReadModel), String),
+  )
 }

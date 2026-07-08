@@ -12,9 +12,8 @@ pub fn execute(
   _query: SetCompletionQuery,
   ports: ports.SetCompletionPorts,
 ) -> Result(List(ports.SetCompletionReadModel), String) {
-  let target_sets = ports.target_sets()
-  let catalog_keys = ports.set_card_keys(target_sets)
-
+  use target_sets <- result.try(ports.target_sets())
+  use catalog_keys <- result.try(ports.set_card_keys(target_sets))
   use owned_cards <- result.try(ports.owned_cards())
   let owned =
     owned_cards

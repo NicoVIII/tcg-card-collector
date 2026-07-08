@@ -8,8 +8,8 @@ fn build_ports(
   owned_cards owned_cards: List(ports.OwnedCard),
 ) -> ports.SetCompletionPorts {
   ports.SetCompletionPorts(
-    target_sets: fn() { target_sets },
-    set_card_keys: fn(_set_codes) { catalog_keys },
+    target_sets: fn() { Ok(target_sets) },
+    set_card_keys: fn(_set_codes) { Ok(catalog_keys) },
     owned_cards: fn() { Ok(owned_cards) },
   )
 }
@@ -84,12 +84,38 @@ pub fn owned_cards_outside_target_sets_are_ignored_test() {
 pub fn owned_cards_failure_propagates_as_error_test() {
   let ports =
     ports.SetCompletionPorts(
-      target_sets: fn() { ["lea"] },
-      set_card_keys: fn(_set_codes) { dict.from_list([#("lea", ["1"])]) },
+      target_sets: fn() { Ok(["lea"]) },
+      set_card_keys: fn(_set_codes) { Ok(dict.from_list([#("lea", ["1"])])) },
       owned_cards: fn() { Error("db unavailable") },
     )
 
   let result = handler.execute(handler.SetCompletionQuery, ports)
 
   assert result == Error("db unavailable")
+}
+
+pub fn target_sets_failure_propagates_as_error_test() {
+  let ports =
+    ports.SetCompletionPorts(
+      target_sets: fn() { Error("target_sets unreadable") },
+      set_card_keys: fn(_set_codes) { Ok(dict.new()) },
+      owned_cards: fn() { Ok([]) },
+    )
+
+  let result = handler.execute(handler.SetCompletionQuery, ports)
+
+  assert result == Error("target_sets unreadable")
+}
+
+pub fn set_card_keys_failure_propagates_as_error_test() {
+  let ports =
+    ports.SetCompletionPorts(
+      target_sets: fn() { Ok(["lea"]) },
+      set_card_keys: fn(_set_codes) { Error("catalog unreadable") },
+      owned_cards: fn() { Ok([]) },
+    )
+
+  let result = handler.execute(handler.SetCompletionQuery, ports)
+
+  assert result == Error("catalog unreadable")
 }

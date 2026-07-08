@@ -3,5 +3,7 @@ pub type CatalogCardKeyReadModel {
 }
 
 pub type ListCatalogCardsPort {
-  ListCatalogCardsPort(list_cards: fn() -> List(CatalogCardKeyReadModel))
+  ListCatalogCardsPort(
+    list_cards: fn() -> Result(List(CatalogCardKeyReadModel), String),
+  )
 }

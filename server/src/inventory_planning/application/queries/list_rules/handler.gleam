@@ -7,6 +7,6 @@ pub type ListInventoryRulesQuery {
 pub fn execute(
   _query: ListInventoryRulesQuery,
   port: ports.ListInventoryRulesPort,
-) -> List(ports.InventoryRuleReadModel) {
+) -> Result(List(ports.InventoryRuleReadModel), String) {
   port.list_rules()
 }
