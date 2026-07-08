@@ -1,6 +1,6 @@
 # Test Strategy — Agent Rules
 
-Operating rules for writing/placing tests in this project. Full rationale lives in `test/README.md`; this is the actionable subset. Architecture is hexagonal + functional-core / imperative-shell.
+Operating rules for writing/placing tests in this project. Full rationale lives in `test/README.md`, the decision record in [ADR 0003](../../docs/decisions/0003-two-axis-test-layout.md); this is the actionable subset. Architecture is hexagonal + functional-core / imperative-shell.
 
 ## Layout
 

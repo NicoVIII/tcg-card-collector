@@ -15,7 +15,7 @@ Everything needed to set up a working environment, run the service locally, and 
 - `skir-src` — Skir contract source (code is generated for both sides)
 - `container` — container/runtime assets
 - `scripts` — helper scripts backing just recipes (dbmate install/run, skir snapshot check)
-- `docs` — vision, architecture, ubiquitous language, this guide
+- `docs` — vision, architecture, decision records (ADRs), ubiquitous language, this guide
 
 ## Task Runner
 

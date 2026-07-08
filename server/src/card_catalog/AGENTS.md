@@ -9,6 +9,8 @@ Context-specific rules; cross-context rules live in `server/AGENTS.md`.
   risk that motivated moving everything else to `sqlight` doesn't apply here,
   and CLI bulk import is meaningfully faster than row-by-row parameterized
   inserts at this volume. Don't "fix" it back to parameterized inserts.
+  Decision record:
+  [ADR 0005](../../../docs/decisions/0005-bulk-load-via-sqlite3-cli-import.md).
 - **`driver/refresh_launcher.gleam` is the shared orchestration module** for
   the refresh use case's background worker — both the skir and http drivers
   must go through it (see the two-transports rule in `server/AGENTS.md`).

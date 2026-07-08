@@ -4,7 +4,7 @@ Generated files live in `server/src/shared/driver/skir/skirout/` and `client-web
 
 ## Compatibility Policy
 
-The contract is intentionally unversioned. Breaking contract changes are only allowed when backend and frontend adaptations are delivered in the **same PR**:
+The contract is intentionally unversioned ([ADR 0002](../docs/decisions/0002-unversioned-contract-atomic-breaking-changes.md)). Breaking contract changes are only allowed when backend and frontend adaptations are delivered in the **same PR**:
 
 - Update contract source files in `skir-src/` and regenerate (`just skir-gen`).
 - Update the contract snapshot `skir-snapshot.json` (`just skir-snapshot`).

@@ -2,7 +2,9 @@
 
 Full rationale for the server's structure. The actionable subset an agent must
 obey lives in [server/AGENTS.md](../../server/AGENTS.md); this document explains
-*why* those rules exist and records the deliberate exceptions.
+*why* those rules exist and records the deliberate exceptions. The decision
+history behind the big calls — alternatives considered and why they lost —
+lives in the ADRs under [docs/decisions/](../decisions/README.md).
 
 Code is organized **context-first, then layer**:
 `server/src/<bounded_context>/{domain,application/{commands,queries},infrastructure/{adapters,daos},driver/{skir,http}}/`.
@@ -49,7 +51,8 @@ bypasses.
 
 `just server::lint-check` runs `gleam run -m lint` (glinter via
 `server/vendor/gleam-libs/packages/glinter_arch`) which applies a custom
-`depends_only_on` rule. Violations are build errors.
+`depends_only_on` rule. Violations are build errors. Decision record:
+[ADR 0001](../decisions/0001-lint-enforced-hexagonal-bounded-contexts.md).
 
 - **Bounded context isolation**: contexts must not import from each other,
   except via the cross-BC allowlist above. Only `bootstrap/composition` wires
@@ -104,6 +107,8 @@ effects (e.g. spawning a background worker) must put that orchestration in a
 shared module both drivers call (e.g.
 `card_catalog/driver/refresh_launcher.gleam`), not duplicate it per transport —
 the two doors must behave identically, they just speak different wire formats.
+Decision record:
+[ADR 0004](../decisions/0004-keep-parallel-rest-api-alongside-skir.md).
 
 ## Shared Code and Bootstrap
 
@@ -180,7 +185,8 @@ by string-interpolating values; use `?` placeholders and
 `sqlight.text`/`sqlight.int`/`sqlight.nullable`. Set `TCG_DB_FILE` to the db
 path. Run migrations with `just dbmate-migrate`. (Deliberate exceptions are
 documented in the owning context's AGENTS.md — currently only
-`card_catalog`'s `bulk_load`.)
+`card_catalog`'s `bulk_load`,
+[ADR 0005](../decisions/0005-bulk-load-via-sqlite3-cli-import.md).)
 
 **Error handling philosophy.** Write ports return `Result(Nil, String)`; the
 calling handler decides what a persistence failure means for its use case
