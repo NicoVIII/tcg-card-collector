@@ -177,7 +177,7 @@ pub fn main() {
           _, _ -> False
         }
       },
-      // Documented with a diagram in docs/dev/bounded-context-dependencies.md
+      // Documented with a diagram in docs/dev/architecture.md
       // — update it when this list changes.
       allowed_cross_bc: [
         #(InventoryPlanning, CardCatalog),

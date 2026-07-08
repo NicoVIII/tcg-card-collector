@@ -1,54 +1,66 @@
-# Backend Architecture
+# Backend — Agent Rules
 
-Code is organized **context-first, then layer**: `server/src/<bounded_context>/{domain,application/{commands,queries},infrastructure/{adapters,daos},driver/{skir,http}}/`. Strict hexagonal layers apply within and across contexts — each layer may only import itself and layers below it: `domain` → `application` → `infrastructure`/`driver` → `composition`. `shared/domain` is available everywhere.
+Operating rules for the Gleam backend. Full rationale, request-flow diagrams,
+and the cross-context dependency diagram live in
+[docs/dev/architecture.md](../docs/dev/architecture.md); this is the
+actionable subset. Domain vocabulary and context ownership:
+read `docs/dev/domain-ubiquitous-language.md` before touching domain code.
 
-## Architecture Rules (enforced by glinter via `server/vendor/gleam-libs/packages/glinter_arch`)
+## Structure (lint-enforced — violations are build errors)
 
-`just server::lint-check` runs `gleam run -m lint` which applies a custom `depends_only_on` rule. Violations are build errors.
+Context-first, then layer:
+`src/<bounded_context>/{domain,application/{commands,queries},infrastructure/{adapters,daos},driver/{skir,http}}/`.
+Four contexts: **card_catalog**, **collection**, **inventory_planning**,
+**insights**. `just server::lint-check` enforces:
 
-- **Bounded context isolation**: `card_catalog`, `collection`, `inventory_planning`, and `insights` must not import from each other, except via the explicit cross-BC allowlist (see below). Only `bootstrap/composition` wires them together unconditionally.
-- **Layer ordering**: within any context (and within `shared/`), imports may only go inward — `driver`/`infrastructure` may import `application` and `domain`, but not the reverse.
-- **`driver/gleam/` is a cross-BC Gleam API layer** (`GleamDriver`): a thin facade that exposes a BC's capabilities to other BCs. A BC's `infrastructure` may import another BC's `driver/gleam/` only if the pair is declared in the allowlist in `test/lint.gleam`. Regular `driver/http/` and `driver/skir/` remain transport-only and are never cross-BC. `GleamDriver` may import its own BC's `domain`, `application`, and `infrastructure` — routing through the owning BC's query handler and adapter, not straight into the DAO, so it returns typed read models instead of raw tuples. **Known gap**: the vendored `glinter_arch` (a separate `gleam-libs` submodule) doesn't yet encode the Driver→own-BC-Infrastructure exception this rule describes, so `driver/gleam/*.gleam` files currently carry a `// nolint: depends_only_on` on the infrastructure import. Fixing the rule itself means changing that submodule.
-- **`shared/` is a shared kernel**: any bounded context may import `shared/`, but `shared/` must not import bounded contexts. Layer rules apply within `shared/` too.
-- **`bootstrap/` is the composition root**: it may import anything. Only `driver/` may import `bootstrap/` (DI injection seam).
-- **Generated skir code** (`src/shared/driver/skir/skirout/`) is linted like handwritten code — it categorizes as shared `Driver(Skir)` and there is no lint exclusion. Only `gleam format` skips it (the `find ... ! -path '*/skirout/*'` in `server/justfile`).
+- **Layer ordering**: imports only go inward — `driver`/`infrastructure` may
+  import `application` and `domain`, never the reverse.
+- **Context isolation**: contexts never import each other, except a consumer's
+  `infrastructure/` importing a provider's `driver/gleam/` facade, and only
+  for pairs declared in `test/lint.gleam` (`allowed_cross_bc`). Additions must
+  be explicit one-to-one pairs; update the diagram in
+  `docs/dev/architecture.md` when the list changes.
+- **`shared/`** may be imported by any context but imports no context;
+  **`bootstrap/`** is the composition root and may import anything.
+- **Generated code** (`src/shared/driver/skir/skirout/`) — never edit; change
+  `skir-src/` and run `just skir-gen`. It is linted like handwritten code;
+  only `gleam format` skips it.
 
-**Current cross-BC allowlist**: declared in `test/lint.gleam` (`allowed_cross_bc`), documented with a diagram in [docs/dev/bounded-context-dependencies.md](../docs/dev/bounded-context-dependencies.md) — keep the doc in sync when the list changes. Additions must stay explicit one-to-one context pairs — no wildcards or blanket layer bypasses.
+## Application Layer (CQRS)
 
-Four bounded contexts under `server/src/`: **card_catalog**, **collection**, **inventory_planning**, **insights**. Planning preferences (default sort/grouping) live inside inventory_planning — there is no separate Settings context. Target-set / completion-tracking preferences live inside insights instead — see the boundary note in `docs/dev/domain-ubiquitous-language.md`. Domain vocabulary and context ownership rules: read `docs/dev/domain-ubiquitous-language.md` before touching domain code.
+- Commands in `<context>/application/commands/<command>/`, queries in
+  `<context>/application/queries/<query>/`; each use case owns its
+  `handler.gleam` + `ports.gleam`. Operation-first naming
+  (`RefreshCatalogCommand`, `RefreshCatalogPorts`).
+- Ports are **capability-narrow** and never shared across use cases: one
+  `*Port` type for a single capability, a `*Ports` aggregate record for
+  several. Single-op port = `fn`-type alias; cohesive multi-op port = small
+  record. Adapters wire one typed function per port, annotated with the port
+  type alias.
+- **Command handlers own orchestration** — no empty pass-through to a single
+  `ports.execute()`. **Query handlers may be one-liners**; don't invent
+  branching to avoid looking thin.
 
-All four bounded contexts share the same driver pattern: drivers call use-case handlers directly — there is no intermediate application facade. Result mapping from domain types to RPC types lives in `driver/skir/codec.gleam`; route handlers and JSON encoding/decoding live in `driver/http/handler.gleam` and `driver/http/json_codec.gleam`.
+## Drivers
 
-**Request flow (skir)**: `skir-src/*.skir` → generated `server/src/shared/driver/skir/skirout/` → `server/src/<context>/driver/skir/handler.gleam` → use-case handler → use-case port → domain + infrastructure. Result mapping to RPC types is done via `driver/skir/codec.gleam`.
+- Drivers call use-case handlers directly — no application facade. skir
+  mapping in `driver/skir/codec.gleam`; http split into `handler.gleam` +
+  `json_codec.gleam`.
+- Both transports (skir + REST) are permanent. A use case with
+  externally-visible side effects must put that orchestration in one shared
+  module both drivers call (e.g. `card_catalog/driver/refresh_launcher.gleam`)
+  — never duplicate it per transport.
 
-**Request flow (http)**: `bootstrap/http/app_server.gleam` routing table → `server/src/<context>/driver/http/handler.gleam` → use-case handler → use-case port → domain + infrastructure. HTTP context drivers split into `handler.gleam` (route handlers) + `json_codec.gleam` (encoders/decoders).
+## Infrastructure & Database
 
-Shared cross-context code lives under `server/src/shared/`: `shared/domain/` (shared kernel — `card_key`, `non_empty_string`; pure, no I/O), `shared/application/command_result.gleam` (shared app type), `shared/infrastructure/` (shared infra — `os_runtime` (raw `os:cmd`/`getenv`), `shell.gleam` (subprocess wrapper), `stores/sqlite_store.gleam` (parameterized queries over `sqlight`)), `shared/driver/` (shared transport code — `http/{helpers,json_codec}.gleam` (generic response helpers, shared encoders/decoders), `http/static_files.gleam` (SPA/static file serving, path sanitisation), and `skir/skirout/` (generated contract code — never edit, run `just skir-gen`)). Database access objects for each context live in `<context>/infrastructure/daos/`. Bootstrap/composition layer under `server/src/bootstrap/`: `bootstrap/skir/{router,setup}.gleam` (skir server loop + thin `make_service()` chaining context registers), `bootstrap/http/app_server.gleam` (mist bootstrap, routing table), `bootstrap/composition.gleam` (DI wiring root).
-
-**Two transports, deliberately.** skir (contract-first RPC) is the primary, well-typed API the client-web app uses. A parallel REST API exists for third-party/scripted access where requiring the skir client isn't practical — it is not legacy and both are expected to stay. Because of this, a use case that has externally-visible side effects (e.g. spawning a background worker) must put that orchestration in a shared module both drivers call (e.g. `card_catalog/driver/refresh_launcher.gleam`), not duplicate it per transport — the two doors must behave identically, they just speak different wire formats.
-
-**`catalog_dao.bulk_load` is a deliberate exception to "no raw SQL strings, use sqlight"**: it shells out to the `sqlite3` CLI's `.import` for bulk-loading the ~90k-row Scryfall CSV dump. This is safe because the input is our own `scryfall_mapper` output, not user-supplied text — the injection risk that motivated moving everything else to `sqlight` doesn't apply here, and CLI bulk import is meaningfully faster than row-by-row parameterized inserts at this volume.
-
-## Application Layer
-
-CQRS: commands and queries are strictly separated. Commands: `<context>/application/commands/<command>/`, queries: `<context>/application/queries/<query>/`. Each use case has its own `handler.gleam` (command/query type + `execute`) and `ports.gleam` (port interfaces + errors).
-
-Naming: operation-first — `RefreshCatalogCommand`, `ListCatalogCardsQuery`, `RefreshCatalogPorts`.
-
-**Port naming and structure.** A use case that depends on a **single capability** defines one `*Port` type (e.g. `ListCatalogCardsPort`). A use case that depends on **multiple capabilities** defines individual named port types and bundles them in a `*Ports` aggregate record (e.g. `RefreshCatalogPorts`). Each port is either:
-- A `fn`-type alias (`pub type NowPort = fn() -> Timestamp`) for a single-op port.
-- A small record for a cohesively-grouped multi-op port (e.g. `RefreshRecordRepositoryPort` with `load`/`save` — the aggregate's consistency boundary).
-
-Ports are **capability-narrow**: each function declares only what the use case needs. Reuse belongs in the infrastructure layer behind adapters, not in widened port signatures. No sharing of repository ports across use cases — each use case owns its own port definitions.
-
-**Adapters wire one typed function per port** and assemble the `*Ports` record. Each per-port adapter function carries the port type alias as its return type annotation.
-
-**Handlers own orchestration — for commands.** A command's `execute` must not be an empty pass-through to a single `ports.execute()` god-method; it contains the use-case logic (branching, sequencing, error mapping) and composes the individual ports from the `*Ports` bundle. **Queries are exempt**: a query handler that is a one-line `port.f()` (e.g. `ListCatalogCardsQuery`, `GetPlanningPreferencesQuery`) is not hiding logic — there just isn't any — and is the CQRS-orthodox shape for a read that has nothing to branch on. Don't invent branching in a query handler just to avoid looking thin.
-
-## Infrastructure Layer
-
-**Injected-IO seam for testability.** Adapters that make network calls accept a seam type (e.g. `scryfall_client.Downloader`) holding the outbound I/O as a closure, injected via a `new_with_*` constructor. `new()` calls `new_with_*(live_*())` for production. This lets integration tests pass a hermetic fake without touching `composition.gleam`.
-
-## Database
-
-SQLite via `sqlight` (parameterized queries, typed decoders) through `shared/infrastructure/stores/sqlite_store.gleam` — DAOs should not build SQL by string-interpolating values; use `?` placeholders and `sqlight.text`/`sqlight.int`/`sqlight.nullable`. Set `TCG_DB_FILE` to the db path. Run migrations with `just dbmate-migrate`. Write ports return `Result(Nil, String)`; the calling handler decides what a persistence failure means for its use case (e.g. a failed `replace_collection` write fails the whole import and surfaces as a 500, since a partially-written collection would be worse than a rejected one). Read ports are equally fallible — `fn() -> Result(a, String)` (or `Result(Option(a), String)` when absence is itself a valid outcome) — so a broken query surfaces as an error instead of defaulting to "empty"/"not found". A read port may only collapse its error to a default when the call site can prove the two are truly indistinguishable to every consumer; when in doubt, propagate.
+- Network adapters take an injected-IO seam (closure via `new_with_*`
+  constructor; `new()` wires the live one) so tests inject fakes without
+  touching `composition.gleam`.
+- SQLite via `sqlight` through `shared/infrastructure/stores/sqlite_store.gleam`
+  — no string-interpolated SQL; `?` placeholders +
+  `sqlight.text`/`sqlight.int`/`sqlight.nullable`. Migrations:
+  `just dbmate-migrate`; db path from `TCG_DB_FILE`.
+- Write ports return `Result(Nil, String)`; read ports are
+  `fn() -> Result(a, String)` (or `Result(Option(a), String)` when absence is
+  a valid outcome). Never collapse a read error to a default unless every
+  consumer provably can't tell the difference; when in doubt, propagate.
