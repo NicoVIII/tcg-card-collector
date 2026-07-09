@@ -16,7 +16,6 @@ export function useUpsertInventoryRuleMutation() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryRules() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryProjection() });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.placementGuidance() });
     },
   }));
 }
@@ -29,7 +28,6 @@ export function useDeleteInventoryRuleMutation() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryRules() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryProjection() });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.placementGuidance() });
     },
   }));
 }
@@ -42,7 +40,6 @@ export function useUpdateBulkSpecMutation() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryBulkSpec() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryProjection() });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.placementGuidance() });
     },
   }));
 }

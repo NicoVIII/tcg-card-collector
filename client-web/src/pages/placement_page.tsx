@@ -1,10 +1,12 @@
-import { For, Show, createSignal } from "solid-js";
+import { For, Show, createMemo, createSignal } from "solid-js";
 import { mapError } from "../data/http/error";
+import { useInventoryProjectionQuery } from "../data/inventory_planning/query";
 import {
   useMarkCardsPlacedMutation,
   useUnmarkCardsPlacedMutation,
 } from "../data/placement/mutation";
-import { usePlacementGuidanceQuery } from "../data/placement/query";
+import { buildGuidance } from "../data/placement/guidance";
+import { usePlacedLedgerQuery } from "../data/placement/query";
 import type { CardPlacementInput } from "../data/placement/request";
 import {
   type PlacementSession,
@@ -35,15 +37,31 @@ export function PlacementPage() {
   const [session, setSession] = createSignal<PlacementSession>(emptySession());
   const [mutationError, setMutationError] = createSignal<string | null>(null);
 
-  const guidanceQuery = usePlacementGuidanceQuery();
+  const projectionQuery = useInventoryProjectionQuery();
+  const ledgerQuery = usePlacedLedgerQuery();
   const markMutation = useMarkCardsPlacedMutation();
   const unmarkMutation = useUnmarkCardsPlacedMutation();
+
+  // Guidance is derived client-side: the projection (cached, invariant to
+  // placement) folded against the placed ledger (cheap, refetched per tick).
+  const guidance = createMemo(() => {
+    const projection = projectionQuery.data;
+    const ledger = ledgerQuery.data;
+    if (projection === undefined || ledger === undefined) {
+      return undefined;
+    }
+    return buildGuidance(projection, ledger);
+  });
+
+  const isLoading = () => projectionQuery.isLoading || ledgerQuery.isLoading;
+  const isError = () => projectionQuery.isError || ledgerQuery.isError;
+  const loadError = () => projectionQuery.error ?? ledgerQuery.error;
 
   // Cascade order from guidance, plus any location that only still shows because
   // its cards were just ticked (guidance already dropped the emptied location).
   const displayLocations = (): DisplayLocation[] => {
     const current = session();
-    const guidanceLocations = guidanceQuery.data?.locations ?? [];
+    const guidanceLocations = guidance()?.locations ?? [];
     const names: string[] = [];
     const seen = new Set<string>();
     for (const location of guidanceLocations) {
@@ -104,22 +122,22 @@ export function PlacementPage() {
         Cards you've added but not yet sorted into their storage locations. Tick each one as you
         file it; click a struck-through card to undo.
       </p>
-      <Show when={guidanceQuery.isLoading}>
+      <Show when={isLoading()}>
         <p>Loading placement guidance...</p>
       </Show>
-      <Show when={guidanceQuery.isError}>
-        <p role="alert">{mapError(guidanceQuery.error).message}</p>
+      <Show when={isError()}>
+        <p role="alert">{mapError(loadError()).message}</p>
       </Show>
       <Show when={mutationError() !== null}>
         <p role="alert">{mutationError()}</p>
       </Show>
-      <Show when={(guidanceQuery.data?.total_unplaced ?? 0) > 0}>
-        <p class="hint">{guidanceQuery.data?.total_unplaced} card(s) still to place.</p>
+      <Show when={(guidance()?.total_unplaced ?? 0) > 0}>
+        <p class="hint">{guidance()?.total_unplaced} card(s) still to place.</p>
       </Show>
       <Show
         when={displayLocations().length > 0}
         fallback={
-          <Show when={!guidanceQuery.isLoading && !guidanceQuery.isError}>
+          <Show when={!isLoading() && !isError()}>
             <p>Everything is placed. Nothing to sort right now.</p>
           </Show>
         }

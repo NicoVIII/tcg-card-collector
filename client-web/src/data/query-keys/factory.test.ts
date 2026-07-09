@@ -18,7 +18,7 @@ describe("query key factory", () => {
     expect(queryKeys.setCompletion()).toEqual(["insights", "set_completion"]);
   });
 
-  it("builds a deterministic placement guidance key", () => {
-    expect(queryKeys.placementGuidance()).toEqual(["inventory_planning", "placement_guidance"]);
+  it("builds a deterministic placed ledger key", () => {
+    expect(queryKeys.placedLedger()).toEqual(["inventory_planning", "placed_ledger"]);
   });
 });

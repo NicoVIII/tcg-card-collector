@@ -50,6 +50,13 @@ export function CatalogPage() {
     if (status.status !== "never_run" && status.last_probe_at !== baseline) {
       setPollBaseline(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.catalogListAll() });
+      if (status.status !== "failed") {
+        // New catalog data changes card attributes/release dates and printed
+        // set sizes, which feed the inventory projection and set-completion
+        // insights; refresh both so they don't serve stale derived data.
+        void queryClient.invalidateQueries({ queryKey: queryKeys.inventoryProjection() });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.setCompletion() });
+      }
       setRefreshFeedback(
         status.status === "failed"
           ? { kind: "error", message: `Catalog refresh failed: ${status.error_message}` }

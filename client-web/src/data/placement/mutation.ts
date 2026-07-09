@@ -8,7 +8,7 @@ export function useMarkCardsPlacedMutation() {
   return createMutation(() => ({
     mutationFn: (placements: CardPlacementInput[]) => markCardsPlaced(placements),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.placementGuidance() });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.placedLedger() });
     },
   }));
 }
@@ -19,7 +19,7 @@ export function useUnmarkCardsPlacedMutation() {
   return createMutation(() => ({
     mutationFn: (placements: CardPlacementInput[]) => unmarkCardsPlaced(placements),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.placementGuidance() });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.placedLedger() });
     },
   }));
 }

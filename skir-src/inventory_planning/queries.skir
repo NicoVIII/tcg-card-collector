@@ -77,37 +77,27 @@ method GetBulkSpec(
   GetBulkSpecRequest
 ): BulkSpec = 305;
 
-struct PlacementGuidanceRequest {
+struct PlacedLedgerRequest {
   unit: bool = 0;
 }
 
-struct PlacementNeighbor {
-  name: string = 0;
-  set_code: string = 1;
-  collector_number: string = 2;
-  already_placed: bool = 3;
+struct PlacedLedgerRow {
+  set_code: string = 0;
+  collector_number: string = 1;
+  location: string = 2;
+  quantity: int32 = 3;
 }
 
-struct PlacementCard {
-  name: string = 0;
-  set_code: string = 1;
-  collector_number: string = 2;
-  to_place_quantity: int32 = 3;
-  before: [PlacementNeighbor] = 4;
-  after: [PlacementNeighbor] = 5;
+// Reuses method 306's response slot: the placement page no longer fetches
+// server-composed guidance, only the raw placed ledger it folds against the
+// projection client-side. Old fields stay tombstoned per the atomic-contract
+// evolution rules (skir tracks the response record by method number).
+struct PlacedLedger {
+  removed 0;  // was locations: [PlacementLocation]
+  removed 1;  // was total_unplaced: int32
+  rows: [PlacedLedgerRow] = 2;
 }
 
-struct PlacementLocation {
-  location_name: string = 0;
-  total_quantity: int32 = 1;
-  cards: [PlacementCard] = 2;
-}
-
-struct PlacementGuidance {
-  locations: [PlacementLocation] = 0;
-  total_unplaced: int32 = 1;
-}
-
-method GetPlacementGuidance(
-  PlacementGuidanceRequest
-): PlacementGuidance = 306;
+method GetPlacedLedger(
+  PlacedLedgerRequest
+): PlacedLedger = 306;

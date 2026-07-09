@@ -7,12 +7,24 @@ import {
   UnmarkCardsPlacedRequest,
 } from "../skirout/inventory_planning/commands.js";
 import {
-  GetPlacementGuidance,
-  PlacementGuidance as RpcPlacementGuidance,
-  PlacementGuidanceRequest,
-  PlacementNeighbor as RpcPlacementNeighbor,
+  GetPlacedLedger,
+  PlacedLedgerRequest,
+  PlacedLedgerRow as RpcPlacedLedgerRow,
 } from "../skirout/inventory_planning/queries.js";
 
+// One row of the placed ledger: how many copies of a key sit in a location.
+// The page folds these against the projection to derive what's still to place,
+// so a placement tick only refetches this cheap read.
+export type PlacedLedgerRow = {
+  set_code: string;
+  collector_number: string;
+  location: string;
+  quantity: number;
+};
+
+// The display shapes below are produced client-side by `buildGuidance`
+// (data/placement/guidance.ts) from the projection + ledger; they are no
+// longer a wire type.
 export type PlacementNeighbor = {
   name: string;
   set_code: string;
@@ -50,41 +62,23 @@ export type CardPlacementInput = {
   quantity: number;
 };
 
-function toNeighbor(neighbor: RpcPlacementNeighbor): PlacementNeighbor {
+function toLedgerRow(row: RpcPlacedLedgerRow): PlacedLedgerRow {
   return {
-    name: neighbor.name,
-    set_code: neighbor.setCode,
-    collector_number: neighbor.collectorNumber,
-    already_placed: neighbor.alreadyPlaced,
+    set_code: row.setCode,
+    collector_number: row.collectorNumber,
+    location: row.location,
+    quantity: row.quantity,
   };
 }
 
-function toPlacementGuidance(response: RpcPlacementGuidance): PlacementGuidance {
-  return {
-    locations: response.locations.map((location) => ({
-      location_name: location.locationName,
-      total_quantity: location.totalQuantity,
-      cards: location.cards.map((card) => ({
-        name: card.name,
-        set_code: card.setCode,
-        collector_number: card.collectorNumber,
-        to_place_quantity: card.toPlaceQuantity,
-        before: card.before.map(toNeighbor),
-        after: card.after.map(toNeighbor),
-      })),
-    })),
-    total_unplaced: response.totalUnplaced,
-  };
-}
-
-export async function getPlacementGuidance(): Promise<PlacementGuidance> {
+export async function getPlacedLedger(): Promise<PlacedLedgerRow[]> {
   const response = await skirClient.invokeRemote(
-    GetPlacementGuidance,
-    PlacementGuidanceRequest.create({ unit: true }),
+    GetPlacedLedger,
+    PlacedLedgerRequest.create({ unit: true }),
     "POST",
   );
 
-  return toPlacementGuidance(response);
+  return response.rows.map(toLedgerRow);
 }
 
 function toRpcPlacements(placements: CardPlacementInput[]) {

@@ -10,7 +10,9 @@ export function useImportCollectionMutation() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.collection() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.setCompletion() });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.placementGuidance() });
+      // Importing changes the projection, not the placed ledger; placement
+      // guidance is now derived from the projection client-side.
+      await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryProjection() });
     },
   }));
 }

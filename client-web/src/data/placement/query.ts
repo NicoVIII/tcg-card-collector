@@ -1,10 +1,10 @@
 import { createQuery } from "@tanstack/solid-query";
 import { queryKeys } from "../query-keys/factory";
-import { getPlacementGuidance } from "./request";
+import { getPlacedLedger } from "./request";
 
-export function usePlacementGuidanceQuery() {
+export function usePlacedLedgerQuery() {
   return createQuery(() => ({
-    queryKey: queryKeys.placementGuidance(),
-    queryFn: getPlacementGuidance,
+    queryKey: queryKeys.placedLedger(),
+    queryFn: getPlacedLedger,
   }));
 }

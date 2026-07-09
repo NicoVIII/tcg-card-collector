@@ -15,7 +15,7 @@ import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_
 import inventory_planning/application/queries/get_bulk_spec/handler as get_bulk_spec_handler
 import inventory_planning/application/queries/get_preferences/handler as get_preferences_handler
 import inventory_planning/application/queries/list_rules/handler as list_rules_handler
-import inventory_planning/application/queries/placement_guidance/handler as placement_guidance_handler
+import inventory_planning/application/queries/placed_ledger/handler as placed_ledger_handler
 import inventory_planning/application/queries/projection/handler as projection_handler
 import inventory_planning/driver/dependencies.{type Dependencies}
 import inventory_planning/driver/http/json_codec as inventory_codec
@@ -174,20 +174,15 @@ pub fn handle_update_bulk_spec(
   }
 }
 
-pub fn handle_placement_guidance(
-  deps: Dependencies,
-) -> Response(mist.ResponseData) {
+pub fn handle_placed_ledger(deps: Dependencies) -> Response(mist.ResponseData) {
   case
-    placement_guidance_handler.execute(
-      placement_guidance_handler.GetPlacementGuidanceQuery,
-      deps.get_placement_guidance_ports,
+    placed_ledger_handler.execute(
+      placed_ledger_handler.GetPlacedLedgerQuery,
+      deps.get_placed_ledger_port,
     )
   {
-    Ok(guidance) ->
-      helpers.json_response(
-        200,
-        inventory_codec.encode_placement_guidance(guidance),
-      )
+    Ok(rows) ->
+      helpers.json_response(200, inventory_codec.encode_placed_ledger(rows))
     Error(reason) -> helpers.json_response(500, json_codec.encode_error(reason))
   }
 }

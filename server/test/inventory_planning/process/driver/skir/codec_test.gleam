@@ -4,7 +4,7 @@ import inventory_planning/application/commands/unmark_cards_placed/ports as unma
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/update_preferences/ports as update_preferences_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
-import inventory_planning/application/queries/placement_guidance/ports as placement_guidance_ports
+import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
 import inventory_planning/driver/skir/codec as inventory_planning_skir_codec
 import shared/driver/skir/skirout/inventory_planning/commands as inventory_planning_commands
@@ -57,59 +57,20 @@ pub fn map_projection_nests_locations_and_cards_test() {
     )
 }
 
-pub fn map_placement_guidance_nests_locations_cards_and_neighbors_test() {
-  let guidance =
-    placement_guidance_ports.PlacementGuidance(total_unplaced: 1, locations: [
-      placement_guidance_ports.PlacementLocation(
-        location_name: "Bulk",
-        total_quantity: 1,
-        cards: [
-          placement_guidance_ports.PlacementCard(
-            name: "Lightning Bolt",
-            set_code: "m11",
-            collector_number: "146",
-            to_place_quantity: 1,
-            before: [
-              placement_guidance_ports.PlacementNeighbor(
-                name: "Ancestral Recall",
-                set_code: "lea",
-                collector_number: "48",
-                already_placed: True,
-              ),
-            ],
-            after: [],
-          ),
-        ],
-      ),
-    ])
+pub fn map_placed_ledger_maps_rows_test() {
+  let rows = [
+    placed_ledger_ports.PlacedLedgerRow(
+      set_code: "m11",
+      collector_number: "146",
+      location: "Bulk",
+      quantity: 2,
+    ),
+  ]
 
-  assert inventory_planning_skir_codec.map_placement_guidance(guidance)
-    == inventory_planning_queries.placement_guidance_new(
-      [
-        inventory_planning_queries.placement_location_new(
-          [
-            inventory_planning_queries.placement_card_new(
-              [],
-              [
-                inventory_planning_queries.placement_neighbor_new(
-                  True,
-                  "48",
-                  "Ancestral Recall",
-                  "lea",
-                ),
-              ],
-              "146",
-              "Lightning Bolt",
-              "m11",
-              1,
-            ),
-          ],
-          "Bulk",
-          1,
-        ),
-      ],
-      1,
-    )
+  assert inventory_planning_skir_codec.map_placed_ledger(rows)
+    == inventory_planning_queries.placed_ledger_new([
+      inventory_planning_queries.placed_ledger_row_new("146", "Bulk", 2, "m11"),
+    ])
 }
 
 pub fn mark_cards_placed_ok_maps_to_success_test() {

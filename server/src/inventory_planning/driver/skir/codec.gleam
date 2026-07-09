@@ -5,7 +5,7 @@ import inventory_planning/application/commands/unmark_cards_placed/ports as unma
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/update_preferences/ports as update_preferences_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
-import inventory_planning/application/queries/placement_guidance/ports as placement_guidance_ports
+import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
 import shared/driver/skir/skirout/inventory_planning/commands as inventory_planning_commands
 import shared/driver/skir/skirout/inventory_planning/queries as inventory_planning_queries
@@ -114,46 +114,23 @@ pub fn map_delete_inventory_rule_result(
   }
 }
 
-pub fn map_placement_guidance(
-  guidance: placement_guidance_ports.PlacementGuidance,
-) -> inventory_planning_queries.PlacementGuidance {
-  inventory_planning_queries.placement_guidance_new(
-    list.map(guidance.locations, map_placement_location),
-    guidance.total_unplaced,
-  )
+pub fn map_placed_ledger(
+  rows: List(placed_ledger_ports.PlacedLedgerRow),
+) -> inventory_planning_queries.PlacedLedger {
+  inventory_planning_queries.placed_ledger_new(list.map(
+    rows,
+    map_placed_ledger_row,
+  ))
 }
 
-fn map_placement_location(
-  location: placement_guidance_ports.PlacementLocation,
-) -> inventory_planning_queries.PlacementLocation {
-  inventory_planning_queries.placement_location_new(
-    list.map(location.cards, map_placement_card),
-    location.location_name,
-    location.total_quantity,
-  )
-}
-
-fn map_placement_card(
-  card: placement_guidance_ports.PlacementCard,
-) -> inventory_planning_queries.PlacementCard {
-  inventory_planning_queries.placement_card_new(
-    list.map(card.after, map_placement_neighbor),
-    list.map(card.before, map_placement_neighbor),
-    card.collector_number,
-    card.name,
-    card.set_code,
-    card.to_place_quantity,
-  )
-}
-
-fn map_placement_neighbor(
-  neighbor: placement_guidance_ports.PlacementNeighbor,
-) -> inventory_planning_queries.PlacementNeighbor {
-  inventory_planning_queries.placement_neighbor_new(
-    neighbor.already_placed,
-    neighbor.collector_number,
-    neighbor.name,
-    neighbor.set_code,
+fn map_placed_ledger_row(
+  row: placed_ledger_ports.PlacedLedgerRow,
+) -> inventory_planning_queries.PlacedLedgerRow {
+  inventory_planning_queries.placed_ledger_row_new(
+    row.collector_number,
+    row.location,
+    row.quantity,
+    row.set_code,
   )
 }
 

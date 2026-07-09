@@ -9,7 +9,7 @@ import inventory_planning/application/queries/get_bulk_spec/handler as get_bulk_
 import inventory_planning/application/queries/get_preferences/handler as get_preferences_handler
 import inventory_planning/application/queries/list_rules/handler as list_rules_handler
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
-import inventory_planning/application/queries/placement_guidance/handler as placement_guidance_handler
+import inventory_planning/application/queries/placed_ledger/handler as placed_ledger_handler
 import inventory_planning/application/queries/projection/handler as projection_handler
 import inventory_planning/driver/dependencies.{type Dependencies}
 import inventory_planning/driver/skir/codec as inventory_planning_skir_codec
@@ -55,8 +55,8 @@ pub fn register(
     handle_update_bulk_spec(get_dependencies),
   )
   |> service.add_method(
-    inventory_planning_queries.get_placement_guidance_method(),
-    handle_get_placement_guidance(get_dependencies),
+    inventory_planning_queries.get_placed_ledger_method(),
+    handle_get_placed_ledger(get_dependencies),
   )
   |> service.add_method(
     inventory_planning_commands.mark_cards_placed_method(),
@@ -320,26 +320,24 @@ fn handle_update_bulk_spec(get_dependencies: fn(context) -> Dependencies) {
   }
 }
 
-fn handle_get_placement_guidance(
-  get_dependencies: fn(context) -> Dependencies,
-) {
+fn handle_get_placed_ledger(get_dependencies: fn(context) -> Dependencies) {
   fn(
-    _: inventory_planning_queries.PlacementGuidanceRequest,
+    _: inventory_planning_queries.PlacedLedgerRequest,
     req_meta: Nil,
     ctx: context,
   ) -> #(
-    Result(inventory_planning_queries.PlacementGuidance, service.ServiceError),
+    Result(inventory_planning_queries.PlacedLedger, service.ServiceError),
     Nil,
     Nil,
   ) {
     case
-      placement_guidance_handler.execute(
-        placement_guidance_handler.GetPlacementGuidanceQuery,
-        get_dependencies(ctx).get_placement_guidance_ports,
+      placed_ledger_handler.execute(
+        placed_ledger_handler.GetPlacedLedgerQuery,
+        get_dependencies(ctx).get_placed_ledger_port,
       )
     {
-      Ok(guidance) -> #(
-        Ok(inventory_planning_skir_codec.map_placement_guidance(guidance)),
+      Ok(rows) -> #(
+        Ok(inventory_planning_skir_codec.map_placed_ledger(rows)),
         req_meta,
         Nil,
       )

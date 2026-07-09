@@ -7,7 +7,7 @@ import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_
 import inventory_planning/application/queries/get_bulk_spec/ports as get_bulk_spec_ports
 import inventory_planning/application/queries/get_preferences/ports as get_preferences_ports
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
-import inventory_planning/application/queries/placement_guidance/ports as placement_guidance_ports
+import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
 
 pub type Dependencies {
@@ -20,7 +20,7 @@ pub type Dependencies {
     get_planning_preferences_port: get_preferences_ports.GetPlanningPreferencesPort,
     get_bulk_spec_port: get_bulk_spec_ports.GetBulkSpecPort,
     update_bulk_spec_port: update_bulk_spec_ports.UpdateBulkSpecPort,
-    get_placement_guidance_ports: placement_guidance_ports.GetPlacementGuidancePorts,
+    get_placed_ledger_port: placed_ledger_ports.GetPlacedLedgerPort,
     mark_cards_placed_port: mark_cards_placed_ports.MarkCardsPlacedPort,
     unmark_cards_placed_port: unmark_cards_placed_ports.UnmarkCardsPlacedPort,
   )

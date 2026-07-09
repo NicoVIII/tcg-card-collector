@@ -34,7 +34,7 @@ import inventory_planning/infrastructure/adapters/commands/upsert_rule/adapter a
 import inventory_planning/infrastructure/adapters/queries/get_bulk_spec/adapter as get_bulk_spec_adapter
 import inventory_planning/infrastructure/adapters/queries/get_preferences/adapter as get_preferences_adapter
 import inventory_planning/infrastructure/adapters/queries/list_rules/adapter as list_rules_adapter
-import inventory_planning/infrastructure/adapters/queries/placement_guidance/adapter as placement_guidance_adapter
+import inventory_planning/infrastructure/adapters/queries/placed_ledger/adapter as placed_ledger_adapter
 import inventory_planning/infrastructure/adapters/queries/projection/adapter as projection_adapter
 
 pub type Dependencies {
@@ -77,7 +77,7 @@ pub fn dependencies() -> Dependencies {
       get_planning_preferences_port: get_preferences_adapter.new(),
       get_bulk_spec_port: get_bulk_spec_adapter.new(),
       update_bulk_spec_port: update_bulk_spec_adapter.new(),
-      get_placement_guidance_ports: placement_guidance_adapter.new(),
+      get_placed_ledger_port: placed_ledger_adapter.new(),
       mark_cards_placed_port: mark_cards_placed_adapter.new(),
       unmark_cards_placed_port: unmark_cards_placed_adapter.new(),
     ),

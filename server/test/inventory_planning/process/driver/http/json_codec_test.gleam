@@ -1,6 +1,6 @@
 import inventory_planning/application/queries/get_bulk_spec/ports as bulk_spec_ports
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
-import inventory_planning/application/queries/placement_guidance/ports as placement_guidance_ports
+import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
 import inventory_planning/driver/http/json_codec
 
@@ -33,39 +33,19 @@ pub fn encode_inventory_projection_nests_locations_and_cards_test() {
     <> "\"total_quantity\":2,\"unknown_count\":1}"
 }
 
-pub fn encode_placement_guidance_nests_locations_cards_and_neighbors_test() {
-  let guidance =
-    placement_guidance_ports.PlacementGuidance(total_unplaced: 1, locations: [
-      placement_guidance_ports.PlacementLocation(
-        location_name: "Bulk",
-        total_quantity: 1,
-        cards: [
-          placement_guidance_ports.PlacementCard(
-            name: "Grizzly Bears",
-            set_code: "m11",
-            collector_number: "182",
-            to_place_quantity: 1,
-            before: [
-              placement_guidance_ports.PlacementNeighbor(
-                name: "Lightning Bolt",
-                set_code: "m11",
-                collector_number: "146",
-                already_placed: True,
-              ),
-            ],
-            after: [],
-          ),
-        ],
-      ),
-    ])
+pub fn encode_placed_ledger_lists_rows_test() {
+  let rows = [
+    placed_ledger_ports.PlacedLedgerRow(
+      set_code: "m11",
+      collector_number: "182",
+      location: "Bulk",
+      quantity: 3,
+    ),
+  ]
 
-  assert json_codec.encode_placement_guidance(guidance)
-    == "{\"locations\":[{\"location_name\":\"Bulk\",\"total_quantity\":1,"
-    <> "\"cards\":[{\"name\":\"Grizzly Bears\",\"set_code\":\"m11\","
-    <> "\"collector_number\":\"182\",\"to_place_quantity\":1,"
-    <> "\"before\":[{\"name\":\"Lightning Bolt\",\"set_code\":\"m11\","
-    <> "\"collector_number\":\"146\",\"already_placed\":true}],\"after\":[]}]}],"
-    <> "\"total_unplaced\":1}"
+  assert json_codec.encode_placed_ledger(rows)
+    == "{\"rows\":[{\"set_code\":\"m11\",\"collector_number\":\"182\","
+    <> "\"location\":\"Bulk\",\"quantity\":3}]}"
 }
 
 pub fn decode_placements_body_reads_the_placement_list_test() {

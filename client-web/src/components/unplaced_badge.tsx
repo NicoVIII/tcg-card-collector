@@ -1,14 +1,27 @@
 import { Show } from "solid-js";
-import { usePlacementGuidanceQuery } from "../data/placement/query";
+import { buildGuidance } from "../data/placement/guidance";
+import { useInventoryProjectionQuery } from "../data/inventory_planning/query";
+import { usePlacedLedgerQuery } from "../data/placement/query";
 
-// Reuses the placement guidance query, so it shares a cache entry with the
-// placement page rather than issuing a second count RPC.
+// Derives the unplaced count from the same cached projection + placed-ledger
+// queries the placement page uses, so it shares their cache rather than issuing
+// a separate count RPC.
 export function UnplacedBadge() {
-  const guidanceQuery = usePlacementGuidanceQuery();
+  const projectionQuery = useInventoryProjectionQuery();
+  const ledgerQuery = usePlacedLedgerQuery();
+
+  const totalUnplaced = () => {
+    const projection = projectionQuery.data;
+    const ledger = ledgerQuery.data;
+    if (projection === undefined || ledger === undefined) {
+      return 0;
+    }
+    return buildGuidance(projection, ledger).total_unplaced;
+  };
 
   return (
-    <Show when={(guidanceQuery.data?.total_unplaced ?? 0) > 0}>
-      <span class="nav-badge">{guidanceQuery.data?.total_unplaced}</span>
+    <Show when={totalUnplaced() > 0}>
+      <span class="nav-badge">{totalUnplaced()}</span>
     </Show>
   );
 }
