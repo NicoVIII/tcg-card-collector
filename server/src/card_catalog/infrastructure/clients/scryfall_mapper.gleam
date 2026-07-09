@@ -200,6 +200,13 @@ fn set_object_decoder() {
     decode.optional(decode.string),
   )
   use card_count <- decode.field("card_count", decode.int)
+  // Scryfall documents printed_size as nullable and may omit the key; treat both
+  // shapes as unknown. Same tolerance rationale as released_at/icon_svg_uri.
+  use printed_size <- decode.optional_field(
+    "printed_size",
+    None,
+    decode.optional(decode.int),
+  )
   use icon_svg_uri <- decode.optional_field(
     "icon_svg_uri",
     None,
@@ -210,6 +217,7 @@ fn set_object_decoder() {
     name,
     option.unwrap(released_at, ""),
     card_count,
+    printed_size,
     option.unwrap(icon_svg_uri, ""),
   ))
 }
@@ -234,13 +242,15 @@ pub fn parse_sets_page(
     Ok(#(has_more, next_page, raw_sets)) -> {
       let sets =
         list.filter_map(raw_sets, fn(raw) {
-          let #(code, name, released_at, card_count, icon_svg_uri) = raw
+          let #(code, name, released_at, card_count, printed_size, icon_svg_uri) =
+            raw
           case
             card_set.from_raw(
               code: code,
               name: name,
               released_at: released_at,
               card_count: card_count,
+              printed_size: printed_size,
               icon_svg_uri: icon_svg_uri,
             )
           {

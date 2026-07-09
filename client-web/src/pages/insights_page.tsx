@@ -75,7 +75,7 @@ export function InsightsPage() {
           <For each={completionQuery.data}>
             {(row) => (
               <li>
-                {row.set_code}: {row.owned}/{row.total}
+                {row.set_code}: {row.owned} / {row.total ?? "—"}
                 <button
                   onClick={() => removeTargetSet(row.set_code)}
                   disabled={unmarkMutation.isPending}

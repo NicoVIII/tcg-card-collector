@@ -9,6 +9,7 @@ pub fn new() -> ports.SetCompletionPorts {
   ports.SetCompletionPorts(
     target_sets: target_sets_adapter(),
     set_card_keys: set_card_keys_adapter(),
+    printed_sizes: printed_sizes_adapter(),
     owned_cards: owned_cards_adapter(),
   )
 }
@@ -19,6 +20,10 @@ fn target_sets_adapter() -> ports.TargetSetsPort {
 
 fn set_card_keys_adapter() -> ports.SetCardKeysPort {
   fn(set_codes) { catalog_api.list_set_card_keys(set_codes) }
+}
+
+fn printed_sizes_adapter() -> ports.PrintedSizesPort {
+  fn(set_codes) { catalog_api.get_set_printed_sizes(set_codes) }
 }
 
 fn owned_cards_adapter() -> ports.OwnedCardsPort {

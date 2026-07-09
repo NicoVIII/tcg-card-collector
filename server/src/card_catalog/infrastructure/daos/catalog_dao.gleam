@@ -255,7 +255,7 @@ fn insert_sets_chunk(chunk: List(card_set.CardSet)) -> Result(Nil, String) {
     _ -> {
       let placeholders =
         chunk
-        |> list.map(fn(_) { "(?,?,?,?,?)" })
+        |> list.map(fn(_) { "(?,?,?,?,?,?)" })
         |> string.join(", ")
       let params =
         chunk
@@ -265,11 +265,12 @@ fn insert_sets_chunk(chunk: List(card_set.CardSet)) -> Result(Nil, String) {
             sqlight.text(s.name),
             sqlight.text(s.released_at),
             sqlight.int(s.card_count),
+            sqlight.nullable(sqlight.int, s.printed_size),
             sqlight.text(s.icon_svg_uri),
           ]
         })
       sqlite_store.exec(
-        "INSERT INTO catalog_sets (set_code, name, released_at, card_count, icon_svg_uri) VALUES "
+        "INSERT INTO catalog_sets (set_code, name, released_at, card_count, printed_size, icon_svg_uri) VALUES "
           <> placeholders
           <> ";",
         params,
@@ -315,6 +316,50 @@ fn get_set_release_dates_chunk(
           <> ");",
         params,
         set_date_row_decoder(),
+      )
+      |> result.map_error(fn(error) { error.message })
+    }
+  }
+}
+
+fn set_printed_size_row_decoder() {
+  use set_code <- decode.field(0, decode.string)
+  use printed_size <- decode.field(1, decode.optional(decode.int))
+  decode.success(#(set_code, printed_size))
+}
+
+// Sets absent from catalog_sets are simply missing from the result; a NULL
+// printed_size maps to None. Both mean "no official size" to the caller.
+pub fn get_set_printed_sizes(
+  set_codes: List(String),
+) -> Result(List(#(String, Option(Int))), String) {
+  case set_codes {
+    [] -> Ok([])
+    _ ->
+      set_codes
+      |> list.sized_chunk(get_by_keys_batch_size)
+      |> list.try_map(get_set_printed_sizes_chunk)
+      |> result.map(list.flatten)
+  }
+}
+
+fn get_set_printed_sizes_chunk(
+  codes: List(String),
+) -> Result(List(#(String, Option(Int))), String) {
+  case codes {
+    [] -> Ok([])
+    _ -> {
+      let placeholders =
+        codes
+        |> list.map(fn(_) { "?" })
+        |> string.join(", ")
+      let params = list.map(codes, sqlight.text)
+      sqlite_store.query(
+        "SELECT set_code, printed_size FROM catalog_sets WHERE set_code IN ("
+          <> placeholders
+          <> ");",
+        params,
+        set_printed_size_row_decoder(),
       )
       |> result.map_error(fn(error) { error.message })
     }

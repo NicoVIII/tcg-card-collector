@@ -32,6 +32,6 @@ fn encode_set_completion_row(
   json.object([
     #("set_code", json.string(row.set_code)),
     #("owned", json.int(row.owned)),
-    #("total", json.int(row.total)),
+    #("total", json.nullable(row.total, json.int)),
   ])
 }

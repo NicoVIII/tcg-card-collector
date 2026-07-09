@@ -13,7 +13,7 @@ const SetCompletionListSchema = z.object({
     z.object({
       setCode: z.string(),
       owned: z.number(),
-      total: z.number(),
+      total: z.number().nullable(),
     }),
   ),
 });
@@ -21,7 +21,8 @@ const SetCompletionListSchema = z.object({
 export type SetCompletion = {
   set_code: string;
   owned: number;
-  total: number;
+  // null when the set has no official size; the UI shows owned without a denominator.
+  total: number | null;
 };
 
 export async function getSetCompletion(): Promise<SetCompletion[]> {

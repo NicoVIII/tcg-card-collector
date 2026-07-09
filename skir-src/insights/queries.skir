@@ -1,7 +1,9 @@
 struct SetCompletion {
   set_code: string = 0;
   owned: int32 = 1;
-  total: int32 = 2;
+  // Absent when the set has no official size (Scryfall printed_size); the client
+  // then shows the owned count without a denominator.
+  total: int32? = 2;
 }
 
 struct SetCompletionList {
