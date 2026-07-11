@@ -120,7 +120,7 @@ export function PlacementPage() {
       <h2>Place cards</h2>
       <p class="hint">
         Cards you've added but not yet sorted into their storage locations. Tick each one as you
-        file it; click a struck-through card to undo.
+        file it; untick a struck-through card to undo.
       </p>
       <Show when={isLoading()}>
         <p>Loading placement guidance...</p>
