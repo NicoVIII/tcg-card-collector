@@ -1,14 +1,10 @@
-import { Show, createSignal } from "solid-js";
+import { For, Show, createSignal } from "solid-js";
 import { A } from "@solidjs/router";
 import { useImportCollectionMutation } from "../data/collection_import/mutation";
 import { mapError } from "../data/http/error";
 import { type DeckstatsParseResult, parseDeckstatsCsv } from "./import_deckstats";
 
-function skippedNote(result: DeckstatsParseResult): string | null {
-  return result.rejected.length > 0
-    ? `${result.rejected.length} line(s) skipped (missing set code or collector number).`
-    : null;
-}
+const REJECTED_DISPLAY_LIMIT = 20;
 
 export function CollectionImportPage() {
   const [parsed, setParsed] = createSignal<DeckstatsParseResult | null>(null);
@@ -28,10 +24,7 @@ export function CollectionImportPage() {
 
   const rowCount = () => parsed()?.rows.length ?? 0;
   const parseError = () => parsed()?.error ?? null;
-  const note = () => {
-    const result = parsed();
-    return result === null ? null : skippedNote(result);
-  };
+  const rejected = () => parsed()?.rejected ?? [];
   const canImport = () => parsed() !== null && parseError() === null && rowCount() > 0;
 
   const submitImport = async () => {
@@ -78,8 +71,20 @@ export function CollectionImportPage() {
       <Show when={parsed() !== null && parseError() === null && rowCount() === 0}>
         <p role="alert">The file contains no importable rows.</p>
       </Show>
-      <Show when={note()}>
-        <p>{note()}</p>
+      <Show when={rejected().length > 0}>
+        <p>{rejected().length} line(s) skipped:</p>
+        <ul>
+          <For each={rejected().slice(0, REJECTED_DISPLAY_LIMIT)}>
+            {(line) => (
+              <li>
+                Line {line.lineNumber}: {line.reason}
+              </li>
+            )}
+          </For>
+        </ul>
+        <Show when={rejected().length > REJECTED_DISPLAY_LIMIT}>
+          <p>…and {rejected().length - REJECTED_DISPLAY_LIMIT} more.</p>
+        </Show>
       </Show>
       <Show when={canImport()}>
         <p>{rowCount()} row(s) parsed and ready to import.</p>
