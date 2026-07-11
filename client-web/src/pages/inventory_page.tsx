@@ -85,10 +85,11 @@ export function InventoryPage() {
   });
 
   const addRule = () => {
+    setMutationError(null);
     if (newRuleName().trim().length === 0) {
+      setMutationError("Enter a location name for the rule.");
       return;
     }
-    setMutationError(null);
     upsertMutation.mutate(
       {
         id: randomUUID(),
