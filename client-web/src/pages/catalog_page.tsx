@@ -25,6 +25,12 @@ export function CatalogPage() {
 
   const total = () => keysQuery.data?.total ?? 0;
 
+  const formatProbeTime = (iso: string | undefined) => {
+    if (iso === undefined) return "";
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime()) ? iso : date.toLocaleString();
+  };
+
   const startRefresh = async () => {
     setRefreshFeedback(undefined);
 
@@ -83,7 +89,8 @@ export function CatalogPage() {
       </Show>
       <Show when={refreshStatusQuery.data && refreshStatusQuery.data.status !== "never_run"}>
         <p>
-          Last refresh: {refreshStatusQuery.data?.status} ({refreshStatusQuery.data?.last_probe_at})
+          Last refresh: {refreshStatusQuery.data?.status} (
+          {formatProbeTime(refreshStatusQuery.data?.last_probe_at)})
           <Show when={refreshStatusQuery.data?.error_message}>
             {" — "}
             {refreshStatusQuery.data?.error_message}
