@@ -240,51 +240,51 @@ pub fn name_lookup() -> Result(List(#(String, String, String)), String) {
 // 7 params per row; stay under the SQLite 999-param cap (100 × 7 = 700).
 const replace_sets_chunk_size = 100
 
+// A failed replace must not leave the table empty: delete and inserts run in
+// one transaction, so the previous sets survive any insert failure.
 pub fn replace_sets(sets: List(card_set.CardSet)) -> Result(Nil, String) {
-  use _ <- result.try(
-    sqlite_store.exec("DELETE FROM catalog_sets;", [])
-    |> result.map_error(fn(e) { e.message }),
-  )
-  sets
-  |> list.sized_chunk(replace_sets_chunk_size)
-  |> list.try_each(insert_sets_chunk)
+  let inserts =
+    sets
+    |> list.sized_chunk(replace_sets_chunk_size)
+    |> list.map(insert_sets_chunk_statement)
+  sqlite_store.exec_all_atomically([
+    #("DELETE FROM catalog_sets;", []),
+    ..inserts
+  ])
+  |> result.map_error(fn(e) { e.message })
 }
 
-fn insert_sets_chunk(chunk: List(card_set.CardSet)) -> Result(Nil, String) {
-  case chunk {
-    [] -> Ok(Nil)
-    _ -> {
-      let placeholders =
-        chunk
-        |> list.map(fn(_) { "(?,?,?,?,?,?,?)" })
-        |> string.join(", ")
-      let params =
-        chunk
-        |> list.flat_map(fn(s: card_set.CardSet) {
-          [
-            sqlight.text(s.code),
-            sqlight.text(s.name),
-            // '' is the storage spelling of "source didn't date the set".
-            sqlight.text(
-              s.released_at
-              |> option.map(release_date.to_string)
-              |> option.unwrap(""),
-            ),
-            sqlight.int(s.card_count),
-            sqlight.nullable(sqlight.int, s.printed_size),
-            sqlight.text(s.icon_svg_uri),
-            sqlight.nullable(sqlight.text, s.parent_set_code),
-          ]
-        })
-      sqlite_store.exec(
-        "INSERT INTO catalog_sets (set_code, name, released_at, card_count, printed_size, icon_svg_uri, parent_set_code) VALUES "
-          <> placeholders
-          <> ";",
-        params,
-      )
-      |> result.map_error(fn(e) { e.message })
-    }
-  }
+fn insert_sets_chunk_statement(
+  chunk: List(card_set.CardSet),
+) -> #(String, List(sqlight.Value)) {
+  let placeholders =
+    chunk
+    |> list.map(fn(_) { "(?,?,?,?,?,?,?)" })
+    |> string.join(", ")
+  let params =
+    chunk
+    |> list.flat_map(fn(s: card_set.CardSet) {
+      [
+        sqlight.text(s.code),
+        sqlight.text(s.name),
+        // '' is the storage spelling of "source didn't date the set".
+        sqlight.text(
+          s.released_at
+          |> option.map(release_date.to_string)
+          |> option.unwrap(""),
+        ),
+        sqlight.int(s.card_count),
+        sqlight.nullable(sqlight.int, s.printed_size),
+        sqlight.text(s.icon_svg_uri),
+        sqlight.nullable(sqlight.text, s.parent_set_code),
+      ]
+    })
+  #(
+    "INSERT INTO catalog_sets (set_code, name, released_at, card_count, printed_size, icon_svg_uri, parent_set_code) VALUES "
+      <> placeholders
+      <> ";",
+    params,
+  )
 }
 
 fn set_metadata_row_decoder() {
