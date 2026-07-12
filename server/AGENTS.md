@@ -63,6 +63,17 @@ Four contexts: **card_catalog**, **collection**, **inventory_planning**,
   — no string-interpolated SQL; `?` placeholders +
   `sqlight.text`/`sqlight.int`/`sqlight.nullable`. Migrations:
   `just dbmate-migrate`; db path from `TCG_DB_FILE`.
+- **Migrations don't auto-apply in dev** — run `just dbmate-migrate` after
+  pulling or writing one. Boot triggers a catalog refresh, and a stale schema
+  fails it mid-import (bit us 2026-07-12: an unapplied migration emptied
+  `catalog_sets` before `replace_sets` was made atomic).
+- **All tables are STRICT** (migration 0014). New tables declare `STRICT` and
+  carry NOT NULL / CHECK / real-identity PKs — the DB is a boundary other
+  writers (sqlite3 CLI, manual surgery) can reach, so invariants are parsed on
+  the way in too ([ADR 0009](../docs/decisions/0009-db-as-boundary-strict-tables.md)).
+- `sqlite_store.exec` opens a fresh connection per call — statements that must
+  succeed or fail together go through `sqlite_store.exec_all_atomically`,
+  never composed from separate `exec` calls.
 - Write ports return `Result(Nil, String)`; read ports are
   `fn() -> Result(a, String)` (or `Result(Option(a), String)` when absence is
   a valid outcome). Never collapse a read error to a default unless every

@@ -14,3 +14,8 @@ Context-specific rules; cross-context rules live in `server/AGENTS.md`.
 - **`driver/refresh_launcher.gleam` is the shared orchestration module** for
   the refresh use case's background worker — both the skir and http drivers
   must go through it (see the two-transports rule in `server/AGENTS.md`).
+- **`catalog_cards.color_identity` stores Scryfall's raw spelling** —
+  alphabetical letter order as the dump ships it (e.g. `UW`, not canonical
+  `WU`). Canonical WUBRG order exists only after parsing into the shared
+  `ColorIdentity` type. Never string-match canonical forms in SQL against this
+  column.
