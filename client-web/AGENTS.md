@@ -23,4 +23,5 @@ Rules:
 
 - `pages/` (route components, wired in `routes.ts` via @solidjs/router), `components/` (shared UI). Filenames are snake_case.
 - Tests are colocated `*.test.ts` next to the module. Testable logic is extracted into plain non-JSX modules (e.g. `pages/import_deckstats.ts`, `routes.ts`) so it runs in the node environment — no component/DOM tests currently; don't add DOM-dependent logic to `.ts` modules.
+- `playwright` (devDependency) is the QA skill's disposable driver for exploratory verification (`.claude/skills/qa/`) — NOT a test layer. Scripts are throwaway; never commit browser tests or wire Playwright into CI (the e2e deferral in `server/test/AGENTS.md` stands).
 - **DSL hint sync (unenforced):** the hint paragraphs in `pages/inventory_page.tsx` restate the rule-DSL surface (placeholders, expression syntax, sort keys) whose source of truth is the parsers in `server/src/inventory_planning/domain/`. Don't change hint content from the frontend side alone — verify against the parsers, and keep both in sync when either changes.
