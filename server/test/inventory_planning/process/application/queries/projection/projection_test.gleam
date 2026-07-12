@@ -1,7 +1,12 @@
 import gleam/dict
 import gleam/list
+import gleam/option.{None, Some}
 import inventory_planning/application/queries/projection/handler
 import inventory_planning/application/queries/projection/ports
+import shared/domain/color_identity
+import shared/domain/oracle_id
+import shared/domain/rarity
+import shared/domain/release_date
 
 // Ties the fakes to the handler's driving port. The catalog fake returns only
 // the requested keys, mirroring the real batch lookup's "absent = unknown".
@@ -31,8 +36,8 @@ fn build_ports_with_dates(
     set_metadata: fn(_codes) {
       set_dates
       |> list.map(fn(entry) {
-        let #(code, date) = entry
-        #(code, ports.SetMetadataRow(released_at: date, parent_set_code: ""))
+        let #(code, raw_date) = entry
+        #(code, set_meta(raw_date, ""))
       })
       |> dict.from_list
       |> Ok
@@ -40,21 +45,45 @@ fn build_ports_with_dates(
   )
 }
 
+// "" means unknown (None); anything else must be a valid ISO date.
+fn date(raw: String) -> option.Option(release_date.ReleaseDate) {
+  case raw {
+    "" -> None
+    _ -> {
+      let assert Ok(parsed) = release_date.parse(raw)
+      Some(parsed)
+    }
+  }
+}
+
+// "" parent means a root set.
+fn set_meta(raw_date: String, parent: String) -> ports.SetMetadataRow {
+  ports.SetMetadataRow(
+    released_at: date(raw_date),
+    parent_set_code: case parent {
+      "" -> None
+      _ -> Some(parent)
+    },
+  )
+}
+
 fn attrs(
   name name: String,
-  rarity rarity: String,
+  rarity rarity_raw: String,
   oracle oracle: String,
   color color: String,
   type_line type_line: String,
   released released: String,
 ) -> ports.CatalogAttributes {
+  let assert Ok(rarity_value) = rarity.parse(rarity_raw)
+  let assert Ok(colors) = color_identity.parse(color)
   ports.CatalogAttributes(
     name: name,
-    rarity: rarity,
-    oracle_id: oracle,
-    color_identity: color,
+    rarity: rarity_value,
+    oracle_id: option.from_result(oracle_id.new(oracle)),
+    color_identity: colors,
     type_line: type_line,
-    released_at: released,
+    released_at: date(released),
   )
 }
 
@@ -541,28 +570,10 @@ pub fn set_metadata_transitive_fetch_reaches_unowned_parent_test() {
         // Token dates (tgrn 2019, twar 2018) reverse the root dates (grn 2018-10,
         // war 2019-05); grn/war are unowned so only appear on the second round.
         [
-          #(
-            "tgrn",
-            ports.SetMetadataRow(
-              released_at: "2019-01-01",
-              parent_set_code: "grn",
-            ),
-          ),
-          #(
-            "twar",
-            ports.SetMetadataRow(
-              released_at: "2018-01-01",
-              parent_set_code: "war",
-            ),
-          ),
-          #(
-            "grn",
-            ports.SetMetadataRow(released_at: "2018-10-05", parent_set_code: ""),
-          ),
-          #(
-            "war",
-            ports.SetMetadataRow(released_at: "2019-05-03", parent_set_code: ""),
-          ),
+          #("tgrn", set_meta("2019-01-01", "grn")),
+          #("twar", set_meta("2018-01-01", "war")),
+          #("grn", set_meta("2018-10-05", "")),
+          #("war", set_meta("2019-05-03", "")),
         ]
         |> list.filter(fn(entry) { list.contains(codes, entry.0) })
         |> dict.from_list

@@ -5,10 +5,14 @@ import gleam/int
 import gleam/io
 import gleam/json
 import gleam/list
-import gleam/option.{type Option, None}
+import gleam/option.{type Option, None, Some}
 import gleam/string
 import shared/domain/card_key
+import shared/domain/color_identity
 import shared/domain/non_empty_string
+import shared/domain/oracle_id
+import shared/domain/rarity
+import shared/domain/release_date
 import shared/infrastructure/shell
 import simplifile
 
@@ -24,26 +28,27 @@ fn log_error(stage: String, detail: String) -> Nil {
   io.println("[refresh][error] " <> stage <> ": " <> detail)
 }
 
-fn parse_rarity(raw: String) -> Result(card_printing.CardRarity, Nil) {
-  case raw {
-    "common" -> Ok(card_printing.Common)
-    "uncommon" -> Ok(card_printing.Uncommon)
-    "rare" -> Ok(card_printing.Rare)
-    "mythic" -> Ok(card_printing.Mythic)
-    "special" -> Ok(card_printing.Special)
-    "bonus" -> Ok(card_printing.Bonus)
-    _ -> Error(Nil)
+// Absent enrichment values (reversible/multi-face layouts) become None; a
+// present-but-unparseable value is a source defect and rejects the row
+// (ADR 0008). An oracle id has no shape to violate beyond emptiness, so it
+// can't be malformed — only absent.
+fn parse_optional_oracle_id(raw: String) -> Option(oracle_id.OracleId) {
+  case oracle_id.new(raw) {
+    Ok(oracle) -> Some(oracle)
+    Error(_) -> None
   }
 }
 
-fn rarity_to_string(rarity: card_printing.CardRarity) -> String {
-  case rarity {
-    card_printing.Common -> "common"
-    card_printing.Uncommon -> "uncommon"
-    card_printing.Rare -> "rare"
-    card_printing.Mythic -> "mythic"
-    card_printing.Special -> "special"
-    card_printing.Bonus -> "bonus"
+fn parse_optional_release_date(
+  raw: String,
+) -> Result(Option(release_date.ReleaseDate), Nil) {
+  case string.trim(raw) {
+    "" -> Ok(None)
+    trimmed ->
+      case release_date.parse(trimmed) {
+        Ok(date) -> Ok(Some(date))
+        Error(Nil) -> Error(Nil)
+      }
   }
 }
 
@@ -82,12 +87,12 @@ fn parse_card_row(line: String) -> Result(card_printing.CardPrinting, String) {
       name,
       set_code,
       collector_number,
-      rarity,
+      rarity_raw,
       image_uri,
-      oracle_id,
-      color_identity,
+      oracle_id_raw,
+      color_identity_raw,
       type_line,
-      released_at,
+      released_at_raw,
     )) ->
       case non_empty_string.new(name) {
         Error(_) -> Error("id=" <> id <> " empty name")
@@ -102,30 +107,64 @@ fn parse_card_row(line: String) -> Result(card_printing.CardPrinting, String) {
             Error(card_key.CollectorNumberNotCanonical) ->
               Error("id=" <> id <> " collector_number not canonical")
             Ok(key) ->
-              case parse_rarity(rarity) {
-                Error(_) -> Error("id=" <> id <> " unknown rarity: " <> rarity)
+              case rarity.parse(rarity_raw) {
+                Error(_) ->
+                  Error("id=" <> id <> " unknown rarity: " <> rarity_raw)
                 Ok(rarity_val) ->
                   case non_empty_string.new(image_uri) {
                     Error(_) -> Error("id=" <> id <> " empty image_uri")
                     Ok(image_uri_nes) ->
-                      // oracle_id/color_identity/type_line/released_at are
-                      // carried verbatim; empty values are tolerated (see
-                      // card_printing) because reversible/multi-face layouts
-                      // may expose no top-level value.
-                      Ok(card_printing.CardPrinting(
-                        id: card_printing.CardPrintingId(id),
-                        key:,
-                        name: name_nes,
-                        rarity: rarity_val,
-                        image_uri: image_uri_nes,
-                        oracle_id:,
-                        color_identity:,
-                        type_line:,
-                        released_at:,
-                      ))
+                      case
+                        parse_enrichment(
+                          oracle_id_raw,
+                          color_identity_raw,
+                          released_at_raw,
+                        )
+                      {
+                        Error(reason) -> Error("id=" <> id <> " " <> reason)
+                        Ok(#(oracle, colors, date)) ->
+                          Ok(card_printing.CardPrinting(
+                            id: card_printing.CardPrintingId(id),
+                            key:,
+                            name: name_nes,
+                            rarity: rarity_val,
+                            image_uri: image_uri_nes,
+                            oracle_id: oracle,
+                            color_identity: colors,
+                            // The raw printed line is the fact; "" is the
+                            // multi-face layout gap (see card_printing).
+                            type_line:,
+                            released_at: date,
+                          ))
+                      }
                   }
               }
           }
+      }
+  }
+}
+
+fn parse_enrichment(
+  oracle_id_raw: String,
+  color_identity_raw: String,
+  released_at_raw: String,
+) -> Result(
+  #(
+    Option(oracle_id.OracleId),
+    color_identity.ColorIdentity,
+    Option(release_date.ReleaseDate),
+  ),
+  String,
+) {
+  let oracle = parse_optional_oracle_id(oracle_id_raw)
+  // "" is a real colorless identity (Scryfall joins an empty color array),
+  // not a gap — hence not Option like the other two.
+  case color_identity.parse(color_identity_raw) {
+    Error(_) -> Error("invalid color_identity: " <> color_identity_raw)
+    Ok(colors) ->
+      case parse_optional_release_date(released_at_raw) {
+        Error(_) -> Error("invalid released_at: " <> released_at_raw)
+        Ok(date) -> Ok(#(oracle, colors, date))
       }
   }
 }
@@ -147,12 +186,12 @@ fn card_to_csv_row(card: card_printing.CardPrinting) -> String {
     id: card_printing.CardPrintingId(id),
     key: key,
     name: name,
-    rarity: rarity,
+    rarity: rarity_value,
     image_uri: image_uri,
-    oracle_id: oracle_id,
-    color_identity: color_identity,
+    oracle_id: oracle,
+    color_identity: colors,
     type_line: type_line,
-    released_at: released_at,
+    released_at: date,
   ) = card
   csv_field(id)
   <> ","
@@ -162,17 +201,17 @@ fn card_to_csv_row(card: card_printing.CardPrinting) -> String {
   <> ","
   <> csv_field(card_key.collector_number_string(key))
   <> ","
-  <> csv_field(rarity_to_string(rarity))
+  <> csv_field(rarity.to_string(rarity_value))
   <> ","
   <> csv_field(non_empty_string.to_string(image_uri))
   <> ","
-  <> csv_field(oracle_id)
+  <> csv_field(oracle |> option.map(oracle_id.to_string) |> option.unwrap(""))
   <> ","
-  <> csv_field(color_identity)
+  <> csv_field(color_identity.letters(colors))
   <> ","
   <> csv_field(type_line)
   <> ","
-  <> csv_field(released_at)
+  <> csv_field(date |> option.map(release_date.to_string) |> option.unwrap(""))
 }
 
 fn validate_card_rows(lines: List(String)) -> List(card_printing.CardPrinting) {

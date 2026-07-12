@@ -11,6 +11,11 @@ import card_catalog/driver/dependencies.{type Dependencies}
 import card_catalog/driver/refresh_launcher
 import card_catalog/driver/skir/codec as catalog_skir_codec
 import gleam/list
+import gleam/option
+import shared/domain/color_identity
+import shared/domain/oracle_id
+import shared/domain/rarity
+import shared/domain/release_date
 import shared/driver/skir/skirout/card_catalog/commands as card_catalog_commands
 import shared/driver/skir/skirout/card_catalog/queries as card_catalog_queries
 import skir_client/service
@@ -133,6 +138,8 @@ fn handle_get_catalog_cards(get_dependencies: fn(context) -> Dependencies) {
   }
 }
 
+// The wire keeps the canonical string forms ('' for an absent value); strong
+// types exist inland only (ADR 0008).
 fn map_card_read_model(
   card: get_cards_ports.CardReadModel,
 ) -> card_catalog_queries.CatalogCard {
@@ -141,12 +148,14 @@ fn map_card_read_model(
   // released_at, set_code, type_line
   card_catalog_queries.catalog_card_new(
     card.collector_number,
-    card.color_identity,
+    color_identity.letters(card.color_identity),
     card.image_uri,
     card.name,
-    card.oracle_id,
-    card.rarity,
-    card.released_at,
+    card.oracle_id |> option.map(oracle_id.to_string) |> option.unwrap(""),
+    rarity.to_string(card.rarity),
+    card.released_at
+      |> option.map(release_date.to_string)
+      |> option.unwrap(""),
     card.set_code,
     card.type_line,
   )

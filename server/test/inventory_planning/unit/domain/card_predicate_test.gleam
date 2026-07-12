@@ -5,23 +5,28 @@ import inventory_planning/domain/card_predicate.{
   And, CardTypeIs, ColorIdentityIs, RarityAtLeast, RarityIn, SetCodeIn,
 }
 import shared/domain/card_key
+import shared/domain/oracle_id
+import shared/domain/rarity
+import shared/domain/release_date
 
 fn card(
   set_code: String,
-  rarity: attrs.Rarity,
+  rarity_value: rarity.Rarity,
   colors: String,
   card_type: attrs.CardType,
 ) -> PlannedCard {
   let assert Ok(key) =
     card_key.from_user_input(set_code:, collector_number: "1")
   let assert Ok(color_identity) = attrs.parse_color_identity(colors)
+  let assert Ok(date) = release_date.parse("2020-01-01")
+  let assert Ok(oracle) = oracle_id.new("o1")
   attrs.PlannedCard(
     key:,
     name: "Test",
     quantity: 1,
-    released_at: "2020-01-01",
-    oracle_id: Some("o1"),
-    rarity: Some(rarity),
+    released_at: Some(date),
+    oracle_id: Some(oracle),
+    rarity: Some(rarity_value),
     color_identity: Some(color_identity),
     card_type: Some(card_type),
   )
@@ -39,12 +44,13 @@ pub fn parses_legacy_set_code_equals_test() {
 }
 
 pub fn parses_rarity_at_least_test() {
-  assert card_predicate.parse("rarity >= rare") == Ok(RarityAtLeast(attrs.Rare))
+  assert card_predicate.parse("rarity >= rare")
+    == Ok(RarityAtLeast(rarity.Rare))
 }
 
 pub fn parses_rarity_in_test() {
   assert card_predicate.parse("rarity in (common, uncommon)")
-    == Ok(RarityIn([attrs.Common, attrs.Uncommon]))
+    == Ok(RarityIn([rarity.Common, rarity.Uncommon]))
 }
 
 pub fn parses_color_identity_test() {
@@ -63,7 +69,7 @@ pub fn parses_conjunction_left_folded_test() {
     )
   assert pred
     == And(
-      And(SetCodeIn(["grn"]), RarityAtLeast(attrs.Rare)),
+      And(SetCodeIn(["grn"]), RarityAtLeast(rarity.Rare)),
       CardTypeIs(attrs.Creature),
     )
 }
@@ -101,11 +107,11 @@ pub fn matches_set_code_test() {
   let assert Ok(pred) = card_predicate.parse("set_code in (grn)")
   assert card_predicate.matches(
     pred,
-    card("grn", attrs.Rare, "R", attrs.Creature),
+    card("grn", rarity.Rare, "R", attrs.Creature),
   )
   assert !card_predicate.matches(
     pred,
-    card("m19", attrs.Rare, "R", attrs.Creature),
+    card("m19", rarity.Rare, "R", attrs.Creature),
   )
 }
 
@@ -114,19 +120,19 @@ pub fn rarity_at_least_excludes_special_and_bonus_test() {
   let assert Ok(pred) = card_predicate.parse("rarity >= rare")
   assert card_predicate.matches(
     pred,
-    card("x", attrs.Rare, "R", attrs.Creature),
+    card("x", rarity.Rare, "R", attrs.Creature),
   )
   assert card_predicate.matches(
     pred,
-    card("x", attrs.Mythic, "R", attrs.Creature),
+    card("x", rarity.Mythic, "R", attrs.Creature),
   )
   assert !card_predicate.matches(
     pred,
-    card("x", attrs.Special, "R", attrs.Creature),
+    card("x", rarity.Special, "R", attrs.Creature),
   )
   assert !card_predicate.matches(
     pred,
-    card("x", attrs.Bonus, "R", attrs.Creature),
+    card("x", rarity.Bonus, "R", attrs.Creature),
   )
 }
 
@@ -139,7 +145,7 @@ pub fn missing_attribute_matches_false_test() {
       key:,
       name: "Test",
       quantity: 1,
-      released_at: "",
+      released_at: None,
       oracle_id: None,
       rarity: None,
       color_identity: None,

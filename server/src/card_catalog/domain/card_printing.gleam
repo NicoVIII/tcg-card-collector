@@ -1,33 +1,30 @@
+import gleam/option.{type Option}
 import shared/domain/card_key.{type CardKey}
+import shared/domain/color_identity.{type ColorIdentity}
 import shared/domain/non_empty_string.{type NonEmptyString}
-
-pub type CardRarity {
-  Common
-  Uncommon
-  Rare
-  Mythic
-  Special
-  Bonus
-}
+import shared/domain/oracle_id.{type OracleId}
+import shared/domain/rarity.{type Rarity}
+import shared/domain/release_date.{type ReleaseDate}
 
 pub type CardPrintingId {
   CardPrintingId(String)
 }
 
+// Enrichment facts are parsed into shared value types once, at the sync
+// boundary (ADR 0008). oracle_id and released_at are Option because
+// reversible/multi-face layouts may expose no top-level value; type_line stays
+// the raw printed line ("" for the same layout gap) — any reduction of it is
+// consumer policy, not a catalog fact.
 pub type CardPrinting {
   CardPrinting(
     id: CardPrintingId,
     key: CardKey,
     name: NonEmptyString,
-    rarity: CardRarity,
+    rarity: Rarity,
     image_uri: NonEmptyString,
-    // Enrichment attributes carried verbatim from the catalog source. Catalog
-    // owns these as opaque strings; inventory_planning parses them at its port
-    // boundary, so an empty value here is tolerated (e.g. reversible layouts
-    // that expose no top-level oracle_id/type_line).
-    oracle_id: String,
-    color_identity: String,
+    oracle_id: Option(OracleId),
+    color_identity: ColorIdentity,
     type_line: String,
-    released_at: String,
+    released_at: Option(ReleaseDate),
   )
 }

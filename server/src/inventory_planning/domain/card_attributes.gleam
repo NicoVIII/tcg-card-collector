@@ -1,158 +1,64 @@
 import gleam/int
 import gleam/list
-import gleam/option.{type Option}
+import gleam/option.{type Option, None, Some}
+import gleam/order.{type Order}
 import gleam/result
 import gleam/string
 import shared/domain/card_key.{type CardKey}
+import shared/domain/color_identity.{type ColorIdentity}
+import shared/domain/oracle_id.{type OracleId}
+import shared/domain/rarity.{type Rarity}
+import shared/domain/release_date.{type ReleaseDate}
 
-// Planning's value types, parsed from the opaque strings the catalog carries.
-// The catalog owns the raw metadata; these types give planning the semantics it
-// needs (a total order over rarity, a canonical color identity, a card type)
-// without leaking planning rules back into the catalog.
+// Planning's *policy* over the shared card facts (ADR 0008): the rarity total
+// order, the DSL spellings, the color display order, and the type-line
+// reduction. The representations themselves live in shared/domain.
 
 // Total order: common < uncommon < special < bonus < rare < mythic. special and
 // bonus sit *below* rare deliberately, so `rarity >= rare` excludes them; the
 // escape hatch is `rarity in (...)`.
-pub type Rarity {
-  Common
-  Uncommon
-  Special
-  Bonus
-  Rare
-  Mythic
+pub fn rarity_rank(value: Rarity) -> Int {
+  case value {
+    rarity.Common -> 0
+    rarity.Uncommon -> 1
+    rarity.Special -> 2
+    rarity.Bonus -> 3
+    rarity.Rare -> 4
+    rarity.Mythic -> 5
+  }
 }
 
+pub fn rarity_at_least(value: Rarity, threshold: Rarity) -> Bool {
+  rarity_rank(value) >= rarity_rank(threshold)
+}
+
+// DSL spelling of a rarity: user input, so trimmed and case-insensitive.
 pub fn parse_rarity(raw: String) -> Result(Rarity, Nil) {
-  case string.lowercase(string.trim(raw)) {
-    "common" -> Ok(Common)
-    "uncommon" -> Ok(Uncommon)
-    "special" -> Ok(Special)
-    "bonus" -> Ok(Bonus)
-    "rare" -> Ok(Rare)
-    "mythic" -> Ok(Mythic)
-    _ -> Error(Nil)
-  }
+  rarity.parse(string.lowercase(string.trim(raw)))
 }
 
-pub fn rarity_to_string(rarity: Rarity) -> String {
-  case rarity {
-    Common -> "common"
-    Uncommon -> "uncommon"
-    Special -> "special"
-    Bonus -> "bonus"
-    Rare -> "rare"
-    Mythic -> "mythic"
-  }
-}
-
-pub fn rarity_rank(rarity: Rarity) -> Int {
-  case rarity {
-    Common -> 0
-    Uncommon -> 1
-    Special -> 2
-    Bonus -> 3
-    Rare -> 4
-    Mythic -> 5
-  }
-}
-
-pub fn rarity_at_least(rarity: Rarity, threshold: Rarity) -> Bool {
-  rarity_rank(rarity) >= rarity_rank(threshold)
-}
-
-// The five WUBRG colors, kept in canonical order via their rank.
-pub type Color {
-  White
-  Blue
-  Black
-  Red
-  Green
-}
-
-fn color_rank(color: Color) -> Int {
-  case color {
-    White -> 0
-    Blue -> 1
-    Black -> 2
-    Red -> 3
-    Green -> 4
-  }
-}
-
-fn color_letter(color: Color) -> String {
-  case color {
-    White -> "W"
-    Blue -> "U"
-    Black -> "B"
-    Red -> "R"
-    Green -> "G"
-  }
-}
-
-fn parse_color_letter(letter: String) -> Result(Color, Nil) {
-  case string.uppercase(letter) {
-    "W" -> Ok(White)
-    "U" -> Ok(Blue)
-    "B" -> Ok(Black)
-    "R" -> Ok(Red)
-    "G" -> Ok(Green)
-    _ -> Error(Nil)
-  }
-}
-
-// Colors are held in canonical WUBRG order with no duplicates; the empty list is
-// colorless. Opaque so equality is meaningful (WU == UW).
-pub opaque type ColorIdentity {
-  ColorIdentity(colors: List(Color))
-}
-
-fn canonical(colors: List(Color)) -> ColorIdentity {
-  colors
-  |> list.unique
-  |> list.sort(fn(a, b) { int.compare(color_rank(a), color_rank(b)) })
-  |> ColorIdentity
-}
-
-pub fn colorless() -> ColorIdentity {
-  ColorIdentity([])
-}
-
-// Accepts the catalog's joined-letter form ("WU", "" for colorless) and the DSL
-// form ("colorless"). Any letter order is accepted; the result is canonical.
+// DSL spelling of a color identity: the joined-letter form ("WU") plus the
+// words "colorless"/"c". Letters in any order; the result is canonical.
 pub fn parse_color_identity(raw: String) -> Result(ColorIdentity, Nil) {
-  let trimmed = string.trim(raw)
-  case string.lowercase(trimmed) {
-    "" | "colorless" | "c" -> Ok(colorless())
-    _ ->
-      trimmed
-      |> string.to_graphemes
-      |> list.try_map(parse_color_letter)
-      |> result.map(canonical)
+  case string.lowercase(string.trim(raw)) {
+    "colorless" | "c" -> Ok(color_identity.colorless())
+    _ -> color_identity.parse(raw)
   }
-}
-
-pub fn color_identity_is_colorless(identity: ColorIdentity) -> Bool {
-  identity.colors == []
-}
-
-// Joined-letter form used in predicate DSL strings ("WU"); colorless is "".
-pub fn color_identity_letters(identity: ColorIdentity) -> String {
-  identity.colors |> list.map(color_letter) |> string.join("")
 }
 
 // DSL token that round-trips through parse_color_identity ("WU" / "colorless").
 pub fn color_identity_token(identity: ColorIdentity) -> String {
-  case color_identity_is_colorless(identity) {
+  case color_identity.is_colorless(identity) {
     True -> "colorless"
-    False -> color_identity_letters(identity)
+    False -> color_identity.letters(identity)
   }
 }
 
 // Human-facing label for location templates ("WU" / "Colorless").
 pub fn color_identity_label(identity: ColorIdentity) -> String {
-  case color_identity_is_colorless(identity) {
+  case color_identity.is_colorless(identity) {
     True -> "Colorless"
-    False -> color_identity_letters(identity)
+    False -> color_identity.letters(identity)
   }
 }
 
@@ -160,11 +66,12 @@ pub fn color_identity_label(identity: ColorIdentity) -> String {
 // The digit string encodes color ranks in canonical order so mono-colors sort
 // W, U, B, R, G rather than alphabetically.
 pub fn color_identity_sort_key(identity: ColorIdentity) -> #(Int, String) {
+  let colors = color_identity.colors(identity)
   let digits =
-    identity.colors
-    |> list.map(fn(c) { int.to_string(color_rank(c)) })
+    colors
+    |> list.map(fn(c) { int.to_string(color_identity.color_rank(c)) })
     |> string.join("")
-  let group = case list.length(identity.colors) {
+  let group = case list.length(colors) {
     0 -> 2
     1 -> 0
     _ -> 1
@@ -251,6 +158,20 @@ pub fn card_type_rank(card_type: CardType) -> Int {
   }
 }
 
+// Ordering policy for possibly-unknown release dates: unknown sorts first,
+// treated as earliest (the pre-strong-typing '' behaviour).
+pub fn compare_release_earliest_first(
+  left: Option(ReleaseDate),
+  right: Option(ReleaseDate),
+) -> Order {
+  case left, right {
+    None, None -> order.Eq
+    None, Some(_) -> order.Lt
+    Some(_), None -> order.Gt
+    Some(l), Some(r) -> release_date.compare(l, r)
+  }
+}
+
 // A collection row joined with whatever the catalog knew about it. oracle_id,
 // rarity, color_identity, and card_type are optional because a collection row
 // may reference a printing the catalog doesn't (yet) carry; such a card fails
@@ -260,8 +181,8 @@ pub type PlannedCard {
     key: CardKey,
     name: String,
     quantity: Int,
-    released_at: String,
-    oracle_id: Option(String),
+    released_at: Option(ReleaseDate),
+    oracle_id: Option(OracleId),
     rarity: Option(Rarity),
     color_identity: Option(ColorIdentity),
     card_type: Option(CardType),

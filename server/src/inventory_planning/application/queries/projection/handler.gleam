@@ -12,6 +12,7 @@ import inventory_planning/domain/rule_cascade
 import inventory_planning/domain/set_index
 import inventory_planning/domain/sort_spec
 import shared/domain/card_key
+import shared/domain/rarity
 
 pub type InventoryProjectionQuery {
   InventoryProjectionQuery
@@ -91,10 +92,7 @@ fn fetch_set_index_loop(
       let parents =
         dict.values(fetched)
         |> list.filter_map(fn(row) {
-          case row.parent_set_code {
-            "" -> Error(Nil)
-            parent -> Ok(parent)
-          }
+          option.to_result(row.parent_set_code, Nil)
         })
         |> list.unique
       fetch_set_index_loop(port, parents, acc, fuel - 1)
@@ -108,10 +106,7 @@ fn to_set_index(
   dict.map_values(rows, fn(_code, row) {
     set_index.SetMeta(
       released_at: row.released_at,
-      parent_set_code: case row.parent_set_code {
-        "" -> None
-        parent -> Some(parent)
-      },
+      parent_set_code: row.parent_set_code,
     )
   })
 }
@@ -183,7 +178,7 @@ fn plan_card(
         key: key,
         name: "",
         quantity: row.quantity,
-        released_at: "",
+        released_at: None,
         oracle_id: None,
         rarity: None,
         color_identity: None,
@@ -195,27 +190,18 @@ fn plan_card(
         name: attrs.name,
         quantity: row.quantity,
         released_at: attrs.released_at,
-        oracle_id: optional_string(attrs.oracle_id),
-        rarity: card_attributes.parse_rarity(attrs.rarity) |> option.from_result,
-        color_identity: card_attributes.parse_color_identity(
-          attrs.color_identity,
-        )
-          |> option.from_result,
-        card_type: parse_card_type(attrs.type_line),
+        oracle_id: attrs.oracle_id,
+        rarity: Some(attrs.rarity),
+        color_identity: Some(attrs.color_identity),
+        card_type: reduce_card_type(attrs.type_line),
       )
   })
 }
 
-fn optional_string(raw: String) -> Option(String) {
-  case raw {
-    "" -> None
-    _ -> Some(raw)
-  }
-}
-
-// An empty type_line is a catalog gap, not a real type, so it stays None (and
-// the card fails `type = ...` predicates); anything else maps to a card type.
-fn parse_card_type(type_line: String) -> Option(card_attributes.CardType) {
+// The type-line reduction is planning policy over the catalog's raw fact. An
+// empty type_line is a catalog gap (multi-face layouts), not a real type, so it
+// stays None (and the card fails `type = ...` predicates).
+fn reduce_card_type(type_line: String) -> Option(card_attributes.CardType) {
   case type_line {
     "" -> None
     _ -> Some(card_attributes.card_type_from_type_line(type_line))
@@ -248,7 +234,7 @@ fn to_card(
       |> option.map(card_attributes.color_identity_label)
       |> option.unwrap(""),
     rarity: card.rarity
-      |> option.map(card_attributes.rarity_to_string)
+      |> option.map(rarity.to_string)
       |> option.unwrap(""),
     card_type: card.card_type
       |> option.map(card_attributes.card_type_to_string)

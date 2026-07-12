@@ -1,22 +1,25 @@
 import gleam/dict.{type Dict}
 import gleam/option.{type Option, None, Some}
+import shared/domain/release_date.{type ReleaseDate}
 
 // The catalog facts set-family resolution needs about one set: its release date
-// and the parent set it hangs off (None for a root set).
+// (None when the catalog doesn't date it) and the parent set it hangs off
+// (None for a root set).
 pub type SetMeta {
-  SetMeta(released_at: String, parent_set_code: Option(String))
+  SetMeta(released_at: Option(ReleaseDate), parent_set_code: Option(String))
 }
 
 // Set metadata keyed by set code. Sets not present are simply absent; callers
-// fall back (unknown release date "", own code as family root).
+// fall back (unknown release date None, own code as family root).
 pub type SetIndex =
   Dict(String, SetMeta)
 
-// The set's catalog release date, or "" when the set isn't in the index.
-pub fn release_date(index: SetIndex, code: String) -> String {
+// The set's catalog release date, or None when the set isn't in the index or
+// isn't dated.
+pub fn release_date(index: SetIndex, code: String) -> Option(ReleaseDate) {
   case dict.get(index, code) {
     Ok(meta) -> meta.released_at
-    Error(_) -> ""
+    Error(_) -> None
   }
 }
 

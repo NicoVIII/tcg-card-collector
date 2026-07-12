@@ -15,6 +15,7 @@ import inventory_planning/domain/set_index.{type SetIndex}
 import inventory_planning/domain/sort_spec
 import shared/domain/card_key
 import shared/domain/collector_number
+import shared/domain/release_date.{type ReleaseDate}
 
 // One rule in the ordered waterfall. Rules are applied in `position` order and
 // each consumes from what earlier rules left behind.
@@ -210,33 +211,29 @@ type FannedBucket {
     name: String,
     witness: Assignment,
     sort_code: String,
-    set_date: String,
+    set_date: Option(ReleaseDate),
     assignments: List(Assignment),
   )
 }
 
 // Bucket set date: prefer the catalog entry for the bucket's sort_code (so a
 // {set_family} bucket dates off its root even when no root-set card is owned);
-// fall back to the minimum non-empty released_at among the bucket's cards
-// (card-level dates can vary within a set, e.g. promos), then to "" (sorts first).
+// fall back to the minimum known released_at among the bucket's cards
+// (card-level dates can vary within a set, e.g. promos), then to None (sorts
+// first).
 fn bucket_set_date(
   sort_code: String,
   assignments: List(Assignment),
   sets: SetIndex,
-) -> String {
+) -> Option(ReleaseDate) {
   case set_index.release_date(sets, sort_code) {
-    "" ->
+    None ->
       assignments
-      |> list.filter_map(fn(a) {
-        case a.card.released_at {
-          "" -> Error(Nil)
-          date -> Ok(date)
-        }
-      })
-      |> list.sort(string.compare)
+      |> list.filter_map(fn(a) { option.to_result(a.card.released_at, Nil) })
+      |> list.sort(release_date.compare)
       |> list.first
-      |> result.unwrap("")
-    date -> date
+      |> option.from_result
+    Some(date) -> Some(date)
   }
 }
 
@@ -285,7 +282,7 @@ fn compare_by_attribute(
     // Family buckets sort exactly like set buckets, keyed on the root code/date.
     location_target.SetCodeAttribute | location_target.SetFamilyAttribute ->
       order.break_tie(
-        string.compare(l.set_date, r.set_date),
+        card_attributes.compare_release_earliest_first(l.set_date, r.set_date),
         string.compare(l.sort_code, r.sort_code),
       )
     location_target.ColorIdentityAttribute ->
@@ -340,7 +337,7 @@ fn compare_family_group(
   order.break_tie(
     int.compare(family_rank(sets, a.card), family_rank(sets, b.card)),
     order.break_tie(
-      string.compare(
+      card_attributes.compare_release_earliest_first(
         set_index.release_date(sets, card_key.set_code_string(a.card.key)),
         set_index.release_date(sets, card_key.set_code_string(b.card.key)),
       ),
@@ -409,10 +406,10 @@ fn total_quantity(assignments: List(Assignment)) -> Int {
 }
 
 // "Prefer the oldest printing": released_at asc, then set_code, then
-// collector_number. An empty released_at sorts first (treated as earliest).
+// collector_number. An unknown released_at sorts first (treated as earliest).
 fn compare_canonical(a: PlannedCard, b: PlannedCard) -> order.Order {
   order.break_tie(
-    string.compare(a.released_at, b.released_at),
+    card_attributes.compare_release_earliest_first(a.released_at, b.released_at),
     order.break_tie(
       string.compare(
         card_key.set_code_string(a.key),

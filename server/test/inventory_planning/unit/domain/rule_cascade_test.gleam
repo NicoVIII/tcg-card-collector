@@ -12,13 +12,27 @@ import inventory_planning/domain/rule_cascade.{
 import inventory_planning/domain/set_index.{SetMeta}
 import inventory_planning/domain/sort_spec
 import shared/domain/card_key
+import shared/domain/oracle_id
+import shared/domain/rarity
+import shared/domain/release_date
+
+// "" means unknown (None); anything else must be a valid ISO date.
+fn date(raw: String) -> option.Option(release_date.ReleaseDate) {
+  case raw {
+    "" -> None
+    _ -> {
+      let assert Ok(parsed) = release_date.parse(raw)
+      Some(parsed)
+    }
+  }
+}
 
 // A SetIndex of root sets (no parents) with the given release dates.
 fn set_dates(entries: List(#(String, String))) -> set_index.SetIndex {
   entries
   |> list.map(fn(entry) {
-    let #(code, date) = entry
-    #(code, SetMeta(released_at: date, parent_set_code: None))
+    let #(code, raw_date) = entry
+    #(code, SetMeta(released_at: date(raw_date), parent_set_code: None))
   })
   |> dict.from_list
 }
@@ -29,8 +43,8 @@ fn build_index(
 ) -> set_index.SetIndex {
   entries
   |> list.map(fn(entry) {
-    let #(code, date, parent) = entry
-    #(code, SetMeta(released_at: date, parent_set_code: parent))
+    let #(code, raw_date, parent) = entry
+    #(code, SetMeta(released_at: date(raw_date), parent_set_code: parent))
   })
   |> dict.from_list
 }
@@ -41,8 +55,8 @@ fn card(
   name: String,
   quantity: Int,
   released_at: String,
-  oracle_id: String,
-  rarity: attrs.Rarity,
+  oracle: String,
+  rarity_value: rarity.Rarity,
   colors: String,
 ) -> PlannedCard {
   let assert Ok(key) = card_key.from_user_input(set_code:, collector_number:)
@@ -51,9 +65,9 @@ fn card(
     key:,
     name:,
     quantity:,
-    released_at:,
-    oracle_id: Some(oracle_id),
-    rarity: Some(rarity),
+    released_at: date(released_at),
+    oracle_id: option.from_result(oracle_id.new(oracle)),
+    rarity: Some(rarity_value),
     color_identity: Some(color_identity),
     card_type: Some(attrs.Creature),
   )
@@ -142,7 +156,7 @@ fn conservation_holds(cards: List(PlannedCard)) -> Bool {
 // binder, the color binder, and bulk.
 pub fn four_of_rare_splits_across_tiers_test() {
   let cards = [
-    card("grn", "173", "Guildmage", 4, "2018-10-05", "o1", attrs.Rare, "R"),
+    card("grn", "173", "Guildmage", 4, "2018-10-05", "o1", rarity.Rare, "R"),
   ]
   let buckets = rule_cascade.project(owner_cascade(), cards, dict.new())
 
@@ -164,7 +178,7 @@ pub fn four_of_rare_splits_across_tiers_test() {
 // Buckets appear in rule-position order, bulk last.
 pub fn buckets_ordered_by_position_then_bulk_test() {
   let cards = [
-    card("grn", "173", "Guildmage", 4, "2018-10-05", "o1", attrs.Rare, "R"),
+    card("grn", "173", "Guildmage", 4, "2018-10-05", "o1", rarity.Rare, "R"),
   ]
   let names =
     rule_cascade.project(owner_cascade(), cards, dict.new())
@@ -175,8 +189,8 @@ pub fn buckets_ordered_by_position_then_bulk_test() {
 // Quantity is conserved: every owned copy lands in exactly one bucket.
 pub fn quantity_conserved_test() {
   let cards = [
-    card("grn", "173", "Guildmage", 4, "2018-10-05", "o1", attrs.Rare, "R"),
-    card("m19", "5", "Common Card", 3, "2018-07-13", "o2", attrs.Common, "U"),
+    card("grn", "173", "Guildmage", 4, "2018-10-05", "o1", rarity.Rare, "R"),
+    card("m19", "5", "Common Card", 3, "2018-07-13", "o2", rarity.Common, "U"),
     card(
       "mh1",
       "42",
@@ -184,10 +198,10 @@ pub fn quantity_conserved_test() {
       2,
       "2019-06-14",
       "o3",
-      attrs.Uncommon,
+      rarity.Uncommon,
       "",
     ),
-    card("war", "99", "Mythic Card", 1, "2019-05-03", "o4", attrs.Mythic, "WB"),
+    card("war", "99", "Mythic Card", 1, "2019-05-03", "o4", rarity.Mythic, "WB"),
   ]
   assert conservation_holds(cards)
 }
@@ -198,8 +212,8 @@ pub fn first_copy_per_oracle_dedupes_printings_test() {
   // Two printings of the same rare oracle, neither in a set-binder set, so the
   // set-binder rule doesn't fire. The color-binder rule (per oracle) takes one.
   let cards = [
-    card("a", "1", "Reprint Old", 2, "2010-01-01", "same", attrs.Rare, "G"),
-    card("b", "2", "Reprint New", 2, "2020-01-01", "same", attrs.Rare, "G"),
+    card("a", "1", "Reprint Old", 2, "2010-01-01", "same", rarity.Rare, "G"),
+    card("b", "2", "Reprint New", 2, "2020-01-01", "same", rarity.Rare, "G"),
   ]
   let buckets = rule_cascade.project(owner_cascade(), cards, dict.new())
 
@@ -225,7 +239,7 @@ pub fn catalog_unknown_card_falls_to_bulk_test() {
       key:,
       name: "Mystery Promo",
       quantity: 3,
-      released_at: "",
+      released_at: None,
       oracle_id: None,
       rarity: None,
       color_identity: None,
@@ -248,9 +262,9 @@ pub fn conservation_across_generated_cases_test() {
   let cases =
     list.map(quantities, fn(q) {
       [
-        card("grn", "1", "A", q, "2018-10-05", "o1", attrs.Rare, "R"),
-        card("dom", "2", "B", q, "2018-04-27", "o2", attrs.Common, "W"),
-        card("grn", "3", "C", q, "2018-10-05", "o1", attrs.Rare, "R"),
+        card("grn", "1", "A", q, "2018-10-05", "o1", rarity.Rare, "R"),
+        card("dom", "2", "B", q, "2018-04-27", "o2", rarity.Common, "W"),
+        card("grn", "3", "C", q, "2018-10-05", "o1", rarity.Rare, "R"),
       ]
     })
   assert list.all(cases, conservation_holds)
@@ -260,8 +274,8 @@ pub fn conservation_across_generated_cases_test() {
 // overwritten on intake and the remainder drains into bulk exactly once.
 pub fn duplicate_printing_keys_conserve_quantity_test() {
   let cards = [
-    card("grn", "173", "Guildmage", 2, "2018-10-05", "o1", attrs.Rare, "R"),
-    card("grn", "173", "Guildmage", 3, "2018-10-05", "o1", attrs.Rare, "R"),
+    card("grn", "173", "Guildmage", 2, "2018-10-05", "o1", rarity.Rare, "R"),
+    card("grn", "173", "Guildmage", 3, "2018-10-05", "o1", rarity.Rare, "R"),
   ]
   assert conservation_holds(cards)
 
@@ -293,8 +307,8 @@ fn shelf_cascade(sort_keys: List(sort_spec.SortKey)) -> RuleCascade {
 // (release-date) order they were claimed in.
 pub fn rule_bucket_sorted_by_name_differs_from_canonical_test() {
   let cards = [
-    card("aaa", "1", "Zebra", 1, "2000-01-01", "o1", attrs.Common, "R"),
-    card("bbb", "2", "Apple", 1, "2001-01-01", "o2", attrs.Common, "R"),
+    card("aaa", "1", "Zebra", 1, "2000-01-01", "o1", rarity.Common, "R"),
+    card("bbb", "2", "Apple", 1, "2001-01-01", "o2", rarity.Common, "R"),
   ]
   let shelf =
     find_bucket(
@@ -307,8 +321,8 @@ pub fn rule_bucket_sorted_by_name_differs_from_canonical_test() {
 // Empty sort keys leave the canonical order (release date asc) untouched.
 pub fn rule_bucket_empty_sort_keys_keep_canonical_order_test() {
   let cards = [
-    card("aaa", "1", "Zebra", 1, "2000-01-01", "o1", attrs.Common, "R"),
-    card("bbb", "2", "Apple", 1, "2001-01-01", "o2", attrs.Common, "R"),
+    card("aaa", "1", "Zebra", 1, "2000-01-01", "o1", rarity.Common, "R"),
+    card("bbb", "2", "Apple", 1, "2001-01-01", "o2", rarity.Common, "R"),
   ]
   let shelf =
     find_bucket(
@@ -335,10 +349,10 @@ pub fn template_fan_out_buckets_sorted_independently_test() {
       bulk: bulk_spec.BulkSpec("Bulk", []),
     )
   let cards = [
-    card("aaa", "1", "Zebra", 1, "2000-01-01", "o1", attrs.Common, "R"),
-    card("bbb", "2", "Apple", 1, "2001-01-01", "o2", attrs.Common, "R"),
-    card("ccc", "3", "Yak", 1, "2000-01-01", "o3", attrs.Common, "G"),
-    card("ddd", "4", "Bear", 1, "2001-01-01", "o4", attrs.Common, "G"),
+    card("aaa", "1", "Zebra", 1, "2000-01-01", "o1", rarity.Common, "R"),
+    card("bbb", "2", "Apple", 1, "2001-01-01", "o2", rarity.Common, "R"),
+    card("ccc", "3", "Yak", 1, "2000-01-01", "o3", rarity.Common, "G"),
+    card("ddd", "4", "Bear", 1, "2001-01-01", "o4", rarity.Common, "G"),
   ]
   let buckets = rule_cascade.project(cascade, cards, dict.new())
   let red = find_bucket(buckets, "Binder R")
@@ -402,8 +416,8 @@ fn type_binder_cascade() -> RuleCascade {
 pub fn set_fan_out_ordered_by_release_date_test() {
   let dates = set_dates([#("zzz", "2000-01-01"), #("aaa", "2010-01-01")])
   let cards = [
-    card("zzz", "1", "Old Card", 1, "2000-01-01", "o1", attrs.Common, "R"),
-    card("aaa", "2", "New Card", 1, "2010-01-01", "o2", attrs.Common, "R"),
+    card("zzz", "1", "Old Card", 1, "2000-01-01", "o1", rarity.Common, "R"),
+    card("aaa", "2", "New Card", 1, "2010-01-01", "o2", rarity.Common, "R"),
   ]
   let buckets = rule_cascade.project(set_binder_cascade(), cards, dates)
   let names = list.map(buckets, fn(b) { b.location_name })
@@ -413,8 +427,8 @@ pub fn set_fan_out_ordered_by_release_date_test() {
 // When no dict entry exists, falls back to card's released_at.
 pub fn set_fan_out_card_date_fallback_test() {
   let cards = [
-    card("zzz", "1", "Old Card", 1, "2000-01-01", "o1", attrs.Common, "R"),
-    card("aaa", "2", "New Card", 1, "2010-01-01", "o2", attrs.Common, "R"),
+    card("zzz", "1", "Old Card", 1, "2000-01-01", "o1", rarity.Common, "R"),
+    card("aaa", "2", "New Card", 1, "2010-01-01", "o2", rarity.Common, "R"),
   ]
   // Empty dict → fallback to card.released_at (2000 < 2010 → zzz before aaa)
   let buckets = rule_cascade.project(set_binder_cascade(), cards, dict.new())
@@ -427,8 +441,8 @@ pub fn set_fan_out_dict_overrides_card_date_test() {
   // Card dates say zzz(2000) < aaa(2010), but dict reverses: zzz→2020, aaa→1990
   let dates = set_dates([#("zzz", "2020-01-01"), #("aaa", "1990-01-01")])
   let cards = [
-    card("zzz", "1", "Old Card", 1, "2000-01-01", "o1", attrs.Common, "R"),
-    card("aaa", "2", "New Card", 1, "2010-01-01", "o2", attrs.Common, "R"),
+    card("zzz", "1", "Old Card", 1, "2000-01-01", "o1", rarity.Common, "R"),
+    card("aaa", "2", "New Card", 1, "2010-01-01", "o2", rarity.Common, "R"),
   ]
   let buckets = rule_cascade.project(set_binder_cascade(), cards, dates)
   let names = list.map(buckets, fn(b) { b.location_name })
@@ -442,9 +456,9 @@ pub fn set_fan_out_dict_overrides_card_date_test() {
 pub fn set_fan_out_fallback_skips_empty_card_dates_test() {
   let cards = [
     // "zzz" bucket: one date-less card + one dated 2015 → bucket date 2015
-    card("zzz", "1", "Dateless", 1, "", "o1", attrs.Common, "R"),
-    card("zzz", "2", "Dated Late", 1, "2015-01-01", "o2", attrs.Common, "R"),
-    card("aaa", "3", "Dated Early", 1, "2010-01-01", "o3", attrs.Common, "R"),
+    card("zzz", "1", "Dateless", 1, "", "o1", rarity.Common, "R"),
+    card("zzz", "2", "Dated Late", 1, "2015-01-01", "o2", rarity.Common, "R"),
+    card("aaa", "3", "Dated Early", 1, "2010-01-01", "o3", rarity.Common, "R"),
   ]
   let buckets = rule_cascade.project(set_binder_cascade(), cards, dict.new())
   let names = list.map(buckets, fn(b) { b.location_name })
@@ -460,8 +474,8 @@ pub fn set_fan_out_mixed_dict_and_fallback_test() {
   // sole source; "aaa" absent from the dict → card date (2010).
   let dates = set_dates([#("zzz", "2005-01-01")])
   let cards = [
-    card("zzz", "1", "Dict Card", 1, "", "o1", attrs.Common, "R"),
-    card("aaa", "2", "Fallback Card", 1, "2010-01-01", "o2", attrs.Common, "R"),
+    card("zzz", "1", "Dict Card", 1, "", "o1", rarity.Common, "R"),
+    card("aaa", "2", "Fallback Card", 1, "2010-01-01", "o2", rarity.Common, "R"),
   ]
   let buckets = rule_cascade.project(set_binder_cascade(), cards, dates)
   let names = list.map(buckets, fn(b) { b.location_name })
@@ -472,8 +486,8 @@ pub fn set_fan_out_mixed_dict_and_fallback_test() {
 pub fn set_fan_out_same_date_alphabetical_tiebreak_test() {
   let dates = set_dates([#("bbb", "2000-01-01"), #("aaa", "2000-01-01")])
   let cards = [
-    card("bbb", "1", "B Card", 1, "2000-01-01", "o1", attrs.Common, "R"),
-    card("aaa", "2", "A Card", 1, "2000-01-01", "o2", attrs.Common, "R"),
+    card("bbb", "1", "B Card", 1, "2000-01-01", "o1", rarity.Common, "R"),
+    card("aaa", "2", "A Card", 1, "2000-01-01", "o2", rarity.Common, "R"),
   ]
   let buckets = rule_cascade.project(set_binder_cascade(), cards, dates)
   let names = list.map(buckets, fn(b) { b.location_name })
@@ -484,12 +498,12 @@ pub fn set_fan_out_same_date_alphabetical_tiebreak_test() {
 // Colorless ("") would sort first alphabetically but last by WUBRG rank.
 pub fn color_fan_out_wubrg_order_test() {
   let cards = [
-    card("a", "1", "Card W", 1, "2000-01-01", "o1", attrs.Common, "W"),
-    card("b", "2", "Card B", 1, "2000-01-01", "o2", attrs.Common, "B"),
-    card("c", "3", "Card G", 1, "2000-01-01", "o3", attrs.Common, "G"),
-    card("d", "4", "Card R", 1, "2000-01-01", "o4", attrs.Common, "R"),
-    card("e", "5", "Card U", 1, "2000-01-01", "o5", attrs.Common, "U"),
-    card("f", "6", "Colorless", 1, "2000-01-01", "o6", attrs.Common, ""),
+    card("a", "1", "Card W", 1, "2000-01-01", "o1", rarity.Common, "W"),
+    card("b", "2", "Card B", 1, "2000-01-01", "o2", rarity.Common, "B"),
+    card("c", "3", "Card G", 1, "2000-01-01", "o3", rarity.Common, "G"),
+    card("d", "4", "Card R", 1, "2000-01-01", "o4", rarity.Common, "R"),
+    card("e", "5", "Card U", 1, "2000-01-01", "o5", rarity.Common, "U"),
+    card("f", "6", "Colorless", 1, "2000-01-01", "o6", rarity.Common, ""),
   ]
   let buckets = rule_cascade.project(color_binder_cascade(), cards, dict.new())
   let names = list.map(buckets, fn(b) { b.location_name })
@@ -518,9 +532,9 @@ pub fn type_fan_out_rank_order_test() {
       key:,
       name: set_code,
       quantity: 1,
-      released_at: "2000-01-01",
-      oracle_id: Some("o-" <> set_code),
-      rarity: Some(attrs.Common),
+      released_at: date("2000-01-01"),
+      oracle_id: option.from_result(oracle_id.new("o-" <> set_code)),
+      rarity: Some(rarity.Common),
       color_identity: None,
       card_type: Some(card_type),
     )
@@ -538,8 +552,8 @@ pub fn type_fan_out_rank_order_test() {
 // No bucket ever carries a negative total.
 pub fn no_negative_totals_test() {
   let cards = [
-    card("grn", "173", "Guildmage", 4, "2018-10-05", "o1", attrs.Rare, "R"),
-    card("m19", "5", "Common Card", 3, "2018-07-13", "o2", attrs.Common, "U"),
+    card("grn", "173", "Guildmage", 4, "2018-10-05", "o1", rarity.Rare, "R"),
+    card("m19", "5", "Common Card", 3, "2018-07-13", "o2", rarity.Common, "U"),
   ]
   let buckets = rule_cascade.project(owner_cascade(), cards, dict.new())
   assert list.all(buckets, fn(b) { b.total_quantity >= 0 })
@@ -573,8 +587,8 @@ pub fn family_parent_and_child_merge_into_one_bucket_test() {
       #("tgrn", "2018-10-05", Some("grn")),
     ])
   let cards = [
-    card("grn", "173", "Guildmage", 1, "2018-10-05", "o1", attrs.Common, "R"),
-    card("tgrn", "1", "Saproling", 1, "2018-10-05", "o2", attrs.Common, "G"),
+    card("grn", "173", "Guildmage", 1, "2018-10-05", "o1", rarity.Common, "R"),
+    card("tgrn", "1", "Saproling", 1, "2018-10-05", "o2", rarity.Common, "G"),
   ]
   let buckets = rule_cascade.project(family_binder_cascade([]), cards, sets)
   assert list.length(buckets) == 1
@@ -593,8 +607,8 @@ pub fn family_root_first_beats_sort_keys_test() {
       #("tgrn", "2018-10-05", Some("grn")),
     ])
   let cards = [
-    card("grn", "173", "Zzz Root", 1, "2018-10-05", "o1", attrs.Common, "R"),
-    card("tgrn", "1", "Aaa Token", 1, "2018-10-05", "o2", attrs.Common, "G"),
+    card("grn", "173", "Zzz Root", 1, "2018-10-05", "o1", rarity.Common, "R"),
+    card("tgrn", "1", "Aaa Token", 1, "2018-10-05", "o2", rarity.Common, "G"),
   ]
   let buckets =
     rule_cascade.project(family_binder_cascade([sort_spec.ByName]), cards, sets)
@@ -615,9 +629,9 @@ pub fn family_children_order_by_date_then_code_test() {
       #("tgrn", "2018-09-01", Some("grn")),
     ])
   let cards = [
-    card("grn", "173", "Root", 1, "2018-10-05", "o0", attrs.Common, "R"),
-    card("pgrn", "1", "Promo", 1, "2018-11-01", "o1", attrs.Common, "R"),
-    card("tgrn", "1", "Token", 1, "2018-09-01", "o2", attrs.Common, "G"),
+    card("grn", "173", "Root", 1, "2018-10-05", "o0", rarity.Common, "R"),
+    card("pgrn", "1", "Promo", 1, "2018-11-01", "o1", rarity.Common, "R"),
+    card("tgrn", "1", "Token", 1, "2018-09-01", "o2", rarity.Common, "G"),
   ]
   let buckets = rule_cascade.project(family_binder_cascade([]), cards, sets)
   let bucket = find_bucket(buckets, "Binder grn")
@@ -639,8 +653,8 @@ pub fn family_buckets_cross_sort_by_root_date_test() {
       #("tnew", "2001-01-01", Some("new")),
     ])
   let cards = [
-    card("tnew", "1", "New Token", 1, "2001-01-01", "o1", attrs.Common, "R"),
-    card("told", "2", "Old Token", 1, "2011-01-01", "o2", attrs.Common, "R"),
+    card("tnew", "1", "New Token", 1, "2001-01-01", "o1", rarity.Common, "R"),
+    card("told", "2", "Old Token", 1, "2011-01-01", "o2", rarity.Common, "R"),
   ]
   let buckets = rule_cascade.project(family_binder_cascade([]), cards, sets)
   let names = list.map(buckets, fn(b) { b.location_name })
@@ -650,7 +664,7 @@ pub fn family_buckets_cross_sort_by_root_date_test() {
 // A set absent from the index is its own family, landing in its own bucket.
 pub fn family_unknown_set_is_own_bucket_test() {
   let cards = [
-    card("xyz", "1", "Mystery", 1, "2005-01-01", "o1", attrs.Common, "R"),
+    card("xyz", "1", "Mystery", 1, "2005-01-01", "o1", rarity.Common, "R"),
   ]
   let buckets =
     rule_cascade.project(family_binder_cascade([]), cards, dict.new())

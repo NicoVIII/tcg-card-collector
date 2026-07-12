@@ -1,53 +1,56 @@
 import gleam/list
 import inventory_planning/domain/card_attributes as attrs
+import shared/domain/color_identity
+import shared/domain/rarity
 
 // common < uncommon < special < bonus < rare < mythic
 pub fn rarity_total_order_test() {
   let ascending = [
-    attrs.Common,
-    attrs.Uncommon,
-    attrs.Special,
-    attrs.Bonus,
-    attrs.Rare,
-    attrs.Mythic,
+    rarity.Common,
+    rarity.Uncommon,
+    rarity.Special,
+    rarity.Bonus,
+    rarity.Rare,
+    rarity.Mythic,
   ]
   let ranks = list.map(ascending, attrs.rarity_rank)
   assert ranks == [0, 1, 2, 3, 4, 5]
-  assert attrs.rarity_at_least(attrs.Rare, attrs.Rare)
-  assert !attrs.rarity_at_least(attrs.Bonus, attrs.Rare)
+  assert attrs.rarity_at_least(rarity.Rare, rarity.Rare)
+  assert !attrs.rarity_at_least(rarity.Bonus, rarity.Rare)
 }
 
 pub fn rarity_parse_round_trip_test() {
   let all = [
-    attrs.Common,
-    attrs.Uncommon,
-    attrs.Special,
-    attrs.Bonus,
-    attrs.Rare,
-    attrs.Mythic,
+    rarity.Common,
+    rarity.Uncommon,
+    rarity.Special,
+    rarity.Bonus,
+    rarity.Rare,
+    rarity.Mythic,
   ]
   assert list.all(all, fn(r) {
-    attrs.parse_rarity(attrs.rarity_to_string(r)) == Ok(r)
+    attrs.parse_rarity(rarity.to_string(r)) == Ok(r)
   })
 }
 
 // Color identity is canonical: letter order doesn't matter, empty is colorless.
 pub fn color_identity_canonical_test() {
   assert attrs.parse_color_identity("UW") == attrs.parse_color_identity("WU")
-  assert attrs.parse_color_identity("") == Ok(attrs.colorless())
-  assert attrs.parse_color_identity("colorless") == Ok(attrs.colorless())
+  assert attrs.parse_color_identity("") == Ok(color_identity.colorless())
+  assert attrs.parse_color_identity("colorless")
+    == Ok(color_identity.colorless())
 }
 
 pub fn color_identity_letters_canonical_order_test() {
   let assert Ok(brg) = attrs.parse_color_identity("GRB")
   // WUBRG order: B, R, G
-  assert attrs.color_identity_letters(brg) == "BRG"
+  assert color_identity.letters(brg) == "BRG"
 }
 
 pub fn color_identity_token_round_trips_test() {
   let assert Ok(wu) = attrs.parse_color_identity("WU")
   assert attrs.parse_color_identity(attrs.color_identity_token(wu)) == Ok(wu)
-  assert attrs.color_identity_token(attrs.colorless()) == "colorless"
+  assert attrs.color_identity_token(color_identity.colorless()) == "colorless"
 }
 
 pub fn rejects_bad_color_letter_test() {

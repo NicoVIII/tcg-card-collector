@@ -1,4 +1,9 @@
 import gleam/dict.{type Dict}
+import gleam/option.{type Option}
+import shared/domain/color_identity.{type ColorIdentity}
+import shared/domain/oracle_id.{type OracleId}
+import shared/domain/rarity.{type Rarity}
+import shared/domain/release_date.{type ReleaseDate}
 
 // --- Read models ----------------------------------------------------------
 
@@ -43,16 +48,17 @@ pub type SnapshotRow {
   SnapshotRow(set_code: String, collector_number: String, quantity: Int)
 }
 
-// The catalog's opaque metadata for one printing; planning parses these strings
-// into value types at the handler boundary.
+// The catalog's facts for one printing, already carried as the shared value
+// types (ADR 0008); the raw type line is reduced to planning's CardType at the
+// handler boundary because that reduction is planning policy.
 pub type CatalogAttributes {
   CatalogAttributes(
     name: String,
-    rarity: String,
-    oracle_id: String,
-    color_identity: String,
+    rarity: Rarity,
+    oracle_id: Option(OracleId),
+    color_identity: ColorIdentity,
     type_line: String,
-    released_at: String,
+    released_at: Option(ReleaseDate),
   )
 }
 
@@ -92,11 +98,14 @@ pub type CatalogAttributesPort =
 pub type RulesPort =
   fn() -> Result(RulesModel, String)
 
-// The catalog's opaque metadata for one set: its release date and the parent set
-// it hangs off ("" = no parent, a root set), both plain strings like the other
-// ports; the handler resolves these into set-family facts.
+// The catalog's metadata for one set: its release date (None when the catalog
+// doesn't date it) and the parent set it hangs off (None for a root set); the
+// handler resolves these into set-family facts.
 pub type SetMetadataRow {
-  SetMetadataRow(released_at: String, parent_set_code: String)
+  SetMetadataRow(
+    released_at: Option(ReleaseDate),
+    parent_set_code: Option(String),
+  )
 }
 
 // Batch lookup: set metadata by set code. Sets absent from the catalog are

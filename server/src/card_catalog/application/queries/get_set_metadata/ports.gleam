@@ -1,10 +1,12 @@
 import gleam/dict.{type Dict}
 import gleam/option.{type Option}
+import shared/domain/release_date.{type ReleaseDate}
 
 // The catalog facts a set-family projection needs about one set: its release
-// date and the parent set it hangs off (None for a root set).
+// date (None when the source doesn't date the set) and the parent set it hangs
+// off (None for a root set).
 pub type SetMetadata {
-  SetMetadata(released_at: String, parent_set_code: Option(String))
+  SetMetadata(released_at: Option(ReleaseDate), parent_set_code: Option(String))
 }
 
 // A set missing from the catalog is simply absent from the dict (handled by the

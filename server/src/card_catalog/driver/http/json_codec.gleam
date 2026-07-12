@@ -6,7 +6,12 @@ import card_catalog/driver/refresh_launcher.{
 }
 import gleam/dynamic/decode
 import gleam/json
+import gleam/option
 import gleam/result
+import shared/domain/color_identity
+import shared/domain/oracle_id
+import shared/domain/rarity
+import shared/domain/release_date
 
 pub fn encode_refresh_launch(
   launch: refresh_launcher.RefreshLaunchOutcome,
@@ -75,6 +80,8 @@ pub fn encode_catalog_card_details(
   |> json.to_string
 }
 
+// The wire keeps the canonical string forms ('' for an absent value); strong
+// types exist inland only (ADR 0008).
 fn encode_catalog_card_detail(
   card: get_cards_ports.CardReadModel,
 ) -> json.Json {
@@ -83,10 +90,25 @@ fn encode_catalog_card_detail(
     #("collector_number", json.string(card.collector_number)),
     #("name", json.string(card.name)),
     #("image_uri", json.string(card.image_uri)),
-    #("rarity", json.string(card.rarity)),
-    #("oracle_id", json.string(card.oracle_id)),
-    #("color_identity", json.string(card.color_identity)),
+    #("rarity", json.string(rarity.to_string(card.rarity))),
+    #(
+      "oracle_id",
+      json.string(
+        card.oracle_id |> option.map(oracle_id.to_string) |> option.unwrap(""),
+      ),
+    ),
+    #(
+      "color_identity",
+      json.string(color_identity.letters(card.color_identity)),
+    ),
     #("type_line", json.string(card.type_line)),
-    #("released_at", json.string(card.released_at)),
+    #(
+      "released_at",
+      json.string(
+        card.released_at
+        |> option.map(release_date.to_string)
+        |> option.unwrap(""),
+      ),
+    ),
   ])
 }

@@ -1,5 +1,6 @@
 import gleam/option.{type Option, None, Some}
 import inventory_planning/domain/card_attributes.{type PlannedCard}
+import shared/domain/oracle_id
 
 // How many copies of a matching card a rule claims.
 pub type CopySelector {
@@ -37,8 +38,8 @@ pub fn identity(selector: CopySelector, card: PlannedCard) -> Option(String) {
     FirstCopyPerPrinting -> Some(card_attributes.printing_key(card))
     FirstCopyPerOracle ->
       case card.oracle_id {
-        Some("") | None -> Some(card_attributes.printing_key(card))
-        Some(oracle_id) -> Some("oracle:" <> oracle_id)
+        None -> Some(card_attributes.printing_key(card))
+        Some(oracle) -> Some("oracle:" <> oracle_id.to_string(oracle))
       }
   }
 }

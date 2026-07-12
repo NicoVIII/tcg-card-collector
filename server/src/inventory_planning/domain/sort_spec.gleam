@@ -6,6 +6,7 @@ import gleam/string
 import inventory_planning/domain/card_attributes.{type PlannedCard}
 import shared/domain/card_key
 import shared/domain/collector_number
+import shared/domain/rarity
 
 // The vocabulary for ordering cards within a location — shared by the bulk
 // remainder and each rule's bucket. A comma-separated DSL of these tokens names
@@ -98,7 +99,11 @@ fn compare_by(key: SortKey, left: PlannedCard, right: PlannedCard) -> Order {
         card_key.collector_number_string(right.key),
       )
     ByRarity -> int.compare(rarity_rank(left), rarity_rank(right))
-    ByReleasedAt -> string.compare(left.released_at, right.released_at)
+    ByReleasedAt ->
+      card_attributes.compare_release_earliest_first(
+        left.released_at,
+        right.released_at,
+      )
   }
 }
 
@@ -128,5 +133,5 @@ fn type_rank(card: PlannedCard) -> Int {
 fn rarity_rank(card: PlannedCard) -> Int {
   card.rarity
   |> option.map(card_attributes.rarity_rank)
-  |> option.unwrap(card_attributes.rarity_rank(card_attributes.Mythic) + 1)
+  |> option.unwrap(card_attributes.rarity_rank(rarity.Mythic) + 1)
 }

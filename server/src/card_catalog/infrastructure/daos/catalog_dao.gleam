@@ -7,6 +7,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import gleam/time/timestamp
+import shared/domain/release_date
 import shared/infrastructure/shell
 import shared/infrastructure/stores/sqlite_store
 import sqlight
@@ -263,7 +264,12 @@ fn insert_sets_chunk(chunk: List(card_set.CardSet)) -> Result(Nil, String) {
           [
             sqlight.text(s.code),
             sqlight.text(s.name),
-            sqlight.text(s.released_at),
+            // '' is the storage spelling of "source didn't date the set".
+            sqlight.text(
+              s.released_at
+              |> option.map(release_date.to_string)
+              |> option.unwrap(""),
+            ),
             sqlight.int(s.card_count),
             sqlight.nullable(sqlight.int, s.printed_size),
             sqlight.text(s.icon_svg_uri),

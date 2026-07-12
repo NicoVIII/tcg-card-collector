@@ -7,6 +7,9 @@ import inventory_planning/domain/sort_spec.{
   BySetCode,
 }
 import shared/domain/card_key
+import shared/domain/oracle_id
+import shared/domain/rarity
+import shared/domain/release_date
 
 fn card(
   name: String,
@@ -16,13 +19,15 @@ fn card(
   let assert Ok(key) =
     card_key.from_user_input(set_code: "set", collector_number: name)
   let assert Ok(color_identity) = attrs.parse_color_identity(colors)
+  let assert Ok(date) = release_date.parse("2020-01-01")
+  let assert Ok(oracle) = oracle_id.new("o")
   attrs.PlannedCard(
     key:,
     name:,
     quantity: 1,
-    released_at: "2020-01-01",
-    oracle_id: Some("o"),
-    rarity: Some(attrs.Common),
+    released_at: Some(date),
+    oracle_id: Some(oracle),
+    rarity: Some(rarity.Common),
     color_identity: Some(color_identity),
     card_type: Some(card_type),
   )
@@ -37,7 +42,7 @@ fn unknown_card(collector_number: String) -> PlannedCard {
     key:,
     name: "unknown",
     quantity: 1,
-    released_at: "",
+    released_at: None,
     oracle_id: None,
     rarity: None,
     color_identity: None,
@@ -131,7 +136,7 @@ pub fn rarity_ordering_puts_missing_last_test() {
   let mythic =
     attrs.PlannedCard(
       ..card("mythic", "R", attrs.Creature),
-      rarity: Some(attrs.Mythic),
+      rarity: Some(rarity.Mythic),
     )
   let cards = [unknown_card("x"), mythic, common]
   let sorted =
@@ -139,17 +144,19 @@ pub fn rarity_ordering_puts_missing_last_test() {
   assert list.map(sorted, fn(c) { c.name }) == ["common", "mythic", "unknown"]
 }
 
-// released_at compares as ISO date strings ascending; an empty date sorts first.
-pub fn released_at_ascending_empty_first_test() {
+// released_at compares chronologically ascending; an unknown date sorts first.
+pub fn released_at_ascending_unknown_first_test() {
+  let assert Ok(old_date) = release_date.parse("1993-08-05")
   let old =
     attrs.PlannedCard(
       ..card("old", "R", attrs.Creature),
-      released_at: "1993-08-05",
+      released_at: Some(old_date),
     )
+  let assert Ok(new_date) = release_date.parse("2020-01-01")
   let new =
     attrs.PlannedCard(
       ..card("new", "R", attrs.Creature),
-      released_at: "2020-01-01",
+      released_at: Some(new_date),
     )
   let cards = [new, old, unknown_card("x")]
   let sorted =

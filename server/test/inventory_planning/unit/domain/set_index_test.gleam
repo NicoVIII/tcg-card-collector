@@ -1,12 +1,13 @@
 import gleam/dict
 import gleam/option.{type Option, None, Some}
 import inventory_planning/domain/set_index.{SetMeta}
+import shared/domain/release_date
 
 fn index(entries: List(#(String, Option(String)))) -> set_index.SetIndex {
   entries
   |> dict.from_list
   |> dict.map_values(fn(_code, parent) {
-    SetMeta(released_at: "", parent_set_code: parent)
+    SetMeta(released_at: None, parent_set_code: parent)
   })
 }
 
@@ -42,12 +43,13 @@ pub fn parent_cycle_terminates_deterministically_test() {
   assert first == set_index.family_root(sets, "a")
 }
 
-// release_date reads the indexed date, and is "" for an unknown set.
-pub fn release_date_reads_index_and_defaults_empty_test() {
+// release_date reads the indexed date, and is None for an unknown set.
+pub fn release_date_reads_index_and_defaults_none_test() {
+  let assert Ok(date) = release_date.parse("2018-10-05")
   let sets =
     dict.from_list([
-      #("grn", SetMeta(released_at: "2018-10-05", parent_set_code: None)),
+      #("grn", SetMeta(released_at: Some(date), parent_set_code: None)),
     ])
-  assert set_index.release_date(sets, "grn") == "2018-10-05"
-  assert set_index.release_date(sets, "xyz") == ""
+  assert set_index.release_date(sets, "grn") == Some(date)
+  assert set_index.release_date(sets, "xyz") == None
 }

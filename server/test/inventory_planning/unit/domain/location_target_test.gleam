@@ -4,18 +4,23 @@ import inventory_planning/domain/card_attributes.{type PlannedCard} as attrs
 import inventory_planning/domain/location_target.{Fixed, Template}
 import inventory_planning/domain/set_index
 import shared/domain/card_key
+import shared/domain/oracle_id
+import shared/domain/rarity
+import shared/domain/release_date
 
 fn card_with_color(colors: String) -> PlannedCard {
   let assert Ok(key) =
     card_key.from_user_input(set_code: "grn", collector_number: "1")
   let assert Ok(color_identity) = attrs.parse_color_identity(colors)
+  let assert Ok(date) = release_date.parse("2018-10-05")
+  let assert Ok(oracle) = oracle_id.new("o1")
   attrs.PlannedCard(
     key:,
     name: "Test",
     quantity: 1,
-    released_at: "2018-10-05",
-    oracle_id: Some("o1"),
-    rarity: Some(attrs.Rare),
+    released_at: Some(date),
+    oracle_id: Some(oracle),
+    rarity: Some(rarity.Rare),
     color_identity: Some(color_identity),
     card_type: Some(attrs.Creature),
   )
@@ -28,7 +33,7 @@ fn card_in_set(set_code: String) -> PlannedCard {
     key:,
     name: "Test",
     quantity: 1,
-    released_at: "",
+    released_at: None,
     oracle_id: None,
     rarity: None,
     color_identity: None,
@@ -83,7 +88,7 @@ pub fn renders_set_family_to_root_test() {
     dict.from_list([
       #(
         "tgrn",
-        set_index.SetMeta(released_at: "", parent_set_code: Some("grn")),
+        set_index.SetMeta(released_at: None, parent_set_code: Some("grn")),
       ),
     ])
   let target = location_target.parse("Binder {set_family}")
@@ -108,7 +113,7 @@ pub fn renders_none_when_attribute_missing_test() {
       key:,
       name: "Test",
       quantity: 1,
-      released_at: "",
+      released_at: None,
       oracle_id: None,
       rarity: None,
       color_identity: None,

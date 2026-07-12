@@ -3,9 +3,11 @@ import gleam/option
 import gleam/result
 import gleam/string
 import inventory_planning/domain/card_attributes.{
-  type CardType, type ColorIdentity, type PlannedCard, type Rarity,
+  type CardType, type PlannedCard,
 }
 import shared/domain/card_key
+import shared/domain/color_identity.{type ColorIdentity}
+import shared/domain/rarity.{type Rarity}
 
 // A rule's match condition. No `or` and no nesting this milestone: a predicate
 // is a conjunction of clauses joined by `and`.
@@ -218,13 +220,12 @@ fn render_clause(tokens: List(Token)) -> String {
 pub fn to_string(predicate: Predicate) -> String {
   case predicate {
     SetCodeIn(codes) -> "set_code in (" <> string.join(codes, ", ") <> ")"
-    RarityAtLeast(rarity) ->
-      "rarity >= " <> card_attributes.rarity_to_string(rarity)
+    RarityAtLeast(threshold) -> "rarity >= " <> rarity.to_string(threshold)
     RarityIn(rarities) ->
       "rarity in ("
       <> {
         rarities
-        |> list.map(card_attributes.rarity_to_string)
+        |> list.map(rarity.to_string)
         |> string.join(", ")
       }
       <> ")"
