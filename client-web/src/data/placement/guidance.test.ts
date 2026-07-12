@@ -40,7 +40,7 @@ function placed(collector_number: string, location: string, quantity: number): P
 }
 
 describe("buildGuidance", () => {
-  it("subtracts the ledger, drops placed cards, and windows ±2 neighbours", () => {
+  it("subtracts the ledger, drops placed cards, and windows ±1 neighbours", () => {
     const proj = projection([
       location("Bulk", [
         card("146", 1),
@@ -81,12 +81,6 @@ describe("buildGuidance", () => {
                   collector_number: "148",
                   already_placed: true,
                 },
-                {
-                  name: "Card 149",
-                  set_code: "m11",
-                  collector_number: "149",
-                  already_placed: false,
-                },
               ],
             },
             {
@@ -95,12 +89,6 @@ describe("buildGuidance", () => {
               collector_number: "149",
               to_place_quantity: 1,
               before: [
-                {
-                  name: "Card 147",
-                  set_code: "m11",
-                  collector_number: "147",
-                  already_placed: false,
-                },
                 {
                   name: "Card 148",
                   set_code: "m11",
@@ -123,12 +111,6 @@ describe("buildGuidance", () => {
               collector_number: "150",
               to_place_quantity: 1,
               before: [
-                {
-                  name: "Card 148",
-                  set_code: "m11",
-                  collector_number: "148",
-                  already_placed: true,
-                },
                 {
                   name: "Card 149",
                   set_code: "m11",

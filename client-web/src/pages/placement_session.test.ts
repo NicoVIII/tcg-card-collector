@@ -74,13 +74,30 @@ describe("mergeLocationCards", () => {
 });
 
 describe("betweenLabel", () => {
-  it("anchors between the nearest placed neighbours on each side", () => {
+  it("anchors between the immediate placed neighbours on each side", () => {
     const c = card("3", {
-      before: [neighbor("Far", "1", true), neighbor("Near", "2", true)],
+      before: [neighbor("Near", "2", true)],
       after: [neighbor("Right", "4", true)],
     });
 
     expect(betweenLabel(c)).toBe("Goes between Near and Right.");
+  });
+
+  it("gives consecutive unplaced cards after a placed card distinct hints", () => {
+    // A placed card 2 is followed by a run of still-to-place cards 3, 4. Each
+    // must anchor on its own immediate predecessor, not both reach back to 2.
+    const first = card("3", {
+      before: [neighbor("Placed", "2", true)],
+      after: [neighbor("Card 4", "4", false)],
+    });
+    const second = card("4", {
+      before: [neighbor("Card 3", "3", false)],
+      after: [],
+    });
+
+    expect(betweenLabel(first)).toBe("Goes right after Placed.");
+    expect(betweenLabel(second)).toBe("Goes after Card 3 — also still to place.");
+    expect(betweenLabel(first)).not.toBe(betweenLabel(second));
   });
 
   it("anchors after the placed predecessor when nothing after is placed", () => {
