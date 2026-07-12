@@ -18,6 +18,25 @@ fn card(
   )
 }
 
+// The store returns rows unordered; the grid's physical filing order is the
+// handler's job — set code, then collector number compared numerically so
+// "grn 2" precedes "grn 10" rather than sorting lexicographically after it.
+pub fn orders_by_set_then_numeric_collector_number_test() {
+  let port =
+    build_port([
+      card("grn", "10"),
+      card("lea", "2"),
+      card("grn", "2"),
+      card("lea", "1"),
+    ])
+
+  let assert Ok(page) =
+    handler.execute(handler.ListCollectionCardsQuery(offset: 0, limit: 0), port)
+
+  assert page.cards
+    == [card("grn", "2"), card("grn", "10"), card("lea", "1"), card("lea", "2")]
+}
+
 pub fn pages_within_bounds_and_reports_total_test() {
   let port = build_port([card("lea", "1"), card("lea", "2"), card("lea", "3")])
 

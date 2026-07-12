@@ -17,10 +17,11 @@ fn card_row_decoder() {
   decode.success(#(set_code, collector_number, quantity))
 }
 
+// Unordered: a TEXT ORDER BY can't express the numeric-aware collector-number
+// order the grid needs, so the list_cards query sorts the rows in the app layer.
 pub fn list_cards() -> Result(List(CardRow), String) {
   sqlite_store.query(
-    "SELECT set_code, collector_number, quantity FROM collection "
-      <> "ORDER BY set_code, collector_number;",
+    "SELECT set_code, collector_number, quantity FROM collection;",
     [],
     card_row_decoder(),
   )

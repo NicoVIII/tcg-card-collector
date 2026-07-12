@@ -5,6 +5,7 @@ import gleam/order.{type Order}
 import gleam/string
 import inventory_planning/domain/card_attributes.{type PlannedCard}
 import shared/domain/card_key
+import shared/domain/collector_number
 
 // The vocabulary for ordering cards within a location — shared by the bulk
 // remainder and each rule's bucket. A comma-separated DSL of these tokens names
@@ -92,7 +93,7 @@ fn compare_by(key: SortKey, left: PlannedCard, right: PlannedCard) -> Order {
         card_key.set_code_string(right.key),
       )
     ByCollectorNumber ->
-      compare_collector_number(
+      collector_number.compare(
         card_key.collector_number_string(left.key),
         card_key.collector_number_string(right.key),
       )
@@ -128,33 +129,4 @@ fn rarity_rank(card: PlannedCard) -> Int {
   card.rarity
   |> option.map(card_attributes.rarity_rank)
   |> option.unwrap(card_attributes.rarity_rank(card_attributes.Mythic) + 1)
-}
-
-// Collector numbers mix integers with suffixes and symbols ("2", "10", "123a",
-// "★"). Compare the leading integer run numerically so "2" < "10", tie-break on
-// the full string so "10" < "10a"; a value with a leading int sorts before one
-// without (e.g. "123a" < "★"), and two suffix-only values compare as strings.
-fn compare_collector_number(left: String, right: String) -> Order {
-  case leading_int(left), leading_int(right) {
-    Ok(l), Ok(r) ->
-      order.break_tie(int.compare(l, r), string.compare(left, right))
-    Ok(_), Error(_) -> order.Lt
-    Error(_), Ok(_) -> order.Gt
-    Error(_), Error(_) -> string.compare(left, right)
-  }
-}
-
-fn leading_int(raw: String) -> Result(Int, Nil) {
-  raw
-  |> string.to_graphemes
-  |> list.take_while(is_ascii_digit)
-  |> string.join("")
-  |> int.parse
-}
-
-fn is_ascii_digit(grapheme: String) -> Bool {
-  case grapheme {
-    "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" -> True
-    _ -> False
-  }
 }

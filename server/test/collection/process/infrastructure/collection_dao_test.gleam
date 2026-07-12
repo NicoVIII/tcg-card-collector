@@ -52,17 +52,3 @@ pub fn replace_truncates_and_refills_collection_test() {
 
   assert rows_in("collection") == [#("blb", "9", 1)]
 }
-
-pub fn list_cards_orders_by_key_test() {
-  use _db <- test_db.with_temp_db()
-
-  let assert Ok(Nil) =
-    collection_dao.replace_collection([
-      #("lea", "2", 1),
-      #("blb", "9", 3),
-      #("lea", "1", 4),
-    ])
-
-  assert collection_dao.list_cards()
-    == Ok([#("blb", "9", 3), #("lea", "1", 4), #("lea", "2", 1)])
-}

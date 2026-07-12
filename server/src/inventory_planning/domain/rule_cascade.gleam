@@ -14,6 +14,7 @@ import inventory_planning/domain/location_target.{type LocationTarget}
 import inventory_planning/domain/set_index.{type SetIndex}
 import inventory_planning/domain/sort_spec
 import shared/domain/card_key
+import shared/domain/collector_number
 
 // One rule in the ordered waterfall. Rules are applied in `position` order and
 // each consumes from what earlier rules left behind.
@@ -417,7 +418,7 @@ fn compare_canonical(a: PlannedCard, b: PlannedCard) -> order.Order {
         card_key.set_code_string(a.key),
         card_key.set_code_string(b.key),
       ),
-      string.compare(
+      collector_number.compare(
         card_key.collector_number_string(a.key),
         card_key.collector_number_string(b.key),
       ),

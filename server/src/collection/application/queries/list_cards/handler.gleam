@@ -1,6 +1,9 @@
 import collection/application/queries/list_cards/ports
 import gleam/list
+import gleam/order
 import gleam/result
+import gleam/string
+import shared/domain/collector_number
 
 pub type ListCollectionCardsQuery {
   ListCollectionCardsQuery(offset: Int, limit: Int)
@@ -10,10 +13,24 @@ pub fn execute(
   query: ListCollectionCardsQuery,
   port: ports.ListCollectionCardsPort,
 ) -> Result(ports.CollectionCardPage, String) {
-  use all_cards <- result.try(port.list_cards())
+  use unsorted <- result.try(port.list_cards())
+  let all_cards = list.sort(unsorted, by: compare_canonical)
   let total = list.length(all_cards)
   let paged_cards = paginate_cards(all_cards, query.offset, query.limit)
   Ok(ports.CollectionCardPage(cards: paged_cards, total: total))
+}
+
+// Physical filing order: set code, then collector number compared numerically
+// so "grn 2" precedes "grn 10". The store can't express the numeric-aware order
+// on a TEXT column, so the grid's order is decided here.
+fn compare_canonical(
+  a: ports.CollectionCardReadModel,
+  b: ports.CollectionCardReadModel,
+) -> order.Order {
+  order.break_tie(
+    string.compare(a.set_code, b.set_code),
+    collector_number.compare(a.collector_number, b.collector_number),
+  )
 }
 
 fn paginate_cards(
