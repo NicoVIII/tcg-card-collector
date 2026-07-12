@@ -15,3 +15,5 @@ Task runner is `just` with `::` module scoping (`just --list` for everything). T
 Environment setup for a fresh clone (submodules, dbmate, lefthook), repository layout, and the full quality-gate reference live in [docs/dev/development.md](docs/dev/development.md).
 
 Architecture decisions with real alternatives are recorded as ADRs in [docs/decisions/](docs/decisions/README.md). Check there before relitigating a settled design; a changed mind gets a superseding ADR, and a new decision of that weight gets a new record.
+
+Opinionated dual-mode (design-consult + review) aspect skills live in [.claude/skills/](.claude/skills/) — currently `architecture` and `qa`. They encode this project's settled judgement, not generic best practices; consult the relevant one before designing or reviewing in its aspect.
