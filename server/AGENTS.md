@@ -22,6 +22,9 @@ Four contexts: **card_catalog**, **collection**, **inventory_planning**,
   `docs/dev/architecture.md` when the list changes.
 - **`shared/`** may be imported by any context but imports no context;
   **`bootstrap/`** is the composition root and may import anything.
+  `shared/domain/` holds value types only: a type qualifies when more than one
+  context needs the same representation and none disputes its semantics —
+  orderings, labels, and DSL concerns stay in their context (ADR 0008).
 - **Generated code** (`src/shared/driver/skir/skirout/`) — never edit; change
   `skir-src/` and run `just skir-gen`. It is linted like handwritten code;
   only `gleam format` skips it.

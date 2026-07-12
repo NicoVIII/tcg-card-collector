@@ -9,19 +9,38 @@ This document defines the MVP bounded contexts and the shared language for each 
 - Inventory Planning (`server/src/inventory_planning/`)
 - Insights (`server/src/insights/`)
 
+## Shared Kernel (`server/src/shared/domain/`)
+
+Value types every context may use: CardKey (the `(set_code, collector_number)`
+identity of a printing), CollectorNumber, NonEmptyString, and the
+context-independent card facts — Rarity (the enum, no ordering), ColorIdentity
+(canonical WUBRG color set), ReleaseDate, OracleId.
+
+A type qualifies here when more than one context needs the same
+*representation* and no context disputes its semantics. Policy never moves in
+with it: orderings, labels, reductions, and DSL concerns stay in the context
+that owns them ([ADR 0008](../decisions/0008-shared-value-types-parse-at-sync-boundary.md)).
+
 ## Card Catalog
 
 Purpose:
 - Maintain enriched card metadata and sync history.
 
 Core terms:
-- CatalogCard: normalized card metadata record used by read models and planning.
-- CatalogSyncRun: trace record of one manual metadata refresh execution.
-- CardIdentity: stable identity tuple for one card.
-- CardAttributes: domain attributes needed by catalog and downstream planning.
+- CardPrinting: one printed card as the source of truth knows it — identity
+  (CardKey), name, image, and the enrichment facts (rarity, oracle id, color
+  identity, raw type line, release date), parsed into shared value types once
+  at the sync boundary.
+- CardSet: one set's metadata — code, name, release date, card count, official
+  printed size, icon, and the parent-set link that chains a set family.
+- ProbeResult / RefreshRecord: trace of the last refresh probe — when, which
+  upstream version, and whether it succeeded, was skipped, or failed.
 
 Boundary notes:
-- Owns card metadata language and sync history language.
+- Owns card metadata language and sync history language. Enrichment facts are
+  stored and served verbatim, never interpreted — any reduction over them
+  (orderings, type-line categorization) is consumer policy. That is why the
+  raw type line, not a card type, is the catalog fact.
 - Does not own collection quantity semantics.
 
 ## Collection Import
@@ -45,6 +64,14 @@ Purpose:
   collection through it into per-location pull-lists.
 
 Core terms:
+- PlannedCard: a collection row joined with whatever the catalog knew about it — the input the
+  cascade projects. Attributes are optional because a collection row may reference a printing
+  the catalog doesn't (yet) carry; such a card fails every attribute predicate and cascades to
+  bulk.
+- CardAttributes (module): planning's *policy* over the shared card facts — the rarity total
+  order (common < uncommon < special < bonus < rare < mythic, so `rarity >= rare` excludes
+  special/bonus), the land-first CardType reduction of the raw type line, and the color-identity
+  DSL tokens/labels/sort keys. The representations themselves live in the shared kernel.
 - RuleCascade: the ordered waterfall of rules plus a bulk remainder. Rules apply in `position`
   order and each **consumes** copies from what earlier rules left behind, so one copy is placed
   exactly once.
