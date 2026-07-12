@@ -4,6 +4,7 @@ import card_catalog/infrastructure/clients/scryfall_client
 import card_catalog/infrastructure/daos/catalog_dao
 import gleam/dynamic/decode
 import gleam/list
+import gleam/option
 import gleam/result
 import gleam/string
 import shared/infrastructure/stores/sqlite_store
@@ -166,6 +167,25 @@ fn query_set_released_at(set_code: String) -> String {
   }
 }
 
+// Reads parent_set_code, mapping a NULL (root set) to "" so the caller can't
+// tell "no parent" from "no row" — matching how absence is treated.
+fn query_set_parent(set_code: String) -> String {
+  let decoder = {
+    use parent <- decode.field(0, decode.optional(decode.string))
+    decode.success(parent)
+  }
+  case
+    sqlite_store.query(
+      "SELECT parent_set_code FROM catalog_sets WHERE set_code = ?;",
+      [sqlight.text(set_code)],
+      decoder,
+    )
+  {
+    Ok([option.Some(value), ..]) -> value
+    _ -> ""
+  }
+}
+
 // A full import populates catalog_sets with all sets from both fixture pages.
 pub fn import_populates_catalog_sets_from_all_pages_test() {
   use _db <- test_db.with_temp_db()
@@ -198,6 +218,23 @@ pub fn null_released_at_stored_as_empty_string_test() {
   assert query_set_released_at("fut") == ""
   // "lea" in page1 has a real date
   assert query_set_released_at("lea") == "1993-08-05"
+}
+
+// A child set's parent_set_code is stored; a null or absent one becomes NULL
+// (read back as "").
+pub fn parent_set_code_stored_test() {
+  use _db <- test_db.with_temp_db()
+
+  let port = adapter.new_with_downloader(fake_downloader())
+  let result = handler.execute(handler.RefreshCatalogCommand, port)
+  assert result == Ok(Nil)
+
+  // "tgrn" in page1 declares "parent_set_code": "grn"
+  assert query_set_parent("tgrn") == "grn"
+  // "lea" has "parent_set_code": null → stored NULL
+  assert query_set_parent("lea") == ""
+  // "grn" omits the key entirely → stored NULL
+  assert query_set_parent("grn") == ""
 }
 
 // replace_sets is idempotent: a second import replaces stale rows entirely.

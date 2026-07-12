@@ -55,11 +55,19 @@ Core terms:
 - Predicate: a rule's match condition — a conjunction (`and`) of set-code / rarity / color-identity /
   type clauses over a card's attributes. A clause referencing an attribute the card lacks is false,
   so the card cascades on.
+- Set family: a parent set plus all its Scryfall child sets (tokens, promos, art series, … — anything
+  linked by `parent_set_code`), resolved transitively to a single family-root set code. The unit a
+  `{set_family}` template gathers into one binder.
 - LocationTarget: where a rule sends the copies it claims; a fixed name, or a template that fans one
-  rule across many locations via a `{set_code}` / `{color_identity}` / `{type}` placeholder.
-  Fan-out locations are ordered semantically within each rule: `{set_code}` by catalog release date
-  ascending (falling back to the card's `released_at` when the set is not yet synced), `{color_identity}`
-  by WUBRG → multicolor → colorless, `{type}` by type rank (land first). Fixed targets sort alphabetically.
+  rule across many locations via a `{set_code}` / `{set_family}` / `{color_identity}` / `{type}`
+  placeholder. Fan-out locations are ordered semantically within each rule: `{set_code}` by catalog
+  release date ascending (falling back to the card's `released_at` when the set is not yet synced),
+  `{set_family}` like `{set_code}` but keyed on the family root's release date/code (so tokens sort
+  beside their parent set, not off in their own `tXXX` bucket), `{color_identity}` by
+  WUBRG → multicolor → colorless, `{type}` by type rank (land first). Fixed targets sort
+  alphabetically. Within a `{set_family}` binder, root-set cards come first and child-set cards after
+  ("tokens at the back"), children ordered by their own release date then set code, and the rule's
+  sort keys break ties within each group.
 - BulkSpec: the single leftover-remainder location plus the sort-key list ordering its pile.
 - InventoryProjection: the computed placement — locations in cascade order, each with its cards and
   total, plus a count of collection keys unknown to the catalog.

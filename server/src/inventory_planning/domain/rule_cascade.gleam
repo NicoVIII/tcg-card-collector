@@ -11,6 +11,7 @@ import inventory_planning/domain/card_attributes.{type PlannedCard}
 import inventory_planning/domain/card_predicate.{type Predicate}
 import inventory_planning/domain/copy_selector.{type CopySelector}
 import inventory_planning/domain/location_target.{type LocationTarget}
+import inventory_planning/domain/set_index.{type SetIndex}
 import inventory_planning/domain/sort_spec
 import shared/domain/card_key
 
@@ -56,7 +57,7 @@ pub type LocationBucket {
 pub fn project(
   cascade: RuleCascade,
   cards: List(PlannedCard),
-  set_release_dates: Dict(String, String),
+  sets: SetIndex,
 ) -> List(LocationBucket) {
   // 1. Canonical order — "prefer the oldest printing" for first-copy rules.
   let ordered = list.sort(cards, by: compare_canonical)
@@ -76,7 +77,8 @@ pub fn project(
   let #(remaining_final, rule_assignments_rev) =
     list.fold(sorted_rules, #(remaining0, []), fn(state, rule) {
       let #(remaining, acc) = state
-      let #(remaining_next, assignments) = apply_rule(rule, ordered, remaining)
+      let #(remaining_next, assignments) =
+        apply_rule(rule, ordered, remaining, sets)
       #(remaining_next, [#(rule, assignments), ..acc])
     })
   let rule_assignments = list.reverse(rule_assignments_rev)
@@ -88,7 +90,7 @@ pub fn project(
   let rule_buckets =
     list.flat_map(rule_assignments, fn(pair) {
       let #(rule, assignments) = pair
-      buckets_for_rule(rule, assignments, set_release_dates)
+      buckets_for_rule(rule, assignments, sets)
     })
   let bulk_buckets = case bulk_assignments {
     [] -> []
@@ -108,6 +110,7 @@ fn apply_rule(
   rule: CascadeRule,
   ordered: List(PlannedCard),
   remaining: Dict(String, Int),
+  sets: SetIndex,
 ) -> #(Dict(String, Int), List(Assignment)) {
   let #(remaining_next, _claimed, assignments_rev) =
     list.fold(ordered, #(remaining, set.new(), []), fn(state, card) {
@@ -117,7 +120,7 @@ fn apply_rule(
       case available > 0 && card_predicate.matches(rule.predicate, card) {
         False -> state
         True ->
-          case location_target.render(rule.target, card) {
+          case location_target.render(rule.target, card, sets) {
             None -> state
             Some(location_name) ->
               claim(
@@ -195,27 +198,32 @@ fn build_bulk(
 }
 
 // A fanned-out bucket with the facts ordering needs precomputed, so the sort
-// comparator doesn't rescan the assignment list on every comparison. All
-// same-name assignments share the template attribute value by construction,
-// so the first one is a faithful witness for color/type comparisons.
+// comparator doesn't rescan the assignment list on every comparison. `sort_code`
+// is the code that orders this bucket against its siblings — the family root for
+// a {set_family} template, the witness's own set otherwise — and `set_date` is
+// that code's release date. All same-name assignments share the template
+// attribute value by construction, so the first is a faithful witness for
+// color/type comparisons.
 type FannedBucket {
   FannedBucket(
     name: String,
     witness: Assignment,
+    sort_code: String,
     set_date: String,
     assignments: List(Assignment),
   )
 }
 
-// Bucket set date: prefer the catalog's table entry; fall back to the minimum
-// non-empty released_at among the bucket's cards (card-level dates can vary
-// within a set, e.g. promos), then to "" (sorts first).
+// Bucket set date: prefer the catalog entry for the bucket's sort_code (so a
+// {set_family} bucket dates off its root even when no root-set card is owned);
+// fall back to the minimum non-empty released_at among the bucket's cards
+// (card-level dates can vary within a set, e.g. promos), then to "" (sorts first).
 fn bucket_set_date(
-  set_code: String,
+  sort_code: String,
   assignments: List(Assignment),
-  set_dates: Dict(String, String),
+  sets: SetIndex,
 ) -> String {
-  case result.unwrap(dict.get(set_dates, set_code), "") {
+  case set_index.release_date(sets, sort_code) {
     "" ->
       assignments
       |> list.filter_map(fn(a) {
@@ -231,24 +239,39 @@ fn bucket_set_date(
   }
 }
 
+// The code a bucket sorts under: a {set_family} template collapses child sets
+// (tokens, promos) onto their family root; every other target keeps its own set.
+fn bucket_sort_code(
+  target: LocationTarget,
+  witness: Assignment,
+  sets: SetIndex,
+) -> String {
+  let own = card_key.set_code_string(witness.card.key)
+  case target {
+    location_target.Template(_, location_target.SetFamilyAttribute, _) ->
+      set_index.family_root(sets, own)
+    _ -> own
+  }
+}
+
 fn fanned_bucket(
+  target: LocationTarget,
   name: String,
   assignments: List(Assignment),
-  set_dates: Dict(String, String),
+  sets: SetIndex,
 ) -> Result(FannedBucket, Nil) {
   case assignments {
     [] -> Error(Nil)
-    [witness, ..] ->
+    [witness, ..] -> {
+      let sort_code = bucket_sort_code(target, witness, sets)
       Ok(FannedBucket(
         name:,
         witness:,
-        set_date: bucket_set_date(
-          card_key.set_code_string(witness.card.key),
-          assignments,
-          set_dates,
-        ),
+        sort_code:,
+        set_date: bucket_set_date(sort_code, assignments, sets),
         assignments:,
       ))
+    }
   }
 }
 
@@ -258,13 +281,11 @@ fn compare_by_attribute(
   r: FannedBucket,
 ) -> order.Order {
   case attribute {
-    location_target.SetCodeAttribute ->
+    // Family buckets sort exactly like set buckets, keyed on the root code/date.
+    location_target.SetCodeAttribute | location_target.SetFamilyAttribute ->
       order.break_tie(
         string.compare(l.set_date, r.set_date),
-        string.compare(
-          card_key.set_code_string(l.witness.card.key),
-          card_key.set_code_string(r.witness.card.key),
-        ),
+        string.compare(l.sort_code, r.sort_code),
       )
     location_target.ColorIdentityAttribute ->
       sort_spec.compare_cards(
@@ -296,28 +317,83 @@ fn compare_buckets(
   }
 }
 
+// Rank 0 for a root-set card, 1 for a child (token/promo): a card's own set is
+// its family root only when it *is* the root.
+fn family_rank(sets: SetIndex, card: PlannedCard) -> Int {
+  let code = card_key.set_code_string(card.key)
+  case set_index.family_root(sets, code) == code {
+    True -> 0
+    False -> 1
+  }
+}
+
+// Within a {set_family} bucket: root-set cards first ("tokens at the back"),
+// then children by release date, then set code. The rank comparison dominates,
+// so root cards stay first even when a child set released earlier — intended;
+// don't "fix" it to a plain date sort.
+fn compare_family_group(
+  sets: SetIndex,
+  a: Assignment,
+  b: Assignment,
+) -> order.Order {
+  order.break_tie(
+    int.compare(family_rank(sets, a.card), family_rank(sets, b.card)),
+    order.break_tie(
+      string.compare(
+        set_index.release_date(sets, card_key.set_code_string(a.card.key)),
+        set_index.release_date(sets, card_key.set_code_string(b.card.key)),
+      ),
+      string.compare(
+        card_key.set_code_string(a.card.key),
+        card_key.set_code_string(b.card.key),
+      ),
+    ),
+  )
+}
+
+// Orders cards within a bucket: the rule's sort keys, but a {set_family} rule
+// first segregates root cards from child cards (sort keys break ties within each
+// group).
+fn within_bucket_comparator(
+  rule: CascadeRule,
+  sets: SetIndex,
+) -> fn(Assignment, Assignment) -> order.Order {
+  case rule.target {
+    location_target.Template(_, location_target.SetFamilyAttribute, _) -> fn(
+      a,
+      b,
+    ) {
+      order.break_tie(
+        compare_family_group(sets, a, b),
+        sort_spec.compare_cards(rule.sort_keys, a.card, b.card),
+      )
+    }
+    _ -> fn(a: Assignment, b: Assignment) {
+      sort_spec.compare_cards(rule.sort_keys, a.card, b.card)
+    }
+  }
+}
+
 // A template rule fans out across the distinct location names it rendered;
-// buckets are ordered semantically (set release date / WUBRG / type rank for
-// templates, alphabetically for fixed targets), cards within a bucket by the
+// buckets are ordered semantically (set/family release date / WUBRG / type rank
+// for templates, alphabetically for fixed targets), cards within a bucket by the
 // rule's sort keys.
 fn buckets_for_rule(
   rule: CascadeRule,
   assignments: List(Assignment),
-  set_release_dates: Dict(String, String),
+  sets: SetIndex,
 ) -> List(LocationBucket) {
+  let compare_cards = within_bucket_comparator(rule, sets)
   assignments
   |> list.map(fn(a) { a.location_name })
   |> list.unique
   |> list.filter_map(fn(name) {
     let bucket = list.filter(assignments, fn(a) { a.location_name == name })
-    fanned_bucket(name, bucket, set_release_dates)
+    fanned_bucket(rule.target, name, bucket, sets)
   })
   |> list.sort(fn(l, r) { compare_buckets(rule.target, l, r) })
   |> list.map(fn(bucket) {
-    let cards =
-      list.sort(bucket.assignments, fn(a, b) {
-        sort_spec.compare_cards(rule.sort_keys, a.card, b.card)
-      })
+    let cards = list.sort(bucket.assignments, compare_cards)
     LocationBucket(
       location_name: bucket.name,
       rule_id: Some(rule.id),

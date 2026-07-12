@@ -92,14 +92,24 @@ pub type CatalogAttributesPort =
 pub type RulesPort =
   fn() -> Result(RulesModel, String)
 
-pub type SetReleaseDatesPort =
-  fn(List(String)) -> Result(Dict(String, String), String)
+// The catalog's opaque metadata for one set: its release date and the parent set
+// it hangs off ("" = no parent, a root set), both plain strings like the other
+// ports; the handler resolves these into set-family facts.
+pub type SetMetadataRow {
+  SetMetadataRow(released_at: String, parent_set_code: String)
+}
+
+// Batch lookup: set metadata by set code. Sets absent from the catalog are
+// simply absent from the returned dict; a read error propagates rather than
+// collapsing to "no metadata".
+pub type SetMetadataPort =
+  fn(List(String)) -> Result(Dict(String, SetMetadataRow), String)
 
 pub type InventoryProjectionPorts {
   InventoryProjectionPorts(
     snapshot_rows: SnapshotRowsPort,
     catalog_attributes: CatalogAttributesPort,
     rules: RulesPort,
-    set_release_dates: SetReleaseDatesPort,
+    set_metadata: SetMetadataPort,
   )
 }

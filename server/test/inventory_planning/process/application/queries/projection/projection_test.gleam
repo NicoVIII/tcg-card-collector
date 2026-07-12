@@ -28,7 +28,15 @@ fn build_ports_with_dates(
       |> Ok
     },
     rules: fn() { Ok(rules) },
-    set_release_dates: fn(_codes) { Ok(dict.from_list(set_dates)) },
+    set_metadata: fn(_codes) {
+      set_dates
+      |> list.map(fn(entry) {
+        let #(code, date) = entry
+        #(code, ports.SetMetadataRow(released_at: date, parent_set_code: ""))
+      })
+      |> dict.from_list
+      |> Ok
+    },
   )
 }
 
@@ -373,8 +381,8 @@ pub fn invalid_stored_rule_sort_keys_propagate_as_error_test() {
     == Error("invalid rule sort keys: power")
 }
 
-// set_release_dates port feeds through to bucket ordering: two sets whose dict
-// dates reverse alphabetical order end up in date order in the projection.
+// set_metadata port feeds through to bucket ordering: two sets whose dates
+// reverse alphabetical order end up in date order in the projection.
 pub fn set_dates_port_wired_to_bucket_ordering_test() {
   let p =
     build_ports_with_dates(
@@ -440,7 +448,7 @@ pub fn snapshot_rows_failure_propagates_as_error_test() {
           bulk: ports.BulkSpecRow(location_name: "Bulk", sort_keys: ""),
         ))
       },
-      set_release_dates: fn(_codes) { Ok(dict.new()) },
+      set_metadata: fn(_codes) { Ok(dict.new()) },
     )
 
   assert handler.execute(handler.InventoryProjectionQuery, ports)
@@ -455,9 +463,115 @@ pub fn rules_failure_propagates_as_error_test() {
       snapshot_rows: fn() { Ok([]) },
       catalog_attributes: fn(_keys) { Ok(dict.new()) },
       rules: fn() { Error("rules table unreadable") },
-      set_release_dates: fn(_codes) { Ok(dict.new()) },
+      set_metadata: fn(_codes) { Ok(dict.new()) },
     )
 
   assert handler.execute(handler.InventoryProjectionQuery, ports)
     == Error("rules table unreadable")
+}
+
+// The set-metadata fetch follows parent links across rounds: the owned cards are
+// tokens whose parent sets are unowned, so the parents' metadata is only served
+// on the *second* request (the fake returns exactly the codes asked for). The
+// families end up ordered by their root's release date — which the handler can
+// only know if it re-requested the parents; the token dates alone would reverse
+// the order.
+pub fn set_metadata_transitive_fetch_reaches_unowned_parent_test() {
+  let p =
+    ports.InventoryProjectionPorts(
+      snapshot_rows: fn() {
+        Ok([
+          ports.SnapshotRow(
+            set_code: "tgrn",
+            collector_number: "1",
+            quantity: 1,
+          ),
+          ports.SnapshotRow(
+            set_code: "twar",
+            collector_number: "1",
+            quantity: 1,
+          ),
+        ])
+      },
+      catalog_attributes: fn(keys) {
+        [
+          #(
+            #("tgrn", "1"),
+            attrs(
+              name: "Saproling",
+              rarity: "common",
+              oracle: "o-sap",
+              color: "G",
+              type_line: "Creature — Saproling",
+              released: "2019-01-01",
+            ),
+          ),
+          #(
+            #("twar", "1"),
+            attrs(
+              name: "Angel",
+              rarity: "common",
+              oracle: "o-ang",
+              color: "W",
+              type_line: "Creature — Angel",
+              released: "2018-01-01",
+            ),
+          ),
+        ]
+        |> list.filter(fn(entry) { list.contains(keys, entry.0) })
+        |> dict.from_list
+        |> Ok
+      },
+      rules: fn() {
+        Ok(ports.RulesModel(
+          rules: [
+            ports.RuleRow(
+              id: "fam",
+              position: 0,
+              selector: "all",
+              expression: "rarity >= common",
+              location_name: "Binder {set_family}",
+              sort_keys: "",
+            ),
+          ],
+          bulk: ports.BulkSpecRow(location_name: "Bulk", sort_keys: ""),
+        ))
+      },
+      set_metadata: fn(codes) {
+        // Token dates (tgrn 2019, twar 2018) reverse the root dates (grn 2018-10,
+        // war 2019-05); grn/war are unowned so only appear on the second round.
+        [
+          #(
+            "tgrn",
+            ports.SetMetadataRow(
+              released_at: "2019-01-01",
+              parent_set_code: "grn",
+            ),
+          ),
+          #(
+            "twar",
+            ports.SetMetadataRow(
+              released_at: "2018-01-01",
+              parent_set_code: "war",
+            ),
+          ),
+          #(
+            "grn",
+            ports.SetMetadataRow(released_at: "2018-10-05", parent_set_code: ""),
+          ),
+          #(
+            "war",
+            ports.SetMetadataRow(released_at: "2019-05-03", parent_set_code: ""),
+          ),
+        ]
+        |> list.filter(fn(entry) { list.contains(codes, entry.0) })
+        |> dict.from_list
+        |> Ok
+      },
+    )
+
+  let assert Ok(projection) =
+    handler.execute(handler.InventoryProjectionQuery, p)
+  let names = list.map(projection.locations, fn(l) { l.location_name })
+  assert names == ["Binder grn", "Binder war"]
 }

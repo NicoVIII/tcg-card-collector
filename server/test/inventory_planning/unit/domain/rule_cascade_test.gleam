@@ -9,8 +9,31 @@ import inventory_planning/domain/location_target
 import inventory_planning/domain/rule_cascade.{
   type CascadeRule, type RuleCascade, CascadeRule, RuleCascade,
 }
+import inventory_planning/domain/set_index.{SetMeta}
 import inventory_planning/domain/sort_spec
 import shared/domain/card_key
+
+// A SetIndex of root sets (no parents) with the given release dates.
+fn set_dates(entries: List(#(String, String))) -> set_index.SetIndex {
+  entries
+  |> list.map(fn(entry) {
+    let #(code, date) = entry
+    #(code, SetMeta(released_at: date, parent_set_code: None))
+  })
+  |> dict.from_list
+}
+
+// A SetIndex with explicit parent links: #(code, released_at, parent).
+fn build_index(
+  entries: List(#(String, String, option.Option(String))),
+) -> set_index.SetIndex {
+  entries
+  |> list.map(fn(entry) {
+    let #(code, date, parent) = entry
+    #(code, SetMeta(released_at: date, parent_set_code: parent))
+  })
+  |> dict.from_list
+}
 
 fn card(
   set_code: String,
@@ -377,7 +400,7 @@ fn type_binder_cascade() -> RuleCascade {
 // {set_code} fan-out ordered by dict release date, not alphabetically.
 // "zzz" (2000) precedes "aaa" (2010) by date even though "aaa" < "zzz" lexically.
 pub fn set_fan_out_ordered_by_release_date_test() {
-  let dates = dict.from_list([#("zzz", "2000-01-01"), #("aaa", "2010-01-01")])
+  let dates = set_dates([#("zzz", "2000-01-01"), #("aaa", "2010-01-01")])
   let cards = [
     card("zzz", "1", "Old Card", 1, "2000-01-01", "o1", attrs.Common, "R"),
     card("aaa", "2", "New Card", 1, "2010-01-01", "o2", attrs.Common, "R"),
@@ -402,7 +425,7 @@ pub fn set_fan_out_card_date_fallback_test() {
 // Dict takes priority over card.released_at when present and non-empty.
 pub fn set_fan_out_dict_overrides_card_date_test() {
   // Card dates say zzz(2000) < aaa(2010), but dict reverses: zzz→2020, aaa→1990
-  let dates = dict.from_list([#("zzz", "2020-01-01"), #("aaa", "1990-01-01")])
+  let dates = set_dates([#("zzz", "2020-01-01"), #("aaa", "1990-01-01")])
   let cards = [
     card("zzz", "1", "Old Card", 1, "2000-01-01", "o1", attrs.Common, "R"),
     card("aaa", "2", "New Card", 1, "2010-01-01", "o2", attrs.Common, "R"),
@@ -435,7 +458,7 @@ pub fn set_fan_out_fallback_skips_empty_card_dates_test() {
 pub fn set_fan_out_mixed_dict_and_fallback_test() {
   // "zzz" only in the dict (2005) — its card date is empty, so the dict is the
   // sole source; "aaa" absent from the dict → card date (2010).
-  let dates = dict.from_list([#("zzz", "2005-01-01")])
+  let dates = set_dates([#("zzz", "2005-01-01")])
   let cards = [
     card("zzz", "1", "Dict Card", 1, "", "o1", attrs.Common, "R"),
     card("aaa", "2", "Fallback Card", 1, "2010-01-01", "o2", attrs.Common, "R"),
@@ -447,7 +470,7 @@ pub fn set_fan_out_mixed_dict_and_fallback_test() {
 
 // Same date → alphabetical set_code tie-break.
 pub fn set_fan_out_same_date_alphabetical_tiebreak_test() {
-  let dates = dict.from_list([#("bbb", "2000-01-01"), #("aaa", "2000-01-01")])
+  let dates = set_dates([#("bbb", "2000-01-01"), #("aaa", "2000-01-01")])
   let cards = [
     card("bbb", "1", "B Card", 1, "2000-01-01", "o1", attrs.Common, "R"),
     card("aaa", "2", "A Card", 1, "2000-01-01", "o2", attrs.Common, "R"),
@@ -521,4 +544,116 @@ pub fn no_negative_totals_test() {
   let buckets = rule_cascade.project(owner_cascade(), cards, dict.new())
   assert list.all(buckets, fn(b) { b.total_quantity >= 0 })
   assert list.all(buckets, fn(b) { list.all(b.cards, fn(a) { a.quantity > 0 }) })
+}
+
+// --- Set-family fan-out ---------------------------------------------------
+
+fn family_binder_cascade(sort_keys: List(sort_spec.SortKey)) -> RuleCascade {
+  RuleCascade(
+    rules: [
+      sorted_rule(
+        "binders",
+        1,
+        copy_selector.AllCopies,
+        "rarity >= common",
+        "Binder {set_family}",
+        sort_keys,
+      ),
+    ],
+    bulk: bulk_spec.BulkSpec("Bulk", []),
+  )
+}
+
+// A parent set and its child (token) set collapse into one family bucket, named
+// for the root, with the root card first and the child card after.
+pub fn family_parent_and_child_merge_into_one_bucket_test() {
+  let sets =
+    build_index([
+      #("grn", "2018-10-05", None),
+      #("tgrn", "2018-10-05", Some("grn")),
+    ])
+  let cards = [
+    card("grn", "173", "Guildmage", 1, "2018-10-05", "o1", attrs.Common, "R"),
+    card("tgrn", "1", "Saproling", 1, "2018-10-05", "o2", attrs.Common, "G"),
+  ]
+  let buckets = rule_cascade.project(family_binder_cascade([]), cards, sets)
+  assert list.length(buckets) == 1
+  let bucket = find_bucket(buckets, "Binder grn")
+  assert bucket.total_quantity == 2
+  assert list.map(bucket.cards, fn(a) { card_key.set_code_string(a.card.key) })
+    == ["grn", "tgrn"]
+}
+
+// Root-set cards stay first even when the rule's sort keys would interleave the
+// child ahead of the root (root name sorts after the token name).
+pub fn family_root_first_beats_sort_keys_test() {
+  let sets =
+    build_index([
+      #("grn", "2018-10-05", None),
+      #("tgrn", "2018-10-05", Some("grn")),
+    ])
+  let cards = [
+    card("grn", "173", "Zzz Root", 1, "2018-10-05", "o1", attrs.Common, "R"),
+    card("tgrn", "1", "Aaa Token", 1, "2018-10-05", "o2", attrs.Common, "G"),
+  ]
+  let buckets =
+    rule_cascade.project(family_binder_cascade([sort_spec.ByName]), cards, sets)
+  let bucket = find_bucket(buckets, "Binder grn")
+  // Name sort alone would put "Aaa Token" first; family segregation keeps the
+  // root ("Zzz Root") ahead.
+  assert list.map(bucket.cards, fn(a) { a.card.name })
+    == ["Zzz Root", "Aaa Token"]
+}
+
+// Two child sets within a family order by their own release date, then set code,
+// after the root card.
+pub fn family_children_order_by_date_then_code_test() {
+  let sets =
+    build_index([
+      #("grn", "2018-10-05", None),
+      #("pgrn", "2018-11-01", Some("grn")),
+      #("tgrn", "2018-09-01", Some("grn")),
+    ])
+  let cards = [
+    card("grn", "173", "Root", 1, "2018-10-05", "o0", attrs.Common, "R"),
+    card("pgrn", "1", "Promo", 1, "2018-11-01", "o1", attrs.Common, "R"),
+    card("tgrn", "1", "Token", 1, "2018-09-01", "o2", attrs.Common, "G"),
+  ]
+  let buckets = rule_cascade.project(family_binder_cascade([]), cards, sets)
+  let bucket = find_bucket(buckets, "Binder grn")
+  // Root first, then children oldest-first: tgrn (2018-09) before pgrn (2018-11).
+  assert list.map(bucket.cards, fn(a) { card_key.set_code_string(a.card.key) })
+    == ["grn", "tgrn", "pgrn"]
+}
+
+// Two family buckets cross-sort by their root's release date from the index —
+// even when no root-set card is owned and the owned tokens' dates disagree.
+pub fn family_buckets_cross_sort_by_root_date_test() {
+  let sets =
+    build_index([
+      #("old", "2000-01-01", None),
+      // Token dates deliberately reverse the root order, to prove the bucket
+      // dates off the root via the index, not off the owned token cards.
+      #("told", "2011-01-01", Some("old")),
+      #("new", "2010-01-01", None),
+      #("tnew", "2001-01-01", Some("new")),
+    ])
+  let cards = [
+    card("tnew", "1", "New Token", 1, "2001-01-01", "o1", attrs.Common, "R"),
+    card("told", "2", "Old Token", 1, "2011-01-01", "o2", attrs.Common, "R"),
+  ]
+  let buckets = rule_cascade.project(family_binder_cascade([]), cards, sets)
+  let names = list.map(buckets, fn(b) { b.location_name })
+  assert names == ["Binder old", "Binder new"]
+}
+
+// A set absent from the index is its own family, landing in its own bucket.
+pub fn family_unknown_set_is_own_bucket_test() {
+  let cards = [
+    card("xyz", "1", "Mystery", 1, "2005-01-01", "o1", attrs.Common, "R"),
+  ]
+  let buckets =
+    rule_cascade.project(family_binder_cascade([]), cards, dict.new())
+  let bucket = find_bucket(buckets, "Binder xyz")
+  assert bucket.total_quantity == 1
 }

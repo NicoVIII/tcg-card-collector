@@ -2,6 +2,7 @@ import card_catalog/driver/gleam/catalog_api
 import collection/driver/gleam/collection_api
 import gleam/dict
 import gleam/list
+import gleam/option
 import gleam/result
 import inventory_planning/application/queries/projection/ports
 import inventory_planning/infrastructure/daos/bulk_spec_dao
@@ -12,7 +13,7 @@ pub fn new() -> ports.InventoryProjectionPorts {
     snapshot_rows: snapshot_rows_adapter(),
     catalog_attributes: catalog_attributes_adapter(),
     rules: rules_adapter(),
-    set_release_dates: set_release_dates_adapter(),
+    set_metadata: set_metadata_adapter(),
   )
 }
 
@@ -52,8 +53,17 @@ fn catalog_attributes_adapter() -> ports.CatalogAttributesPort {
   }
 }
 
-fn set_release_dates_adapter() -> ports.SetReleaseDatesPort {
-  fn(set_codes) { catalog_api.get_set_release_dates(set_codes) }
+fn set_metadata_adapter() -> ports.SetMetadataPort {
+  fn(set_codes) {
+    use metadata <- result.map(catalog_api.get_set_metadata(set_codes))
+    // Flatten the catalog's Option parent to the port's "" = no parent style.
+    dict.map_values(metadata, fn(_code, meta) {
+      ports.SetMetadataRow(
+        released_at: meta.released_at,
+        parent_set_code: option.unwrap(meta.parent_set_code, ""),
+      )
+    })
+  }
 }
 
 fn rules_adapter() -> ports.RulesPort {

@@ -236,8 +236,8 @@ pub fn name_lookup() -> Result(List(#(String, String, String)), String) {
   |> result.map_error(fn(error) { error.message })
 }
 
-// 5 params per row; stay under the SQLite 999-param cap.
-const replace_sets_chunk_size = 150
+// 7 params per row; stay under the SQLite 999-param cap (100 × 7 = 700).
+const replace_sets_chunk_size = 100
 
 pub fn replace_sets(sets: List(card_set.CardSet)) -> Result(Nil, String) {
   use _ <- result.try(
@@ -255,7 +255,7 @@ fn insert_sets_chunk(chunk: List(card_set.CardSet)) -> Result(Nil, String) {
     _ -> {
       let placeholders =
         chunk
-        |> list.map(fn(_) { "(?,?,?,?,?,?)" })
+        |> list.map(fn(_) { "(?,?,?,?,?,?,?)" })
         |> string.join(", ")
       let params =
         chunk
@@ -267,10 +267,11 @@ fn insert_sets_chunk(chunk: List(card_set.CardSet)) -> Result(Nil, String) {
             sqlight.int(s.card_count),
             sqlight.nullable(sqlight.int, s.printed_size),
             sqlight.text(s.icon_svg_uri),
+            sqlight.nullable(sqlight.text, s.parent_set_code),
           ]
         })
       sqlite_store.exec(
-        "INSERT INTO catalog_sets (set_code, name, released_at, card_count, printed_size, icon_svg_uri) VALUES "
+        "INSERT INTO catalog_sets (set_code, name, released_at, card_count, printed_size, icon_svg_uri, parent_set_code) VALUES "
           <> placeholders
           <> ";",
         params,
@@ -280,28 +281,32 @@ fn insert_sets_chunk(chunk: List(card_set.CardSet)) -> Result(Nil, String) {
   }
 }
 
-fn set_date_row_decoder() {
+fn set_metadata_row_decoder() {
   use set_code <- decode.field(0, decode.string)
   use released_at <- decode.field(1, decode.string)
-  decode.success(#(set_code, released_at))
+  use parent_set_code <- decode.field(2, decode.optional(decode.string))
+  decode.success(#(set_code, released_at, parent_set_code))
 }
 
-pub fn get_set_release_dates(
+// Sets absent from catalog_sets are simply missing from the result; a NULL
+// parent_set_code maps to None (a root set). Both facts feed set-family
+// resolution in the domain.
+pub fn get_set_metadata(
   set_codes: List(String),
-) -> Result(List(#(String, String)), String) {
+) -> Result(List(#(String, String, Option(String))), String) {
   case set_codes {
     [] -> Ok([])
     _ ->
       set_codes
       |> list.sized_chunk(get_by_keys_batch_size)
-      |> list.try_map(get_set_release_dates_chunk)
+      |> list.try_map(get_set_metadata_chunk)
       |> result.map(list.flatten)
   }
 }
 
-fn get_set_release_dates_chunk(
+fn get_set_metadata_chunk(
   codes: List(String),
-) -> Result(List(#(String, String)), String) {
+) -> Result(List(#(String, String, Option(String))), String) {
   case codes {
     [] -> Ok([])
     _ -> {
@@ -311,11 +316,11 @@ fn get_set_release_dates_chunk(
         |> string.join(", ")
       let params = list.map(codes, sqlight.text)
       sqlite_store.query(
-        "SELECT set_code, released_at FROM catalog_sets WHERE set_code IN ("
+        "SELECT set_code, released_at, parent_set_code FROM catalog_sets WHERE set_code IN ("
           <> placeholders
           <> ");",
         params,
-        set_date_row_decoder(),
+        set_metadata_row_decoder(),
       )
       |> result.map_error(fn(error) { error.message })
     }

@@ -9,6 +9,7 @@ import inventory_planning/domain/card_predicate
 import inventory_planning/domain/copy_selector
 import inventory_planning/domain/location_target
 import inventory_planning/domain/rule_cascade
+import inventory_planning/domain/set_index
 import inventory_planning/domain/sort_spec
 import shared/domain/card_key
 
@@ -43,10 +44,10 @@ pub fn execute(
   let set_codes =
     list.map(planned, fn(c) { card_key.set_code_string(c.key) })
     |> list.unique
-  use set_dates <- result.try(ports.set_release_dates(set_codes))
+  use sets <- result.try(fetch_set_index(ports.set_metadata, set_codes))
 
   let locations =
-    rule_cascade.project(cascade, planned, set_dates)
+    rule_cascade.project(cascade, planned, sets)
     |> list.map(to_location)
 
   Ok(projection_ports.Projection(
@@ -56,6 +57,63 @@ pub fn execute(
     }),
     unknown_count: unknown_count,
   ))
+}
+
+// --- Set-family index -----------------------------------------------------
+
+// A parent set (e.g. a token set's `grn`) may itself be unowned and so absent
+// from the first fetch, so we follow parent links round by round until no new
+// parent appears. `dict.has_key` filtering already terminates a corrupt parent
+// cycle; the round cap is a belt-and-braces bound (parent chains are ~1 deep
+// today, so this is one extra round trip at most).
+const max_parent_rounds = 5
+
+fn fetch_set_index(
+  port: projection_ports.SetMetadataPort,
+  set_codes: List(String),
+) -> Result(set_index.SetIndex, String) {
+  fetch_set_index_loop(port, set_codes, dict.new(), max_parent_rounds)
+}
+
+fn fetch_set_index_loop(
+  port: projection_ports.SetMetadataPort,
+  to_fetch: List(String),
+  acc: Dict(String, projection_ports.SetMetadataRow),
+  fuel: Int,
+) -> Result(set_index.SetIndex, String) {
+  let fresh = list.filter(to_fetch, fn(code) { !dict.has_key(acc, code) })
+  case fresh, fuel <= 0 {
+    [], _ -> Ok(to_set_index(acc))
+    _, True -> Ok(to_set_index(acc))
+    _, False -> {
+      use fetched <- result.try(port(fresh))
+      let acc = dict.merge(acc, fetched)
+      let parents =
+        dict.values(fetched)
+        |> list.filter_map(fn(row) {
+          case row.parent_set_code {
+            "" -> Error(Nil)
+            parent -> Ok(parent)
+          }
+        })
+        |> list.unique
+      fetch_set_index_loop(port, parents, acc, fuel - 1)
+    }
+  }
+}
+
+fn to_set_index(
+  rows: Dict(String, projection_ports.SetMetadataRow),
+) -> set_index.SetIndex {
+  dict.map_values(rows, fn(_code, row) {
+    set_index.SetMeta(
+      released_at: row.released_at,
+      parent_set_code: case row.parent_set_code {
+        "" -> None
+        parent -> Some(parent)
+      },
+    )
+  })
 }
 
 // --- Cascade assembly -----------------------------------------------------

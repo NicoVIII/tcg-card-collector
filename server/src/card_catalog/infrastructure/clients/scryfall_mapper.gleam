@@ -212,6 +212,13 @@ fn set_object_decoder() {
     None,
     decode.optional(decode.string),
   )
+  // parent_set_code links tokens/promos/etc. to their parent set; nullable and
+  // omitted for root sets. Same tolerance rationale as released_at.
+  use parent_set_code <- decode.optional_field(
+    "parent_set_code",
+    None,
+    decode.optional(decode.string),
+  )
   decode.success(#(
     code,
     name,
@@ -219,6 +226,7 @@ fn set_object_decoder() {
     card_count,
     printed_size,
     option.unwrap(icon_svg_uri, ""),
+    parent_set_code,
   ))
 }
 
@@ -242,8 +250,15 @@ pub fn parse_sets_page(
     Ok(#(has_more, next_page, raw_sets)) -> {
       let sets =
         list.filter_map(raw_sets, fn(raw) {
-          let #(code, name, released_at, card_count, printed_size, icon_svg_uri) =
-            raw
+          let #(
+            code,
+            name,
+            released_at,
+            card_count,
+            printed_size,
+            icon_svg_uri,
+            parent_set_code,
+          ) = raw
           case
             card_set.from_raw(
               code: code,
@@ -252,6 +267,7 @@ pub fn parse_sets_page(
               card_count: card_count,
               printed_size: printed_size,
               icon_svg_uri: icon_svg_uri,
+              parent_set_code: parent_set_code,
             )
           {
             Ok(s) -> Ok(s)
