@@ -1,9 +1,7 @@
+import shared/domain/card_key.{type CardKey}
+
 pub type CollectionCardReadModel {
-  CollectionCardReadModel(
-    set_code: String,
-    collector_number: String,
-    quantity: Int,
-  )
+  CollectionCardReadModel(key: CardKey, quantity: Int)
 }
 
 pub type CollectionCardPage {

@@ -98,14 +98,8 @@ fn parse_card_row(line: String) -> Result(card_printing.CardPrinting, String) {
         Error(_) -> Error("id=" <> id <> " empty name")
         Ok(name_nes) ->
           case card_key.new(set_code:, collector_number:) {
-            Error(card_key.EmptySetCode) ->
-              Error("id=" <> id <> " empty set_code")
-            Error(card_key.EmptyCollectorNumber) ->
-              Error("id=" <> id <> " empty collector_number")
-            Error(card_key.SetCodeNotCanonical) ->
-              Error("id=" <> id <> " set_code not canonical")
-            Error(card_key.CollectorNumberNotCanonical) ->
-              Error("id=" <> id <> " collector_number not canonical")
+            Error(error) ->
+              Error("id=" <> id <> " " <> card_key.describe_error(error))
             Ok(key) ->
               case rarity.parse(rarity_raw) {
                 Error(_) ->

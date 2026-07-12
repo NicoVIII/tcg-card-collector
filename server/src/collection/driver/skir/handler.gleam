@@ -7,6 +7,7 @@ import collection/application/queries/list_cards/ports as list_collection_cards_
 import collection/driver/dependencies.{type Dependencies}
 import collection/driver/skir/codec as collection_skir_codec
 import gleam/list
+import shared/domain/card_key
 import shared/driver/skir/skirout/collection/commands as collection_commands
 import shared/driver/skir/skirout/collection/queries as collection_queries
 import skir_client/service
@@ -75,9 +76,9 @@ fn map_collection_card(
   card: list_collection_cards_ports.CollectionCardReadModel,
 ) -> collection_queries.CollectionCard {
   collection_queries.collection_card_new(
-    card.collector_number,
+    card_key.collector_number_string(card.key),
     card.quantity,
-    card.set_code,
+    card_key.set_code_string(card.key),
   )
 }
 

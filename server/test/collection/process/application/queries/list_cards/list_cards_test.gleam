@@ -1,5 +1,6 @@
 import collection/application/queries/list_cards/handler
 import collection/application/queries/list_cards/ports
+import shared/domain/card_key
 
 fn build_port(
   cards: List(ports.CollectionCardReadModel),
@@ -11,11 +12,8 @@ fn card(
   set_code: String,
   collector_number: String,
 ) -> ports.CollectionCardReadModel {
-  ports.CollectionCardReadModel(
-    set_code: set_code,
-    collector_number: collector_number,
-    quantity: 1,
-  )
+  let assert Ok(key) = card_key.new(set_code:, collector_number:)
+  ports.CollectionCardReadModel(key:, quantity: 1)
 }
 
 // The store returns rows unordered; the grid's physical filing order is the

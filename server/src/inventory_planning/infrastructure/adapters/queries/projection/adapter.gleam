@@ -6,6 +6,7 @@ import gleam/result
 import inventory_planning/application/queries/projection/ports
 import inventory_planning/infrastructure/daos/bulk_spec_dao
 import inventory_planning/infrastructure/daos/inventory_rules_dao
+import shared/domain/card_key
 
 pub fn new() -> ports.InventoryProjectionPorts {
   ports.InventoryProjectionPorts(
@@ -22,8 +23,8 @@ fn snapshot_rows_adapter() -> ports.SnapshotRowsPort {
     Ok(
       list.map(cards, fn(card) {
         ports.SnapshotRow(
-          set_code: card.set_code,
-          collector_number: card.collector_number,
+          set_code: card_key.set_code_string(card.key),
+          collector_number: card_key.collector_number_string(card.key),
           quantity: card.quantity,
         )
       }),

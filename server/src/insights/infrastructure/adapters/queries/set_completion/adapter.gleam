@@ -4,6 +4,7 @@ import gleam/list
 import gleam/result
 import insights/application/queries/set_completion/ports
 import insights/infrastructure/daos/insights_dao
+import shared/domain/card_key
 
 pub fn new() -> ports.SetCompletionPorts {
   ports.SetCompletionPorts(
@@ -32,8 +33,8 @@ fn owned_cards_adapter() -> ports.OwnedCardsPort {
     Ok(
       list.map(cards, fn(card) {
         ports.OwnedCard(
-          set_code: card.set_code,
-          collector_number: card.collector_number,
+          set_code: card_key.set_code_string(card.key),
+          collector_number: card_key.collector_number_string(card.key),
         )
       }),
     )

@@ -7,6 +7,7 @@ import inventory_planning/domain/card_attributes.{type PlannedCard}
 import shared/domain/card_key
 import shared/domain/collector_number
 import shared/domain/rarity
+import shared/domain/set_code
 
 // The vocabulary for ordering cards within a location — shared by the bulk
 // remainder and each rule's bucket. A comma-separated DSL of these tokens names
@@ -89,14 +90,14 @@ fn compare_by(key: SortKey, left: PlannedCard, right: PlannedCard) -> Order {
     ByCardType -> int.compare(type_rank(left), type_rank(right))
     ByName -> string.compare(left.name, right.name)
     BySetCode ->
-      string.compare(
-        card_key.set_code_string(left.key),
-        card_key.set_code_string(right.key),
+      set_code.compare(
+        card_key.set_code(left.key),
+        card_key.set_code(right.key),
       )
     ByCollectorNumber ->
       collector_number.compare(
-        card_key.collector_number_string(left.key),
-        card_key.collector_number_string(right.key),
+        card_key.collector_number(left.key),
+        card_key.collector_number(right.key),
       )
     ByRarity -> int.compare(rarity_rank(left), rarity_rank(right))
     ByReleasedAt ->

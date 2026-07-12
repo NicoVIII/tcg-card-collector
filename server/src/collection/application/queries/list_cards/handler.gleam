@@ -2,8 +2,9 @@ import collection/application/queries/list_cards/ports
 import gleam/list
 import gleam/order
 import gleam/result
-import gleam/string
+import shared/domain/card_key
 import shared/domain/collector_number
+import shared/domain/set_code
 
 pub type ListCollectionCardsQuery {
   ListCollectionCardsQuery(offset: Int, limit: Int)
@@ -28,8 +29,11 @@ fn compare_canonical(
   b: ports.CollectionCardReadModel,
 ) -> order.Order {
   order.break_tie(
-    string.compare(a.set_code, b.set_code),
-    collector_number.compare(a.collector_number, b.collector_number),
+    set_code.compare(card_key.set_code(a.key), card_key.set_code(b.key)),
+    collector_number.compare(
+      card_key.collector_number(a.key),
+      card_key.collector_number(b.key),
+    ),
   )
 }
 

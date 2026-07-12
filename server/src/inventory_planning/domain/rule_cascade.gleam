@@ -16,6 +16,7 @@ import inventory_planning/domain/sort_spec
 import shared/domain/card_key
 import shared/domain/collector_number
 import shared/domain/release_date.{type ReleaseDate}
+import shared/domain/set_code
 
 // One rule in the ordered waterfall. Rules are applied in `position` order and
 // each consumes from what earlier rules left behind.
@@ -341,9 +342,9 @@ fn compare_family_group(
         set_index.release_date(sets, card_key.set_code_string(a.card.key)),
         set_index.release_date(sets, card_key.set_code_string(b.card.key)),
       ),
-      string.compare(
-        card_key.set_code_string(a.card.key),
-        card_key.set_code_string(b.card.key),
+      set_code.compare(
+        card_key.set_code(a.card.key),
+        card_key.set_code(b.card.key),
       ),
     ),
   )
@@ -411,13 +412,10 @@ fn compare_canonical(a: PlannedCard, b: PlannedCard) -> order.Order {
   order.break_tie(
     card_attributes.compare_release_earliest_first(a.released_at, b.released_at),
     order.break_tie(
-      string.compare(
-        card_key.set_code_string(a.key),
-        card_key.set_code_string(b.key),
-      ),
+      set_code.compare(card_key.set_code(a.key), card_key.set_code(b.key)),
       collector_number.compare(
-        card_key.collector_number_string(a.key),
-        card_key.collector_number_string(b.key),
+        card_key.collector_number(a.key),
+        card_key.collector_number(b.key),
       ),
     ),
   )
