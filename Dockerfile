@@ -1,4 +1,4 @@
-ARG GLEAM_VERSION=v1.17.0
+ARG GLEAM_VERSION=v1.18.1
 ARG ERLANG_VERSION=27
 ARG SKIR_VERSION=1.2.19
 # SKIR_VERSION is also pinned in the root justfile (skir_version); keep them in sync.
