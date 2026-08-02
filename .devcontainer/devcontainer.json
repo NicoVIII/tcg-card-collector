@@ -9,7 +9,7 @@
     },
     // Server
     "ghcr.io/NicoVIII/devcontainer-features/gleam:0": {
-      "version": "1.17.0"
+      "version": "1.18.1"
     },
     // Client - Web
     "ghcr.io/devcontainers-extra/features/bun:1": { },

@@ -29,8 +29,7 @@ const metadata_fixture = fixture_dir <> "/scryfall_metadata.json"
 
 const bulk_fixture = fixture_dir <> "/scryfall_bulk_cards.json"
 
-const enriched_bulk_fixture = fixture_dir
-  <> "/scryfall_bulk_cards_enriched.json"
+const enriched_bulk_fixture = fixture_dir <> "/scryfall_bulk_cards_enriched.json"
 
 const sets_page1_fixture = fixture_dir <> "/scryfall_sets_page1.json"
 

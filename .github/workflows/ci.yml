@@ -9,7 +9,7 @@ on:
   pull_request:
 
 env:
-  GLEAM_VERSION: "1.17.0"
+  GLEAM_VERSION: "1.18.1"
   OTP_VERSION: "27"
   REBAR3_VERSION: "3"
   BUN_VERSION: "latest"
