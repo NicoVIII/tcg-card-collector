@@ -18,7 +18,7 @@ sqlight = ">= 1.1.0 and < 2.0.0"
 gleeunit = ">= 1.0.0 and < 2.0.0"
 glinter = ">= 2.19.0 and < 3.0.0"
 gleam_otp = ">= 1.2.0 and < 2.0.0"
-glinter_arch = { path = "./vendor/gleam-libs/packages/glinter_arch" }
+glinter_arch = { git = "https://github.com/NicoVIII/gleam-libs.git", ref = "cf06df7a1840499dbbc666e8dc462ea677a5d1c2", path = "packages/glinter_arch" }
 
 [tools.glinter]
 exclude = ["src/bootstrap/skir/skirout/"] # skip generated files entirely

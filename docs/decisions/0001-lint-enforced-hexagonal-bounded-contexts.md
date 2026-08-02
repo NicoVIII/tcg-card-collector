@@ -17,8 +17,8 @@ cross-context import compiles fine and normalizes the next one.
   exactly the class of drift that review misses once the diff is large, and a
   solo project has no second reviewer.
 - **Custom architecture lint** — encode the layer and context rules as a
-  `depends_only_on` rule (glinter, via the vendored `gleam-libs` submodule)
-  and fail the build on violations.
+  `depends_only_on` rule (glinter, via a git dependency on the `gleam-libs`
+  repo) and fail the build on violations.
 
 ## Decision
 
@@ -36,8 +36,9 @@ explicitly allowlisted in `allowed_cross_bc`. Layer imports only go inward.
 - The lint config is the source of truth; the diagram in
   [architecture.md](../dev/architecture.md) mirrors it and must be kept in
   sync manually.
-- The rule engine lives in a vendored submodule (`server/vendor/gleam-libs`),
-  so fresh clones need `git submodule update --init`, and fixing gaps in the
-  rule itself means changing that submodule — currently the
-  Driver→own-BC-Infrastructure exception isn't encoded, so `driver/gleam/`
-  files carry a `// nolint: depends_only_on`.
+- The rule engine lives in a separate repo (`gleam-libs`), pulled in as a
+  Gleam git dependency (`server/gleam.toml`, pinned to a commit) rather than
+  a vendored copy, so `gleam deps download` fetches it automatically — no
+  extra clone step. Fixing gaps in the rule itself still means changing that
+  repo — currently the Driver→own-BC-Infrastructure exception isn't encoded,
+  so `driver/gleam/` files carry a `// nolint: depends_only_on`.

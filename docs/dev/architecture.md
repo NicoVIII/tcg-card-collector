@@ -49,9 +49,9 @@ bypasses.
 
 ## Lint Enforcement
 
-`just server::lint-check` runs `gleam run -m lint` (glinter via
-`server/vendor/gleam-libs/packages/glinter_arch`) which applies a custom
-`depends_only_on` rule. Violations are build errors. Decision record:
+`just server::lint-check` runs `gleam run -m lint` (glinter via the
+`glinter_arch` git dependency, from the `gleam-libs` repo) which applies a
+custom `depends_only_on` rule. Violations are build errors. Decision record:
 [ADR 0001](../decisions/0001-lint-enforced-hexagonal-bounded-contexts.md).
 
 - **Bounded context isolation**: contexts must not import from each other,
@@ -66,11 +66,11 @@ bypasses.
   `GleamDriver` may import its own BC's `domain`, `application`, and
   `infrastructure` — routing through the owning BC's query handler and
   adapter, not straight into the DAO, so it returns typed read models instead
-  of raw tuples. **Known gap**: the vendored `glinter_arch` (a separate
-  `gleam-libs` submodule) doesn't yet encode the Driver→own-BC-Infrastructure
+  of raw tuples. **Known gap**: `glinter_arch` (pulled in from the separate
+  `gleam-libs` repo) doesn't yet encode the Driver→own-BC-Infrastructure
   exception this rule describes, so `driver/gleam/*.gleam` files currently
   carry a `// nolint: depends_only_on` on the infrastructure import. Fixing
-  the rule itself means changing that submodule.
+  the rule itself means changing that repo.
 - **`shared/` is a shared kernel**: any bounded context may import `shared/`,
   but `shared/` must not import bounded contexts. Layer rules apply within
   `shared/` too.

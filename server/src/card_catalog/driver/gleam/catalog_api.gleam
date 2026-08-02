@@ -7,16 +7,16 @@ import card_catalog/application/queries/list_set_card_keys/handler as list_set_c
 import gleam/dict.{type Dict}
 import gleam/option.{type Option}
 
-// nolint: depends_only_on -- glinter_arch (vendored submodule) doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a submodule change
+// nolint: depends_only_on -- glinter_arch doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a gleam-libs change
 import card_catalog/infrastructure/adapters/queries/get_cards/adapter as get_cards_adapter
 
-// nolint: depends_only_on -- glinter_arch (vendored submodule) doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a submodule change
+// nolint: depends_only_on -- glinter_arch doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a gleam-libs change
 import card_catalog/infrastructure/adapters/queries/get_set_metadata/adapter as get_set_metadata_adapter
 
-// nolint: depends_only_on -- glinter_arch (vendored submodule) doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a submodule change
+// nolint: depends_only_on -- glinter_arch doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a gleam-libs change
 import card_catalog/infrastructure/adapters/queries/get_set_printed_sizes/adapter as get_set_printed_sizes_adapter
 
-// nolint: depends_only_on -- glinter_arch (vendored submodule) doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a submodule change
+// nolint: depends_only_on -- glinter_arch doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a gleam-libs change
 import card_catalog/infrastructure/adapters/queries/list_set_card_keys/adapter as list_set_card_keys_adapter
 
 pub fn get_cards(

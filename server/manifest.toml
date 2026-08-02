@@ -22,7 +22,7 @@ packages = [
   { name = "gleeunit", version = "1.10.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleeunit", source = "hex", outer_checksum = "254B697FE72EEAD7BF82E941723918E421317813AC49923EE76A18C788C61E72" },
   { name = "glexer", version = "2.4.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "splitter"], otp_app = "glexer", source = "hex", outer_checksum = "5AB2401BF251699746B3551EF699ECC1D94FE2897C15041F181614B089125CA0" },
   { name = "glinter", version = "2.19.0", build_tools = ["gleam"], requirements = ["argv", "glance", "gleam_json", "gleam_stdlib", "simplifile", "tom"], otp_app = "glinter", source = "hex", outer_checksum = "9A0B5EE224BB84FB25DFB4A8DD3E87F06BDFE0C49B3A669D92AB4C555593FC75" },
-  { name = "glinter_arch", version = "1.0.0", build_tools = ["gleam"], requirements = ["glance", "gleam_crypto", "gleam_stdlib", "glinter", "simplifile"], source = "local", path = "vendor/gleam-libs/packages/glinter_arch" },
+  { name = "glinter_arch", version = "1.0.0", build_tools = ["gleam"], requirements = ["glance", "gleam_crypto", "gleam_stdlib", "glinter", "simplifile"], source = "git", repo = "https://github.com/NicoVIII/gleam-libs.git", commit = "cf06df7a1840499dbbc666e8dc462ea677a5d1c2", path = "packages/glinter_arch" },
   { name = "glisten", version = "9.0.1", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_otp", "gleam_stdlib", "logging"], otp_app = "glisten", source = "hex", outer_checksum = "7795AA50830656F3A0316A6B26595F893C83272DA901B3405E31339CAA31A10B" },
   { name = "gramps", version = "6.0.1", build_tools = ["gleam"], requirements = ["gleam_crypto", "gleam_erlang", "gleam_http", "gleam_stdlib"], otp_app = "gramps", source = "hex", outer_checksum = "D55636072DEE173F6586A5679D3C02EC7A0DE3F8646B78C351B72908FF223DF7" },
   { name = "hpack_erl", version = "0.3.0", build_tools = ["rebar3"], requirements = [], otp_app = "hpack", source = "hex", outer_checksum = "D6137D7079169D8C485C6962DFE261AF5B9EF60FBC557344511C1E65E3D95FB0" },
@@ -44,7 +44,7 @@ gleam_stdlib = { version = ">= 1.0.0 and < 2.0.0" }
 gleam_time = { version = ">= 1.8.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 glinter = { version = ">= 2.19.0 and < 3.0.0" }
-glinter_arch = { path = "./vendor/gleam-libs/packages/glinter_arch" }
+glinter_arch = { git = "https://github.com/NicoVIII/gleam-libs.git", ref = "cf06df7a1840499dbbc666e8dc462ea677a5d1c2", path = "packages/glinter_arch" }
 mist = { version = ">= 6.0.2 and < 7.0.0" }
 simplifile = { version = ">= 2.4.0 and < 3.0.0" }
 skir_client = { version = ">= 1.0.5 and < 2.0.0" }

@@ -4,9 +4,8 @@ Everything needed to set up a working environment, run the service locally, and 
 
 ## Environment Setup (fresh clone / new machine)
 
-1. `git submodule update --init` — `server/vendor/gleam-libs` is required; `just server::lint-check` fails without it.
-2. `just dbmate-install` then `just dbmate-migrate` — SQLite migrations via dbmate; the db path comes from `TCG_DB_FILE` (`just server::run` sets it to `server/db/tcg-card-collector.db`).
-3. `lefthook install` — one-time, manual; pre-commit then runs the check suite on staged content.
+1. `just dbmate-install` then `just dbmate-migrate` — SQLite migrations via dbmate; the db path comes from `TCG_DB_FILE` (`just server::run` sets it to `server/db/tcg-card-collector.db`).
+2. `lefthook install` — one-time, manual; pre-commit then runs the check suite on staged content.
 
 ## Repository Layout
 
@@ -51,8 +50,6 @@ Individual checks:
 Install with `lefthook install`. Pre-commit hooks run the full check suite on staged content.
 
 ## Building the container image locally
-
-Requires the submodule to be initialised (`git submodule update --init`), then:
 
 ```sh
 docker build -t tcg-cc-local .
