@@ -22,3 +22,12 @@ updates:
           - "@typescript-eslint/*"
           - "oxlint"
           - "oxfmt"
+      # These three share one resolved vite in the module graph, so a bump to
+      # any of them alone can leave two vite copies in the tree and break the
+      # build or the test runner. Exact names, not "vite*", so a future
+      # vite-prefixed package is not swallowed into the group by accident.
+      client-web-vite:
+        patterns:
+          - "vite"
+          - "vitest"
+          - "vite-plugin-solid"
