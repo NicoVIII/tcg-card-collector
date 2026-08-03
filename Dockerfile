@@ -42,8 +42,8 @@ FROM erlang:${ERLANG_VERSION}-alpine AS server-builder
 
 ARG SKIR_VERSION
 
-# sqlight requires a C compiler for its NIF.
-RUN apk add --no-cache build-base
+# sqlight requires a C compiler for its NIF; git is needed to fetch git-sourced Gleam deps.
+RUN apk add --no-cache build-base git
 
 COPY --from=gleam /bin/gleam /usr/local/bin/gleam
 
