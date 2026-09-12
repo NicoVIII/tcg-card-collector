@@ -44,16 +44,19 @@ enforce.
 construction, never re-validate downstream. Flag re-validation deep in the core, and flag
 boundaries that admit untyped data without parsing it into a domain type.
 
-**Newtypes / branded types over primitives.** `UserId`/`Email`/`Cents`, not bare
-`String`/`Int`. Gleam opaque types by default. TypeScript branded by default — but the
-relax-trigger is concrete: if a brand forces casts at _more boundaries than it prevents
-bugs_, call that out as a candidate to drop back to plain, rather than praising the brand
-reflexively.
+**Newtypes over primitives.** `CardKey`/`SetCode`/`NonEmptyString`, not bare `String`.
+Gleam opaque types by default (`shared/domain/` is the precedent). The TypeScript side has
+no branded types today: it consumes wire types the backend already parsed. A brand there
+earns its place only when it guards a client-side derivation; otherwise it forces casts at
+more boundaries than it prevents bugs, and introducing one is a finding, not a virtue.
 
-**Errors as values.** `Result` everywhere; exceptions reserved for the truly unrecoverable.
-In TypeScript, domain logic returns `Result` (neverthrow); throwing/IO is wrapped _once_ at
-the shell. Flag thrown exceptions used as control flow in the core, and flag `Result` that
-gets unwrapped-and-rethrown instead of propagated.
+**Errors as values.** `Result` everywhere in Gleam; exceptions reserved for the truly
+unrecoverable (boot). In TypeScript the only throwing boundary is the skir client, mapped
+once in `data/http/error.ts`; pure client modules (`data/placement/guidance.ts`) return
+values and never throw. Flag thrown exceptions used as control flow in pure code, and flag
+a `Result` that gets unwrapped-and-rethrown instead of propagated. There is no Result
+library on the client; adding one is a dependency decision for the author, never a review
+finding.
 
 **Dependencies are liabilities.** Bias toward the standard library and small self-written
 pieces. A dependency's own type-safety is a gating criterion. Untyped/poorly-typed deps must
@@ -62,9 +65,11 @@ core. Build-vs-buy: write it when small/well-understood/core to the domain; take
 dependency when large, security-sensitive, or solved-correctly-once (crypto, parsers,
 date/time, serialization — never hand-rolled).
 
-**Comments explain why, not what.** Types and names carry the _what_. Flag what-comments and
-flag rationale that exists nowhere. Carve-out: public **library** API doc comments are
-expected and good.
+**Code shape is an invariant too.** The root AGENTS.md "Code Shape" rules (top-down
+order, small single-purpose functions, why-comments, repetition extracted) apply in review.
+The lint gate owns the mechanical floor (`deep_nesting`, `function_complexity`); flag what
+it cannot see: the same mapping written in both driver doors, positional tuples crossing a
+function boundary, a page component holding logic, rationale that exists nowhere.
 
 ## Tactical DDD is already encoded
 
@@ -96,8 +101,6 @@ subdomain. Flag nested-context modelling as a category error.
 
 Raise the trade-off and leave the call to the author; never pre-decide:
 
-- **Effect-TS vs neverthrow** — neverthrow is the default; Effect-TS only when complexity
-  earns it, against its cost to "easily understandable".
 - **Formal hexagonal vs lightweight FC/IS** — FC/IS is the default; port interfaces and
   dependency inversion are heavyweight, raised only when a slice earns the ceremony.
 - **Strategic DDD + CQRS** — the preferred heavyweight toolkit _once a project goes
@@ -107,9 +110,8 @@ Raise the trade-off and leave the call to the author; never pre-decide:
 ## Priority when invariants conflict
 
 1. Correctness and readability, co-equal at the top.
-2. Performance over purity **only** in game/realtime.
-3. Safety over velocity.
-4. Safety over ecosystem convenience (a gap means write it or pick a safer primitive).
+2. Safety over velocity.
+3. Safety over ecosystem convenience (a gap means write it or pick a safer primitive).
 
 ## How to report
 

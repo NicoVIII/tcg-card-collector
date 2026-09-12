@@ -22,7 +22,7 @@ Rules:
 ## Structure & Testing
 
 - `pages/` (route components, wired in `routes.ts` via @solidjs/router), `components/` (shared UI). Filenames are snake_case.
-- Tests are colocated `*.test.ts` next to the module. Testable logic is extracted into plain non-JSX modules (e.g. `pages/import_deckstats.ts`, `routes.ts`) so it runs in the node environment — no component/DOM tests currently; don't add DOM-dependent logic to `.ts` modules.
+- Tests are colocated `*.test.ts` next to the module. Testable logic is extracted into plain non-JSX modules (e.g. `pages/import_deckstats.ts`, `routes.ts`) so it runs in the node environment — no component/DOM tests; don't add DOM-dependent logic to `.ts` modules. The one exception is `routes.test.ts`, which opts into happy-dom via a file pragma because `routes.ts` imports the page components.
 - **Pages own JSX and signal wiring only.** Parsing, staging state, and derivations live in a colocated plain `.ts` module (`pages/placement_session.ts`, `pages/add_cards_staging.ts` are the precedent) — that is what keeps them node-testable and the page readable.
 - **Page plumbing that repeats becomes a helper**: the seed-once `createEffect` and the `onError: mapError(...).message` pattern already exist in several pages; the next occurrence extracts a shared helper instead of a further copy (the notification component, #72, absorbs the error half).
 - `playwright` (devDependency) is the QA skill's disposable driver for exploratory verification (`.claude/skills/qa/`) — NOT a test layer. Scripts are throwaway; never commit browser tests or wire Playwright into CI (the e2e deferral in `server/test/AGENTS.md` stands).
