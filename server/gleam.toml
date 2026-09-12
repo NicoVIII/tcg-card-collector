@@ -21,7 +21,29 @@ gleam_otp = ">= 1.2.0 and < 2.0.0"
 glinter_arch = { git = "https://github.com/NicoVIII/gleam-libs.git", ref = "cf06df7a1840499dbbc666e8dc462ea677a5d1c2", path = "packages/glinter_arch" }
 
 [tools.glinter]
-exclude = ["src/bootstrap/skir/skirout/"] # skip generated files entirely
+# Warnings fail the gate: a rule either enforces or is switched off below with a reason.
+warnings_as_errors = true
 
 [tools.glinter.rules]
 depends_only_on = "error"
+# Off because they contradict settled conventions, not because they are noisy:
+# ports return Result(a, String) by design (server/AGENTS.md, error handling)
+stringly_typed_error = "off"
+# flags every `Error(_) ->` branch, including absence-as-valid-outcome reads
+thrown_away_error = "off"
+# boundary codecs replace decoder internals with a client-facing message
+error_context_lost = "off"
+# Off because they are stylistic and the corpus reads better without them:
+label_possible = "off"
+# fires on symmetric two-branch cases where `case` reads better than a guard
+prefer_guard_clause = "off"
+# SQL is split across `<>`-joined literal lines on purpose
+unnecessary_string_concatenation = "off"
+# On beyond the defaults: no hits in handwritten code today, keep it that way.
+function_complexity = "error"
+
+[tools.glinter.ignore]
+# Generated contract code: the architecture rule still applies, readability rules don't.
+"src/shared/driver/skir/skirout/**/*.gleam" = ["unused_exports", "function_complexity"]
+# Boot code crashes on purpose when the server cannot start.
+"src/bootstrap/**/*.gleam" = ["assert_ok_pattern"]

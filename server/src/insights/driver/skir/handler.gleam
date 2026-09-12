@@ -5,6 +5,7 @@ import insights/application/queries/set_completion/handler as set_completion_han
 import insights/application/queries/set_completion/ports as set_completion_ports
 import insights/driver/dependencies.{type Dependencies}
 import insights/driver/skir/codec as insights_skir_codec
+import shared/driver/skir/helpers
 import shared/driver/skir/skirout/insights/commands as insights_commands
 import shared/driver/skir/skirout/insights/queries as insights_queries
 import skir_client/service
@@ -28,12 +29,14 @@ pub fn register(
   )
 }
 
-fn handle_mark_target_set(get_dependencies: fn(context) -> Dependencies) {
-  fn(req: insights_commands.MarkTargetSetRequest, req_meta: Nil, ctx: context) -> #(
-    Result(insights_commands.MarkTargetSetResponse, service.ServiceError),
-    Nil,
-    Nil,
-  ) {
+fn handle_mark_target_set(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  insights_commands.MarkTargetSetRequest,
+  insights_commands.MarkTargetSetResponse,
+  context,
+) {
+  fn(req: insights_commands.MarkTargetSetRequest, req_meta, ctx) {
     let result =
       mark_target_set_handler.execute(
         mark_target_set_handler.MarkTargetSetCommand(set_code: req.set_code),
@@ -43,12 +46,14 @@ fn handle_mark_target_set(get_dependencies: fn(context) -> Dependencies) {
   }
 }
 
-fn handle_unmark_target_set(get_dependencies: fn(context) -> Dependencies) {
-  fn(req: insights_commands.UnmarkTargetSetRequest, req_meta: Nil, ctx: context) -> #(
-    Result(insights_commands.UnmarkTargetSetResponse, service.ServiceError),
-    Nil,
-    Nil,
-  ) {
+fn handle_unmark_target_set(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  insights_commands.UnmarkTargetSetRequest,
+  insights_commands.UnmarkTargetSetResponse,
+  context,
+) {
+  fn(req: insights_commands.UnmarkTargetSetRequest, req_meta, ctx) {
     let result =
       unmark_target_set_handler.execute(
         unmark_target_set_handler.UnmarkTargetSetCommand(set_code: req.set_code),
@@ -58,12 +63,14 @@ fn handle_unmark_target_set(get_dependencies: fn(context) -> Dependencies) {
   }
 }
 
-fn handle_get_set_completion(get_dependencies: fn(context) -> Dependencies) {
-  fn(_: insights_queries.GetSetCompletionRequest, req_meta: Nil, ctx: context) -> #(
-    Result(insights_queries.SetCompletionList, service.ServiceError),
-    Nil,
-    Nil,
-  ) {
+fn handle_get_set_completion(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  insights_queries.GetSetCompletionRequest,
+  insights_queries.SetCompletionList,
+  context,
+) {
+  fn(_: insights_queries.GetSetCompletionRequest, req_meta, ctx) {
     case
       set_completion_handler.execute(
         set_completion_handler.SetCompletionQuery,

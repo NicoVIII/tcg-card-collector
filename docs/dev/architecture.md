@@ -50,8 +50,11 @@ bypasses.
 ## Lint Enforcement
 
 `just server::lint-check` runs `gleam run -m lint` (glinter via the
-`glinter_arch` git dependency, from the `gleam-libs` repo) which applies a
-custom `depends_only_on` rule. Violations are build errors. Decision record:
+`glinter_arch` git dependency, from the `gleam-libs` repo) which applies
+glinter's built-in readability rules plus a custom `depends_only_on` rule.
+Warnings fail the run (`warnings_as_errors`); which rules are on, off, or
+ignored for generated code is decided in `server/gleam.toml`, each with its
+reason. Decision record:
 [ADR 0001](../decisions/0001-lint-enforced-hexagonal-bounded-contexts.md).
 
 - **Bounded context isolation**: contexts must not import from each other,
@@ -76,10 +79,11 @@ custom `depends_only_on` rule. Violations are build errors. Decision record:
   `shared/` too.
 - **`bootstrap/` is the composition root**: it may import anything. Only
   `driver/` may import `bootstrap/` (DI injection seam).
-- **Generated skir code** (`src/shared/driver/skir/skirout/`) is linted like
-  handwritten code — it categorizes as shared `Driver(Skir)` and there is no
-  lint exclusion. Only `gleam format` skips it (the
-  `find ... ! -path '*/skirout/*'` in `server/justfile`).
+- **Generated skir code** (`src/shared/driver/skir/skirout/`) is subject to
+  the architecture rule — it categorizes as shared `Driver(Skir)`. The
+  readability rules are ignored for it via `[tools.glinter.ignore]`, and
+  `gleam format` skips it (the `find ... ! -path '*/skirout/*'` in
+  `server/justfile`).
 
 ## Request Flows
 

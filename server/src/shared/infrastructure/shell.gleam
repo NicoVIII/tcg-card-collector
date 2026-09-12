@@ -23,6 +23,14 @@ pub fn run(script: String) -> Result(String, String) {
   }
 }
 
+/// Best-effort removal of a scratch file: nothing the caller could do differs
+/// on failure, so the outcome is deliberately dropped.
+pub fn remove_file(path: String) -> Nil {
+  // nolint: discarded_result -- best-effort cleanup, see doc comment
+  let _ = run("rm -f " <> quote(path))
+  Nil
+}
+
 pub fn simplify_error(output: String) -> String {
   let trimmed = string.trim(output)
   case trimmed == "" {

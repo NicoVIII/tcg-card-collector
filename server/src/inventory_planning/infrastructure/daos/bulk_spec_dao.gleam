@@ -7,7 +7,7 @@ const default_location_name = "Bulk"
 
 const default_sort_keys = "color_identity,type,name"
 
-fn bulk_spec_row_decoder() {
+fn bulk_spec_row_decoder() -> decode.Decoder(#(String, String)) {
   use location_name <- decode.field(0, decode.string)
   use sort_keys <- decode.field(1, decode.string)
   decode.success(#(location_name, sort_keys))

@@ -1,8 +1,10 @@
 import card_catalog/domain/card_set
 import card_catalog/infrastructure/clients/scryfall_mapper
+import gleam/bool
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/result
 import gleam/string
 import shared/infrastructure/os_runtime
 import shared/infrastructure/shell
@@ -29,6 +31,15 @@ fn log_error(stage: String, detail: String) -> Nil {
   io.println("[refresh][error] " <> stage <> ": " <> detail)
 }
 
+// Logs a failed stage and simplifies its reason; the Ok path passes through.
+fn or_fail(outcome: Result(a, String), stage: String) -> Result(a, String) {
+  result.map_error(outcome, fn(reason) {
+    let simplified = shell.simplify_error(reason)
+    log_error(stage, simplified)
+    simplified
+  })
+}
+
 // Uses a single fixed temp path so nothing accumulates between runs.
 // The path is overwritten on each download; concurrent refreshes are not expected.
 pub fn live_downloader() -> Downloader {
@@ -53,62 +64,44 @@ pub fn live_downloader() -> Downloader {
   })
 }
 
-pub fn fetch_metadata(io: Downloader) -> Result(#(String, String), String) {
-  case io.download(bulk_metadata_url) {
-    Error(reason) -> {
-      let simplified = shell.simplify_error(reason)
-      log_error("metadata download", simplified)
-      Error(simplified)
+// The jq output is "updated_at<TAB>download_uri"; the logged detail carries the
+// offending text, the returned error stays short.
+fn parse_metadata_tsv(output: String) -> Result(#(String, String), String) {
+  let trimmed = string.trim(output)
+  case string.split(trimmed, "\t") {
+    [updated_at, download_uri] if updated_at != "" && download_uri != "" ->
+      Ok(#(updated_at, download_uri))
+    [_, _] -> {
+      log_error(
+        "metadata parse",
+        "invalid metadata response from scryfall (empty fields in: "
+          <> trimmed
+          <> ")",
+      )
+      Error("invalid metadata response from scryfall")
     }
-    Ok(path) -> {
-      let script =
-        "jq -r '[.updated_at, .download_uri] | @tsv' < " <> shell.quote(path)
-      case shell.run(script) {
-        Error(output) -> {
-          let simplified = shell.simplify_error(output)
-          log_error("metadata jq parse", simplified)
-          Error(simplified)
-        }
-        Ok(output) ->
-          case string.split(string.trim(output), "\t") {
-            [updated_at, download_uri] ->
-              case updated_at != "" && download_uri != "" {
-                True -> {
-                  log(
-                    "metadata ok: updated_at="
-                    <> updated_at
-                    <> " uri="
-                    <> download_uri,
-                  )
-                  Ok(#(updated_at, download_uri))
-                }
-                False -> {
-                  log_error(
-                    "metadata parse",
-                    "invalid metadata response from scryfall (empty fields in: "
-                      <> string.trim(output)
-                      <> ")",
-                  )
-                  Error("invalid metadata response from scryfall")
-                }
-              }
-            _ -> {
-              log_error(
-                "metadata parse",
-                "invalid metadata response from scryfall (unexpected tsv: "
-                  <> string.trim(output)
-                  <> ")",
-              )
-              Error("invalid metadata response from scryfall")
-            }
-          }
-      }
+    _ -> {
+      log_error(
+        "metadata parse",
+        "invalid metadata response from scryfall (unexpected tsv: "
+          <> trimmed
+          <> ")",
+      )
+      Error("invalid metadata response from scryfall")
     }
   }
 }
 
-pub fn fetch_sets(io: Downloader) -> Result(List(card_set.CardSet), String) {
-  fetch_sets_loop(io, sets_url, [], 0)
+pub fn fetch_metadata(io: Downloader) -> Result(#(String, String), String) {
+  use path <- result.try(
+    io.download(bulk_metadata_url) |> or_fail("metadata download"),
+  )
+  let script =
+    "jq -r '[.updated_at, .download_uri] | @tsv' < " <> shell.quote(path)
+  use output <- result.try(shell.run(script) |> or_fail("metadata jq parse"))
+  use #(updated_at, download_uri) <- result.try(parse_metadata_tsv(output))
+  log("metadata ok: updated_at=" <> updated_at <> " uri=" <> download_uri)
+  Ok(#(updated_at, download_uri))
 }
 
 fn fetch_sets_loop(
@@ -117,56 +110,33 @@ fn fetch_sets_loop(
   acc: List(card_set.CardSet),
   page: Int,
 ) -> Result(List(card_set.CardSet), String) {
-  case page >= page_cap {
-    True -> {
-      log("sets: page cap reached")
-      Ok(acc)
-    }
-    False ->
-      case io.download(url) {
-        Error(reason) -> {
-          let simplified = shell.simplify_error(reason)
-          log_error("sets download", simplified)
-          Error(simplified)
-        }
-        Ok(path) ->
-          case simplifile.read(path) {
-            Error(err) -> {
-              let msg = "failed to read sets page: " <> string.inspect(err)
-              log_error("sets read", msg)
-              Error(msg)
-            }
-            Ok(content) ->
-              case scryfall_mapper.parse_sets_page(content) {
-                Error(reason) -> {
-                  log_error("sets parse", reason)
-                  Error(reason)
-                }
-                Ok(#(sets, next_page)) ->
-                  case next_page {
-                    None -> Ok(list.append(acc, sets))
-                    Some(next_url) ->
-                      fetch_sets_loop(
-                        io,
-                        next_url,
-                        list.append(acc, sets),
-                        page + 1,
-                      )
-                  }
-              }
-          }
-      }
+  use <- bool.lazy_guard(page >= page_cap, fn() {
+    log("sets: page cap reached")
+    Ok(acc)
+  })
+  use path <- result.try(io.download(url) |> or_fail("sets download"))
+  use content <- result.try(
+    simplifile.read(path)
+    |> result.map_error(fn(err) {
+      "failed to read sets page: " <> simplifile.describe_error(err)
+    })
+    |> or_fail("sets read"),
+  )
+  use #(sets, next_page) <- result.try(
+    scryfall_mapper.parse_sets_page(content) |> or_fail("sets parse"),
+  )
+  let collected = list.append(acc, sets)
+  case next_page {
+    None -> Ok(collected)
+    Some(next_url) -> fetch_sets_loop(io, next_url, collected, page + 1)
   }
+}
+
+pub fn fetch_sets(io: Downloader) -> Result(List(card_set.CardSet), String) {
+  fetch_sets_loop(io, sets_url, [], 0)
 }
 
 pub fn download_cards(io: Downloader, uri: String) -> Result(String, String) {
   log("import: downloading " <> uri)
-  case io.download(uri) {
-    Error(reason) -> {
-      let simplified = shell.simplify_error(reason)
-      log_error("import download", simplified)
-      Error(simplified)
-    }
-    Ok(path) -> Ok(path)
-  }
+  io.download(uri) |> or_fail("import download")
 }

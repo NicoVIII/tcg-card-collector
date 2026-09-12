@@ -8,6 +8,7 @@ import collection/driver/dependencies.{type Dependencies}
 import collection/driver/skir/codec as collection_skir_codec
 import gleam/list
 import shared/domain/card_key
+import shared/driver/skir/helpers
 import shared/driver/skir/skirout/collection/commands as collection_commands
 import shared/driver/skir/skirout/collection/queries as collection_queries
 import skir_client/service
@@ -22,16 +23,14 @@ fn map_import_collection_row(
   )
 }
 
-fn handle_import_collection(get_dependencies: fn(context) -> Dependencies) {
-  fn(
-    req: collection_commands.ImportCollectionRequest,
-    req_meta: Nil,
-    ctx: context,
-  ) -> #(
-    Result(collection_commands.ImportCollectionResponse, service.ServiceError),
-    Nil,
-    Nil,
-  ) {
+fn handle_import_collection(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  collection_commands.ImportCollectionRequest,
+  collection_commands.ImportCollectionResponse,
+  context,
+) {
+  fn(req: collection_commands.ImportCollectionRequest, req_meta, ctx) {
     let result =
       import_collection_handler.execute(
         import_collection_handler.ImportCollectionCommand(rows: list.map(
@@ -54,12 +53,14 @@ fn map_add_cards_row(
   )
 }
 
-fn handle_add_cards(get_dependencies: fn(context) -> Dependencies) {
-  fn(req: collection_commands.AddCardsRequest, req_meta: Nil, ctx: context) -> #(
-    Result(collection_commands.AddCardsResponse, service.ServiceError),
-    Nil,
-    Nil,
-  ) {
+fn handle_add_cards(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  collection_commands.AddCardsRequest,
+  collection_commands.AddCardsResponse,
+  context,
+) {
+  fn(req: collection_commands.AddCardsRequest, req_meta, ctx) {
     let result =
       add_cards_handler.execute(
         add_cards_handler.AddCardsCommand(rows: list.map(
@@ -82,16 +83,14 @@ fn map_collection_card(
   )
 }
 
-fn handle_list_collection_cards(get_dependencies: fn(context) -> Dependencies) {
-  fn(
-    req: collection_queries.ListCollectionCardsRequest,
-    req_meta: Nil,
-    ctx: context,
-  ) -> #(
-    Result(collection_queries.CollectionCardList, service.ServiceError),
-    Nil,
-    Nil,
-  ) {
+fn handle_list_collection_cards(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  collection_queries.ListCollectionCardsRequest,
+  collection_queries.CollectionCardList,
+  context,
+) {
+  fn(req: collection_queries.ListCollectionCardsRequest, req_meta, ctx) {
     case
       list_collection_cards_handler.execute(
         list_collection_cards_handler.ListCollectionCardsQuery(

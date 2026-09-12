@@ -19,7 +19,7 @@ pub fn unmark(set_code: String) -> Result(Nil, String) {
   |> result.map_error(fn(error) { error.message })
 }
 
-fn set_code_decoder() {
+fn set_code_decoder() -> decode.Decoder(String) {
   use set_code <- decode.field(0, decode.string)
   decode.success(set_code)
 }

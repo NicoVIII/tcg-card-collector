@@ -13,6 +13,7 @@ import inventory_planning/application/queries/placed_ledger/handler as placed_le
 import inventory_planning/application/queries/projection/handler as projection_handler
 import inventory_planning/driver/dependencies.{type Dependencies}
 import inventory_planning/driver/skir/codec as inventory_planning_skir_codec
+import shared/driver/skir/helpers
 import shared/driver/skir/skirout/inventory_planning/commands as inventory_planning_commands
 import shared/driver/skir/skirout/inventory_planning/queries as inventory_planning_queries
 import skir_client/service
@@ -68,19 +69,14 @@ pub fn register(
   )
 }
 
-fn handle_upsert_inventory_rule(get_dependencies: fn(context) -> Dependencies) {
-  fn(
-    req: inventory_planning_commands.UpsertInventoryRuleRequest,
-    req_meta: Nil,
-    ctx: context,
-  ) -> #(
-    Result(
-      inventory_planning_commands.UpsertInventoryRuleResponse,
-      service.ServiceError,
-    ),
-    Nil,
-    Nil,
-  ) {
+fn handle_upsert_inventory_rule(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_commands.UpsertInventoryRuleRequest,
+  inventory_planning_commands.UpsertInventoryRuleResponse,
+  context,
+) {
+  fn(req: inventory_planning_commands.UpsertInventoryRuleRequest, req_meta, ctx) {
     let result =
       upsert_rule_handler.execute(
         upsert_rule_handler.UpsertInventoryRuleCommand(
@@ -101,19 +97,14 @@ fn handle_upsert_inventory_rule(get_dependencies: fn(context) -> Dependencies) {
   }
 }
 
-fn handle_delete_inventory_rule(get_dependencies: fn(context) -> Dependencies) {
-  fn(
-    req: inventory_planning_commands.DeleteInventoryRuleRequest,
-    req_meta: Nil,
-    ctx: context,
-  ) -> #(
-    Result(
-      inventory_planning_commands.DeleteInventoryRuleResponse,
-      service.ServiceError,
-    ),
-    Nil,
-    Nil,
-  ) {
+fn handle_delete_inventory_rule(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_commands.DeleteInventoryRuleRequest,
+  inventory_planning_commands.DeleteInventoryRuleResponse,
+  context,
+) {
+  fn(req: inventory_planning_commands.DeleteInventoryRuleRequest, req_meta, ctx) {
     let result =
       delete_rule_handler.execute(
         delete_rule_handler.DeleteInventoryRuleCommand(id: req.id),
@@ -127,16 +118,14 @@ fn handle_delete_inventory_rule(get_dependencies: fn(context) -> Dependencies) {
   }
 }
 
-fn handle_list_inventory_rules(get_dependencies: fn(context) -> Dependencies) {
-  fn(
-    _: inventory_planning_queries.ListInventoryRulesRequest,
-    req_meta: Nil,
-    ctx: context,
-  ) -> #(
-    Result(inventory_planning_queries.InventoryRuleList, service.ServiceError),
-    Nil,
-    Nil,
-  ) {
+fn handle_list_inventory_rules(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_queries.ListInventoryRulesRequest,
+  inventory_planning_queries.InventoryRuleList,
+  context,
+) {
+  fn(_: inventory_planning_queries.ListInventoryRulesRequest, req_meta, ctx) {
     case
       list_rules_handler.execute(
         list_rules_handler.ListInventoryRulesQuery,
@@ -162,16 +151,12 @@ fn handle_list_inventory_rules(get_dependencies: fn(context) -> Dependencies) {
 
 fn handle_get_inventory_projection(
   get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_queries.InventoryProjectionRequest,
+  inventory_planning_queries.InventoryProjection,
+  context,
 ) {
-  fn(
-    _: inventory_planning_queries.InventoryProjectionRequest,
-    req_meta: Nil,
-    ctx: context,
-  ) -> #(
-    Result(inventory_planning_queries.InventoryProjection, service.ServiceError),
-    Nil,
-    Nil,
-  ) {
+  fn(_: inventory_planning_queries.InventoryProjectionRequest, req_meta, ctx) {
     case
       projection_handler.execute(
         projection_handler.InventoryProjectionQuery,
@@ -194,16 +179,12 @@ fn handle_get_inventory_projection(
 
 fn handle_get_planning_preferences(
   get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_queries.GetPlanningPreferencesRequest,
+  inventory_planning_queries.PlanningPreferences,
+  context,
 ) {
-  fn(
-    _: inventory_planning_queries.GetPlanningPreferencesRequest,
-    req_meta: Nil,
-    ctx: context,
-  ) -> #(
-    Result(inventory_planning_queries.PlanningPreferences, service.ServiceError),
-    Nil,
-    Nil,
-  ) {
+  fn(_: inventory_planning_queries.GetPlanningPreferencesRequest, req_meta, ctx) {
     case
       get_preferences_handler.execute(
         get_preferences_handler.GetPlanningPreferencesQuery,
@@ -229,18 +210,15 @@ fn handle_get_planning_preferences(
 
 fn handle_update_planning_preferences(
   get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_commands.UpdatePlanningPreferencesRequest,
+  inventory_planning_commands.UpdatePlanningPreferencesResponse,
+  context,
 ) {
   fn(
     req: inventory_planning_commands.UpdatePlanningPreferencesRequest,
-    req_meta: Nil,
-    ctx: context,
-  ) -> #(
-    Result(
-      inventory_planning_commands.UpdatePlanningPreferencesResponse,
-      service.ServiceError,
-    ),
-    Nil,
-    Nil,
+    req_meta,
+    ctx,
   ) {
     let result =
       update_preferences_handler.execute(
@@ -258,16 +236,14 @@ fn handle_update_planning_preferences(
   }
 }
 
-fn handle_get_bulk_spec(get_dependencies: fn(context) -> Dependencies) {
-  fn(
-    _: inventory_planning_queries.GetBulkSpecRequest,
-    req_meta: Nil,
-    ctx: context,
-  ) -> #(
-    Result(inventory_planning_queries.BulkSpec, service.ServiceError),
-    Nil,
-    Nil,
-  ) {
+fn handle_get_bulk_spec(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_queries.GetBulkSpecRequest,
+  inventory_planning_queries.BulkSpec,
+  context,
+) {
+  fn(_: inventory_planning_queries.GetBulkSpecRequest, req_meta, ctx) {
     case
       get_bulk_spec_handler.execute(
         get_bulk_spec_handler.GetBulkSpecQuery,
@@ -291,19 +267,14 @@ fn handle_get_bulk_spec(get_dependencies: fn(context) -> Dependencies) {
   }
 }
 
-fn handle_update_bulk_spec(get_dependencies: fn(context) -> Dependencies) {
-  fn(
-    req: inventory_planning_commands.UpdateBulkSpecRequest,
-    req_meta: Nil,
-    ctx: context,
-  ) -> #(
-    Result(
-      inventory_planning_commands.UpdateBulkSpecResponse,
-      service.ServiceError,
-    ),
-    Nil,
-    Nil,
-  ) {
+fn handle_update_bulk_spec(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_commands.UpdateBulkSpecRequest,
+  inventory_planning_commands.UpdateBulkSpecResponse,
+  context,
+) {
+  fn(req: inventory_planning_commands.UpdateBulkSpecRequest, req_meta, ctx) {
     let result =
       update_bulk_spec_handler.execute(
         update_bulk_spec_handler.UpdateBulkSpecCommand(
@@ -320,16 +291,14 @@ fn handle_update_bulk_spec(get_dependencies: fn(context) -> Dependencies) {
   }
 }
 
-fn handle_get_placed_ledger(get_dependencies: fn(context) -> Dependencies) {
-  fn(
-    _: inventory_planning_queries.PlacedLedgerRequest,
-    req_meta: Nil,
-    ctx: context,
-  ) -> #(
-    Result(inventory_planning_queries.PlacedLedger, service.ServiceError),
-    Nil,
-    Nil,
-  ) {
+fn handle_get_placed_ledger(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_queries.PlacedLedgerRequest,
+  inventory_planning_queries.PlacedLedger,
+  context,
+) {
+  fn(_: inventory_planning_queries.PlacedLedgerRequest, req_meta, ctx) {
     case
       placed_ledger_handler.execute(
         placed_ledger_handler.GetPlacedLedgerQuery,
@@ -350,19 +319,14 @@ fn handle_get_placed_ledger(get_dependencies: fn(context) -> Dependencies) {
   }
 }
 
-fn handle_mark_cards_placed(get_dependencies: fn(context) -> Dependencies) {
-  fn(
-    req: inventory_planning_commands.MarkCardsPlacedRequest,
-    req_meta: Nil,
-    ctx: context,
-  ) -> #(
-    Result(
-      inventory_planning_commands.MarkCardsPlacedResponse,
-      service.ServiceError,
-    ),
-    Nil,
-    Nil,
-  ) {
+fn handle_mark_cards_placed(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_commands.MarkCardsPlacedRequest,
+  inventory_planning_commands.MarkCardsPlacedResponse,
+  context,
+) {
+  fn(req: inventory_planning_commands.MarkCardsPlacedRequest, req_meta, ctx) {
     let result =
       mark_cards_placed_handler.execute(
         mark_cards_placed_handler.MarkCardsPlacedCommand(placements: list.map(
@@ -379,19 +343,14 @@ fn handle_mark_cards_placed(get_dependencies: fn(context) -> Dependencies) {
   }
 }
 
-fn handle_unmark_cards_placed(get_dependencies: fn(context) -> Dependencies) {
-  fn(
-    req: inventory_planning_commands.UnmarkCardsPlacedRequest,
-    req_meta: Nil,
-    ctx: context,
-  ) -> #(
-    Result(
-      inventory_planning_commands.UnmarkCardsPlacedResponse,
-      service.ServiceError,
-    ),
-    Nil,
-    Nil,
-  ) {
+fn handle_unmark_cards_placed(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_commands.UnmarkCardsPlacedRequest,
+  inventory_planning_commands.UnmarkCardsPlacedResponse,
+  context,
+) {
+  fn(req: inventory_planning_commands.UnmarkCardsPlacedRequest, req_meta, ctx) {
     let result =
       unmark_cards_placed_handler.execute(
         unmark_cards_placed_handler.UnmarkCardsPlacedCommand(

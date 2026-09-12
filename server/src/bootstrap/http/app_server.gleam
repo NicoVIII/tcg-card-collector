@@ -48,7 +48,7 @@ pub fn start(deps: Dependencies) -> Nil {
     |> mist.bind("0.0.0.0")
     |> mist.start
 
-  let _ =
+  let _startup_refresh =
     refresh_launcher.launch(
       deps.catalog,
       deps.catalog.refresh_worker_name,

@@ -41,6 +41,7 @@ pub fn exec_all_atomically(
   case outcome {
     Ok(Nil) -> sqlight.exec("COMMIT;", conn)
     Error(error) -> {
+      // nolint: discarded_result -- the caller needs the original error; a failed rollback cannot improve on it
       let _ = sqlight.exec("ROLLBACK;", conn)
       Error(error)
     }

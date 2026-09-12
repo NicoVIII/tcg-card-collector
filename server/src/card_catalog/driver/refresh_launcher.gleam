@@ -8,6 +8,34 @@ pub type RefreshLaunchOutcome {
   RefreshAlreadyRunning
 }
 
+fn log(message: String) -> Nil {
+  io.println("[async][catalog-refresh] " <> message)
+}
+
+// Body of the background worker: claim the name, then run the refresh. Losing
+// the registration means another trigger's worker won the race a moment ago.
+fn run_worker(
+  deps: Dependencies,
+  refresh_worker_name: process.Name(Nil),
+  trigger: String,
+) -> Nil {
+  case process.register(process.self(), refresh_worker_name) {
+    Error(_) -> log("registration race, skipping: " <> trigger)
+    Ok(_) -> {
+      log("started: " <> trigger)
+      case
+        refresh_handler.execute(
+          RefreshCatalogCommand,
+          deps.refresh_catalog_ports,
+        )
+      {
+        Ok(Nil) -> log("finished successfully: " <> trigger)
+        Error(_) -> log("finished with failure: " <> trigger)
+      }
+    }
+  }
+}
+
 /// Fire-and-accept: starts the refresh in a background worker registered
 /// under `refresh_worker_name`, deduping concurrent triggers regardless of
 /// which transport (HTTP or skir) issued them.
@@ -17,41 +45,17 @@ pub fn launch(
   trigger: String,
 ) -> RefreshLaunchOutcome {
   let refresh_subject = process.named_subject(refresh_worker_name)
-
   case process.subject_owner(refresh_subject) {
     Ok(_) -> {
       log("already running, skipped trigger: " <> trigger)
       RefreshAlreadyRunning
     }
     Error(_) -> {
-      let _ =
+      let _worker =
         process.spawn_unlinked(fn() {
-          case process.register(process.self(), refresh_worker_name) {
-            Ok(_) -> {
-              log("started: " <> trigger)
-              case
-                refresh_handler.execute(
-                  RefreshCatalogCommand,
-                  deps.refresh_catalog_ports,
-                )
-              {
-                Ok(Nil) -> log("finished successfully: " <> trigger)
-                Error(_) -> log("finished with failure: " <> trigger)
-              }
-              Nil
-            }
-            Error(_) -> {
-              log("registration race, skipping: " <> trigger)
-              Nil
-            }
-          }
+          run_worker(deps, refresh_worker_name, trigger)
         })
-
       RefreshStarted
     }
   }
-}
-
-fn log(message: String) -> Nil {
-  io.println("[async][catalog-refresh] " <> message)
 }

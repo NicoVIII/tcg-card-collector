@@ -5,7 +5,8 @@ import gleam/int
 import gleam/io
 import gleam/json
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option, None}
+import gleam/result
 import gleam/string
 import shared/domain/card_key
 import shared/domain/color_identity
@@ -33,10 +34,7 @@ fn log_error(stage: String, detail: String) -> Nil {
 // (ADR 0008). An oracle id has no shape to violate beyond emptiness, so it
 // can't be malformed — only absent.
 fn parse_optional_oracle_id(raw: String) -> Option(oracle_id.OracleId) {
-  case oracle_id.new(raw) {
-    Ok(oracle) -> Some(oracle)
-    Error(_) -> None
-  }
+  option.from_result(oracle_id.new(raw))
 }
 
 fn parse_optional_release_date(
@@ -44,97 +42,7 @@ fn parse_optional_release_date(
 ) -> Result(Option(release_date.ReleaseDate), Nil) {
   case string.trim(raw) {
     "" -> Ok(None)
-    trimmed ->
-      case release_date.parse(trimmed) {
-        Ok(date) -> Ok(Some(date))
-        Error(Nil) -> Error(Nil)
-      }
-  }
-}
-
-fn parse_card_row(line: String) -> Result(card_printing.CardPrinting, String) {
-  let row_decoder = {
-    use id <- decode.field("id", decode.string)
-    use name <- decode.field("name", decode.string)
-    use set_code <- decode.field("set_code", decode.string)
-    use collector_number <- decode.field("collector_number", decode.string)
-    use rarity <- decode.field("rarity", decode.string)
-    use image_uri <- decode.field("image_uri", decode.string)
-    use oracle_id <- decode.field("oracle_id", decode.string)
-    use color_identity <- decode.field("color_identity", decode.string)
-    use type_line <- decode.field("type_line", decode.string)
-    use released_at <- decode.field("released_at", decode.string)
-    decode.success(#(
-      id,
-      name,
-      set_code,
-      collector_number,
-      rarity,
-      image_uri,
-      oracle_id,
-      color_identity,
-      type_line,
-      released_at,
-    ))
-  }
-  case json.parse(from: line, using: row_decoder) {
-    Error(_) ->
-      Error(
-        "invalid json: " <> string.slice(from: line, at_index: 0, length: 80),
-      )
-    Ok(#(
-      id,
-      name,
-      set_code,
-      collector_number,
-      rarity_raw,
-      image_uri,
-      oracle_id_raw,
-      color_identity_raw,
-      type_line,
-      released_at_raw,
-    )) ->
-      case non_empty_string.new(name) {
-        Error(_) -> Error("id=" <> id <> " empty name")
-        Ok(name_nes) ->
-          case card_key.new(set_code:, collector_number:) {
-            Error(error) ->
-              Error("id=" <> id <> " " <> card_key.describe_error(error))
-            Ok(key) ->
-              case rarity.parse(rarity_raw) {
-                Error(_) ->
-                  Error("id=" <> id <> " unknown rarity: " <> rarity_raw)
-                Ok(rarity_val) ->
-                  case non_empty_string.new(image_uri) {
-                    Error(_) -> Error("id=" <> id <> " empty image_uri")
-                    Ok(image_uri_nes) ->
-                      case
-                        parse_enrichment(
-                          oracle_id_raw,
-                          color_identity_raw,
-                          released_at_raw,
-                        )
-                      {
-                        Error(reason) -> Error("id=" <> id <> " " <> reason)
-                        Ok(#(oracle, colors, date)) ->
-                          Ok(card_printing.CardPrinting(
-                            id: card_printing.CardPrintingId(id),
-                            key:,
-                            name: name_nes,
-                            rarity: rarity_val,
-                            image_uri: image_uri_nes,
-                            oracle_id: oracle,
-                            color_identity: colors,
-                            // The raw printed line is the fact; "" is the
-                            // multi-face layout gap (see card_printing).
-                            type_line:,
-                            released_at: date,
-                          ))
-                      }
-                  }
-              }
-          }
-      }
+    trimmed -> release_date.parse(trimmed) |> result.map(option.Some)
   }
 }
 
@@ -153,14 +61,98 @@ fn parse_enrichment(
   let oracle = parse_optional_oracle_id(oracle_id_raw)
   // "" is a real colorless identity (Scryfall joins an empty color array),
   // not a gap — hence not Option like the other two.
-  case color_identity.parse(color_identity_raw) {
-    Error(_) -> Error("invalid color_identity: " <> color_identity_raw)
-    Ok(colors) ->
-      case parse_optional_release_date(released_at_raw) {
-        Error(_) -> Error("invalid released_at: " <> released_at_raw)
-        Ok(date) -> Ok(#(oracle, colors, date))
-      }
-  }
+  use colors <- result.try(
+    color_identity.parse(color_identity_raw)
+    |> result.replace_error("invalid color_identity: " <> color_identity_raw),
+  )
+  use date <- result.try(
+    parse_optional_release_date(released_at_raw)
+    |> result.replace_error("invalid released_at: " <> released_at_raw),
+  )
+  Ok(#(oracle, colors, date))
+}
+
+// One line of the jq-normalised ndjson, still in Scryfall's raw spellings.
+type RawCardRow {
+  RawCardRow(
+    id: String,
+    name: String,
+    set_code: String,
+    collector_number: String,
+    rarity: String,
+    image_uri: String,
+    oracle_id: String,
+    color_identity: String,
+    type_line: String,
+    released_at: String,
+  )
+}
+
+fn raw_card_row_decoder() -> decode.Decoder(RawCardRow) {
+  use id <- decode.field("id", decode.string)
+  use name <- decode.field("name", decode.string)
+  use set_code <- decode.field("set_code", decode.string)
+  use collector_number <- decode.field("collector_number", decode.string)
+  use rarity <- decode.field("rarity", decode.string)
+  use image_uri <- decode.field("image_uri", decode.string)
+  use oracle_id <- decode.field("oracle_id", decode.string)
+  use color_identity <- decode.field("color_identity", decode.string)
+  use type_line <- decode.field("type_line", decode.string)
+  use released_at <- decode.field("released_at", decode.string)
+  decode.success(RawCardRow(
+    id:,
+    name:,
+    set_code:,
+    collector_number:,
+    rarity:,
+    image_uri:,
+    oracle_id:,
+    color_identity:,
+    type_line:,
+    released_at:,
+  ))
+}
+
+fn parse_card_row(line: String) -> Result(card_printing.CardPrinting, String) {
+  use raw <- result.try(
+    json.parse(from: line, using: raw_card_row_decoder())
+    |> result.replace_error(
+      "invalid json: " <> string.slice(from: line, at_index: 0, length: 80),
+    ),
+  )
+  let reject = fn(reason: String) { "id=" <> raw.id <> " " <> reason }
+  use name <- result.try(
+    non_empty_string.new(raw.name) |> result.replace_error(reject("empty name")),
+  )
+  use key <- result.try(
+    card_key.new(set_code: raw.set_code, collector_number: raw.collector_number)
+    |> result.map_error(fn(error) { reject(card_key.describe_error(error)) }),
+  )
+  use rarity_val <- result.try(
+    rarity.parse(raw.rarity)
+    |> result.replace_error(reject("unknown rarity: " <> raw.rarity)),
+  )
+  use image_uri <- result.try(
+    non_empty_string.new(raw.image_uri)
+    |> result.replace_error(reject("empty image_uri")),
+  )
+  use #(oracle, colors, date) <- result.try(
+    parse_enrichment(raw.oracle_id, raw.color_identity, raw.released_at)
+    |> result.map_error(reject),
+  )
+  Ok(card_printing.CardPrinting(
+    id: card_printing.CardPrintingId(raw.id),
+    key:,
+    name:,
+    rarity: rarity_val,
+    image_uri:,
+    oracle_id: oracle,
+    color_identity: colors,
+    // The raw printed line is the fact; "" is the multi-face layout gap (see
+    // card_printing).
+    type_line: raw.type_line,
+    released_at: date,
+  ))
 }
 
 fn csv_field(value: String) -> String {
@@ -220,7 +212,96 @@ fn validate_card_rows(lines: List(String)) -> List(card_printing.CardPrinting) {
   })
 }
 
-fn set_object_decoder() {
+fn run_jq(download_path: String, ndjson_path: String) -> Result(Nil, String) {
+  // Enrichment fields tolerate multi-face/reversible layouts that expose no
+  // top-level value: fall back to the first card face, then to "". color_identity
+  // is a WUBRG letter array joined into a canonical-ish string; planning
+  // re-canonicalizes at its port boundary.
+  let jq_script =
+    "jq -c '.[] | {id: (.id // \"\"), name: (.name // \"\"), set_code: (.set // \"\"), collector_number: (.collector_number // \"\"), rarity: (.rarity // \"unknown\"), image_uri: (.image_uris.small // .card_faces[0].image_uris.small // \"\"), oracle_id: (.oracle_id // .card_faces[0].oracle_id // \"\"), color_identity: ((.color_identity // []) | join(\"\")), type_line: (.type_line // .card_faces[0].type_line // \"\"), released_at: (.released_at // \"\")}' < "
+    <> shell.quote(download_path)
+    <> " > "
+    <> shell.quote(ndjson_path)
+  case shell.run(jq_script) {
+    Ok(_) -> {
+      log("import: jq->ndjson ok")
+      Ok(Nil)
+    }
+    Error(output) -> {
+      let simplified = shell.simplify_error(output)
+      log_error("import jq->ndjson", simplified)
+      shell.remove_file(ndjson_path)
+      Error(simplified)
+    }
+  }
+}
+
+// The ndjson is consumed into memory here, so it is removed on both outcomes.
+fn read_ndjson(ndjson_path: String) -> Result(String, String) {
+  let contents = simplifile.read(ndjson_path)
+  shell.remove_file(ndjson_path)
+  case contents {
+    Ok(contents) -> Ok(contents)
+    Error(err) -> {
+      let msg = "failed to read ndjson: " <> simplifile.describe_error(err)
+      log_error("import read-ndjson", msg)
+      Error(msg)
+    }
+  }
+}
+
+fn write_csv(
+  csv_path: String,
+  cards: List(card_printing.CardPrinting),
+) -> Result(String, String) {
+  let csv_content = list.map(cards, card_to_csv_row) |> string.join("\n")
+  case simplifile.write(csv_path, csv_content) {
+    Ok(_) -> Ok(csv_path)
+    Error(err) -> {
+      let msg = "failed to write csv: " <> simplifile.describe_error(err)
+      log_error("import write-csv", msg)
+      shell.remove_file(csv_path)
+      Error(msg)
+    }
+  }
+}
+
+// Transforms a downloaded Scryfall bulk-cards JSON file into a CSV ready for
+// bulk loading. Cleans up the intermediate ndjson on every exit path; cleans
+// up a partial csv on its own error branches.
+pub fn to_csv(download_path: String) -> Result(String, String) {
+  let ndjson_path = download_path <> ".ndjson"
+  let csv_path = download_path <> ".csv"
+  use Nil <- result.try(run_jq(download_path, ndjson_path))
+  use ndjson_contents <- result.try(read_ndjson(ndjson_path))
+  let lines =
+    string.split(ndjson_contents, "\n")
+    |> list.filter(fn(line) { line != "" })
+  let cards = validate_card_rows(lines)
+  log(
+    "import: validated "
+    <> int.to_string(list.length(cards))
+    <> "/"
+    <> int.to_string(list.length(lines))
+    <> " cards",
+  )
+  write_csv(csv_path, cards)
+}
+
+// One entry of the /sets response; nullable fields already defaulted.
+type RawSet {
+  RawSet(
+    code: String,
+    name: String,
+    released_at: String,
+    card_count: Int,
+    printed_size: Option(Int),
+    icon_svg_uri: String,
+    parent_set_code: Option(String),
+  )
+}
+
+fn raw_set_decoder() -> decode.Decoder(RawSet) {
   use code <- decode.field("code", decode.string)
   use name <- decode.field("name", decode.string)
   // Scryfall documents released_at and icon_svg_uri as nullable and may omit
@@ -252,15 +333,36 @@ fn set_object_decoder() {
     None,
     decode.optional(decode.string),
   )
-  decode.success(#(
-    code,
-    name,
-    option.unwrap(released_at, ""),
-    card_count,
-    printed_size,
-    option.unwrap(icon_svg_uri, ""),
-    parent_set_code,
+  decode.success(RawSet(
+    code:,
+    name:,
+    released_at: option.unwrap(released_at, ""),
+    card_count:,
+    printed_size:,
+    icon_svg_uri: option.unwrap(icon_svg_uri, ""),
+    parent_set_code:,
   ))
+}
+
+// An invalid set is logged and dropped rather than failing the whole page.
+fn to_card_set(raw: RawSet) -> Result(card_set.CardSet, Nil) {
+  case
+    card_set.from_raw(
+      code: raw.code,
+      name: raw.name,
+      released_at: raw.released_at,
+      card_count: raw.card_count,
+      printed_size: raw.printed_size,
+      icon_svg_uri: raw.icon_svg_uri,
+      parent_set_code: raw.parent_set_code,
+    )
+  {
+    Ok(set) -> Ok(set)
+    Error(reason) -> {
+      log_warn("skipped invalid set: " <> reason)
+      Error(Nil)
+    }
+  }
 }
 
 // Decodes one page of the Scryfall /sets response. Returns the sets on this
@@ -275,110 +377,17 @@ pub fn parse_sets_page(
       None,
       decode.optional(decode.string),
     )
-    use data <- decode.field("data", decode.list(set_object_decoder()))
+    use data <- decode.field("data", decode.list(raw_set_decoder()))
     decode.success(#(has_more, next_page, data))
   }
-  case json.parse(from: json_str, using: page_decoder) {
-    Error(e) -> Error("invalid sets json: " <> string.inspect(e))
-    Ok(#(has_more, next_page, raw_sets)) -> {
-      let sets =
-        list.filter_map(raw_sets, fn(raw) {
-          let #(
-            code,
-            name,
-            released_at,
-            card_count,
-            printed_size,
-            icon_svg_uri,
-            parent_set_code,
-          ) = raw
-          case
-            card_set.from_raw(
-              code: code,
-              name: name,
-              released_at: released_at,
-              card_count: card_count,
-              printed_size: printed_size,
-              icon_svg_uri: icon_svg_uri,
-              parent_set_code: parent_set_code,
-            )
-          {
-            Ok(s) -> Ok(s)
-            Error(reason) -> {
-              log_warn("skipped invalid set: " <> reason)
-              Error(Nil)
-            }
-          }
-        })
-      let next = case has_more {
-        True -> next_page
-        False -> None
-      }
-      Ok(#(sets, next))
-    }
+  use #(has_more, next_page, raw_sets) <- result.try(
+    json.parse(from: json_str, using: page_decoder)
+    // nolint: string_inspect -- json.DecodeError has no string form; this only feeds the operator log
+    |> result.map_error(fn(e) { "invalid sets json: " <> string.inspect(e) }),
+  )
+  let next = case has_more {
+    True -> next_page
+    False -> None
   }
-}
-
-// Transforms a downloaded Scryfall bulk-cards JSON file into a CSV ready for
-// bulk loading. Cleans up the intermediate ndjson on every exit path; cleans
-// up a partial csv on its own error branches.
-pub fn to_csv(download_path: String) -> Result(String, String) {
-  let ndjson_path = download_path <> ".ndjson"
-  let csv_path = download_path <> ".csv"
-  // Enrichment fields tolerate multi-face/reversible layouts that expose no
-  // top-level value: fall back to the first card face, then to "". color_identity
-  // is a WUBRG letter array joined into a canonical-ish string; planning
-  // re-canonicalizes at its port boundary.
-  let jq_script =
-    "jq -c '.[] | {id: (.id // \"\"), name: (.name // \"\"), set_code: (.set // \"\"), collector_number: (.collector_number // \"\"), rarity: (.rarity // \"unknown\"), image_uri: (.image_uris.small // .card_faces[0].image_uris.small // \"\"), oracle_id: (.oracle_id // .card_faces[0].oracle_id // \"\"), color_identity: ((.color_identity // []) | join(\"\")), type_line: (.type_line // .card_faces[0].type_line // \"\"), released_at: (.released_at // \"\")}' < "
-    <> shell.quote(download_path)
-    <> " > "
-    <> shell.quote(ndjson_path)
-  case shell.run(jq_script) {
-    Error(output) -> {
-      let simplified = shell.simplify_error(output)
-      log_error("import jq->ndjson", simplified)
-      let _ = shell.run("rm -f " <> shell.quote(ndjson_path))
-      Error(simplified)
-    }
-    Ok(_) -> {
-      log("import: jq->ndjson ok")
-      case simplifile.read(ndjson_path) {
-        Error(err) -> {
-          let msg = "failed to read ndjson: " <> string.inspect(err)
-          log_error("import read-ndjson", msg)
-          let _ = shell.run("rm -f " <> shell.quote(ndjson_path))
-          Error(msg)
-        }
-        Ok(ndjson_contents) -> {
-          // ndjson has been read into memory; remove it before the csv step
-          let _ = shell.run("rm -f " <> shell.quote(ndjson_path))
-          let lines =
-            string.split(ndjson_contents, "\n")
-            |> list.filter(fn(line) { line != "" })
-          let total = list.length(lines)
-          let cards = validate_card_rows(lines)
-          let valid_count = list.length(cards)
-          log(
-            "import: validated "
-            <> int.to_string(valid_count)
-            <> "/"
-            <> int.to_string(total)
-            <> " cards",
-          )
-          let csv_content =
-            list.map(cards, card_to_csv_row) |> string.join("\n")
-          case simplifile.write(csv_path, csv_content) {
-            Error(err) -> {
-              let msg = "failed to write csv: " <> string.inspect(err)
-              log_error("import write-csv", msg)
-              let _ = shell.run("rm -f " <> shell.quote(csv_path))
-              Error(msg)
-            }
-            Ok(_) -> Ok(csv_path)
-          }
-        }
-      }
-    }
-  }
+  Ok(#(list.filter_map(raw_sets, to_card_set), next))
 }

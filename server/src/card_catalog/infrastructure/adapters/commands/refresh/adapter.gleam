@@ -49,7 +49,7 @@ fn import_cards_adapter(
     use csv_path <- result.try(scryfall_mapper.to_csv(path))
     let outcome = catalog_dao.bulk_load(csv_path)
     // Orchestrator owns the csv lifecycle; mapper handled its own ndjson.
-    let _ = shell.run("rm -f " <> shell.quote(csv_path))
+    shell.remove_file(csv_path)
     outcome
   }
 }

@@ -6,7 +6,7 @@ and the cross-context dependency diagram live in
 actionable subset. Domain vocabulary and context ownership:
 read `docs/dev/domain-ubiquitous-language.md` before touching domain code.
 
-## Structure (lint-enforced — violations are build errors)
+## Structure (lint-enforced)
 
 Context-first, then layer:
 `src/<bounded_context>/{domain,application/{commands,queries},infrastructure/{adapters,daos},driver/{skir,http}}/`.
@@ -26,8 +26,13 @@ Four contexts: **card_catalog**, **collection**, **inventory_planning**,
   context needs the same representation and none disputes its semantics —
   orderings, labels, and DSL concerns stay in their context (ADR 0008).
 - **Generated code** (`src/shared/driver/skir/skirout/`) — never edit; change
-  `skir-src/` and run `just skir-gen`. It is linted like handwritten code;
-  only `gleam format` skips it.
+  `skir-src/` and run `just skir-gen`. The architecture rule applies to it;
+  the readability rules are ignored for it in `gleam.toml`, and
+  `gleam format` skips it.
+- **Readability rules fail the gate too** — glinter's defaults plus
+  `function_complexity`, with `warnings_as_errors` on; every rule switched off
+  in `gleam.toml` carries its reason there. Escape hatch:
+  `// nolint: <rule> -- <reason>` on the line above, never inline.
 
 ## Application Layer (CQRS)
 

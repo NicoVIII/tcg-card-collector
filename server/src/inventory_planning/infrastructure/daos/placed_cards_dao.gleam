@@ -10,7 +10,7 @@ pub type PlacedCardRow =
 
 const insert_batch_size = 100
 
-fn placed_card_row_decoder() {
+fn placed_card_row_decoder() -> decode.Decoder(PlacedCardRow) {
   use set_code <- decode.field(0, decode.string)
   use collector_number <- decode.field(1, decode.string)
   use location <- decode.field(2, decode.string)

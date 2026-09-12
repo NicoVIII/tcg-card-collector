@@ -10,7 +10,7 @@ pub type ImportCollectionBody {
   ImportCollectionBody(rows: List(ImportCollectionRow))
 }
 
-fn import_collection_row_decoder() {
+fn import_collection_row_decoder() -> decode.Decoder(ImportCollectionRow) {
   use set_code <- decode.field("set_code", decode.string)
   use collector_number <- decode.field("collector_number", decode.string)
   use quantity <- decode.field("quantity", decode.int)
@@ -43,7 +43,7 @@ pub type AddCardsBody {
   AddCardsBody(rows: List(AddCardsRow))
 }
 
-fn add_cards_row_decoder() {
+fn add_cards_row_decoder() -> decode.Decoder(AddCardsRow) {
   use set_code <- decode.field("set_code", decode.string)
   use collector_number <- decode.field("collector_number", decode.string)
   use quantity <- decode.field("quantity", decode.int)

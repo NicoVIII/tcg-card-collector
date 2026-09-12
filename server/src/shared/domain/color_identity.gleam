@@ -24,7 +24,7 @@ pub fn color_rank(color: Color) -> Int {
   }
 }
 
-pub fn color_letter(color: Color) -> String {
+fn color_letter(color: Color) -> String {
   case color {
     White -> "W"
     Blue -> "U"

@@ -36,7 +36,7 @@ pub fn upsert(
   |> result.map_error(fn(error) { error.message })
 }
 
-fn rule_row_decoder() {
+fn rule_row_decoder() -> decode.Decoder(RuleTuple) {
   use id <- decode.field(0, decode.string)
   use location_name <- decode.field(1, decode.string)
   use expression <- decode.field(2, decode.string)

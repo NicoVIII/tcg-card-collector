@@ -2,8 +2,6 @@ import gleam/bit_array
 import gleam/bytes_tree
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
-import gleam/list
-import gleam/string
 import mist
 import shared/driver/http/json_codec
 
@@ -30,23 +28,5 @@ pub fn with_json_body(
           json_response(400, json_codec.encode_error("body is not valid utf-8"))
         Ok(body_string) -> next(body_string)
       }
-  }
-}
-
-pub fn query_param(
-  req: Request(mist.Connection),
-  key: String,
-) -> Result(String, Nil) {
-  case string.split(req.path, "?") {
-    [_, qs, ..] ->
-      qs
-      |> string.split("&")
-      |> list.find_map(fn(pair) {
-        case string.split(pair, "=") {
-          [k, v] if k == key -> Ok(v)
-          _ -> Error(Nil)
-        }
-      })
-    _ -> Error(Nil)
   }
 }

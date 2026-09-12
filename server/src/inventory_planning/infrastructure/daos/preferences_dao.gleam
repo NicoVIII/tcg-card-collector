@@ -7,7 +7,7 @@ const default_sort = "card_name"
 
 const default_grouping = "location_name"
 
-fn preferences_row_decoder() {
+fn preferences_row_decoder() -> decode.Decoder(#(String, String)) {
   use sort <- decode.field(0, decode.string)
   use grouping <- decode.field(1, decode.string)
   decode.success(#(sort, grouping))

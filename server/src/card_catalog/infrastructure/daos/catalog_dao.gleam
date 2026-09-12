@@ -33,7 +33,9 @@ fn log_error(stage: String, detail: String) -> Nil {
   io.println("[refresh][error] " <> stage <> ": " <> detail)
 }
 
-fn refresh_record_row_decoder() {
+fn refresh_record_row_decoder() -> decode.Decoder(
+  #(Int, Option(String), String, Option(String)),
+) {
   use epoch <- decode.field(0, decode.int)
   use last_upstream_updated_at <- decode.field(
     1,
@@ -114,13 +116,13 @@ pub fn save_refresh_record(
   |> result.map_error(fn(error) { error.message })
 }
 
-fn key_row_decoder() {
+fn key_row_decoder() -> decode.Decoder(CatalogKeyTuple) {
   use set_code <- decode.field(0, decode.string)
   use collector_number <- decode.field(1, decode.string)
   decode.success(#(set_code, collector_number))
 }
 
-fn card_row_decoder() {
+fn card_row_decoder() -> decode.Decoder(CatalogCardTuple) {
   use set_code <- decode.field(0, decode.string)
   use collector_number <- decode.field(1, decode.string)
   use name <- decode.field(2, decode.string)
@@ -219,24 +221,6 @@ pub fn list_by_set_codes(
   }
 }
 
-fn name_row_decoder() {
-  use set_code <- decode.field(0, decode.string)
-  use collector_number <- decode.field(1, decode.string)
-  use name <- decode.field(2, decode.string)
-  decode.success(#(set_code, collector_number, name))
-}
-
-pub fn name_lookup() -> Result(List(#(String, String, String)), String) {
-  sqlite_store.query(
-    "SELECT set_code, collector_number, name "
-      <> "FROM catalog_cards "
-      <> "ORDER BY set_code ASC, collector_number ASC;",
-    [],
-    name_row_decoder(),
-  )
-  |> result.map_error(fn(error) { error.message })
-}
-
 // 7 params per row; stay under the SQLite 999-param cap (100 × 7 = 700).
 const replace_sets_chunk_size = 100
 
@@ -287,7 +271,9 @@ fn insert_sets_chunk_statement(
   )
 }
 
-fn set_metadata_row_decoder() {
+fn set_metadata_row_decoder() -> decode.Decoder(
+  #(String, String, Option(String)),
+) {
   use set_code <- decode.field(0, decode.string)
   use released_at <- decode.field(1, decode.string)
   use parent_set_code <- decode.field(2, decode.optional(decode.string))
@@ -333,7 +319,7 @@ fn get_set_metadata_chunk(
   }
 }
 
-fn set_printed_size_row_decoder() {
+fn set_printed_size_row_decoder() -> decode.Decoder(#(String, Option(Int))) {
   use set_code <- decode.field(0, decode.string)
   use printed_size <- decode.field(1, decode.optional(decode.int))
   decode.success(#(set_code, printed_size))
@@ -378,7 +364,6 @@ fn get_set_printed_sizes_chunk(
 }
 
 pub fn bulk_load(csv_path: String) -> Result(Nil, String) {
-  let _ = sqlite_store.exec("SELECT 1;", [])
   let sqlite_script =
     "set -e; "
     <> "sqltmp=$(mktemp); "

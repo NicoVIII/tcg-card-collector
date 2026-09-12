@@ -38,10 +38,6 @@ pub fn new(
   Ok(Placement(key:, location: location_nes, quantity:))
 }
 
-pub fn key(placement: Placement) -> CardKey {
-  placement.key
-}
-
 pub fn set_code_string(placement: Placement) -> String {
   card_key.set_code_string(placement.key)
 }

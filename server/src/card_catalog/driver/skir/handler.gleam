@@ -16,6 +16,7 @@ import shared/domain/color_identity
 import shared/domain/oracle_id
 import shared/domain/rarity
 import shared/domain/release_date
+import shared/driver/skir/helpers
 import shared/driver/skir/skirout/card_catalog/commands as card_catalog_commands
 import shared/driver/skir/skirout/card_catalog/queries as card_catalog_queries
 import skir_client/service
@@ -43,16 +44,14 @@ pub fn register(
   )
 }
 
-fn handle_refresh_catalog(get_dependencies: fn(context) -> Dependencies) {
-  fn(
-    _: card_catalog_commands.RefreshCatalogRequest,
-    req_meta: Nil,
-    ctx: context,
-  ) -> #(
-    Result(card_catalog_commands.RefreshCatalogResponse, service.ServiceError),
-    Nil,
-    Nil,
-  ) {
+fn handle_refresh_catalog(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  card_catalog_commands.RefreshCatalogRequest,
+  card_catalog_commands.RefreshCatalogResponse,
+  context,
+) {
+  fn(_: card_catalog_commands.RefreshCatalogRequest, req_meta, ctx) {
     let deps = get_dependencies(ctx)
     let outcome =
       refresh_launcher.launch(deps, deps.refresh_worker_name, "skir")
@@ -60,16 +59,14 @@ fn handle_refresh_catalog(get_dependencies: fn(context) -> Dependencies) {
   }
 }
 
-fn handle_list_catalog_cards(get_dependencies: fn(context) -> Dependencies) {
-  fn(
-    req: card_catalog_queries.ListCatalogCardsRequest,
-    req_meta: Nil,
-    ctx: context,
-  ) -> #(
-    Result(card_catalog_queries.CatalogCardKeyList, service.ServiceError),
-    Nil,
-    Nil,
-  ) {
+fn handle_list_catalog_cards(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  card_catalog_queries.ListCatalogCardsRequest,
+  card_catalog_queries.CatalogCardKeyList,
+  context,
+) {
+  fn(req: card_catalog_queries.ListCatalogCardsRequest, req_meta, ctx) {
     case
       catalog_list_cards_handler.execute(
         ListCatalogCardsQuery,
@@ -104,16 +101,14 @@ fn map_catalog_card_key(
   card_catalog_queries.catalog_card_key_new(key.collector_number, key.set_code)
 }
 
-fn handle_get_catalog_cards(get_dependencies: fn(context) -> Dependencies) {
-  fn(
-    req: card_catalog_queries.GetCatalogCardsRequest,
-    req_meta: Nil,
-    ctx: context,
-  ) -> #(
-    Result(card_catalog_queries.CatalogCardList, service.ServiceError),
-    Nil,
-    Nil,
-  ) {
+fn handle_get_catalog_cards(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  card_catalog_queries.GetCatalogCardsRequest,
+  card_catalog_queries.CatalogCardList,
+  context,
+) {
+  fn(req: card_catalog_queries.GetCatalogCardsRequest, req_meta, ctx) {
     let keys = list.map(req.keys, fn(k) { #(k.set_code, k.collector_number) })
     case
       get_catalog_cards_handler.execute(
@@ -161,16 +156,14 @@ fn map_card_read_model(
   )
 }
 
-fn handle_get_refresh_status(get_dependencies: fn(context) -> Dependencies) {
-  fn(
-    _: card_catalog_queries.GetCatalogRefreshStatusRequest,
-    req_meta: Nil,
-    ctx: context,
-  ) -> #(
-    Result(card_catalog_queries.CatalogRefreshStatus, service.ServiceError),
-    Nil,
-    Nil,
-  ) {
+fn handle_get_refresh_status(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  card_catalog_queries.GetCatalogRefreshStatusRequest,
+  card_catalog_queries.CatalogRefreshStatus,
+  context,
+) {
+  fn(_: card_catalog_queries.GetCatalogRefreshStatusRequest, req_meta, ctx) {
     case
       refresh_status_handler.execute(
         GetCatalogRefreshStatusQuery,

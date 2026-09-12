@@ -10,7 +10,7 @@ type CardRow =
 
 const insert_batch_size = 100
 
-fn card_row_decoder() {
+fn card_row_decoder() -> decode.Decoder(CardRow) {
   use set_code <- decode.field(0, decode.string)
   use collector_number <- decode.field(1, decode.string)
   use quantity <- decode.field(2, decode.int)
