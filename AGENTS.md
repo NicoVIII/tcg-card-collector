@@ -8,6 +8,16 @@ Self-hosted service for managing a Magic: The Gathering collection and planning 
 
 Gleam backend (Erlang target) + SolidJS/TypeScript frontend, connected by a Skir contract (contract-first RPC with code generation for both sides).
 
+## Code Shape
+
+Readability rules that hold across the stack; each sub-tree's AGENTS.md adds its own specifics.
+
+- **Top-down order**: every definition references only things defined above it — types, then helpers, then the functions that use them, with the entry point (`register`, `main`, the page component) last. Circular references are the only exception.
+- **Small, single-purpose functions** are the unit of decomposition. A `// this block does X` comment is the trigger to extract `x()`; skip extraction only when it would thread many parameters or add pure indirection.
+- **Comments say why, never what.** If types and names already say it, cut it. Prose is warranted for doc comments on public APIs, type-lossy seams the signature can't express, and short orientation labels in long functions.
+- **Repetition is a helper waiting to be named**: the third copy of a pattern extracts a shared function; the first two may stay.
+- Existing code migrates to these rules when touched, never in style-only commits.
+
 ## Development
 
 Task runner is `just` with `::` module scoping (`just --list` for everything). The most-used commands: `just dev` (run backend + frontend), `just check` (all checks), `just skir-gen` (regenerate from contract).

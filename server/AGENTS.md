@@ -58,6 +58,14 @@ Four contexts: **card_catalog**, **collection**, **inventory_planning**,
   externally-visible side effects must put that orchestration in one shared
   module both drivers call (e.g. `card_catalog/driver/refresh_launcher.gleam`)
   — never duplicate it per transport.
+- A skir handler is one `execute` call plus one codec call, typed via
+  `shared/driver/skir/helpers.MethodHandler`; response and error boilerplate
+  belongs in `shared/driver/`, not repeated per handler.
+- A use case's error presentation (which `ports` error becomes which status
+  class and message) is written once in a `<context>/driver/` module both
+  transports call — the two-transports rule covers error mapping, not only
+  side effects. Existing handlers predate this; migrate a use case's pair
+  when touching it (#87).
 
 ## Infrastructure & Database
 
@@ -79,6 +87,9 @@ Four contexts: **card_catalog**, **collection**, **inventory_planning**,
 - `sqlite_store.exec` opens a fresh connection per call — statements that must
   succeed or fail together go through `sqlite_store.exec_all_atomically`,
   never composed from separate `exec` calls.
+- DAO rows and read models are named records; a positional tuple wider than
+  two fields — or a comment listing a tuple's field order — is the smell.
+  Existing tuple aliases migrate when their DAO is touched (#87).
 - Write ports return `Result(Nil, String)`; read ports are
   `fn() -> Result(a, String)` (or `Result(Option(a), String)` when absence is
   a valid outcome). Never collapse a read error to a default unless every
