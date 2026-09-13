@@ -33,4 +33,12 @@ Environment setup for a fresh clone (dbmate, lefthook), repository layout, and t
 
 Architecture decisions with real alternatives are recorded as ADRs in [docs/decisions/](docs/decisions/README.md). Check there before relitigating a settled design; a changed mind gets a superseding ADR, and a new decision of that weight gets a new record.
 
-Opinionated dual-mode (design-consult + review) aspect skills live in [.claude/skills/](.claude/skills/): `architecture`, `domain-design`, `contract-design`, `data-migrations`, `documentation`, `qa`, and `ux-design`. They encode this project's settled judgement, not generic best practices; consult the relevant one before designing or reviewing in its aspect. The `backlog` skill sits alongside them and owns the work itself: filing issues, grooming the backlog, and release-milestone planning via GitHub issues + milestones.
+Opinionated dual-mode (design-consult + review) aspect skills live in [.claude/skills/](.claude/skills/): `architecture`, `domain-design`, `contract-design`, `data-migrations`, `documentation`, `qa`, and `ux-design`. They encode this project's settled judgement, not generic best practices; consult the relevant one before designing or reviewing in its aspect.
+
+## Issues
+
+Work is tracked as GitHub issues only — no milestones, no Projects.
+
+- **Triage before filing**: trivial fixes get fixed, not filed; ideas outside [docs/vision.md](docs/vision.md) get named as out of scope; small review nits bundle into one sweep issue.
+- **Exactly one type label**: `bug` (observed wrong behaviour), `foundation` (enabler work — DX, code quality, de-risking other work), or `enhancement` (new capability).
+- **Cold-startable body**: bugs carry repro plus expected/actual, features the acceptance shape; the title is specific enough to triage from the list view.
