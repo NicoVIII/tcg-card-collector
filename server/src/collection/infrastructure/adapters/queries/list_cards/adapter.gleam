@@ -16,7 +16,7 @@ fn list_cards_adapter() -> fn() ->
     // constructor; a failure means corrupt stored data and fails the query
     // (ADR 0008).
     list.try_map(rows, fn(row) {
-      let #(set_code, collector_number, quantity) = row
+      let collection_dao.CardRow(set_code:, collector_number:, quantity:) = row
       case card_key.new(set_code:, collector_number:) {
         Ok(key) -> Ok(ports.CollectionCardReadModel(key:, quantity:))
         Error(error) ->

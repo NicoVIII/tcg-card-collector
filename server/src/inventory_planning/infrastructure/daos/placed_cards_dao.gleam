@@ -4,8 +4,14 @@ import gleam/result
 import shared/infrastructure/stores/sqlite_store
 import sqlight
 
-pub type PlacedCardRow =
-  #(String, String, String, Int)
+pub type PlacedCardRow {
+  PlacedCardRow(
+    set_code: String,
+    collector_number: String,
+    location: String,
+    quantity: Int,
+  )
+}
 
 const insert_batch_size = 100
 
@@ -14,7 +20,12 @@ fn placed_card_row_decoder() -> decode.Decoder(PlacedCardRow) {
   use collector_number <- decode.field(1, decode.string)
   use location <- decode.field(2, decode.string)
   use quantity <- decode.field(3, decode.int)
-  decode.success(#(set_code, collector_number, location, quantity))
+  decode.success(PlacedCardRow(
+    set_code:,
+    collector_number:,
+    location:,
+    quantity:,
+  ))
 }
 
 pub fn list() -> Result(List(PlacedCardRow), String) {
@@ -27,12 +38,11 @@ pub fn list() -> Result(List(PlacedCardRow), String) {
 }
 
 fn row_params(row: PlacedCardRow) -> List(sqlight.Value) {
-  let #(set_code, collector_number, location, quantity) = row
   [
-    sqlight.text(set_code),
-    sqlight.text(collector_number),
-    sqlight.text(location),
-    sqlight.int(quantity),
+    sqlight.text(row.set_code),
+    sqlight.text(row.collector_number),
+    sqlight.text(row.location),
+    sqlight.int(row.quantity),
   ]
 }
 
@@ -65,7 +75,7 @@ pub fn increment(rows: List(PlacedCardRow)) -> Result(Nil, String) {
 // the decrement would drive to zero or below is deleted outright rather than
 // updated; only rows that stay positive are decremented.
 fn decrement_row(row: PlacedCardRow) -> Result(Nil, String) {
-  let #(set_code, collector_number, location, quantity) = row
+  let PlacedCardRow(set_code:, collector_number:, location:, quantity:) = row
   let where_key =
     " WHERE set_code = ? AND collector_number = ? AND location = ?"
   let key_params = [

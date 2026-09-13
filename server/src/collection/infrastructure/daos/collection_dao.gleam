@@ -4,8 +4,9 @@ import gleam/result
 import shared/infrastructure/stores/sqlite_store
 import sqlight
 
-type CardRow =
-  #(String, String, Int)
+pub type CardRow {
+  CardRow(set_code: String, collector_number: String, quantity: Int)
+}
 
 const insert_batch_size = 100
 
@@ -13,7 +14,7 @@ fn card_row_decoder() -> decode.Decoder(CardRow) {
   use set_code <- decode.field(0, decode.string)
   use collector_number <- decode.field(1, decode.string)
   use quantity <- decode.field(2, decode.int)
-  decode.success(#(set_code, collector_number, quantity))
+  decode.success(CardRow(set_code:, collector_number:, quantity:))
 }
 
 // Unordered: a TEXT ORDER BY can't express the numeric-aware collector-number
@@ -30,12 +31,11 @@ fn batch_values(batch: List(CardRow)) -> #(String, List(sqlight.Value)) {
   let placeholders = sqlite_store.placeholders(list.length(batch), "(?, ?, ?)")
   let params =
     batch
-    |> list.flat_map(fn(row) {
-      let #(set_code, collector_number, quantity) = row
+    |> list.flat_map(fn(row: CardRow) {
       [
-        sqlight.text(set_code),
-        sqlight.text(collector_number),
-        sqlight.int(quantity),
+        sqlight.text(row.set_code),
+        sqlight.text(row.collector_number),
+        sqlight.int(row.quantity),
       ]
     })
   #(placeholders, params)

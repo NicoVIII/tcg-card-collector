@@ -14,10 +14,36 @@ import sqlight
 type CatalogKeyTuple =
   #(String, String)
 
-// (set_code, collector_number, name, image_uri, rarity, oracle_id,
-//  color_identity, type_line, released_at)
-type CatalogCardTuple =
-  #(String, String, String, String, String, String, String, String, String)
+pub type CatalogCardRow {
+  CatalogCardRow(
+    set_code: String,
+    collector_number: String,
+    name: String,
+    image_uri: String,
+    rarity: String,
+    oracle_id: String,
+    color_identity: String,
+    type_line: String,
+    released_at: String,
+  )
+}
+
+pub type SetMetadataRow {
+  SetMetadataRow(
+    set_code: String,
+    released_at: String,
+    parent_set_code: Option(String),
+  )
+}
+
+type RefreshRecordRow {
+  RefreshRecordRow(
+    last_probe_epoch: Int,
+    last_upstream_updated_at: Option(String),
+    status: String,
+    error_message: Option(String),
+  )
+}
 
 // SQLite caps bound parameters (default 999); get_by_keys binds 2 per key, so a
 // real collection would overflow a single query. Mirror collection_dao's batch
@@ -32,17 +58,20 @@ fn log_error(stage: String, detail: String) -> Nil {
   io.println("[refresh][error] " <> stage <> ": " <> detail)
 }
 
-fn refresh_record_row_decoder() -> decode.Decoder(
-  #(Int, Option(String), String, Option(String)),
-) {
+fn refresh_record_row_decoder() -> decode.Decoder(RefreshRecordRow) {
   use epoch <- decode.field(0, decode.int)
   use last_upstream_updated_at <- decode.field(
     1,
     decode.optional(decode.string),
   )
-  use status_str <- decode.field(2, decode.string)
-  use error_msg <- decode.field(3, decode.optional(decode.string))
-  decode.success(#(epoch, last_upstream_updated_at, status_str, error_msg))
+  use status <- decode.field(2, decode.string)
+  use error_message <- decode.field(3, decode.optional(decode.string))
+  decode.success(RefreshRecordRow(
+    last_probe_epoch: epoch,
+    last_upstream_updated_at:,
+    status:,
+    error_message:,
+  ))
 }
 
 // A read error propagates (metadata is unreadable); an empty result is the
@@ -60,17 +89,20 @@ pub fn load_refresh_record() -> Result(
   ))
   case rows {
     [] -> None
-    [#(epoch, last_upstream_updated_at, status_str, error_msg), ..] -> {
-      let status = case status_str {
+    [row, ..] -> {
+      let status = case row.status {
         "succeeded" -> refresh_record.Succeeded
         "skipped" -> refresh_record.Skipped
         "failed" ->
-          refresh_record.Failed(option.unwrap(error_msg, "unknown error"))
-        _ -> refresh_record.Failed("unknown status: " <> status_str)
+          refresh_record.Failed(option.unwrap(
+            row.error_message,
+            "unknown error",
+          ))
+        _ -> refresh_record.Failed("unknown status: " <> row.status)
       }
       Some(refresh_record.ProbeResult(
-        last_probe_at: timestamp.from_unix_seconds(epoch),
-        last_upstream_updated_at:,
+        last_probe_at: timestamp.from_unix_seconds(row.last_probe_epoch),
+        last_upstream_updated_at: row.last_upstream_updated_at,
         status:,
       ))
     }
@@ -117,7 +149,7 @@ fn key_row_decoder() -> decode.Decoder(CatalogKeyTuple) {
   decode.success(#(set_code, collector_number))
 }
 
-fn card_row_decoder() -> decode.Decoder(CatalogCardTuple) {
+fn card_row_decoder() -> decode.Decoder(CatalogCardRow) {
   use set_code <- decode.field(0, decode.string)
   use collector_number <- decode.field(1, decode.string)
   use name <- decode.field(2, decode.string)
@@ -127,16 +159,16 @@ fn card_row_decoder() -> decode.Decoder(CatalogCardTuple) {
   use color_identity <- decode.field(6, decode.string)
   use type_line <- decode.field(7, decode.string)
   use released_at <- decode.field(8, decode.string)
-  decode.success(#(
-    set_code,
-    collector_number,
-    name,
-    image_uri,
-    rarity,
-    oracle_id,
-    color_identity,
-    type_line,
-    released_at,
+  decode.success(CatalogCardRow(
+    set_code:,
+    collector_number:,
+    name:,
+    image_uri:,
+    rarity:,
+    oracle_id:,
+    color_identity:,
+    type_line:,
+    released_at:,
   ))
 }
 
@@ -152,7 +184,7 @@ pub fn list() -> Result(List(CatalogKeyTuple), String) {
 
 fn get_by_keys_chunk(
   keys: List(CatalogKeyTuple),
-) -> Result(List(CatalogCardTuple), String) {
+) -> Result(List(CatalogCardRow), String) {
   let params =
     list.flat_map(keys, fn(key) {
       let #(set_code, collector_number) = key
@@ -172,7 +204,7 @@ fn get_by_keys_chunk(
 
 pub fn get_by_keys(
   keys: List(CatalogKeyTuple),
-) -> Result(List(CatalogCardTuple), String) {
+) -> Result(List(CatalogCardRow), String) {
   sqlite_store.query_in_chunks(keys, get_by_keys_batch_size, get_by_keys_chunk)
 }
 
@@ -245,18 +277,16 @@ fn insert_sets_chunk_statement(
   )
 }
 
-fn set_metadata_row_decoder() -> decode.Decoder(
-  #(String, String, Option(String)),
-) {
+fn set_metadata_row_decoder() -> decode.Decoder(SetMetadataRow) {
   use set_code <- decode.field(0, decode.string)
   use released_at <- decode.field(1, decode.string)
   use parent_set_code <- decode.field(2, decode.optional(decode.string))
-  decode.success(#(set_code, released_at, parent_set_code))
+  decode.success(SetMetadataRow(set_code:, released_at:, parent_set_code:))
 }
 
 fn get_set_metadata_chunk(
   codes: List(String),
-) -> Result(List(#(String, String, Option(String))), String) {
+) -> Result(List(SetMetadataRow), String) {
   sqlite_store.query(
     "SELECT set_code, released_at, parent_set_code FROM catalog_sets WHERE set_code IN ("
       <> sqlite_store.placeholders(list.length(codes), "?")
@@ -271,7 +301,7 @@ fn get_set_metadata_chunk(
 // resolution in the domain.
 pub fn get_set_metadata(
   set_codes: List(String),
-) -> Result(List(#(String, String, Option(String))), String) {
+) -> Result(List(SetMetadataRow), String) {
   sqlite_store.query_in_chunks(
     set_codes,
     get_by_keys_batch_size,

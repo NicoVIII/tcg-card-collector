@@ -22,7 +22,7 @@ pub fn replace_sets_round_trip_test() {
   let assert Ok(Nil) = catalog_dao.replace_sets([set("2xm")])
 
   assert catalog_dao.get_set_metadata(["lea", "grn", "2xm"])
-    == Ok([#("2xm", "", None)])
+    == Ok([catalog_dao.SetMetadataRow("2xm", "", None)])
 }
 
 // Regression: a failing replace must not leave the table empty (found
@@ -37,5 +37,8 @@ pub fn failed_replace_keeps_previous_sets_test() {
   let assert Error(_) = catalog_dao.replace_sets([set("2xm"), set("2xm")])
 
   assert catalog_dao.get_set_metadata(["lea", "grn", "2xm"])
-    == Ok([#("grn", "", None), #("lea", "", None)])
+    == Ok([
+      catalog_dao.SetMetadataRow("grn", "", None),
+      catalog_dao.SetMetadataRow("lea", "", None),
+    ])
 }

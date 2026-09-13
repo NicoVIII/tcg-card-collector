@@ -25,18 +25,18 @@ fn get_cards_adapter() -> fn(List(#(String, String))) ->
 // corrupt stored data: propagate it as a read error rather than degrading the
 // attribute (ADR 0008). A refresh rewrites the table, so recovery is cheap.
 fn to_read_model(
-  row: #(String, String, String, String, String, String, String, String, String),
+  row: catalog_dao.CatalogCardRow,
 ) -> Result(ports.CardReadModel, String) {
-  let #(
-    set_code,
-    collector_number,
-    name,
-    image_uri,
-    rarity_raw,
-    oracle_id_raw,
-    color_identity_raw,
-    type_line,
-    released_at_raw,
+  let catalog_dao.CatalogCardRow(
+    set_code:,
+    collector_number:,
+    name:,
+    image_uri:,
+    rarity: rarity_raw,
+    oracle_id: oracle_id_raw,
+    color_identity: color_identity_raw,
+    type_line:,
+    released_at: released_at_raw,
   ) = row
   let corrupt = fn(field: String, value: String) {
     "corrupt catalog row "

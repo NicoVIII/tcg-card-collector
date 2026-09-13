@@ -7,14 +7,13 @@ pub fn new() -> ports.ListInventoryRulesPort {
   ports.ListInventoryRulesPort(list_rules: fn() {
     use rows <- result.map(inventory_rules_dao.list())
     list.map(rows, fn(row) {
-      let #(id, location_name, expression, position, selector, sort_keys) = row
       ports.InventoryRuleReadModel(
-        id:,
-        location_name:,
-        expression:,
-        position:,
-        selector:,
-        sort_keys:,
+        id: row.id,
+        location_name: row.location_name,
+        expression: row.expression,
+        position: row.position,
+        selector: row.selector,
+        sort_keys: row.sort_keys,
       )
     })
   })

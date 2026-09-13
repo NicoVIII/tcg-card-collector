@@ -12,7 +12,11 @@ pub fn new() -> ports.GetSetMetadataPort {
     use rows <- result.try(catalog_dao.get_set_metadata(set_codes))
     rows
     |> list.try_map(fn(row) {
-      let #(set_code, released_at_raw, parent_set_code) = row
+      let catalog_dao.SetMetadataRow(
+        set_code:,
+        released_at: released_at_raw,
+        parent_set_code:,
+      ) = row
       // '' means the source didn't date the set; anything else must parse —
       // the sync boundary only stores canonical strings, so a failure here is
       // corrupt stored data and propagates as a read error (ADR 0008).

@@ -114,26 +114,33 @@ pub fn import_populates_enrichment_attributes_test() {
 
   // Normal card: multicolor identity joined, type_line and released_at present.
   let assert Ok(guildmage) =
-    list.find(rows, fn(row) { row.0 == "grn" && row.1 == "173" })
-  assert guildmage.5 == "oracle-e1"
-  assert guildmage.6 == "WU"
-  assert guildmage.7 == "Creature — Human Wizard"
-  assert guildmage.8 == "2018-10-05"
+    list.find(rows, fn(row) {
+      row.set_code == "grn" && row.collector_number == "173"
+    })
+  assert guildmage.oracle_id == "oracle-e1"
+  assert guildmage.color_identity == "WU"
+  assert guildmage.type_line == "Creature — Human Wizard"
+  assert guildmage.released_at == "2018-10-05"
 
   // Reversible card: no top-level oracle_id/type_line/image_uris -> falls back
   // to card_faces[0].
   let assert Ok(reversible) =
-    list.find(rows, fn(row) { row.0 == "sld" && row.1 == "1000" })
-  assert reversible.3 == "https://cards.scryfall.io/small/enr-002-face.jpg"
-  assert reversible.5 == "oracle-e2"
-  assert reversible.6 == "G"
-  assert reversible.7 == "Legendary Creature — Elf"
+    list.find(rows, fn(row) {
+      row.set_code == "sld" && row.collector_number == "1000"
+    })
+  assert reversible.image_uri
+    == "https://cards.scryfall.io/small/enr-002-face.jpg"
+  assert reversible.oracle_id == "oracle-e2"
+  assert reversible.color_identity == "G"
+  assert reversible.type_line == "Legendary Creature — Elf"
 
   // Colorless card: empty color_identity array joins to "".
   let assert Ok(colorless) =
-    list.find(rows, fn(row) { row.0 == "mh1" && row.1 == "42" })
-  assert colorless.6 == ""
-  assert colorless.7 == "Artifact — Thopter"
+    list.find(rows, fn(row) {
+      row.set_code == "mh1" && row.collector_number == "42"
+    })
+  assert colorless.color_identity == ""
+  assert colorless.type_line == "Artifact — Thopter"
 }
 
 fn query_set_codes() -> List(String) {

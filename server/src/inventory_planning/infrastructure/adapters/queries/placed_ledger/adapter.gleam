@@ -7,8 +7,12 @@ pub fn new() -> ports.GetPlacedLedgerPort {
   fn() {
     use rows <- result.map(placed_cards_dao.list())
     list.map(rows, fn(row) {
-      let #(set_code, collector_number, location, quantity) = row
-      ports.PlacedLedgerRow(set_code:, collector_number:, location:, quantity:)
+      ports.PlacedLedgerRow(
+        set_code: row.set_code,
+        collector_number: row.collector_number,
+        location: row.location,
+        quantity: row.quantity,
+      )
     })
   }
 }

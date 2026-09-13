@@ -67,20 +67,18 @@ fn set_metadata_adapter() -> ports.SetMetadataPort {
 
 fn rules_adapter() -> ports.RulesPort {
   fn() {
-    use rule_tuples <- result.try(inventory_rules_dao.list())
+    use rule_rows <- result.try(inventory_rules_dao.list())
     use #(bulk_location, bulk_sort_keys) <- result.map(bulk_spec_dao.get())
     let rules =
-      rule_tuples
+      rule_rows
       |> list.map(fn(rule) {
-        let #(id, location_name, expression, position, selector, sort_keys) =
-          rule
         ports.RuleRow(
-          id: id,
-          position: position,
-          selector: selector,
-          expression: expression,
-          location_name: location_name,
-          sort_keys: sort_keys,
+          id: rule.id,
+          position: rule.position,
+          selector: rule.selector,
+          expression: rule.expression,
+          location_name: rule.location_name,
+          sort_keys: rule.sort_keys,
         )
       })
     ports.RulesModel(

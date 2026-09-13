@@ -9,5 +9,10 @@ pub fn new() -> ports.MarkCardsPlacedPort {
 }
 
 fn to_row(model: ports.PlacementWriteModel) -> placed_cards_dao.PlacedCardRow {
-  #(model.set_code, model.collector_number, model.location, model.quantity)
+  placed_cards_dao.PlacedCardRow(
+    set_code: model.set_code,
+    collector_number: model.collector_number,
+    location: model.location,
+    quantity: model.quantity,
+  )
 }

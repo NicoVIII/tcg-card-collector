@@ -8,10 +8,10 @@ pub fn new() -> ports.ReplaceCollectionPort {
     collection_dao.replace_collection(
       list.map(rows, fn(row) {
         let ports.CollectionRowWriteModel(key: key, quantity: quantity) = row
-        #(
-          card_key.set_code_string(key),
-          card_key.collector_number_string(key),
-          quantity,
+        collection_dao.CardRow(
+          set_code: card_key.set_code_string(key),
+          collector_number: card_key.collector_number_string(key),
+          quantity:,
         )
       }),
     )
