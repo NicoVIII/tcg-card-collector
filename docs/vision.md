@@ -18,6 +18,8 @@ Three purposes, all first-class:
 
 The MVP vertical slice works end-to-end: catalog sync from Scryfall, CSV collection import plus incremental manual adds, and inventory rules and projections — over both Skir RPC and REST.
 
+The first numbered release, [v0.1.0](https://github.com/NicoVIII/tcg-card-collector/milestone/1), targets data-safe personal use: upgrades stop losing data, and the core loop holds up at real collection size.
+
 ## Direction
 
 Themes, deliberately unordered — this is not a committed sequence:

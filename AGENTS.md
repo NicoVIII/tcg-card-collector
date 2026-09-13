@@ -37,6 +37,8 @@ Opinionated dual-mode (design-consult + review) aspect skills live in [.claude/s
 
 ## Issues
 
-GitHub issues only — no milestones, no Projects. The scope document is [docs/vision.md](docs/vision.md).
+GitHub issues only — no Projects. The scope document is [docs/vision.md](docs/vision.md).
+
+- **Milestones are release scope, nothing else**: one per numbered version (`v0.1.0`), holding the issues that release is blocked on. Its description states what the version promises; an issue belongs in it only if the release would break that promise without it.
 
 - **Exactly one type label**: `bug` (observed wrong behaviour), `foundation` (enabler work — DX, code quality, de-risking other work), or `enhancement` (new capability).
