@@ -2,39 +2,23 @@ import { Show, createEffect, createSignal } from "solid-js";
 import { useQueryClient, type QueryClient } from "@tanstack/solid-query";
 import { useRefreshCatalogMutation } from "../data/card_catalog/mutation";
 import { useCatalogCardsQuery, useCatalogRefreshStatusQuery } from "../data/card_catalog/query";
-import type { CatalogRefreshStatus, RefreshCatalogResult } from "../data/card_catalog/request";
+import type { CatalogRefreshStatus } from "../data/card_catalog/request";
 import { mapError } from "../data/http/error";
 import { queryKeys } from "../data/query-keys/factory";
 import { CardGrid } from "../components/card_grid";
 import { Pagination } from "../components/pagination";
+import {
+  finishedFeedback,
+  hasFinishedSince,
+  startedFeedback,
+  type RefreshFeedback,
+} from "./catalog_refresh";
 
 const PAGE_SIZE = 25;
-
-type RefreshFeedback = { kind: "success" | "error"; message: string };
 
 function formatProbeTime(iso: string): string {
   const date = new Date(iso);
   return Number.isNaN(date.getTime()) ? iso : date.toLocaleString();
-}
-
-function startedFeedback(result: RefreshCatalogResult): RefreshFeedback {
-  return {
-    kind: "success",
-    message:
-      result.kind === "already_running"
-        ? "A catalog refresh is already running."
-        : "Catalog refresh started.",
-  };
-}
-
-function finishedFeedback(status: CatalogRefreshStatus): RefreshFeedback {
-  return status.status === "failed"
-    ? { kind: "error", message: `Catalog refresh failed: ${status.error_message}` }
-    : { kind: "success", message: `Catalog refresh ${status.status}.` };
-}
-
-function hasFinishedSince(status: CatalogRefreshStatus, baseline: string): boolean {
-  return status.status !== "never_run" && status.last_probe_at !== baseline;
 }
 
 function invalidateAfterRefresh(queryClient: QueryClient, status: CatalogRefreshStatus): void {
