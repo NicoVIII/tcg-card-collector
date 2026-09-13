@@ -57,6 +57,7 @@ function RuleRow(props: RuleRowProps) {
   );
 }
 
+// eslint-disable-next-line complexity -- predates the rule; logic moves to a plain .ts module when this page is touched
 export function InventoryPage() {
   const [newRuleName, setNewRuleName] = createSignal("");
   const [newExpression, setNewExpression] = createSignal("set_code in (m11)");

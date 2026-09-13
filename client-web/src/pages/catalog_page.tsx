@@ -9,6 +9,7 @@ import { Pagination } from "../components/pagination";
 
 const PAGE_SIZE = 25;
 
+// eslint-disable-next-line complexity -- predates the rule; logic moves to a plain .ts module when this page is touched
 export function CatalogPage() {
   const queryClient = useQueryClient();
   const [offset, setOffset] = createSignal(0);

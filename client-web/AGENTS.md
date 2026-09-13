@@ -2,6 +2,8 @@
 
 Tooling runs through bun via the justfile (`just client-web::check`, `::test`, `::dev`). Formatting is oxfmt, linting is eslint + oxlint, tests are Vitest (node environment).
 
+The eslint config carries the code-shape floor — top-down order (`@typescript-eslint/no-use-before-define`), `complexity`, `max-depth` — at the backend's glinter thresholds. Escape hatch: `// eslint-disable-next-line <rule> -- <reason>` on the line above.
+
 ## Data Layer (`src/data/`)
 
 One directory per backend capability, each split into three files:

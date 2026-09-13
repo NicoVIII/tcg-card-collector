@@ -76,6 +76,7 @@ function locateColumns(header: string[]): Record<string, number> | null {
   return indices;
 }
 
+// eslint-disable-next-line complexity -- predates the rule; the per-line loop body extracts when this parser is touched
 export function parseDeckstatsCsv(csv: string): DeckstatsParseResult {
   const physicalLines = csv.split("\n");
 

@@ -67,8 +67,8 @@ date/time, serialization — never hand-rolled).
 
 **Code shape is an invariant too.** The root AGENTS.md "Code Shape" rules (top-down
 order, small single-purpose functions, why-comments, repetition extracted) apply in review.
-The lint gate owns the mechanical floor (`deep_nesting`, `function_complexity`); flag what
-it cannot see: the same mapping written in both driver doors, positional tuples crossing a
+The lint gates own the mechanical floor (glinter's `deep_nesting`/`function_complexity`,
+eslint's `complexity`/`max-depth`/`no-use-before-define`); flag what they cannot see: the same mapping written in both driver doors, positional tuples crossing a
 function boundary, a page component holding logic, rationale that exists nowhere.
 
 ## Tactical DDD is already encoded
