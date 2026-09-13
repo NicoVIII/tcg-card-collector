@@ -1,7 +1,6 @@
 import gleam/dynamic/decode
 import gleam/list
 import gleam/result
-import gleam/string
 import shared/infrastructure/stores/sqlite_store
 import sqlight
 
@@ -43,9 +42,7 @@ fn row_params(row: PlacedCardRow) -> List(sqlight.Value) {
 
 fn increment_batch(batch: List(PlacedCardRow)) -> Result(Nil, String) {
   let placeholders =
-    batch
-    |> list.map(fn(_) { "(?, ?, ?, ?)" })
-    |> string.join(", ")
+    sqlite_store.placeholders(list.length(batch), "(?, ?, ?, ?)")
   let params = list.flat_map(batch, row_params)
   let sql =
     "INSERT INTO placed_cards (set_code, collector_number, location, quantity) "

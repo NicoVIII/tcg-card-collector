@@ -1,6 +1,7 @@
 import gleam/dynamic/decode.{type Decoder}
 import gleam/list
 import gleam/result
+import gleam/string
 import shared/infrastructure/os_runtime
 import sqlight
 
@@ -65,4 +66,26 @@ pub fn query(
   use conn <- sqlight.with_connection(db_file())
   sqlight.query(sql, on: conn, with: params, expecting: decoder)
   |> result.map_error(message)
+}
+
+/// `count` copies of `row` (e.g. "?" or "(?,?)"), comma-separated, for an
+/// `IN (...)` list or a multi-row `VALUES`.
+pub fn placeholders(count: Int, row: String) -> String {
+  list.repeat(row, count)
+  |> string.join(", ")
+}
+
+/// Runs `run` over `items` in chunks of `chunk_size` and concatenates the rows.
+/// Chunking keeps each statement under SQLite's bound-parameter cap (default
+/// 999); an empty input returns no rows without running SQL, where `IN ()`
+/// would be a syntax error.
+pub fn query_in_chunks(
+  items: List(a),
+  chunk_size: Int,
+  run: fn(List(a)) -> Result(List(b), String),
+) -> Result(List(b), String) {
+  items
+  |> list.sized_chunk(chunk_size)
+  |> list.try_map(run)
+  |> result.map(list.flatten)
 }

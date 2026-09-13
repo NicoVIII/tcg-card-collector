@@ -1,7 +1,6 @@
 import gleam/dynamic/decode
 import gleam/list
 import gleam/result
-import gleam/string
 import shared/infrastructure/stores/sqlite_store
 import sqlight
 
@@ -28,10 +27,7 @@ pub fn list_cards() -> Result(List(CardRow), String) {
 }
 
 fn batch_values(batch: List(CardRow)) -> #(String, List(sqlight.Value)) {
-  let placeholders =
-    batch
-    |> list.map(fn(_) { "(?, ?, ?)" })
-    |> string.join(", ")
+  let placeholders = sqlite_store.placeholders(list.length(batch), "(?, ?, ?)")
   let params =
     batch
     |> list.flat_map(fn(row) {

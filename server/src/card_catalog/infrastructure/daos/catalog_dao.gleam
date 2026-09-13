@@ -5,7 +5,6 @@ import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import gleam/string
 import gleam/time/timestamp
 import shared/domain/release_date
 import shared/infrastructure/shell
@@ -151,67 +150,54 @@ pub fn list() -> Result(List(CatalogKeyTuple), String) {
   )
 }
 
-pub fn get_by_keys(
-  keys: List(CatalogKeyTuple),
-) -> Result(List(CatalogCardTuple), String) {
-  keys
-  |> list.sized_chunk(get_by_keys_batch_size)
-  |> list.try_map(get_by_keys_chunk)
-  |> result.map(list.flatten)
-}
-
 fn get_by_keys_chunk(
   keys: List(CatalogKeyTuple),
 ) -> Result(List(CatalogCardTuple), String) {
-  case keys {
-    [] -> Ok([])
-    _ -> {
-      let placeholders =
-        keys
-        |> list.map(fn(_) { "(?,?)" })
-        |> string.join(", ")
-      let params =
-        keys
-        |> list.flat_map(fn(key) {
-          let #(set_code, collector_number) = key
-          [sqlight.text(set_code), sqlight.text(collector_number)]
-        })
-      sqlite_store.query(
-        "SELECT set_code, collector_number, name, image_uri, rarity, "
-          <> "oracle_id, color_identity, type_line, released_at "
-          <> "FROM catalog_cards "
-          <> "WHERE (set_code, collector_number) IN ("
-          <> placeholders
-          <> ");",
-        params,
-        card_row_decoder(),
-      )
-    }
-  }
+  let params =
+    list.flat_map(keys, fn(key) {
+      let #(set_code, collector_number) = key
+      [sqlight.text(set_code), sqlight.text(collector_number)]
+    })
+  sqlite_store.query(
+    "SELECT set_code, collector_number, name, image_uri, rarity, "
+      <> "oracle_id, color_identity, type_line, released_at "
+      <> "FROM catalog_cards "
+      <> "WHERE (set_code, collector_number) IN ("
+      <> sqlite_store.placeholders(list.length(keys), "(?,?)")
+      <> ");",
+    params,
+    card_row_decoder(),
+  )
+}
+
+pub fn get_by_keys(
+  keys: List(CatalogKeyTuple),
+) -> Result(List(CatalogCardTuple), String) {
+  sqlite_store.query_in_chunks(keys, get_by_keys_batch_size, get_by_keys_chunk)
+}
+
+fn list_by_set_codes_chunk(
+  set_codes: List(String),
+) -> Result(List(CatalogKeyTuple), String) {
+  sqlite_store.query(
+    "SELECT DISTINCT set_code, collector_number "
+      <> "FROM catalog_cards "
+      <> "WHERE set_code IN ("
+      <> sqlite_store.placeholders(list.length(set_codes), "?")
+      <> ");",
+    list.map(set_codes, sqlight.text),
+    key_row_decoder(),
+  )
 }
 
 pub fn list_by_set_codes(
   set_codes: List(String),
 ) -> Result(List(CatalogKeyTuple), String) {
-  case set_codes {
-    [] -> Ok([])
-    _ -> {
-      let placeholders =
-        set_codes
-        |> list.map(fn(_) { "?" })
-        |> string.join(", ")
-      let params = list.map(set_codes, sqlight.text)
-      sqlite_store.query(
-        "SELECT DISTINCT set_code, collector_number "
-          <> "FROM catalog_cards "
-          <> "WHERE set_code IN ("
-          <> placeholders
-          <> ");",
-        params,
-        key_row_decoder(),
-      )
-    }
-  }
+  sqlite_store.query_in_chunks(
+    set_codes,
+    get_by_keys_batch_size,
+    list_by_set_codes_chunk,
+  )
 }
 
 // 7 params per row; stay under the SQLite 999-param cap (100 × 7 = 700).
@@ -233,10 +219,6 @@ pub fn replace_sets(sets: List(card_set.CardSet)) -> Result(Nil, String) {
 fn insert_sets_chunk_statement(
   chunk: List(card_set.CardSet),
 ) -> #(String, List(sqlight.Value)) {
-  let placeholders =
-    chunk
-    |> list.map(fn(_) { "(?,?,?,?,?,?,?)" })
-    |> string.join(", ")
   let params =
     chunk
     |> list.flat_map(fn(s: card_set.CardSet) {
@@ -257,7 +239,7 @@ fn insert_sets_chunk_statement(
     })
   #(
     "INSERT INTO catalog_sets (set_code, name, released_at, card_count, printed_size, icon_svg_uri, parent_set_code) VALUES "
-      <> placeholders
+      <> sqlite_store.placeholders(list.length(chunk), "(?,?,?,?,?,?,?)")
       <> ";",
     params,
   )
@@ -272,42 +254,29 @@ fn set_metadata_row_decoder() -> decode.Decoder(
   decode.success(#(set_code, released_at, parent_set_code))
 }
 
+fn get_set_metadata_chunk(
+  codes: List(String),
+) -> Result(List(#(String, String, Option(String))), String) {
+  sqlite_store.query(
+    "SELECT set_code, released_at, parent_set_code FROM catalog_sets WHERE set_code IN ("
+      <> sqlite_store.placeholders(list.length(codes), "?")
+      <> ");",
+    list.map(codes, sqlight.text),
+    set_metadata_row_decoder(),
+  )
+}
+
 // Sets absent from catalog_sets are simply missing from the result; a NULL
 // parent_set_code maps to None (a root set). Both facts feed set-family
 // resolution in the domain.
 pub fn get_set_metadata(
   set_codes: List(String),
 ) -> Result(List(#(String, String, Option(String))), String) {
-  case set_codes {
-    [] -> Ok([])
-    _ ->
-      set_codes
-      |> list.sized_chunk(get_by_keys_batch_size)
-      |> list.try_map(get_set_metadata_chunk)
-      |> result.map(list.flatten)
-  }
-}
-
-fn get_set_metadata_chunk(
-  codes: List(String),
-) -> Result(List(#(String, String, Option(String))), String) {
-  case codes {
-    [] -> Ok([])
-    _ -> {
-      let placeholders =
-        codes
-        |> list.map(fn(_) { "?" })
-        |> string.join(", ")
-      let params = list.map(codes, sqlight.text)
-      sqlite_store.query(
-        "SELECT set_code, released_at, parent_set_code FROM catalog_sets WHERE set_code IN ("
-          <> placeholders
-          <> ");",
-        params,
-        set_metadata_row_decoder(),
-      )
-    }
-  }
+  sqlite_store.query_in_chunks(
+    set_codes,
+    get_by_keys_batch_size,
+    get_set_metadata_chunk,
+  )
 }
 
 fn set_printed_size_row_decoder() -> decode.Decoder(#(String, Option(Int))) {
@@ -316,41 +285,28 @@ fn set_printed_size_row_decoder() -> decode.Decoder(#(String, Option(Int))) {
   decode.success(#(set_code, printed_size))
 }
 
+fn get_set_printed_sizes_chunk(
+  codes: List(String),
+) -> Result(List(#(String, Option(Int))), String) {
+  sqlite_store.query(
+    "SELECT set_code, printed_size FROM catalog_sets WHERE set_code IN ("
+      <> sqlite_store.placeholders(list.length(codes), "?")
+      <> ");",
+    list.map(codes, sqlight.text),
+    set_printed_size_row_decoder(),
+  )
+}
+
 // Sets absent from catalog_sets are simply missing from the result; a NULL
 // printed_size maps to None. Both mean "no official size" to the caller.
 pub fn get_set_printed_sizes(
   set_codes: List(String),
 ) -> Result(List(#(String, Option(Int))), String) {
-  case set_codes {
-    [] -> Ok([])
-    _ ->
-      set_codes
-      |> list.sized_chunk(get_by_keys_batch_size)
-      |> list.try_map(get_set_printed_sizes_chunk)
-      |> result.map(list.flatten)
-  }
-}
-
-fn get_set_printed_sizes_chunk(
-  codes: List(String),
-) -> Result(List(#(String, Option(Int))), String) {
-  case codes {
-    [] -> Ok([])
-    _ -> {
-      let placeholders =
-        codes
-        |> list.map(fn(_) { "?" })
-        |> string.join(", ")
-      let params = list.map(codes, sqlight.text)
-      sqlite_store.query(
-        "SELECT set_code, printed_size FROM catalog_sets WHERE set_code IN ("
-          <> placeholders
-          <> ");",
-        params,
-        set_printed_size_row_decoder(),
-      )
-    }
-  }
+  sqlite_store.query_in_chunks(
+    set_codes,
+    get_by_keys_batch_size,
+    get_set_printed_sizes_chunk,
+  )
 }
 
 pub fn bulk_load(csv_path: String) -> Result(Nil, String) {
