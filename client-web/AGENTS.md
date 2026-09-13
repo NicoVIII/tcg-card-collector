@@ -2,6 +2,8 @@
 
 Tooling runs through bun via the justfile (`just client-web::check`, `::test`, `::dev`). Formatting is oxfmt, linting is eslint + oxlint, tests are Vitest (node environment).
 
+TypeScript is split on purpose: `@typescript/native` (TS 7) provides `tsc` for `type-check`, while the `typescript` name is aliased to `@typescript/typescript6` because typescript-eslint needs the JS API that TS 7 dropped. Collapse the alias only once typescript-eslint supports TS 7.
+
 The eslint config carries the code-shape floor — top-down order (`@typescript-eslint/no-use-before-define`), `complexity`, `max-depth` — at the backend's glinter thresholds. Escape hatch: `// eslint-disable-next-line <rule> -- <reason>` on the line above.
 
 ## Data Layer (`src/data/`)
