@@ -7,7 +7,7 @@ import {
 } from "../data/inventory_planning/mutation";
 import { SELECTOR_OPTIONS } from "../data/inventory_planning/options";
 import { randomUUID } from "../lib/uuid";
-import type { InventoryRule } from "../data/inventory_planning/request";
+import type { InventoryRule, ProjectionLocation } from "../data/inventory_planning/request";
 import {
   useBulkSpecQuery,
   useInventoryProjectionQuery,
@@ -57,7 +57,78 @@ function RuleRow(props: RuleRowProps) {
   );
 }
 
-// eslint-disable-next-line complexity -- predates the rule; logic moves to a plain .ts module when this page is touched
+function ProjectionLocationTable(props: { location: ProjectionLocation }) {
+  return (
+    <div class="projection-location">
+      <h4>{props.location.location_name}</h4>
+      <p class="hint">
+        {props.location.rule_id === "" ? "Bulk remainder" : "Rule-assigned"} —{" "}
+        {props.location.total_quantity} card(s)
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Card</th>
+            <th>Set</th>
+            <th>#</th>
+            <th>Qty</th>
+            <th>Color</th>
+            <th>Rarity</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody>
+          <For each={props.location.cards}>
+            {(card) => (
+              <tr>
+                <td>{card.name}</td>
+                <td>{card.set_code}</td>
+                <td>{card.collector_number}</td>
+                <td>{card.quantity}</td>
+                <td>{card.color_identity}</td>
+                <td>{card.rarity}</td>
+                <td>{card.card_type}</td>
+              </tr>
+            )}
+          </For>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ProjectionSection() {
+  const projectionQuery = useInventoryProjectionQuery();
+  const unknownCount = () => projectionQuery.data?.unknown_count ?? 0;
+  const locations = () => projectionQuery.data?.locations ?? [];
+
+  return (
+    <>
+      <h3>Projection</h3>
+      <Show when={projectionQuery.isLoading}>
+        <p>Loading projection...</p>
+      </Show>
+      <Show when={projectionQuery.isError}>
+        <p role="alert">{mapError(projectionQuery.error).message}</p>
+      </Show>
+      <Show when={unknownCount() > 0}>
+        <p class="hint">
+          {unknownCount()} collection card(s) unknown to the catalog — placed in bulk without
+          attributes.
+        </p>
+      </Show>
+      <Show
+        when={!projectionQuery.isError && locations().length > 0}
+        fallback={<p>No projection data.</p>}
+      >
+        <For each={locations()}>
+          {(location) => <ProjectionLocationTable location={location} />}
+        </For>
+      </Show>
+    </>
+  );
+}
+
 export function InventoryPage() {
   const [newRuleName, setNewRuleName] = createSignal("");
   const [newExpression, setNewExpression] = createSignal("set_code in (m11)");
@@ -69,7 +140,6 @@ export function InventoryPage() {
   const [mutationError, setMutationError] = createSignal<string | null>(null);
 
   const rulesQuery = useInventoryRulesQuery();
-  const projectionQuery = useInventoryProjectionQuery();
   const upsertMutation = useUpsertInventoryRuleMutation();
   const deleteMutation = useDeleteInventoryRuleMutation();
   const bulkSpecQuery = useBulkSpecQuery();
@@ -257,63 +327,7 @@ export function InventoryPage() {
         <code>type</code>, <code>name</code>, <code>set_code</code>, <code>collector_number</code>,{" "}
         <code>rarity</code>, <code>released_at</code>.
       </p>
-      <h3>Projection</h3>
-      <Show when={projectionQuery.isLoading}>
-        <p>Loading projection...</p>
-      </Show>
-      <Show when={projectionQuery.isError}>
-        <p role="alert">{mapError(projectionQuery.error).message}</p>
-      </Show>
-      <Show when={(projectionQuery.data?.unknown_count ?? 0) > 0}>
-        <p class="hint">
-          {projectionQuery.data?.unknown_count} collection card(s) unknown to the catalog — placed
-          in bulk without attributes.
-        </p>
-      </Show>
-      <Show
-        when={!projectionQuery.isError && (projectionQuery.data?.locations?.length ?? 0) > 0}
-        fallback={<p>No projection data.</p>}
-      >
-        <For each={projectionQuery.data?.locations}>
-          {(location) => (
-            <div class="projection-location">
-              <h4>{location.location_name}</h4>
-              <p class="hint">
-                {location.rule_id === "" ? "Bulk remainder" : "Rule-assigned"} —{" "}
-                {location.total_quantity} card(s)
-              </p>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Card</th>
-                    <th>Set</th>
-                    <th>#</th>
-                    <th>Qty</th>
-                    <th>Color</th>
-                    <th>Rarity</th>
-                    <th>Type</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <For each={location.cards}>
-                    {(card) => (
-                      <tr>
-                        <td>{card.name}</td>
-                        <td>{card.set_code}</td>
-                        <td>{card.collector_number}</td>
-                        <td>{card.quantity}</td>
-                        <td>{card.color_identity}</td>
-                        <td>{card.rarity}</td>
-                        <td>{card.card_type}</td>
-                      </tr>
-                    )}
-                  </For>
-                </tbody>
-              </table>
-            </div>
-          )}
-        </For>
-      </Show>
+      <ProjectionSection />
     </section>
   );
 }

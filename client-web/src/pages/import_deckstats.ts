@@ -76,15 +76,65 @@ function locateColumns(header: string[]): Record<string, number> | null {
   return indices;
 }
 
-// eslint-disable-next-line complexity -- predates the rule; the per-line loop body extracts when this parser is touched
-export function parseDeckstatsCsv(csv: string): DeckstatsParseResult {
-  const physicalLines = csv.split("\n");
+type NumberedLine = {
+  lineNumber: number;
+  content: string;
+};
 
-  // Track the original 1-based line number for the rejected-line report while
-  // skipping blank lines.
-  const numberedLines = physicalLines
+type LineOutcome =
+  | { kind: "row"; row: ImportRow }
+  | { kind: "rejected"; rejected: RejectedLine }
+  | { kind: "skipped" };
+
+// Keeps the original 1-based line number for the rejected-line report while
+// skipping blank lines.
+function numberNonBlankLines(csv: string): NumberedLine[] {
+  return csv
+    .split("\n")
     .map((content, index) => ({ lineNumber: index + 1, content }))
     .filter((entry) => entry.content.trim().length > 0);
+}
+
+function rejectLine(entry: NumberedLine, reason: string): LineOutcome {
+  return { kind: "rejected", rejected: { ...entry, reason } };
+}
+
+function parseDataLine(entry: NumberedLine, columns: Record<string, number>): LineOutcome {
+  const fields = parseCsvLine(entry.content);
+  const amountRaw = (fields[columns.amount] ?? "").trim();
+  const setCode = (fields[columns.set_code] ?? "").trim();
+  const collectorNumber = (fields[columns.collector_number] ?? "").trim();
+
+  const amount = Number.parseInt(amountRaw, 10);
+  if (!Number.isFinite(amount)) {
+    return rejectLine(entry, `Invalid amount "${amountRaw}".`);
+  }
+  if (amount <= 0) {
+    // Not an error, just nothing to import.
+    return { kind: "skipped" };
+  }
+  if (setCode.length === 0 || collectorNumber.length === 0) {
+    return rejectLine(entry, "Missing set_code or collector_number.");
+  }
+  return { kind: "row", row: { setCode, collectorNumber, quantity: amount } };
+}
+
+// A Map keeps first-seen key order, and re-setting an existing key does not move it.
+function sumQuantitiesPerKey(rows: ImportRow[]): ImportRow[] {
+  const byKey = new Map<string, ImportRow>();
+  for (const row of rows) {
+    const key = `${row.setCode}/${row.collectorNumber}`;
+    const existing = byKey.get(key);
+    byKey.set(
+      key,
+      existing === undefined ? row : { ...existing, quantity: existing.quantity + row.quantity },
+    );
+  }
+  return [...byKey.values()];
+}
+
+export function parseDeckstatsCsv(csv: string): DeckstatsParseResult {
+  const numberedLines = numberNonBlankLines(csv);
 
   const headerEntry = numberedLines[0];
   if (headerEntry === undefined) {
@@ -101,56 +151,11 @@ export function parseDeckstatsCsv(csv: string): DeckstatsParseResult {
     };
   }
 
-  const rejected: RejectedLine[] = [];
-  // Aggregate quantities per key, preserving first-seen order.
-  const order: string[] = [];
-  const byKey = new Map<string, ImportRow>();
+  const outcomes = numberedLines.slice(1).map((entry) => parseDataLine(entry, columns));
+  const rows = outcomes.flatMap((outcome) => (outcome.kind === "row" ? [outcome.row] : []));
+  const rejected = outcomes.flatMap((outcome) =>
+    outcome.kind === "rejected" ? [outcome.rejected] : [],
+  );
 
-  for (const entry of numberedLines.slice(1)) {
-    const fields = parseCsvLine(entry.content);
-    const amountRaw = (fields[columns.amount] ?? "").trim();
-    const setCode = (fields[columns.set_code] ?? "").trim();
-    const collectorNumber = (fields[columns.collector_number] ?? "").trim();
-
-    const amount = Number.parseInt(amountRaw, 10);
-    if (!Number.isFinite(amount)) {
-      rejected.push({
-        lineNumber: entry.lineNumber,
-        content: entry.content,
-        reason: `Invalid amount "${amountRaw}".`,
-      });
-      continue;
-    }
-    if (amount <= 0) {
-      // Not an error, just nothing to import.
-      continue;
-    }
-    if (setCode.length === 0 || collectorNumber.length === 0) {
-      rejected.push({
-        lineNumber: entry.lineNumber,
-        content: entry.content,
-        reason: "Missing set_code or collector_number.",
-      });
-      continue;
-    }
-
-    const key = `${setCode}/${collectorNumber}`;
-    const existing = byKey.get(key);
-    if (existing === undefined) {
-      order.push(key);
-      byKey.set(key, { setCode, collectorNumber, quantity: amount });
-    } else {
-      existing.quantity += amount;
-    }
-  }
-
-  const rows = order.map((key) => {
-    const row = byKey.get(key);
-    if (row === undefined) {
-      throw new Error(`unreachable: missing aggregated row for ${key}`);
-    }
-    return row;
-  });
-
-  return { rows, rejected, error: null };
+  return { rows: sumQuantitiesPerKey(rows), rejected, error: null };
 }
