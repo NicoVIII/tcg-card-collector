@@ -37,8 +37,6 @@ Opinionated dual-mode (design-consult + review) aspect skills live in [.claude/s
 
 ## Issues
 
-Work is tracked as GitHub issues only — no milestones, no Projects.
+GitHub issues only — no milestones, no Projects. The scope document is [docs/vision.md](docs/vision.md).
 
-- **Triage before filing**: trivial fixes get fixed, not filed; ideas outside [docs/vision.md](docs/vision.md) get named as out of scope; small review nits bundle into one sweep issue.
 - **Exactly one type label**: `bug` (observed wrong behaviour), `foundation` (enabler work — DX, code quality, de-risking other work), or `enhancement` (new capability).
-- **Cold-startable body**: bugs carry repro plus expected/actual, features the acceptance shape; the title is specific enough to triage from the list view.
