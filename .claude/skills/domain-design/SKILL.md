@@ -83,8 +83,8 @@ collector number, parent set). Flag:
   doesn't carry; every design must state its behaviour for the unknown-to-catalog case
   (precedent: fails every predicate, cascades to bulk).
 - **The finish/language collapse is known debt, expansion expected.** Collection
-  semantics today are quantity per CardKey — finish and language are stored raw at
-  import but not modeled, condition not at all. CardKey-only designs are fine today,
+  semantics today are quantity per CardKey — finish and language are dropped at
+  import (tracked in #89), condition too. CardKey-only designs are fine today,
   but flag any design that would make adding finish-awareness *harder* (e.g. baking
   "one key = one physical kind" into new persistence or contract shapes). Actually
   introducing finish/language into the model is ADR-weight, not a side effect.
