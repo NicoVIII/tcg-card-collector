@@ -96,8 +96,11 @@ pub fn fetch_metadata(io: Downloader) -> Result(#(String, String), String) {
   use path <- result.try(
     io.download(bulk_metadata_url) |> or_fail("metadata download"),
   )
+  // Failing inside jq names the missing field; a null would otherwise surface
+  // as an empty trailing column that shell.run's trim silently drops.
   let script =
-    "jq -r '[.updated_at, .download_uri] | @tsv' < " <> shell.quote(path)
+    "jq -r 'if .updated_at and .jsonl_download_uri then [.updated_at, .jsonl_download_uri] | @tsv else error(\"missing updated_at or jsonl_download_uri\") end' < "
+    <> shell.quote(path)
   use output <- result.try(shell.run(script) |> or_fail("metadata jq parse"))
   use #(updated_at, download_uri) <- result.try(parse_metadata_tsv(output))
   log("metadata ok: updated_at=" <> updated_at <> " uri=" <> download_uri)

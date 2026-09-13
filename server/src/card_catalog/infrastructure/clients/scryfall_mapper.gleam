@@ -216,11 +216,15 @@ fn run_jq(download_path: String, ndjson_path: String) -> Result(Nil, String) {
   // Enrichment fields tolerate multi-face/reversible layouts that expose no
   // top-level value: fall back to the first card face, then to "". color_identity
   // is a WUBRG letter array joined into a canonical-ish string; planning
-  // re-canonicalizes at its port boundary.
+  // re-canonicalizes at its port boundary. The bulk file is gzipped JSON Lines;
+  // gzip -t runs first because sh has no portable pipefail to catch a corrupt
+  // archive mid-pipe.
   let jq_script =
-    "jq -c '.[] | {id: (.id // \"\"), name: (.name // \"\"), set_code: (.set // \"\"), collector_number: (.collector_number // \"\"), rarity: (.rarity // \"unknown\"), image_uri: (.image_uris.small // .card_faces[0].image_uris.small // \"\"), oracle_id: (.oracle_id // .card_faces[0].oracle_id // \"\"), color_identity: ((.color_identity // []) | join(\"\")), type_line: (.type_line // .card_faces[0].type_line // \"\"), released_at: (.released_at // \"\")}' < "
+    "gzip -t < "
     <> shell.quote(download_path)
-    <> " > "
+    <> " && gzip -dc < "
+    <> shell.quote(download_path)
+    <> " | jq -c '{id: (.id // \"\"), name: (.name // \"\"), set_code: (.set // \"\"), collector_number: (.collector_number // \"\"), rarity: (.rarity // \"unknown\"), image_uri: (.image_uris.small // .card_faces[0].image_uris.small // \"\"), oracle_id: (.oracle_id // .card_faces[0].oracle_id // \"\"), color_identity: ((.color_identity // []) | join(\"\")), type_line: (.type_line // .card_faces[0].type_line // \"\"), released_at: (.released_at // \"\")}' > "
     <> shell.quote(ndjson_path)
   case shell.run(jq_script) {
     Ok(_) -> {
@@ -266,7 +270,7 @@ fn write_csv(
   }
 }
 
-// Transforms a downloaded Scryfall bulk-cards JSON file into a CSV ready for
+// Transforms a downloaded Scryfall bulk-cards JSON Lines file into a CSV ready for
 // bulk loading. Cleans up the intermediate ndjson on every exit path; cleans
 // up a partial csv on its own error branches.
 pub fn to_csv(download_path: String) -> Result(String, String) {

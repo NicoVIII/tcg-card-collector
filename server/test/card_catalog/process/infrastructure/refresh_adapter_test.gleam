@@ -7,6 +7,8 @@ import gleam/list
 import gleam/option
 import gleam/result
 import gleam/string
+import shared/infrastructure/os_runtime
+import shared/infrastructure/shell
 import shared/infrastructure/stores/sqlite_store
 import sqlight
 import support/test_db
@@ -27,9 +29,10 @@ const fixture_dir = "test/card_catalog/process/infrastructure/fixtures"
 
 const metadata_fixture = fixture_dir <> "/scryfall_metadata.json"
 
-const bulk_fixture = fixture_dir <> "/scryfall_bulk_cards.json"
+const bulk_fixture = fixture_dir <> "/scryfall_bulk_cards.jsonl"
 
-const enriched_bulk_fixture = fixture_dir <> "/scryfall_bulk_cards_enriched.json"
+const enriched_bulk_fixture = fixture_dir
+  <> "/scryfall_bulk_cards_enriched.jsonl"
 
 const sets_page1_fixture = fixture_dir <> "/scryfall_sets_page1.json"
 
@@ -38,7 +41,7 @@ const sets_page2_fixture = fixture_dir <> "/scryfall_sets_page2.json"
 const fixture_updated_at = "2024-01-01T00:00:00.000Z"
 
 // URL routing for fake downloaders:
-// - "fixture.local/bulk"   → bulk cards fixture (the download_uri in metadata.json)
+// - "fixture.local/bulk"   → bulk cards fixture (the jsonl_download_uri in metadata.json)
 // - "fixture.local/sets"   → sets page 2 (next_page URL from page1 fixture)
 // - "scryfall.com/sets"    → sets page 1 (the /sets endpoint the client calls)
 // - anything else          → metadata fixture
@@ -57,16 +60,33 @@ fn route_url(url: String, bulk: String) -> String {
   }
 }
 
-fn fake_downloader() -> scryfall_client.Downloader {
+// Scryfall serves the bulk file gzipped; fixtures stay plain JSON Lines so
+// they remain reviewable, and are compressed into a temp path on download.
+fn gzipped_copy(fixture: String) -> Result(String, String) {
+  let path =
+    os_runtime.getenv_or("TMPDIR", "/tmp")
+    <> "/tcg-test-bulk-"
+    <> string.replace(fixture, "/", "_")
+    <> ".gz"
+  shell.run("gzip -c < " <> shell.quote(fixture) <> " > " <> shell.quote(path))
+  |> result.replace(path)
+}
+
+fn downloader_for(bulk: String) -> scryfall_client.Downloader {
   scryfall_client.Downloader(download: fn(url) {
-    Ok(route_url(url, bulk_fixture))
+    case route_url(url, bulk) {
+      path if path == bulk -> gzipped_copy(bulk)
+      path -> Ok(path)
+    }
   })
 }
 
+fn fake_downloader() -> scryfall_client.Downloader {
+  downloader_for(bulk_fixture)
+}
+
 fn enriched_downloader() -> scryfall_client.Downloader {
-  scryfall_client.Downloader(download: fn(url) {
-    Ok(route_url(url, enriched_bulk_fixture))
-  })
+  downloader_for(enriched_bulk_fixture)
 }
 
 pub fn import_succeeds_and_loads_cards_test() {
@@ -297,4 +317,20 @@ pub fn unchanged_upstream_marks_skipped_test() {
       "SELECT last_refresh_status FROM catalog_sync_metadata WHERE id = 1;",
     )
   assert status == "skipped"
+}
+
+// Scryfall once dropped the link the client read; a missing jsonl_download_uri
+// must fail the refresh with a reason naming it instead of importing nothing.
+pub fn metadata_without_jsonl_uri_fails_naming_the_field_test() {
+  use _db <- test_db.with_temp_db()
+
+  let downloader =
+    scryfall_client.Downloader(download: fn(_url) {
+      Ok(fixture_dir <> "/scryfall_metadata_without_jsonl_uri.json")
+    })
+  let port = adapter.new_with_downloader(downloader)
+  let assert Error(error) = handler.execute(handler.RefreshCatalogCommand, port)
+
+  assert string.contains(error.reason, "jsonl_download_uri")
+  assert catalog_dao.list() == Ok([])
 }
