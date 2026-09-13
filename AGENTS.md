@@ -18,6 +18,13 @@ Readability rules that hold across the stack; each sub-tree's AGENTS.md adds its
 - **Repetition is a helper waiting to be named**: the third copy of a pattern extracts a shared function; the first two may stay.
 - Existing code migrates to these rules when touched, never in style-only commits.
 
+## Skeleton First
+
+Names and boundaries are reviewed before bodies exist, because they are cheap to fix in prose and expensive in a diff.
+
+- **A new module, or a change to public types or signatures across more than one module**: first present the skeleton — module paths, types, function signatures, one line of purpose each — and wait for approval before writing bodies. Changes confined to one function's body skip this.
+- **An approved or maintainer-written skeleton is fixed.** If a body turns out to need a different type, signature, or module split, stop and say why instead of changing it.
+
 ## Development
 
 Task runner is `just` with `::` module scoping (`just --list` for everything). The most-used commands: `just dev` (run backend + frontend), `just check` (all checks), `just skir-gen` (regenerate from contract).
