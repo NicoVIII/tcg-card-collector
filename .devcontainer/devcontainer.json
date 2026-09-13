@@ -28,7 +28,7 @@
         "FanaticPythoner.better-todo-tree",
         "timonwong.shellcheck",
         // Docs
-        "MermaidChart.vscode-mermaid-chart",
+        "vstirbu.vscode-mermaid-preview",
         // API
         "TylerFibonacci.skir-language",
         // Database
