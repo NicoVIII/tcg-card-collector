@@ -1,5 +1,4 @@
 import gleam/dynamic/decode
-import gleam/result
 import shared/infrastructure/stores/sqlite_store
 import sqlight
 
@@ -33,7 +32,6 @@ pub fn upsert(
     sqlight.text(selector),
     sqlight.text(sort_keys),
   ])
-  |> result.map_error(fn(error) { error.message })
 }
 
 fn rule_row_decoder() -> decode.Decoder(RuleTuple) {
@@ -54,12 +52,10 @@ pub fn list() -> Result(List(RuleTuple), String) {
     [],
     rule_row_decoder(),
   )
-  |> result.map_error(fn(error) { error.message })
 }
 
 pub fn delete(id: String) -> Result(Nil, String) {
   sqlite_store.exec("DELETE FROM inventory_rules WHERE id = ?;", [
     sqlight.text(id),
   ])
-  |> result.map_error(fn(error) { error.message })
 }

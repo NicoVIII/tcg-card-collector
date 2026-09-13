@@ -10,18 +10,18 @@ pub fn db_file() -> String {
   os_runtime.getenv_or("TCG_DB_FILE", default_db_file)
 }
 
+// Ports speak `Result(_, String)`; converting here keeps every DAO from
+// repeating it.
+fn message(error: sqlight.Error) -> String {
+  error.message
+}
+
 /// Run a parameterized statement for its side effect (INSERT/UPDATE/DELETE).
-pub fn exec(
-  sql: String,
-  params: List(sqlight.Value),
-) -> Result(Nil, sqlight.Error) {
+pub fn exec(sql: String, params: List(sqlight.Value)) -> Result(Nil, String) {
   use conn <- sqlight.with_connection(db_file())
-  case
-    sqlight.query(sql, on: conn, with: params, expecting: decode.success(Nil))
-  {
-    Ok(_) -> Ok(Nil)
-    Error(error) -> Error(error)
-  }
+  sqlight.query(sql, on: conn, with: params, expecting: decode.success(Nil))
+  |> result.map(fn(_) { Nil })
+  |> result.map_error(message)
 }
 
 /// Run several parameterized statements in one transaction: either every
@@ -29,8 +29,16 @@ pub fn exec(
 /// call, so multi-statement atomicity has to come through here.
 pub fn exec_all_atomically(
   statements: List(#(String, List(sqlight.Value))),
-) -> Result(Nil, sqlight.Error) {
+) -> Result(Nil, String) {
   use conn <- sqlight.with_connection(db_file())
+  run_atomically(conn, statements)
+  |> result.map_error(message)
+}
+
+fn run_atomically(
+  conn: sqlight.Connection,
+  statements: List(#(String, List(sqlight.Value))),
+) -> Result(Nil, sqlight.Error) {
   use _ <- result.try(sqlight.exec("BEGIN;", conn))
   let outcome =
     list.try_each(statements, fn(statement) {
@@ -53,7 +61,8 @@ pub fn query(
   sql: String,
   params: List(sqlight.Value),
   decoder: Decoder(t),
-) -> Result(List(t), sqlight.Error) {
+) -> Result(List(t), String) {
   use conn <- sqlight.with_connection(db_file())
   sqlight.query(sql, on: conn, with: params, expecting: decoder)
+  |> result.map_error(message)
 }

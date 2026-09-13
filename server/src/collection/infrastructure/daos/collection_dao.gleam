@@ -25,7 +25,6 @@ pub fn list_cards() -> Result(List(CardRow), String) {
     [],
     card_row_decoder(),
   )
-  |> result.map_error(fn(error) { error.message })
 }
 
 fn batch_values(batch: List(CardRow)) -> #(String, List(sqlight.Value)) {
@@ -59,7 +58,6 @@ fn exec_batch(
     <> placeholders
     <> suffix
   sqlite_store.exec(sql, params)
-  |> result.map_error(fn(error) { error.message })
 }
 
 fn insert_rows(table: String, rows: List(CardRow)) -> Result(Nil, String) {
@@ -79,7 +77,6 @@ fn upsert_rows(table: String, rows: List(CardRow)) -> Result(Nil, String) {
 
 fn delete_all(table: String) -> Result(Nil, String) {
   sqlite_store.exec("DELETE FROM " <> table <> ";", [])
-  |> result.map_error(fn(error) { error.message })
 }
 
 // The writes below span several statements on separate connections

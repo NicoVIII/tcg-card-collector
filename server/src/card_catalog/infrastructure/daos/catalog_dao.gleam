@@ -52,16 +52,13 @@ pub fn load_refresh_record() -> Result(
   Option(refresh_record.ProbeResult),
   String,
 ) {
-  use rows <- result.map(
-    sqlite_store.query(
-      "SELECT CAST(strftime('%s', last_probe_at) AS INTEGER), "
-        <> "last_upstream_updated_at, last_refresh_status, last_error_message "
-        <> "FROM catalog_sync_metadata WHERE id = 1 LIMIT 1;",
-      [],
-      refresh_record_row_decoder(),
-    )
-    |> result.map_error(fn(error) { error.message }),
-  )
+  use rows <- result.map(sqlite_store.query(
+    "SELECT CAST(strftime('%s', last_probe_at) AS INTEGER), "
+      <> "last_upstream_updated_at, last_refresh_status, last_error_message "
+      <> "FROM catalog_sync_metadata WHERE id = 1 LIMIT 1;",
+    [],
+    refresh_record_row_decoder(),
+  ))
   case rows {
     [] -> None
     [#(epoch, last_upstream_updated_at, status_str, error_msg), ..] -> {
@@ -113,7 +110,6 @@ pub fn save_refresh_record(
     sqlight.nullable(sqlight.text, error_msg),
   ]
   sqlite_store.exec(sql, params)
-  |> result.map_error(fn(error) { error.message })
 }
 
 fn key_row_decoder() -> decode.Decoder(CatalogKeyTuple) {
@@ -153,7 +149,6 @@ pub fn list() -> Result(List(CatalogKeyTuple), String) {
     [],
     key_row_decoder(),
   )
-  |> result.map_error(fn(error) { error.message })
 }
 
 pub fn get_by_keys(
@@ -191,7 +186,6 @@ fn get_by_keys_chunk(
         params,
         card_row_decoder(),
       )
-      |> result.map_error(fn(error) { error.message })
     }
   }
 }
@@ -216,7 +210,6 @@ pub fn list_by_set_codes(
         params,
         key_row_decoder(),
       )
-      |> result.map_error(fn(error) { error.message })
     }
   }
 }
@@ -235,7 +228,6 @@ pub fn replace_sets(sets: List(card_set.CardSet)) -> Result(Nil, String) {
     #("DELETE FROM catalog_sets;", []),
     ..inserts
   ])
-  |> result.map_error(fn(e) { e.message })
 }
 
 fn insert_sets_chunk_statement(
@@ -314,7 +306,6 @@ fn get_set_metadata_chunk(
         params,
         set_metadata_row_decoder(),
       )
-      |> result.map_error(fn(error) { error.message })
     }
   }
 }
@@ -358,7 +349,6 @@ fn get_set_printed_sizes_chunk(
         params,
         set_printed_size_row_decoder(),
       )
-      |> result.map_error(fn(error) { error.message })
     }
   }
 }

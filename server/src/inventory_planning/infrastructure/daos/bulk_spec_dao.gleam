@@ -17,15 +17,12 @@ fn bulk_spec_row_decoder() -> decode.Decoder(#(String, String)) {
 // cascade always has a bulk location to fall back on. A query *error* is a
 // genuine read failure and propagates — only the empty-rows case defaults.
 pub fn get() -> Result(#(String, String), String) {
-  use rows <- result.map(
-    sqlite_store.query(
-      "SELECT location_name, sort_keys "
-        <> "FROM inventory_bulk_spec WHERE id = 1 LIMIT 1;",
-      [],
-      bulk_spec_row_decoder(),
-    )
-    |> result.map_error(fn(error) { error.message }),
-  )
+  use rows <- result.map(sqlite_store.query(
+    "SELECT location_name, sort_keys "
+      <> "FROM inventory_bulk_spec WHERE id = 1 LIMIT 1;",
+    [],
+    bulk_spec_row_decoder(),
+  ))
   case rows {
     [row, ..] -> row
     [] -> #(default_location_name, default_sort_keys)
@@ -45,5 +42,4 @@ pub fn update(location_name: String, sort_keys: String) -> Result(Nil, String) {
     sqlight.text(location_name),
     sqlight.text(sort_keys),
   ])
-  |> result.map_error(fn(error) { error.message })
 }

@@ -25,7 +25,6 @@ pub fn list() -> Result(List(PlacedCardRow), String) {
     [],
     placed_card_row_decoder(),
   )
-  |> result.map_error(fn(error) { error.message })
 }
 
 fn row_params(row: PlacedCardRow) -> List(sqlight.Value) {
@@ -55,7 +54,6 @@ fn increment_batch(batch: List(PlacedCardRow)) -> Result(Nil, String) {
     <> " ON CONFLICT(set_code, collector_number, location) "
     <> "DO UPDATE SET quantity = quantity + excluded.quantity;"
   sqlite_store.exec(sql, params)
-  |> result.map_error(fn(error) { error.message })
 }
 
 /// Adds each row's quantity onto the matching (key, location), inserting the
@@ -79,20 +77,16 @@ fn decrement_row(row: PlacedCardRow) -> Result(Nil, String) {
     sqlight.text(location),
   ]
 
-  use _ <- result.try(
-    sqlite_store.exec(
-      "DELETE FROM placed_cards" <> where_key <> " AND quantity <= ?;",
-      list.append(key_params, [sqlight.int(quantity)]),
-    )
-    |> result.map_error(fn(error) { error.message }),
-  )
+  use _ <- result.try(sqlite_store.exec(
+    "DELETE FROM placed_cards" <> where_key <> " AND quantity <= ?;",
+    list.append(key_params, [sqlight.int(quantity)]),
+  ))
   sqlite_store.exec(
     "UPDATE placed_cards SET quantity = quantity - ?"
       <> where_key
       <> " AND quantity > ?;",
     list.flatten([[sqlight.int(quantity)], key_params, [sqlight.int(quantity)]]),
   )
-  |> result.map_error(fn(error) { error.message })
 }
 
 /// Subtracts each row's quantity from the matching (key, location), pruning any
