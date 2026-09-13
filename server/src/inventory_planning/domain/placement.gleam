@@ -2,6 +2,7 @@ import gleam/bool
 import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/order
 import gleam/result
 import gleam/string
 import shared/domain/card_key.{type CardKey}
@@ -54,12 +55,28 @@ pub fn quantity(placement: Placement) -> Int {
   placement.quantity
 }
 
-fn identity_key(placement: Placement) -> #(String, String, String) {
-  #(
-    card_key.set_code_string(placement.key),
-    card_key.collector_number_string(placement.key),
-    location(placement),
+type PlacementIdentity {
+  PlacementIdentity(
+    set_code: String,
+    collector_number: String,
+    location: String,
   )
+}
+
+fn identity(placement: Placement) -> PlacementIdentity {
+  PlacementIdentity(
+    set_code: card_key.set_code_string(placement.key),
+    collector_number: card_key.collector_number_string(placement.key),
+    location: location(placement),
+  )
+}
+
+fn compare_identity(a: PlacementIdentity, b: PlacementIdentity) -> order.Order {
+  string.compare(a.set_code, b.set_code)
+  |> order.lazy_break_tie(fn() {
+    string.compare(a.collector_number, b.collector_number)
+  })
+  |> order.lazy_break_tie(fn() { string.compare(a.location, b.location) })
 }
 
 /// Collapses placements sharing a (key, location) into one by summing their
@@ -68,7 +85,7 @@ fn identity_key(placement: Placement) -> #(String, String, String) {
 pub fn merge(placements: List(Placement)) -> List(Placement) {
   placements
   |> list.fold(dict.new(), fn(acc, placement) {
-    dict.upsert(acc, identity_key(placement), fn(existing) {
+    dict.upsert(acc, identity(placement), fn(existing) {
       case existing {
         Some(prev) ->
           Placement(..prev, quantity: prev.quantity + placement.quantity)
@@ -77,12 +94,5 @@ pub fn merge(placements: List(Placement)) -> List(Placement) {
     })
   })
   |> dict.values
-  |> list.sort(fn(a, b) {
-    string.compare(sort_key(identity_key(a)), sort_key(identity_key(b)))
-  })
-}
-
-fn sort_key(identity: #(String, String, String)) -> String {
-  let #(set_code, collector_number, location) = identity
-  set_code <> "\u{0}" <> collector_number <> "\u{0}" <> location
+  |> list.sort(fn(a, b) { compare_identity(identity(a), identity(b)) })
 }

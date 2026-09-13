@@ -77,3 +77,33 @@ pub fn merge_sums_duplicate_key_and_location_and_keeps_others_separate_test() {
   // Stable (key, location) order: Binder before Bulk.
   assert summary == [#("Binder", 1), #("Bulk", 5)]
 }
+
+pub fn merge_orders_by_set_code_then_collector_number_then_location_test() {
+  let place = fn(set_code, collector_number, location) {
+    let assert Ok(p) =
+      placement.new(set_code:, collector_number:, location:, quantity: 1)
+    p
+  }
+
+  let merged =
+    placement.merge([
+      place("m11", "1", "A"),
+      place("lea", "2", "A"),
+      place("lea", "1", "B"),
+      place("lea", "1", "A"),
+    ])
+
+  assert list.map(merged, fn(p) {
+      #(
+        placement.set_code_string(p),
+        placement.collector_number_string(p),
+        placement.location(p),
+      )
+    })
+    == [
+      #("lea", "1", "A"),
+      #("lea", "1", "B"),
+      #("lea", "2", "A"),
+      #("m11", "1", "A"),
+    ]
+}
