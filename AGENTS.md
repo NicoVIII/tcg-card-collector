@@ -16,7 +16,7 @@ Readability rules that hold across the stack; each sub-tree's AGENTS.md adds its
 - **Small, single-purpose functions** are the unit of decomposition. A `// this block does X` comment is the trigger to extract `x()`; skip extraction only when it would thread many parameters or add pure indirection.
 - **Comments say why, never what.** If types and names already say it, cut it. Prose is warranted for doc comments on public APIs, type-lossy seams the signature can't express, and short orientation labels in long functions.
 - **Repetition is a helper waiting to be named**: the third copy of a pattern extracts a shared function; the first two may stay.
-- Existing code migrates to these rules when touched, never in style-only commits.
+- **A new or tightened rule ships with its migration.** Existing code is brought up to it in the same change, or in dedicated refactoring commits right after — one per rule or cohesive area, each passing `just check` and explaining the rule it applies. A migration too large for that gets an issue and is worked off deliberately, not absorbed "when touched". Lint suppressions are for genuine exceptions with a reason, never for code that merely predates the rule.
 
 ## Skeleton First
 

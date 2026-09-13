@@ -64,8 +64,8 @@ Four contexts: **card_catalog**, **collection**, **inventory_planning**,
 - A use case's error presentation (which `ports` error becomes which status
   class and message) is written once in a `<context>/driver/` module both
   transports call — the two-transports rule covers error mapping, not only
-  side effects. Existing handlers predate this; migrate a use case's pair
-  when touching it (#87).
+  side effects. Existing handlers predate this; the migration is tracked
+  in #87.
 
 ## Infrastructure & Database
 
@@ -89,7 +89,7 @@ Four contexts: **card_catalog**, **collection**, **inventory_planning**,
   never composed from separate `exec` calls.
 - DAO rows and read models are named records; a positional tuple wider than
   two fields — or a comment listing a tuple's field order — is the smell.
-  Existing tuple aliases migrate when their DAO is touched (#87).
+  Existing tuple aliases are migrated under #87.
 - Write ports return `Result(Nil, String)`; read ports are
   `fn() -> Result(a, String)` (or `Result(Option(a), String)` when absence is
   a valid outcome). Never collapse a read error to a default unless every
