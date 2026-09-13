@@ -99,3 +99,7 @@ item with its one-line reason.
 **Plan mode** — current milestone state (headline, open/closed counts), the
 single recommended next step with its argument, and any milestone-structure
 changes as a changeset per the authority rule.
+
+---
+
+This skill is not yet battle-tested: if any instruction above was ambiguous, wrong, or needed a workaround, say so briefly at the end of the run.
