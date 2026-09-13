@@ -87,3 +87,7 @@ section) reference and a concrete change:
   rules that lint could displace.
 
 End with a one-line verdict on whether the doc system currently tells the truth.
+
+---
+
+This skill is not yet battle-tested: if any instruction above was ambiguous, wrong, or needed a workaround, say so briefly at the end of the run.

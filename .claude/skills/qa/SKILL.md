@@ -96,3 +96,7 @@ regression in the reviewed area.
 
 **Verify mode** — per charter: what was exercised, evidence observed (interface +
 state), defects found (triaged per above), gaps explicitly named.
+
+---
+
+This skill is not yet battle-tested: if any instruction above was ambiguous, wrong, or needed a workaround, say so briefly at the end of the run.

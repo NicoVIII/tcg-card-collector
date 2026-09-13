@@ -129,3 +129,7 @@ designing around it.
 For each finding give a `path:line` reference and a concrete change. End with a one-line
 structural verdict (sound / drifting / needs restructuring) and the single
 highest-leverage fix.
+
+---
+
+This skill is not yet battle-tested: if any instruction above was ambiguous, wrong, or needed a workaround, say so briefly at the end of the run.

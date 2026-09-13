@@ -84,3 +84,7 @@ concrete change:
 
 End with a one-line verdict on whether the schema is getting stronger or looser as a
 boundary.
+
+---
+
+This skill is not yet battle-tested: if any instruction above was ambiguous, wrong, or needed a workaround, say so briefly at the end of the run.

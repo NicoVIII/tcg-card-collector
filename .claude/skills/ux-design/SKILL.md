@@ -88,3 +88,7 @@ a concrete change:
   investment.
 
 End with a one-line verdict on whether the screen serves its nature.
+
+---
+
+This skill is not yet battle-tested: if any instruction above was ambiguous, wrong, or needed a workaround, say so briefly at the end of the run.

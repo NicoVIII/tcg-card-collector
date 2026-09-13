@@ -88,3 +88,7 @@ concrete change:
 
 End with a one-line verdict on whether the contract got sharper or muddier with the
 change under review.
+
+---
+
+This skill is not yet battle-tested: if any instruction above was ambiguous, wrong, or needed a workaround, say so briefly at the end of the run.

@@ -111,3 +111,7 @@ section) reference and a concrete change:
 
 End with a one-line verdict on whether the domain language got sharper or blurrier with
 the change under review.
+
+---
+
+This skill is not yet battle-tested: if any instruction above was ambiguous, wrong, or needed a workaround, say so briefly at the end of the run.
