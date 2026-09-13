@@ -37,6 +37,7 @@ Acknowledged as possible futures, but no current design bends to accommodate the
 - Support for other TCGs (Pokémon, Yu-Gi-Oh, …) — Magic is the scope for the foreseeable future.
 - Card scanning/recognition — imports come from files produced by tools that already do this.
 - Native mobile apps — the web UI is the interface.
+- Desktop app (Tauri bundle with the server as a sidecar, standalone or pointed at an existing server) — constraints collected in #77.
 
 ## Non-goals
 
