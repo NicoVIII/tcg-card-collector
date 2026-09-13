@@ -4,6 +4,9 @@ import inventory_planning/application/commands/unmark_cards_placed/ports as unma
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/update_preferences/ports as update_preferences_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
+import inventory_planning/application/queries/get_bulk_spec/ports as get_bulk_spec_ports
+import inventory_planning/application/queries/get_preferences/ports as get_preferences_ports
+import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
 import inventory_planning/driver/skir/codec as inventory_planning_skir_codec
@@ -222,4 +225,53 @@ pub fn update_preferences_persistence_failure_maps_to_internal_server_error_test
       service.E500xInternalServerError,
       "failed to save settings",
     ))
+}
+
+pub fn map_inventory_rule_list_maps_fields_and_counts_rules_test() {
+  let rule =
+    list_rules_ports.InventoryRuleReadModel(
+      id: "r1",
+      location_name: "Binder {set_code}",
+      expression: "rarity >= rare",
+      position: 3,
+      selector: "all",
+      sort_keys: "name",
+    )
+
+  let mapped = inventory_planning_skir_codec.map_inventory_rule_list([rule])
+
+  assert mapped.total == 1
+  let assert [mapped_rule] = mapped.data
+  assert mapped_rule.id == "r1"
+  assert mapped_rule.location_name == "Binder {set_code}"
+  assert mapped_rule.expression == "rarity >= rare"
+  assert mapped_rule.position == 3
+  assert mapped_rule.selector == "all"
+  assert mapped_rule.sort_keys == "name"
+}
+
+pub fn map_planning_preferences_keeps_sort_and_grouping_apart_test() {
+  let mapped =
+    inventory_planning_skir_codec.map_planning_preferences(
+      get_preferences_ports.PlanningPreferencesReadModel(
+        default_sort: "name",
+        default_grouping: "set",
+      ),
+    )
+
+  assert mapped.default_sort == "name"
+  assert mapped.default_grouping == "set"
+}
+
+pub fn map_bulk_spec_keeps_location_and_sort_keys_apart_test() {
+  let mapped =
+    inventory_planning_skir_codec.map_bulk_spec(
+      get_bulk_spec_ports.BulkSpecReadModel(
+        location_name: "Bulk box",
+        sort_keys: "set_code",
+      ),
+    )
+
+  assert mapped.location_name == "Bulk box"
+  assert mapped.sort_keys == "set_code"
 }

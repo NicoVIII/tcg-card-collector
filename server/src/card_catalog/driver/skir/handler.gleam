@@ -1,9 +1,7 @@
 import card_catalog/application/queries/get_cards/handler as get_catalog_cards_handler
-import card_catalog/application/queries/get_cards/ports as get_cards_ports
 import card_catalog/application/queries/list_cards/handler.{
   ListCatalogCardsQuery,
 } as catalog_list_cards_handler
-import card_catalog/application/queries/list_cards/ports as list_cards_ports
 import card_catalog/application/queries/refresh_status/handler.{
   GetCatalogRefreshStatusQuery,
 } as refresh_status_handler
@@ -11,15 +9,84 @@ import card_catalog/driver/dependencies.{type Dependencies}
 import card_catalog/driver/refresh_launcher
 import card_catalog/driver/skir/codec as catalog_skir_codec
 import gleam/list
-import gleam/option
-import shared/domain/color_identity
-import shared/domain/oracle_id
-import shared/domain/rarity
-import shared/domain/release_date
 import shared/driver/skir/helpers
 import shared/driver/skir/skirout/card_catalog/commands as card_catalog_commands
 import shared/driver/skir/skirout/card_catalog/queries as card_catalog_queries
 import skir_client/service
+
+fn handle_refresh_catalog(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  card_catalog_commands.RefreshCatalogRequest,
+  card_catalog_commands.RefreshCatalogResponse,
+  context,
+) {
+  fn(_: card_catalog_commands.RefreshCatalogRequest, _, ctx) {
+    let deps = get_dependencies(ctx)
+    refresh_launcher.launch(deps, deps.refresh_worker_name, "skir")
+    |> catalog_skir_codec.map_refresh_launch_result
+    |> Ok
+    |> helpers.respond
+  }
+}
+
+fn handle_list_catalog_cards(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  card_catalog_queries.ListCatalogCardsRequest,
+  card_catalog_queries.CatalogCardKeyList,
+  context,
+) {
+  fn(req: card_catalog_queries.ListCatalogCardsRequest, _, ctx) {
+    catalog_list_cards_handler.execute(
+      ListCatalogCardsQuery,
+      get_dependencies(ctx).list_catalog_cards_port,
+    )
+    |> helpers.map_query(catalog_skir_codec.map_catalog_card_key_page(
+      _,
+      req.offset,
+      req.limit,
+    ))
+    |> helpers.respond
+  }
+}
+
+fn handle_get_catalog_cards(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  card_catalog_queries.GetCatalogCardsRequest,
+  card_catalog_queries.CatalogCardList,
+  context,
+) {
+  fn(req: card_catalog_queries.GetCatalogCardsRequest, _, ctx) {
+    get_catalog_cards_handler.execute(
+      get_catalog_cards_handler.GetCatalogCardsQuery(keys: list.map(
+        req.keys,
+        catalog_skir_codec.to_key_pair,
+      )),
+      get_dependencies(ctx).get_catalog_cards_port,
+    )
+    |> helpers.map_query(catalog_skir_codec.map_catalog_card_list)
+    |> helpers.respond
+  }
+}
+
+fn handle_get_refresh_status(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  card_catalog_queries.GetCatalogRefreshStatusRequest,
+  card_catalog_queries.CatalogRefreshStatus,
+  context,
+) {
+  fn(_: card_catalog_queries.GetCatalogRefreshStatusRequest, _, ctx) {
+    refresh_status_handler.execute(
+      GetCatalogRefreshStatusQuery,
+      get_dependencies(ctx).get_refresh_status_port,
+    )
+    |> helpers.map_query(catalog_skir_codec.map_refresh_status_result)
+    |> helpers.respond
+  }
+}
 
 pub fn register(
   svc: service.Service(Nil, context, Nil),
@@ -42,169 +109,4 @@ pub fn register(
     card_catalog_queries.get_catalog_refresh_status_method(),
     handle_get_refresh_status(get_dependencies),
   )
-}
-
-fn handle_refresh_catalog(
-  get_dependencies: fn(context) -> Dependencies,
-) -> helpers.MethodHandler(
-  card_catalog_commands.RefreshCatalogRequest,
-  card_catalog_commands.RefreshCatalogResponse,
-  context,
-) {
-  fn(_: card_catalog_commands.RefreshCatalogRequest, req_meta, ctx) {
-    let deps = get_dependencies(ctx)
-    let outcome =
-      refresh_launcher.launch(deps, deps.refresh_worker_name, "skir")
-    #(Ok(catalog_skir_codec.map_refresh_launch_result(outcome)), req_meta, Nil)
-  }
-}
-
-fn handle_list_catalog_cards(
-  get_dependencies: fn(context) -> Dependencies,
-) -> helpers.MethodHandler(
-  card_catalog_queries.ListCatalogCardsRequest,
-  card_catalog_queries.CatalogCardKeyList,
-  context,
-) {
-  fn(req: card_catalog_queries.ListCatalogCardsRequest, req_meta, ctx) {
-    case
-      catalog_list_cards_handler.execute(
-        ListCatalogCardsQuery,
-        get_dependencies(ctx).list_catalog_cards_port,
-      )
-    {
-      Ok(all_keys) -> {
-        let total = list.length(all_keys)
-        let paged_keys = paginate_keys(all_keys, req.offset, req.limit)
-        let response =
-          card_catalog_queries.catalog_card_key_list_new(
-            list.map(paged_keys, map_catalog_card_key),
-            req.limit,
-            req.offset,
-            total,
-          )
-        #(Ok(response), req_meta, Nil)
-      }
-      Error(reason) -> #(
-        Error(service.ServiceError(service.E500xInternalServerError, reason)),
-        req_meta,
-        Nil,
-      )
-    }
-  }
-}
-
-fn map_catalog_card_key(
-  key: list_cards_ports.CatalogCardKeyReadModel,
-) -> card_catalog_queries.CatalogCardKey {
-  // arg order: collector_number, set_code (alphabetical per generated constructor)
-  card_catalog_queries.catalog_card_key_new(key.collector_number, key.set_code)
-}
-
-fn handle_get_catalog_cards(
-  get_dependencies: fn(context) -> Dependencies,
-) -> helpers.MethodHandler(
-  card_catalog_queries.GetCatalogCardsRequest,
-  card_catalog_queries.CatalogCardList,
-  context,
-) {
-  fn(req: card_catalog_queries.GetCatalogCardsRequest, req_meta, ctx) {
-    let keys = list.map(req.keys, fn(k) { #(k.set_code, k.collector_number) })
-    case
-      get_catalog_cards_handler.execute(
-        get_catalog_cards_handler.GetCatalogCardsQuery(keys:),
-        get_dependencies(ctx).get_catalog_cards_port,
-      )
-    {
-      Ok(cards) -> {
-        let response =
-          card_catalog_queries.catalog_card_list_new(list.map(
-            cards,
-            map_card_read_model,
-          ))
-        #(Ok(response), req_meta, Nil)
-      }
-      Error(reason) -> #(
-        Error(service.ServiceError(service.E500xInternalServerError, reason)),
-        req_meta,
-        Nil,
-      )
-    }
-  }
-}
-
-// The wire keeps the canonical string forms ('' for an absent value); strong
-// types exist inland only (ADR 0008).
-fn map_card_read_model(
-  card: get_cards_ports.CardReadModel,
-) -> card_catalog_queries.CatalogCard {
-  // arg order is alphabetical per generated constructor:
-  // collector_number, color_identity, image_uri, name, oracle_id, rarity,
-  // released_at, set_code, type_line
-  card_catalog_queries.catalog_card_new(
-    card.collector_number,
-    color_identity.letters(card.color_identity),
-    card.image_uri,
-    card.name,
-    card.oracle_id |> option.map(oracle_id.to_string) |> option.unwrap(""),
-    rarity.to_string(card.rarity),
-    card.released_at
-      |> option.map(release_date.to_string)
-      |> option.unwrap(""),
-    card.set_code,
-    card.type_line,
-  )
-}
-
-fn handle_get_refresh_status(
-  get_dependencies: fn(context) -> Dependencies,
-) -> helpers.MethodHandler(
-  card_catalog_queries.GetCatalogRefreshStatusRequest,
-  card_catalog_queries.CatalogRefreshStatus,
-  context,
-) {
-  fn(_: card_catalog_queries.GetCatalogRefreshStatusRequest, req_meta, ctx) {
-    case
-      refresh_status_handler.execute(
-        GetCatalogRefreshStatusQuery,
-        get_dependencies(ctx).get_refresh_status_port,
-      )
-    {
-      Ok(status) -> #(
-        Ok(catalog_skir_codec.map_refresh_status_result(status)),
-        req_meta,
-        Nil,
-      )
-      Error(reason) -> #(
-        Error(service.ServiceError(service.E500xInternalServerError, reason)),
-        req_meta,
-        Nil,
-      )
-    }
-  }
-}
-
-fn paginate_keys(
-  keys: List(list_cards_ports.CatalogCardKeyReadModel),
-  offset: Int,
-  limit: Int,
-) -> List(list_cards_ports.CatalogCardKeyReadModel) {
-  let normalized_offset = clamp_non_negative(offset)
-  let normalized_limit = clamp_non_negative(limit)
-
-  keys
-  |> list.drop(normalized_offset)
-  |> fn(remaining) {
-    case normalized_limit {
-      0 -> remaining
-      _ -> list.take(remaining, normalized_limit)
-    }
-  }
-}
-
-fn clamp_non_negative(value: Int) -> Int {
-  case value < 0 {
-    True -> 0
-    False -> value
-  }
 }

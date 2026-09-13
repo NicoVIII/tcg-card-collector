@@ -58,9 +58,10 @@ Four contexts: **card_catalog**, **collection**, **inventory_planning**,
   externally-visible side effects must put that orchestration in one shared
   module both drivers call (e.g. `card_catalog/driver/refresh_launcher.gleam`)
   — never duplicate it per transport.
-- A skir handler is one `execute` call plus one codec call, typed via
-  `shared/driver/skir/helpers.MethodHandler`; response and error boilerplate
-  belongs in `shared/driver/`, not repeated per handler.
+- A skir handler is `execute(...) |> codec.map_… |> helpers.respond`, typed
+  via `shared/driver/skir/helpers.MethodHandler`; query results go through
+  `helpers.map_query(codec.map_…)` (HTTP: `helpers.query_response`). Wire
+  mapping lives in the codec, never in the handler.
 - A use case's error presentation (which `ports` error becomes which status
   class and message) is written once in a `<context>/driver/` module both
   transports call — the two-transports rule covers error mapping, not only

@@ -26,16 +26,11 @@ import shared/driver/http/json_codec
 pub fn handle_list_inventory_rules(
   deps: Dependencies,
 ) -> Response(mist.ResponseData) {
-  case
-    list_rules_handler.execute(
-      list_rules_handler.ListInventoryRulesQuery,
-      deps.list_inventory_rules_port,
-    )
-  {
-    Ok(rules) ->
-      helpers.json_response(200, inventory_codec.encode_inventory_rules(rules))
-    Error(reason) -> helpers.json_response(500, json_codec.encode_error(reason))
-  }
+  list_rules_handler.execute(
+    list_rules_handler.ListInventoryRulesQuery,
+    deps.list_inventory_rules_port,
+  )
+  |> helpers.query_response(inventory_codec.encode_inventory_rules)
 }
 
 pub fn handle_upsert_inventory_rule(
@@ -113,32 +108,19 @@ pub fn handle_delete_inventory_rule(
 pub fn handle_inventory_projection(
   deps: Dependencies,
 ) -> Response(mist.ResponseData) {
-  case
-    projection_handler.execute(
-      projection_handler.InventoryProjectionQuery,
-      deps.inventory_projection_ports,
-    )
-  {
-    Ok(projection) ->
-      helpers.json_response(
-        200,
-        inventory_codec.encode_inventory_projection(projection),
-      )
-    Error(reason) -> helpers.json_response(500, json_codec.encode_error(reason))
-  }
+  projection_handler.execute(
+    projection_handler.InventoryProjectionQuery,
+    deps.inventory_projection_ports,
+  )
+  |> helpers.query_response(inventory_codec.encode_inventory_projection)
 }
 
 pub fn handle_get_bulk_spec(deps: Dependencies) -> Response(mist.ResponseData) {
-  case
-    get_bulk_spec_handler.execute(
-      get_bulk_spec_handler.GetBulkSpecQuery,
-      deps.get_bulk_spec_port,
-    )
-  {
-    Ok(spec) ->
-      helpers.json_response(200, inventory_codec.encode_bulk_spec(spec))
-    Error(reason) -> helpers.json_response(500, json_codec.encode_error(reason))
-  }
+  get_bulk_spec_handler.execute(
+    get_bulk_spec_handler.GetBulkSpecQuery,
+    deps.get_bulk_spec_port,
+  )
+  |> helpers.query_response(inventory_codec.encode_bulk_spec)
 }
 
 pub fn handle_update_bulk_spec(
@@ -175,16 +157,11 @@ pub fn handle_update_bulk_spec(
 }
 
 pub fn handle_placed_ledger(deps: Dependencies) -> Response(mist.ResponseData) {
-  case
-    placed_ledger_handler.execute(
-      placed_ledger_handler.GetPlacedLedgerQuery,
-      deps.get_placed_ledger_port,
-    )
-  {
-    Ok(rows) ->
-      helpers.json_response(200, inventory_codec.encode_placed_ledger(rows))
-    Error(reason) -> helpers.json_response(500, json_codec.encode_error(reason))
-  }
+  placed_ledger_handler.execute(
+    placed_ledger_handler.GetPlacedLedgerQuery,
+    deps.get_placed_ledger_port,
+  )
+  |> helpers.query_response(inventory_codec.encode_placed_ledger)
 }
 
 pub fn handle_mark_cards_placed(
@@ -275,16 +252,11 @@ fn to_unmark_raw_placement(
 }
 
 pub fn handle_get_settings(deps: Dependencies) -> Response(mist.ResponseData) {
-  case
-    get_preferences_handler.execute(
-      get_preferences_handler.GetPlanningPreferencesQuery,
-      deps.get_planning_preferences_port,
-    )
-  {
-    Ok(prefs) ->
-      helpers.json_response(200, inventory_codec.encode_settings(prefs))
-    Error(reason) -> helpers.json_response(500, json_codec.encode_error(reason))
-  }
+  get_preferences_handler.execute(
+    get_preferences_handler.GetPlanningPreferencesQuery,
+    deps.get_planning_preferences_port,
+  )
+  |> helpers.query_response(inventory_codec.encode_settings)
 }
 
 pub fn handle_update_settings(

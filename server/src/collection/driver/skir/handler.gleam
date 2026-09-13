@@ -1,27 +1,13 @@
 import collection/application/commands/add_cards/handler as add_cards_handler
-import collection/application/commands/add_cards/ports as add_cards_ports
 import collection/application/commands/import_collection/handler as import_collection_handler
-import collection/application/commands/import_collection/ports as import_collection_ports
 import collection/application/queries/list_cards/handler as list_collection_cards_handler
-import collection/application/queries/list_cards/ports as list_collection_cards_ports
 import collection/driver/dependencies.{type Dependencies}
 import collection/driver/skir/codec as collection_skir_codec
 import gleam/list
-import shared/domain/card_key
 import shared/driver/skir/helpers
 import shared/driver/skir/skirout/collection/commands as collection_commands
 import shared/driver/skir/skirout/collection/queries as collection_queries
 import skir_client/service
-
-fn map_import_collection_row(
-  row: collection_commands.ImportCollectionRow,
-) -> import_collection_ports.ImportCollectionRow {
-  import_collection_ports.ImportCollectionRow(
-    set_code: row.set_code,
-    collector_number: row.collector_number,
-    quantity: row.quantity,
-  )
-}
 
 fn handle_import_collection(
   get_dependencies: fn(context) -> Dependencies,
@@ -30,27 +16,17 @@ fn handle_import_collection(
   collection_commands.ImportCollectionResponse,
   context,
 ) {
-  fn(req: collection_commands.ImportCollectionRequest, req_meta, ctx) {
-    let result =
-      import_collection_handler.execute(
-        import_collection_handler.ImportCollectionCommand(rows: list.map(
-          req.rows,
-          map_import_collection_row,
-        )),
-        get_dependencies(ctx).import_collection_port,
-      )
-    #(collection_skir_codec.map_import_collection_result(result), req_meta, Nil)
+  fn(req: collection_commands.ImportCollectionRequest, _, ctx) {
+    import_collection_handler.execute(
+      import_collection_handler.ImportCollectionCommand(rows: list.map(
+        req.rows,
+        collection_skir_codec.to_import_collection_row,
+      )),
+      get_dependencies(ctx).import_collection_port,
+    )
+    |> collection_skir_codec.map_import_collection_result
+    |> helpers.respond
   }
-}
-
-fn map_add_cards_row(
-  row: collection_commands.AddCardsRow,
-) -> add_cards_ports.AddCardsRow {
-  add_cards_ports.AddCardsRow(
-    set_code: row.set_code,
-    collector_number: row.collector_number,
-    quantity: row.quantity,
-  )
 }
 
 fn handle_add_cards(
@@ -60,27 +36,17 @@ fn handle_add_cards(
   collection_commands.AddCardsResponse,
   context,
 ) {
-  fn(req: collection_commands.AddCardsRequest, req_meta, ctx) {
-    let result =
-      add_cards_handler.execute(
-        add_cards_handler.AddCardsCommand(rows: list.map(
-          req.rows,
-          map_add_cards_row,
-        )),
-        get_dependencies(ctx).add_cards_port,
-      )
-    #(collection_skir_codec.map_add_cards_result(result), req_meta, Nil)
+  fn(req: collection_commands.AddCardsRequest, _, ctx) {
+    add_cards_handler.execute(
+      add_cards_handler.AddCardsCommand(rows: list.map(
+        req.rows,
+        collection_skir_codec.to_add_cards_row,
+      )),
+      get_dependencies(ctx).add_cards_port,
+    )
+    |> collection_skir_codec.map_add_cards_result
+    |> helpers.respond
   }
-}
-
-fn map_collection_card(
-  card: list_collection_cards_ports.CollectionCardReadModel,
-) -> collection_queries.CollectionCard {
-  collection_queries.collection_card_new(
-    card_key.collector_number_string(card.key),
-    card.quantity,
-    card_key.set_code_string(card.key),
-  )
 }
 
 fn handle_list_collection_cards(
@@ -90,32 +56,20 @@ fn handle_list_collection_cards(
   collection_queries.CollectionCardList,
   context,
 ) {
-  fn(req: collection_queries.ListCollectionCardsRequest, req_meta, ctx) {
-    case
-      list_collection_cards_handler.execute(
-        list_collection_cards_handler.ListCollectionCardsQuery(
-          offset: req.offset,
-          limit: req.limit,
-        ),
-        get_dependencies(ctx).list_collection_cards_port,
-      )
-    {
-      Ok(page) -> {
-        let response =
-          collection_queries.collection_card_list_new(
-            list.map(page.cards, map_collection_card),
-            req.limit,
-            req.offset,
-            page.total,
-          )
-        #(Ok(response), req_meta, Nil)
-      }
-      Error(reason) -> #(
-        Error(service.ServiceError(service.E500xInternalServerError, reason)),
-        req_meta,
-        Nil,
-      )
-    }
+  fn(req: collection_queries.ListCollectionCardsRequest, _, ctx) {
+    list_collection_cards_handler.execute(
+      list_collection_cards_handler.ListCollectionCardsQuery(
+        offset: req.offset,
+        limit: req.limit,
+      ),
+      get_dependencies(ctx).list_collection_cards_port,
+    )
+    |> helpers.map_query(collection_skir_codec.map_collection_card_page(
+      _,
+      req.offset,
+      req.limit,
+    ))
+    |> helpers.respond
   }
 }
 

@@ -30,3 +30,14 @@ pub fn with_json_body(
       }
   }
 }
+
+/// Query ports fail with a bare reason, which always surfaces as a 500.
+pub fn query_response(
+  result: Result(a, String),
+  encode: fn(a) -> String,
+) -> Response(mist.ResponseData) {
+  case result {
+    Ok(value) -> json_response(200, encode(value))
+    Error(reason) -> json_response(500, json_codec.encode_error(reason))
+  }
+}

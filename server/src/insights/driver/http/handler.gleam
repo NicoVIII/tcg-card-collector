@@ -65,14 +65,9 @@ pub fn handle_unmark_target_set(
 pub fn handle_get_set_completion(
   deps: Dependencies,
 ) -> Response(mist.ResponseData) {
-  case
-    set_completion_handler.execute(
-      set_completion_handler.SetCompletionQuery,
-      deps.set_completion_ports,
-    )
-  {
-    Ok(rows) ->
-      helpers.json_response(200, insights_codec.encode_set_completion(rows))
-    Error(reason) -> helpers.json_response(500, json_codec.encode_error(reason))
-  }
+  set_completion_handler.execute(
+    set_completion_handler.SetCompletionQuery,
+    deps.set_completion_ports,
+  )
+  |> helpers.query_response(insights_codec.encode_set_completion)
 }

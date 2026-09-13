@@ -1,10 +1,15 @@
 import gleam/list
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
+import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
+import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/update_preferences/ports as update_preferences_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
+import inventory_planning/application/queries/get_bulk_spec/ports as get_bulk_spec_ports
+import inventory_planning/application/queries/get_preferences/ports as get_preferences_ports
+import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
 import shared/driver/skir/skirout/inventory_planning/commands as inventory_planning_commands
@@ -187,4 +192,63 @@ pub fn map_update_preferences_result(
         "failed to save settings",
       ))
   }
+}
+
+pub fn to_mark_raw_placement(
+  placement: inventory_planning_commands.CardPlacement,
+) -> mark_cards_placed_handler.RawPlacement {
+  mark_cards_placed_handler.RawPlacement(
+    set_code: placement.set_code,
+    collector_number: placement.collector_number,
+    location_name: placement.location_name,
+    quantity: placement.quantity,
+  )
+}
+
+pub fn to_unmark_raw_placement(
+  placement: inventory_planning_commands.CardPlacement,
+) -> unmark_cards_placed_handler.RawPlacement {
+  unmark_cards_placed_handler.RawPlacement(
+    set_code: placement.set_code,
+    collector_number: placement.collector_number,
+    location_name: placement.location_name,
+    quantity: placement.quantity,
+  )
+}
+
+fn map_inventory_rule(
+  rule: list_rules_ports.InventoryRuleReadModel,
+) -> inventory_planning_queries.InventoryRule {
+  inventory_planning_queries.inventory_rule_new(
+    rule.expression,
+    rule.id,
+    rule.location_name,
+    rule.position,
+    rule.selector,
+    rule.sort_keys,
+  )
+}
+
+pub fn map_inventory_rule_list(
+  rules: List(list_rules_ports.InventoryRuleReadModel),
+) -> inventory_planning_queries.InventoryRuleList {
+  inventory_planning_queries.inventory_rule_list_new(
+    list.map(rules, map_inventory_rule),
+    list.length(rules),
+  )
+}
+
+pub fn map_planning_preferences(
+  preferences: get_preferences_ports.PlanningPreferencesReadModel,
+) -> inventory_planning_queries.PlanningPreferences {
+  inventory_planning_queries.planning_preferences_new(
+    preferences.default_grouping,
+    preferences.default_sort,
+  )
+}
+
+pub fn map_bulk_spec(
+  spec: get_bulk_spec_ports.BulkSpecReadModel,
+) -> inventory_planning_queries.BulkSpec {
+  inventory_planning_queries.bulk_spec_new(spec.location_name, spec.sort_keys)
 }
