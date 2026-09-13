@@ -4,6 +4,7 @@ import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import mist
 import shared/driver/http/json_codec
+import shared/driver/presented_error.{type PresentedError, BadRequest, Internal}
 
 pub fn json_response(status: Int, body: String) -> Response(mist.ResponseData) {
   response.new(status)
@@ -40,4 +41,12 @@ pub fn query_response(
     Ok(value) -> json_response(200, encode(value))
     Error(reason) -> json_response(500, json_codec.encode_error(reason))
   }
+}
+
+pub fn error_response(error: PresentedError) -> Response(mist.ResponseData) {
+  let status = case error.class {
+    BadRequest -> 400
+    Internal -> 500
+  }
+  json_response(status, json_codec.encode_error(error.message))
 }

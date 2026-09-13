@@ -3,21 +3,17 @@ import gleam/http/response.{type Response}
 import gleam/list
 import inventory_planning/application/commands/delete_rule/handler as delete_rule_handler
 import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
-import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
 import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
-import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/handler as update_bulk_spec_handler
-import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/update_preferences/handler as update_preferences_handler
-import inventory_planning/application/commands/update_preferences/ports as update_preferences_ports
 import inventory_planning/application/commands/upsert_rule/handler as upsert_rule_handler
-import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
 import inventory_planning/application/queries/get_bulk_spec/handler as get_bulk_spec_handler
 import inventory_planning/application/queries/get_preferences/handler as get_preferences_handler
 import inventory_planning/application/queries/list_rules/handler as list_rules_handler
 import inventory_planning/application/queries/placed_ledger/handler as placed_ledger_handler
 import inventory_planning/application/queries/projection/handler as projection_handler
 import inventory_planning/driver/dependencies.{type Dependencies}
+import inventory_planning/driver/error_presentation
 import inventory_planning/driver/http/json_codec as inventory_codec
 import mist
 import shared/driver/http/helpers
@@ -55,26 +51,8 @@ pub fn handle_upsert_inventory_rule(
         )
       {
         Ok(_) -> helpers.json_response(200, json_codec.encode_ok("rule saved"))
-        Error(upsert_rule_ports.InvalidExpression) ->
-          helpers.json_response(
-            400,
-            json_codec.encode_error("invalid inventory rule expression"),
-          )
-        Error(upsert_rule_ports.InvalidSelector) ->
-          helpers.json_response(
-            400,
-            json_codec.encode_error("invalid inventory rule selector"),
-          )
-        Error(upsert_rule_ports.InvalidSortKeys) ->
-          helpers.json_response(
-            400,
-            json_codec.encode_error("invalid inventory rule sort keys"),
-          )
-        Error(upsert_rule_ports.PersistenceFailed(_)) ->
-          helpers.json_response(
-            500,
-            json_codec.encode_error("failed to save inventory rule"),
-          )
+        Error(error) ->
+          helpers.error_response(error_presentation.upsert_rule(error))
       }
     }
   }
@@ -96,11 +74,8 @@ pub fn handle_delete_inventory_rule(
       {
         Ok(_) ->
           helpers.json_response(200, json_codec.encode_ok("rule deleted"))
-        Error(_) ->
-          helpers.json_response(
-            500,
-            json_codec.encode_error("failed to delete inventory rule"),
-          )
+        Error(error) ->
+          helpers.error_response(error_presentation.delete_rule(error))
       }
   }
 }
@@ -142,16 +117,8 @@ pub fn handle_update_bulk_spec(
       {
         Ok(_) ->
           helpers.json_response(200, json_codec.encode_ok("bulk spec saved"))
-        Error(update_bulk_spec_ports.InvalidSortKeys) ->
-          helpers.json_response(
-            400,
-            json_codec.encode_error("invalid bulk sort keys"),
-          )
-        Error(update_bulk_spec_ports.PersistenceFailed(_)) ->
-          helpers.json_response(
-            500,
-            json_codec.encode_error("failed to save bulk spec"),
-          )
+        Error(error) ->
+          helpers.error_response(error_presentation.update_bulk_spec(error))
       }
   }
 }
@@ -183,16 +150,8 @@ pub fn handle_mark_cards_placed(
       {
         Ok(_) ->
           helpers.json_response(200, json_codec.encode_ok("cards placed"))
-        Error(mark_cards_placed_ports.InvalidPlacements) ->
-          helpers.json_response(
-            400,
-            json_codec.encode_error("invalid placements"),
-          )
-        Error(mark_cards_placed_ports.PersistenceFailed(_)) ->
-          helpers.json_response(
-            500,
-            json_codec.encode_error("failed to mark cards placed"),
-          )
+        Error(error) ->
+          helpers.error_response(error_presentation.mark_cards_placed(error))
       }
   }
 }
@@ -215,16 +174,8 @@ pub fn handle_unmark_cards_placed(
       {
         Ok(_) ->
           helpers.json_response(200, json_codec.encode_ok("cards unplaced"))
-        Error(unmark_cards_placed_ports.InvalidPlacements) ->
-          helpers.json_response(
-            400,
-            json_codec.encode_error("invalid placements"),
-          )
-        Error(unmark_cards_placed_ports.PersistenceFailed(_)) ->
-          helpers.json_response(
-            500,
-            json_codec.encode_error("failed to unmark cards placed"),
-          )
+        Error(error) ->
+          helpers.error_response(error_presentation.unmark_cards_placed(error))
       }
   }
 }
@@ -278,16 +229,8 @@ pub fn handle_update_settings(
       {
         Ok(_) ->
           helpers.json_response(200, json_codec.encode_ok("settings saved"))
-        Error(update_preferences_ports.InvalidPreferences) ->
-          helpers.json_response(
-            400,
-            json_codec.encode_error("invalid settings"),
-          )
-        Error(update_preferences_ports.PersistenceFailed(_)) ->
-          helpers.json_response(
-            500,
-            json_codec.encode_error("failed to save settings"),
-          )
+        Error(error) ->
+          helpers.error_response(error_presentation.update_preferences(error))
       }
   }
 }

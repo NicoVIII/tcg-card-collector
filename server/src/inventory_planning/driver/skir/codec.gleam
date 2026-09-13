@@ -12,6 +12,8 @@ import inventory_planning/application/queries/get_preferences/ports as get_prefe
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
+import inventory_planning/driver/error_presentation
+import shared/driver/skir/helpers
 import shared/driver/skir/skirout/inventory_planning/commands as inventory_planning_commands
 import shared/driver/skir/skirout/inventory_planning/queries as inventory_planning_queries
 import skir_client/service
@@ -57,29 +59,11 @@ pub fn map_upsert_inventory_rule_result(
   inventory_planning_commands.UpsertInventoryRuleResponse,
   service.ServiceError,
 ) {
-  case result {
-    Ok(_) -> Ok(inventory_planning_commands.UpsertInventoryRuleResponseSuccess)
-    Error(upsert_rule_ports.InvalidExpression) ->
-      Error(service.ServiceError(
-        service.E400xBadRequest,
-        "invalid inventory rule expression",
-      ))
-    Error(upsert_rule_ports.InvalidSelector) ->
-      Error(service.ServiceError(
-        service.E400xBadRequest,
-        "invalid inventory rule selector",
-      ))
-    Error(upsert_rule_ports.InvalidSortKeys) ->
-      Error(service.ServiceError(
-        service.E400xBadRequest,
-        "invalid inventory rule sort keys",
-      ))
-    Error(upsert_rule_ports.PersistenceFailed(_)) ->
-      Error(service.ServiceError(
-        service.E500xInternalServerError,
-        "failed to save inventory rule",
-      ))
-  }
+  helpers.map_command(
+    result,
+    inventory_planning_commands.UpsertInventoryRuleResponseSuccess,
+    error_presentation.upsert_rule,
+  )
 }
 
 pub fn map_update_bulk_spec_result(
@@ -88,19 +72,11 @@ pub fn map_update_bulk_spec_result(
   inventory_planning_commands.UpdateBulkSpecResponse,
   service.ServiceError,
 ) {
-  case result {
-    Ok(_) -> Ok(inventory_planning_commands.UpdateBulkSpecResponseSuccess)
-    Error(update_bulk_spec_ports.InvalidSortKeys) ->
-      Error(service.ServiceError(
-        service.E400xBadRequest,
-        "invalid bulk sort keys",
-      ))
-    Error(update_bulk_spec_ports.PersistenceFailed(_)) ->
-      Error(service.ServiceError(
-        service.E500xInternalServerError,
-        "failed to save bulk spec",
-      ))
-  }
+  helpers.map_command(
+    result,
+    inventory_planning_commands.UpdateBulkSpecResponseSuccess,
+    error_presentation.update_bulk_spec,
+  )
 }
 
 pub fn map_delete_inventory_rule_result(
@@ -109,14 +85,11 @@ pub fn map_delete_inventory_rule_result(
   inventory_planning_commands.DeleteInventoryRuleResponse,
   service.ServiceError,
 ) {
-  case result {
-    Ok(_) -> Ok(inventory_planning_commands.DeleteInventoryRuleResponseSuccess)
-    Error(_) ->
-      Error(service.ServiceError(
-        service.E500xInternalServerError,
-        "failed to delete inventory rule",
-      ))
-  }
+  helpers.map_command(
+    result,
+    inventory_planning_commands.DeleteInventoryRuleResponseSuccess,
+    error_presentation.delete_rule,
+  )
 }
 
 pub fn map_placed_ledger(
@@ -145,16 +118,11 @@ pub fn map_mark_cards_placed_result(
   inventory_planning_commands.MarkCardsPlacedResponse,
   service.ServiceError,
 ) {
-  case result {
-    Ok(_) -> Ok(inventory_planning_commands.MarkCardsPlacedResponseSuccess)
-    Error(mark_cards_placed_ports.InvalidPlacements) ->
-      Error(service.ServiceError(service.E400xBadRequest, "invalid placements"))
-    Error(mark_cards_placed_ports.PersistenceFailed(_)) ->
-      Error(service.ServiceError(
-        service.E500xInternalServerError,
-        "failed to mark cards placed",
-      ))
-  }
+  helpers.map_command(
+    result,
+    inventory_planning_commands.MarkCardsPlacedResponseSuccess,
+    error_presentation.mark_cards_placed,
+  )
 }
 
 pub fn map_unmark_cards_placed_result(
@@ -163,16 +131,11 @@ pub fn map_unmark_cards_placed_result(
   inventory_planning_commands.UnmarkCardsPlacedResponse,
   service.ServiceError,
 ) {
-  case result {
-    Ok(_) -> Ok(inventory_planning_commands.UnmarkCardsPlacedResponseSuccess)
-    Error(unmark_cards_placed_ports.InvalidPlacements) ->
-      Error(service.ServiceError(service.E400xBadRequest, "invalid placements"))
-    Error(unmark_cards_placed_ports.PersistenceFailed(_)) ->
-      Error(service.ServiceError(
-        service.E500xInternalServerError,
-        "failed to unmark cards placed",
-      ))
-  }
+  helpers.map_command(
+    result,
+    inventory_planning_commands.UnmarkCardsPlacedResponseSuccess,
+    error_presentation.unmark_cards_placed,
+  )
 }
 
 pub fn map_update_preferences_result(
@@ -181,17 +144,11 @@ pub fn map_update_preferences_result(
   inventory_planning_commands.UpdatePlanningPreferencesResponse,
   service.ServiceError,
 ) {
-  case result {
-    Ok(_) ->
-      Ok(inventory_planning_commands.UpdatePlanningPreferencesResponseSuccess)
-    Error(update_preferences_ports.InvalidPreferences) ->
-      Error(service.ServiceError(service.E400xBadRequest, "invalid settings"))
-    Error(update_preferences_ports.PersistenceFailed(_)) ->
-      Error(service.ServiceError(
-        service.E500xInternalServerError,
-        "failed to save settings",
-      ))
-  }
+  helpers.map_command(
+    result,
+    inventory_planning_commands.UpdatePlanningPreferencesResponseSuccess,
+    error_presentation.update_preferences,
+  )
 }
 
 pub fn to_mark_raw_placement(

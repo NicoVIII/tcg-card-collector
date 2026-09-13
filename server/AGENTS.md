@@ -63,10 +63,10 @@ Four contexts: **card_catalog**, **collection**, **inventory_planning**,
   `helpers.map_query(codec.map_…)` (HTTP: `helpers.query_response`). Wire
   mapping lives in the codec, never in the handler.
 - A use case's error presentation (which `ports` error becomes which status
-  class and message) is written once in a `<context>/driver/` module both
-  transports call — the two-transports rule covers error mapping, not only
-  side effects. Existing handlers predate this; the migration is tracked
-  in #87.
+  class and message) is written once, as a `shared/driver/presented_error`
+  value, in `<context>/driver/error_presentation.gleam`; skir and HTTP turn it
+  into their own status via `helpers.service_error` / `helpers.error_response`.
+  The two-transports rule covers error mapping, not only side effects.
 
 ## Infrastructure & Database
 
