@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { CatalogRefreshStatus } from "../data/card_catalog/request";
-import { finishedFeedback, hasFinishedSince, startedFeedback } from "./catalog_refresh";
+import {
+  finishedFeedback,
+  formatElapsed,
+  hasFinishedSince,
+  refreshButtonLabel,
+  startedFeedback,
+} from "./catalog_refresh";
 
 function status(overrides: Partial<CatalogRefreshStatus> = {}): CatalogRefreshStatus {
   return {
@@ -55,5 +61,33 @@ describe("hasFinishedSince", () => {
 
   it("is false while the catalog has never been refreshed", () => {
     expect(hasFinishedSince(status({ status: "never_run", last_probe_at: "" }), "x")).toBe(false);
+  });
+});
+
+describe("formatElapsed", () => {
+  it("shows seconds under a minute", () => {
+    expect(formatElapsed(45_900)).toBe("45s");
+  });
+
+  it("shows minutes with padded seconds under an hour", () => {
+    expect(formatElapsed(63_000)).toBe("1m 03s");
+  });
+
+  it("shows hours with padded minutes beyond that", () => {
+    expect(formatElapsed(3_720_000)).toBe("1h 02m");
+  });
+
+  it("clamps clock skew below zero to 0s", () => {
+    expect(formatElapsed(-500)).toBe("0s");
+  });
+});
+
+describe("refreshButtonLabel", () => {
+  it("offers a refresh when none is in progress", () => {
+    expect(refreshButtonLabel(null)).toBe("Refresh catalog");
+  });
+
+  it("shows the elapsed time while refreshing", () => {
+    expect(refreshButtonLabel(83_000)).toBe("Refreshing… (1m 23s)");
   });
 });

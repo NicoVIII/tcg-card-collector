@@ -1,4 +1,4 @@
-import { Show, createEffect, createSignal } from "solid-js";
+import { Show, createEffect, createMemo, createSignal, onCleanup, type Accessor } from "solid-js";
 import { useQueryClient, type QueryClient } from "@tanstack/solid-query";
 import { useRefreshCatalogMutation } from "../data/card_catalog/mutation";
 import { useCatalogCardsQuery, useCatalogRefreshStatusQuery } from "../data/card_catalog/query";
@@ -10,6 +10,7 @@ import { Pagination } from "../components/pagination";
 import {
   finishedFeedback,
   hasFinishedSince,
+  refreshButtonLabel,
   startedFeedback,
   type RefreshFeedback,
 } from "./catalog_refresh";
@@ -90,24 +91,46 @@ function CatalogCards() {
   );
 }
 
+// baseline is last_probe_at when the refresh started, compared to detect completion.
+type ActiveRefresh = { baseline: string; startedAt: number };
+
+function useElapsedSince(startedAt: Accessor<number | null>): Accessor<number | null> {
+  const [now, setNow] = createSignal(Date.now());
+  createEffect(() => {
+    if (startedAt() === null) return;
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    onCleanup(() => clearInterval(timer));
+  });
+  const elapsed = createMemo(() => {
+    const start = startedAt();
+    return start === null ? null : now() - start;
+  });
+  return elapsed;
+}
+
 export function CatalogPage() {
   const queryClient = useQueryClient();
   const [refreshFeedback, setRefreshFeedback] = createSignal<RefreshFeedback | undefined>(
     undefined,
   );
   const refreshMutation = useRefreshCatalogMutation();
-  // last_probe_at when a refresh started; null means we are not polling for completion.
-  const [pollBaseline, setPollBaseline] = createSignal<string | null>(null);
+  // null means no refresh is known to be running, so we are not polling for completion.
+  const [activeRefresh, setActiveRefresh] = createSignal<ActiveRefresh | null>(null);
   const refreshStatusQuery = useCatalogRefreshStatusQuery(() =>
-    pollBaseline() !== null ? 2000 : false,
+    activeRefresh() !== null ? 2000 : false,
   );
+  const elapsed = useElapsedSince(() => activeRefresh()?.startedAt ?? null);
 
   const startRefresh = async () => {
     setRefreshFeedback(undefined);
 
     try {
       const result = await refreshMutation.mutateAsync();
-      setPollBaseline(refreshStatusQuery.data?.last_probe_at ?? "");
+      setActiveRefresh({
+        baseline: refreshStatusQuery.data?.last_probe_at ?? "",
+        startedAt: Date.now(),
+      });
       setRefreshFeedback(startedFeedback(result));
     } catch (error) {
       setRefreshFeedback({ kind: "error", message: mapError(error).message });
@@ -115,10 +138,12 @@ export function CatalogPage() {
   };
 
   createEffect(() => {
-    const baseline = pollBaseline();
+    const active = activeRefresh();
     const status = refreshStatusQuery.data;
-    if (baseline === null || status === undefined || !hasFinishedSince(status, baseline)) return;
-    setPollBaseline(null);
+    if (active === null || status === undefined || !hasFinishedSince(status, active.baseline)) {
+      return;
+    }
+    setActiveRefresh(null);
     invalidateAfterRefresh(queryClient, status);
     setRefreshFeedback(finishedFeedback(status));
   });
@@ -126,8 +151,12 @@ export function CatalogPage() {
   return (
     <section>
       <h2>Catalog</h2>
-      <button onClick={startRefresh} disabled={refreshMutation.isPending}>
-        Refresh catalog
+      <button
+        onClick={startRefresh}
+        disabled={refreshMutation.isPending || activeRefresh() !== null}
+        aria-busy={activeRefresh() !== null}
+      >
+        {refreshButtonLabel(elapsed())}
       </button>
       <Show when={refreshFeedback()}>
         {(feedback) => <FeedbackMessage feedback={feedback()} />}
