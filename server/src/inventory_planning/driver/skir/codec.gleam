@@ -5,10 +5,8 @@ import inventory_planning/application/commands/mark_cards_placed/ports as mark_c
 import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
-import inventory_planning/application/commands/update_preferences/ports as update_preferences_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
 import inventory_planning/application/queries/get_bulk_spec/ports as get_bulk_spec_ports
-import inventory_planning/application/queries/get_preferences/ports as get_preferences_ports
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
@@ -138,19 +136,6 @@ pub fn map_unmark_cards_placed_result(
   )
 }
 
-pub fn map_update_preferences_result(
-  result: Result(Nil, update_preferences_ports.UpdatePlanningPreferencesError),
-) -> Result(
-  inventory_planning_commands.UpdatePlanningPreferencesResponse,
-  service.ServiceError,
-) {
-  helpers.map_command(
-    result,
-    inventory_planning_commands.UpdatePlanningPreferencesResponseSuccess,
-    error_presentation.update_preferences,
-  )
-}
-
 pub fn to_mark_raw_placement(
   placement: inventory_planning_commands.CardPlacement,
 ) -> mark_cards_placed_handler.RawPlacement {
@@ -192,15 +177,6 @@ pub fn map_inventory_rule_list(
   inventory_planning_queries.inventory_rule_list_new(
     list.map(rules, map_inventory_rule),
     list.length(rules),
-  )
-}
-
-pub fn map_planning_preferences(
-  preferences: get_preferences_ports.PlanningPreferencesReadModel,
-) -> inventory_planning_queries.PlanningPreferences {
-  inventory_planning_queries.planning_preferences_new(
-    preferences.default_grouping,
-    preferences.default_sort,
   )
 }
 

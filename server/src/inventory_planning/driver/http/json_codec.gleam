@@ -2,7 +2,6 @@ import gleam/dynamic/decode
 import gleam/json
 import gleam/result
 import inventory_planning/application/queries/get_bulk_spec/ports as bulk_spec_ports
-import inventory_planning/application/queries/get_preferences/ports as preferences_ports
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
@@ -104,33 +103,6 @@ pub fn decode_placements_body(
   let decoder = {
     use placements <- decode.field("placements", decode.list(placement_decoder))
     decode.success(placements)
-  }
-
-  json.parse(from: json_string, using: decoder)
-  |> result.map_error(fn(_) { "invalid request body" })
-}
-
-pub fn encode_settings(
-  model: preferences_ports.PlanningPreferencesReadModel,
-) -> String {
-  json.object([
-    #("default_sort", json.string(model.default_sort)),
-    #("default_grouping", json.string(model.default_grouping)),
-  ])
-  |> json.to_string
-}
-
-pub type UpdateSettingsBody {
-  UpdateSettingsBody(default_sort: String, default_grouping: String)
-}
-
-pub fn decode_update_settings_body(
-  json_string: String,
-) -> Result(UpdateSettingsBody, String) {
-  let decoder = {
-    use default_sort <- decode.field("default_sort", decode.string)
-    use default_grouping <- decode.field("default_grouping", decode.string)
-    decode.success(UpdateSettingsBody(default_sort:, default_grouping:))
   }
 
   json.parse(from: json_string, using: decoder)

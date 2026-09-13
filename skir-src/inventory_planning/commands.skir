@@ -29,20 +29,6 @@ method DeleteInventoryRule(
   DeleteInventoryRuleRequest
 ): DeleteInventoryRuleResponse = 302;
 
-struct UpdatePlanningPreferencesRequest {
-  default_sort: string = 0;
-  default_grouping: string = 1;
-}
-
-enum UpdatePlanningPreferencesResponse {
-  success = 1;
-  error = 2;
-}
-
-method UpdatePlanningPreferences(
-  UpdatePlanningPreferencesRequest
-): UpdatePlanningPreferencesResponse = 401;
-
 struct UpdateBulkSpecRequest {
   location_name: string = 0;
   sort_keys: string = 1;

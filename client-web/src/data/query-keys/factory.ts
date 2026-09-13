@@ -11,6 +11,5 @@ export const queryKeys = {
   inventoryBulkSpec: () => ["inventory_planning", "bulk_spec"] as const,
   inventoryProjection: () => ["inventory_planning", "projection"] as const,
   placedLedger: () => ["inventory_planning", "placed_ledger"] as const,
-  settings: () => ["settings", "current"] as const,
   setCompletion: () => ["insights", "set_completion"] as const,
 };

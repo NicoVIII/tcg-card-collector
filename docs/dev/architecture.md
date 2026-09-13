@@ -14,10 +14,8 @@ import itself and layers below it: `domain` → `application` →
 everywhere.
 
 Four bounded contexts under `server/src/`: **card_catalog**, **collection**,
-**inventory_planning**, **insights**. Planning preferences (default
-sort/grouping) live inside inventory_planning — there is no separate Settings
-context. Target-set / completion-tracking preferences live inside insights
-instead — see the boundary note in
+**inventory_planning**, **insights**. There is no separate Settings context:
+target-set / completion-tracking preferences live inside insights — see the boundary note in
 [domain-ubiquitous-language.md](domain-ubiquitous-language.md), which also owns
 the domain vocabulary and context ownership rules.
 
@@ -169,7 +167,7 @@ be an empty pass-through to a single `ports.execute()` god-method; it contains
 the use-case logic (branching, sequencing, error mapping) and composes the
 individual ports from the `*Ports` bundle. **Queries are exempt**: a query
 handler that is a one-line `port.f()` (e.g. `ListCatalogCardsQuery`,
-`GetPlanningPreferencesQuery`) is not hiding logic — there just isn't any —
+`GetBulkSpecQuery`) is not hiding logic — there just isn't any —
 and is the CQRS-orthodox shape for a read that has nothing to branch on.
 Don't invent branching in a query handler just to avoid looking thin.
 

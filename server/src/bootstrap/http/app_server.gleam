@@ -107,10 +107,6 @@ fn handle_request(
       inventory_http.handle_mark_cards_placed(req, deps.inventory_planning)
     Delete, "/api/inventory/placements" ->
       inventory_http.handle_unmark_cards_placed(req, deps.inventory_planning)
-    Get, "/api/settings" ->
-      inventory_http.handle_get_settings(deps.inventory_planning)
-    Put, "/api/settings" ->
-      inventory_http.handle_update_settings(req, deps.inventory_planning)
     Get, "/api/insights/completion" ->
       insights_http.handle_get_set_completion(deps.insights)
     Put, "/api/insights/targets" ->

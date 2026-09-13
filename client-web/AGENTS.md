@@ -19,7 +19,6 @@ Rules:
 - **Query keys come from `data/query-keys/factory.ts`** — never inline key arrays; the factory is the single source for cache identity (and has tests).
 - Single RPC client in `data/http/skir_rpc.ts`; QueryClient defaults in `data/tanstack_helper.ts`.
 - Per-card lookups batch through `@yornaath/batshit` (`data/card_catalog/batcher.ts`) — follow that pattern for new N+1-shaped reads.
-- `data/settings/` is deliberate UI-facing naming: it wraps the backend's inventory_planning planning-preferences RPCs. Frontend data dirs follow UI concepts, not backend contexts, when they diverge.
 - `src/data/skirout/` is generated — **never edit**; change `skir-src/` and run `just skir-gen`.
 - A data dir may hold a derivation module beyond the `request`/`query`/`mutation` trio when logic that once lived server-side moves to the client. `data/placement/guidance.ts` folds the cached projection + the placed ledger into placement guidance (see [ADR 0006](../docs/decisions/0006-placement-guidance-derived-client-side.md)) — such modules are pure and vitest-covered, and anything that changes the projection must invalidate `inventoryProjection`.
 

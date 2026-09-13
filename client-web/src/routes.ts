@@ -5,7 +5,6 @@ import { CollectionPage } from "./pages/collection_page";
 import { InsightsPage } from "./pages/insights_page";
 import { InventoryPage } from "./pages/inventory_page";
 import { PlacementPage } from "./pages/placement_page";
-import { SettingsPage } from "./pages/settings_page";
 
 export type AppRoute = {
   path:
@@ -14,7 +13,6 @@ export type AppRoute = {
     | "/catalog"
     | "/inventory"
     | "/placement"
-    | "/settings"
     | "/insights";
   label: string;
   component: Component;
@@ -27,7 +25,6 @@ export const navRoutes: AppRoute[] = [
   { path: "/inventory", label: "Inventory", component: InventoryPage },
   { path: "/placement", label: "Place cards", component: PlacementPage },
   { path: "/insights", label: "Insights", component: InsightsPage },
-  { path: "/settings", label: "Settings", component: SettingsPage },
 ];
 
 // All routable pages; setup pages like the import live here but stay out of

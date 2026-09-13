@@ -10,7 +10,6 @@ describe("routes", () => {
       "/inventory",
       "/placement",
       "/insights",
-      "/settings",
     ]);
   });
 

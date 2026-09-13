@@ -58,8 +58,8 @@ habit that crept in.
   A method belongs to the context whose use case it fronts (the domain-design skill
   owns placement disputes).
 - Method IDs are allocated in per-context hundreds blocks (1xx card_catalog,
-  2xx collection, 3xx inventory_planning — with 4xx as planning-preferences legacy
-  inside inventory_planning — 5xx insights). New contexts take the next free block;
+  2xx collection, 3xx inventory_planning — with 4xx as legacy
+  inside inventory_planning (the bulk spec) — 5xx insights). New contexts take the next free block;
   don't mint new mid-block ranges.
 - Operation-first method names (`RefreshCatalog`, `MarkCardsPlaced`); every method gets
   its own request struct even when empty (the `unit: bool` placeholder pattern);

@@ -29,7 +29,7 @@ Every screen has one of two natures, judged by different yardsticks:
   battery loses nothing), every action undoable in place, guidance anchored to
   physical reality (the between-neighbours pattern: tell the user where the card goes
   relative to cards they can see).
-- **Management screens** (inventory rules, settings, insights, catalog) are desk
+- **Management screens** (inventory rules, insights, catalog) are desk
   work. Yardstick: a data tool — density, precision, fast iteration, teaching inline
   (the always-visible hint-paragraph pattern for DSL surfaces).
 

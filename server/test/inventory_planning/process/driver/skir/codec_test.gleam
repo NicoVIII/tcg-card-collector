@@ -2,10 +2,8 @@ import inventory_planning/application/commands/delete_rule/ports as delete_rule_
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
-import inventory_planning/application/commands/update_preferences/ports as update_preferences_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
 import inventory_planning/application/queries/get_bulk_spec/ports as get_bulk_spec_ports
-import inventory_planning/application/queries/get_preferences/ports as get_preferences_ports
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
@@ -205,28 +203,6 @@ pub fn delete_failure_maps_to_internal_server_error_test() {
     ))
 }
 
-pub fn update_preferences_ok_maps_to_success_test() {
-  assert inventory_planning_skir_codec.map_update_preferences_result(Ok(Nil))
-    == Ok(inventory_planning_commands.UpdatePlanningPreferencesResponseSuccess)
-}
-
-pub fn update_preferences_invalid_maps_to_bad_request_test() {
-  assert inventory_planning_skir_codec.map_update_preferences_result(Error(
-      update_preferences_ports.InvalidPreferences,
-    ))
-    == Error(service.ServiceError(service.E400xBadRequest, "invalid settings"))
-}
-
-pub fn update_preferences_persistence_failure_maps_to_internal_server_error_test() {
-  assert inventory_planning_skir_codec.map_update_preferences_result(
-      Error(update_preferences_ports.PersistenceFailed("disk full")),
-    )
-    == Error(service.ServiceError(
-      service.E500xInternalServerError,
-      "failed to save settings",
-    ))
-}
-
 pub fn map_inventory_rule_list_maps_fields_and_counts_rules_test() {
   let rule =
     list_rules_ports.InventoryRuleReadModel(
@@ -248,19 +224,6 @@ pub fn map_inventory_rule_list_maps_fields_and_counts_rules_test() {
   assert mapped_rule.position == 3
   assert mapped_rule.selector == "all"
   assert mapped_rule.sort_keys == "name"
-}
-
-pub fn map_planning_preferences_keeps_sort_and_grouping_apart_test() {
-  let mapped =
-    inventory_planning_skir_codec.map_planning_preferences(
-      get_preferences_ports.PlanningPreferencesReadModel(
-        default_sort: "name",
-        default_grouping: "set",
-      ),
-    )
-
-  assert mapped.default_sort == "name"
-  assert mapped.default_grouping == "set"
 }
 
 pub fn map_bulk_spec_keeps_location_and_sort_keys_apart_test() {

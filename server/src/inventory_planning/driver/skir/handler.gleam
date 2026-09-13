@@ -3,10 +3,8 @@ import inventory_planning/application/commands/delete_rule/handler as delete_rul
 import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
 import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
 import inventory_planning/application/commands/update_bulk_spec/handler as update_bulk_spec_handler
-import inventory_planning/application/commands/update_preferences/handler as update_preferences_handler
 import inventory_planning/application/commands/upsert_rule/handler as upsert_rule_handler
 import inventory_planning/application/queries/get_bulk_spec/handler as get_bulk_spec_handler
-import inventory_planning/application/queries/get_preferences/handler as get_preferences_handler
 import inventory_planning/application/queries/list_rules/handler as list_rules_handler
 import inventory_planning/application/queries/placed_ledger/handler as placed_ledger_handler
 import inventory_planning/application/queries/projection/handler as projection_handler
@@ -88,43 +86,6 @@ fn handle_get_inventory_projection(
       get_dependencies(ctx).inventory_projection_ports,
     )
     |> helpers.map_query(inventory_planning_skir_codec.map_projection)
-    |> helpers.respond
-  }
-}
-
-fn handle_get_planning_preferences(
-  get_dependencies: fn(context) -> Dependencies,
-) -> helpers.MethodHandler(
-  inventory_planning_queries.GetPlanningPreferencesRequest,
-  inventory_planning_queries.PlanningPreferences,
-  context,
-) {
-  fn(_: inventory_planning_queries.GetPlanningPreferencesRequest, _, ctx) {
-    get_preferences_handler.execute(
-      get_preferences_handler.GetPlanningPreferencesQuery,
-      get_dependencies(ctx).get_planning_preferences_port,
-    )
-    |> helpers.map_query(inventory_planning_skir_codec.map_planning_preferences)
-    |> helpers.respond
-  }
-}
-
-fn handle_update_planning_preferences(
-  get_dependencies: fn(context) -> Dependencies,
-) -> helpers.MethodHandler(
-  inventory_planning_commands.UpdatePlanningPreferencesRequest,
-  inventory_planning_commands.UpdatePlanningPreferencesResponse,
-  context,
-) {
-  fn(req: inventory_planning_commands.UpdatePlanningPreferencesRequest, _, ctx) {
-    update_preferences_handler.execute(
-      update_preferences_handler.UpdatePlanningPreferencesCommand(
-        default_sort: req.default_sort,
-        default_grouping: req.default_grouping,
-      ),
-      get_dependencies(ctx).update_planning_preferences_port,
-    )
-    |> inventory_planning_skir_codec.map_update_preferences_result
     |> helpers.respond
   }
 }
@@ -243,14 +204,6 @@ pub fn register(
   |> service.add_method(
     inventory_planning_queries.get_inventory_projection_method(),
     handle_get_inventory_projection(get_dependencies),
-  )
-  |> service.add_method(
-    inventory_planning_queries.get_planning_preferences_method(),
-    handle_get_planning_preferences(get_dependencies),
-  )
-  |> service.add_method(
-    inventory_planning_commands.update_planning_preferences_method(),
-    handle_update_planning_preferences(get_dependencies),
   )
   |> service.add_method(
     inventory_planning_queries.get_bulk_spec_method(),

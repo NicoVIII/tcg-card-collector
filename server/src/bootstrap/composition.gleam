@@ -29,10 +29,8 @@ import inventory_planning/infrastructure/adapters/commands/delete_rule/adapter a
 import inventory_planning/infrastructure/adapters/commands/mark_cards_placed/adapter as mark_cards_placed_adapter
 import inventory_planning/infrastructure/adapters/commands/unmark_cards_placed/adapter as unmark_cards_placed_adapter
 import inventory_planning/infrastructure/adapters/commands/update_bulk_spec/adapter as update_bulk_spec_adapter
-import inventory_planning/infrastructure/adapters/commands/update_preferences/adapter as update_preferences_adapter
 import inventory_planning/infrastructure/adapters/commands/upsert_rule/adapter as upsert_rule_adapter
 import inventory_planning/infrastructure/adapters/queries/get_bulk_spec/adapter as get_bulk_spec_adapter
-import inventory_planning/infrastructure/adapters/queries/get_preferences/adapter as get_preferences_adapter
 import inventory_planning/infrastructure/adapters/queries/list_rules/adapter as list_rules_adapter
 import inventory_planning/infrastructure/adapters/queries/placed_ledger/adapter as placed_ledger_adapter
 import inventory_planning/infrastructure/adapters/queries/projection/adapter as projection_adapter
@@ -73,8 +71,6 @@ pub fn dependencies() -> Dependencies {
       delete_inventory_rule_port: delete_rule_adapter.new(),
       list_inventory_rules_port: list_rules_adapter.new(),
       inventory_projection_ports: projection_adapter.new(),
-      update_planning_preferences_port: update_preferences_adapter.new(),
-      get_planning_preferences_port: get_preferences_adapter.new(),
       get_bulk_spec_port: get_bulk_spec_adapter.new(),
       update_bulk_spec_port: update_bulk_spec_adapter.new(),
       get_placed_ledger_port: placed_ledger_adapter.new(),

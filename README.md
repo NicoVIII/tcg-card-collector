@@ -12,7 +12,6 @@ See [docs/vision.md](docs/vision.md) for why the project exists, where it is hea
 - Catalog sync from Scryfall
 - CSV collection import replacing the live collection
 - Location rules and inventory projections for physical sorting
-- Planning preferences
 - All of it available over Skir RPC and REST
 
 ## Status

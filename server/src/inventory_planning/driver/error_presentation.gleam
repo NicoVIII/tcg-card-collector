@@ -2,7 +2,6 @@ import inventory_planning/application/commands/delete_rule/ports as delete_rule_
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
-import inventory_planning/application/commands/update_preferences/ports as update_preferences_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
 import shared/driver/presented_error.{
   type PresentedError, BadRequest, Internal, PresentedError,
@@ -59,16 +58,5 @@ pub fn unmark_cards_placed(
       PresentedError(BadRequest, "invalid placements")
     unmark_cards_placed_ports.PersistenceFailed(_) ->
       PresentedError(Internal, "failed to unmark cards placed")
-  }
-}
-
-pub fn update_preferences(
-  error: update_preferences_ports.UpdatePlanningPreferencesError,
-) -> PresentedError {
-  case error {
-    update_preferences_ports.InvalidPreferences ->
-      PresentedError(BadRequest, "invalid settings")
-    update_preferences_ports.PersistenceFailed(_) ->
-      PresentedError(Internal, "failed to save settings")
   }
 }

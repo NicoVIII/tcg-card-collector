@@ -5,10 +5,8 @@ import inventory_planning/application/commands/delete_rule/handler as delete_rul
 import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
 import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
 import inventory_planning/application/commands/update_bulk_spec/handler as update_bulk_spec_handler
-import inventory_planning/application/commands/update_preferences/handler as update_preferences_handler
 import inventory_planning/application/commands/upsert_rule/handler as upsert_rule_handler
 import inventory_planning/application/queries/get_bulk_spec/handler as get_bulk_spec_handler
-import inventory_planning/application/queries/get_preferences/handler as get_preferences_handler
 import inventory_planning/application/queries/list_rules/handler as list_rules_handler
 import inventory_planning/application/queries/placed_ledger/handler as placed_ledger_handler
 import inventory_planning/application/queries/projection/handler as projection_handler
@@ -200,37 +198,4 @@ fn to_unmark_raw_placement(
     location_name: body.location_name,
     quantity: body.quantity,
   )
-}
-
-pub fn handle_get_settings(deps: Dependencies) -> Response(mist.ResponseData) {
-  get_preferences_handler.execute(
-    get_preferences_handler.GetPlanningPreferencesQuery,
-    deps.get_planning_preferences_port,
-  )
-  |> helpers.query_response(inventory_codec.encode_settings)
-}
-
-pub fn handle_update_settings(
-  req: Request(mist.Connection),
-  deps: Dependencies,
-) -> Response(mist.ResponseData) {
-  use body <- helpers.with_json_body(req)
-  case inventory_codec.decode_update_settings_body(body) {
-    Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
-    Ok(b) ->
-      case
-        update_preferences_handler.execute(
-          update_preferences_handler.UpdatePlanningPreferencesCommand(
-            default_sort: b.default_sort,
-            default_grouping: b.default_grouping,
-          ),
-          deps.update_planning_preferences_port,
-        )
-      {
-        Ok(_) ->
-          helpers.json_response(200, json_codec.encode_ok("settings saved"))
-        Error(error) ->
-          helpers.error_response(error_presentation.update_preferences(error))
-      }
-  }
 }

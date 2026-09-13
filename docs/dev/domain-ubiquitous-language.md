@@ -108,14 +108,12 @@ Core terms:
 - PlacementGuidance: the derived worklist — locations still holding unplaced copies (cascade order,
   empty ones dropped), each card's copies-still-to-place plus its cascade-order neighbours for
   physical orientation, and the grand total of unplaced copies.
-- GroupingStrategy / SortStrategy: legacy planning-preference concepts. They survive **only** for the
-  default-sort/grouping preferences; the projection no longer groups or sorts by them.
 
 Boundary notes:
 - Owns cascade, rule, projection, and placement semantics.
 - Consumes collection and catalog data as inputs through application ports.
-- Also owns *planning* preferences (default sort/grouping) — there is no separate Settings
-  context. Target-set preferences for completion tracking belong to Insights, not here.
+- There is no separate Settings context. Target-set preferences for completion tracking belong to
+  Insights, not here.
 
 ## Insights
 
