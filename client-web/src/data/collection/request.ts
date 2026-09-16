@@ -3,12 +3,20 @@ import {
   ListCollectionCards,
   ListCollectionCardsRequest,
   CollectionCardList as RpcCollectionCardList,
+  CollectionCopy as RpcCollectionCopy,
 } from "../skirout/collection/queries.js";
+import { fromWireFinishKind, fromWireLanguageKind, type Finish, type Language } from "./copy_kind";
+
+export type CollectionCopy = {
+  finish: Finish;
+  language: Language;
+  quantity: number;
+};
 
 export type CollectionCard = {
   set_code: string;
   collector_number: string;
-  quantity: number;
+  copies: CollectionCopy[];
 };
 
 export type CollectionCardList = {
@@ -18,12 +26,20 @@ export type CollectionCardList = {
   limit: number;
 };
 
+function toCollectionCopy(copy: RpcCollectionCopy): CollectionCopy {
+  return {
+    finish: fromWireFinishKind(copy.finish.union.kind),
+    language: fromWireLanguageKind(copy.language.union.kind),
+    quantity: copy.quantity,
+  };
+}
+
 function toCollectionCardList(response: RpcCollectionCardList): CollectionCardList {
   return {
     data: response.data.map((card) => ({
       set_code: card.setCode,
       collector_number: card.collectorNumber,
-      quantity: card.quantity,
+      copies: card.copies.map(toCollectionCopy),
     })),
     total: response.total,
     offset: response.offset,

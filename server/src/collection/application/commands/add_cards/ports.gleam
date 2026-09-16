@@ -1,11 +1,17 @@
-import shared/domain/card_key.{type CardKey}
+import shared/domain/copy_key.{type CopyKey}
 
 pub type AddCardsRow {
-  AddCardsRow(set_code: String, collector_number: String, quantity: Int)
+  AddCardsRow(
+    set_code: String,
+    collector_number: String,
+    finish: String,
+    language: String,
+    quantity: Int,
+  )
 }
 
 pub type CollectionRowWriteModel {
-  CollectionRowWriteModel(key: CardKey, quantity: Int)
+  CollectionRowWriteModel(key: CopyKey, quantity: Int)
 }
 
 pub type UpsertCardsPort =

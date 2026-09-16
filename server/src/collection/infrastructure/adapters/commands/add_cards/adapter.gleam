@@ -1,7 +1,7 @@
 import collection/application/commands/add_cards/ports
 import collection/infrastructure/daos/collection_dao
 import gleam/list
-import shared/domain/card_key
+import shared/domain/copy_key
 
 pub fn new() -> ports.UpsertCardsPort {
   fn(rows) {
@@ -9,8 +9,10 @@ pub fn new() -> ports.UpsertCardsPort {
       list.map(rows, fn(row) {
         let ports.CollectionRowWriteModel(key: key, quantity: quantity) = row
         collection_dao.CardRow(
-          set_code: card_key.set_code_string(key),
-          collector_number: card_key.collector_number_string(key),
+          set_code: copy_key.set_code_string(key),
+          collector_number: copy_key.collector_number_string(key),
+          finish: copy_key.finish_string(key),
+          language: copy_key.language_string(key),
           quantity:,
         )
       }),

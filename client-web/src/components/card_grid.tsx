@@ -1,10 +1,10 @@
 import { For } from "solid-js";
-import { CardTile } from "./card_tile";
+import { CardTile, type CopyBadge } from "./card_tile";
 
 type CardGridItem = {
   set_code: string;
   collector_number: string;
-  quantity?: number;
+  copies?: CopyBadge[];
 };
 
 type Props = {
@@ -19,7 +19,7 @@ export function CardGrid(props: Props) {
           <CardTile
             set_code={card.set_code}
             collector_number={card.collector_number}
-            quantity={card.quantity}
+            copies={card.copies}
           />
         )}
       </For>

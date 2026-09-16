@@ -4,7 +4,7 @@ import collection/domain/physical_card
 import gleam/list
 import gleam/result
 import shared/application/command_result
-import shared/domain/card_key
+import shared/domain/copy_key
 
 pub type AddCardsCommand {
   AddCardsCommand(rows: List(ports.AddCardsRow))
@@ -21,9 +21,11 @@ fn validate_rows(
     _ ->
       list.try_map(rows, fn(row) {
         case
-          card_key.from_user_input(
+          copy_key.from_user_input(
             set_code: row.set_code,
             collector_number: row.collector_number,
+            finish: row.finish,
+            language: row.language,
           ),
           physical_card.quantity_new(row.quantity)
         {

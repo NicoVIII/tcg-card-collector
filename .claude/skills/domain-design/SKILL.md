@@ -82,12 +82,14 @@ collector number, parent set). Flag:
 - **Enrichment may be absent.** A collection row can reference a printing the catalog
   doesn't carry; every design must state its behaviour for the unknown-to-catalog case
   (precedent: fails every predicate, cascades to bulk).
-- **The finish/language collapse is known debt, expansion expected.** Collection
-  semantics today are quantity per CardKey — finish and language are dropped at
-  import (tracked in #89), condition too. CardKey-only designs are fine today,
-  but flag any design that would make adding finish-awareness *harder* (e.g. baking
-  "one key = one physical kind" into new persistence or contract shapes). Actually
-  introducing finish/language into the model is ADR-weight, not a side effect.
+- **Finish/language are modeled in Collection, not yet in Inventory Planning
+  (mid-migration, #89).** CopyKey `(CardKey, Finish, Language)` is the shared-kernel
+  identity of an owned copy (ADR 0010); Collection persists and lists quantity per
+  CopyKey. Inventory Planning's placement ledger and projection still collapse to
+  CardKey — the remaining half of #89 — so a design touching placement should still
+  flag anything that would make that follow-up harder. Condition is separate,
+  still-uncommitted debt with its own ADR needed. Introducing a new identity
+  component is ADR-weight, not a side effect.
 - **Multi-user is flagged, not built.** Don't design against it (no domain semantics
   that only work with exactly one user of record), don't build it (no speculative
   user-scoping).

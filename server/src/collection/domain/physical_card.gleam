@@ -1,4 +1,4 @@
-import shared/domain/card_key.{type CardKey}
+import shared/domain/copy_key.{type CopyKey}
 
 pub opaque type Quantity {
   Quantity(Int)
@@ -27,5 +27,5 @@ pub fn quantity_add(a: Quantity, b: Quantity) -> Quantity {
 }
 
 pub type PhysicalCard {
-  PhysicalCard(key: CardKey, quantity: Quantity)
+  PhysicalCard(key: CopyKey, quantity: Quantity)
 }

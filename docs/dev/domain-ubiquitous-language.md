@@ -14,7 +14,12 @@ This document defines the MVP bounded contexts and the shared language for each 
 Value types every context may use: CardKey (the `(set_code, collector_number)`
 identity of a printing), CollectorNumber, NonEmptyString, and the
 context-independent card facts — Rarity (the enum, no ordering), ColorIdentity
-(canonical WUBRG color set), ReleaseDate, OracleId.
+(canonical WUBRG color set), ReleaseDate, OracleId. CopyKey (`(CardKey, Finish,
+Language)`) is the identity of a kind of owned physical copy ([ADR
+0010](../decisions/0010-copy-key-finish-and-language.md)); Finish (`nonfoil |
+foil | etched`) and Language (Scryfall `lang` codes) are its two closed-set
+components, each with no ordering — a total order over either is the
+consuming context's policy.
 
 A type qualifies here when more than one context needs the same
 *representation* and no context disputes its semantics. Policy never moves in
@@ -49,13 +54,14 @@ Purpose:
 - Parse, validate, and persist the owned collection.
 
 Core terms:
-- Collection: the current owned cards (card key → quantity). The single source of truth other contexts read from.
-- ManualAddition: an incremental, synchronous addition of staged cards (AddCards command). Upserts the collection, summing quantities per key.
-- Import: a full statement of the collection (ImportCollection command). Replaces the collection outright.
+- Collection: the current owned cards (CopyKey → quantity). The single source of truth other contexts read from. Consumers that care only about the printing (Insights' set completion, Inventory Planning's projection today) add up across CopyKeys and keep working on CardKey (ADR 0010).
+- ManualAddition: an incremental, synchronous addition of staged cards (AddCards command). Upserts the collection, summing quantities per CopyKey. A finish or language outside the closed sets rejects the whole batch.
+- Import: a full statement of the collection (ImportCollection command). Replaces the collection outright, per CopyKey.
 
 Boundary notes:
 - Owns collection semantics only. Placement — whether a card is physically sorted — is Inventory Planning's, derived from the collection; Collection holds no placement state.
 - Delegates card enrichment language to Card Catalog.
+- Display order for a printing's kinds of copy (finish, then language alphabetically) is Collection's own policy, distinct from Inventory Planning's canonical order over the same CopyKey components.
 
 ## Inventory Planning
 

@@ -1,7 +1,46 @@
+// The identity of a kind of owned physical copy is (printing, finish,
+// language) — ADR 0010. Both value sets are closed; skir has no cross-file
+// import usable with this repo's nested skir-gleam-gen outDir, so they're
+// declared once per contract file that needs them (also in commands.skir).
+enum Finish {
+  nonfoil = 1;
+  foil = 2;
+  etched = 3;
+}
+
+enum Language {
+  en = 1;
+  es = 2;
+  fr = 3;
+  de = 4;
+  it = 5;
+  pt = 6;
+  ja = 7;
+  ko = 8;
+  ru = 9;
+  zhs = 10;
+  zht = 11;
+  he = 12;
+  la = 13;
+  grc = 14;
+  ar = 15;
+  sa = 16;
+  ph = 17;
+  qya = 18;
+}
+
+// One kind of copy owned of a printing — a badge in the collection grid.
+struct CollectionCopy {
+  finish: Finish = 0;
+  language: Language = 1;
+  quantity: int32 = 2;
+}
+
 struct CollectionCard {
   set_code: string = 0;
   collector_number: string = 1;
-  quantity: int32 = 2;
+  removed 2;  // was quantity: superseded by copies (ADR 0010), summed client-side
+  copies: [CollectionCopy] = 3;
 }
 
 struct CollectionCardList {

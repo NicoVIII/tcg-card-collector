@@ -17,6 +17,8 @@ fn map_import_collection_row(
   import_collection_ports.ImportCollectionRow(
     set_code: row.set_code,
     collector_number: row.collector_number,
+    finish: row.finish,
+    language: row.language,
     quantity: row.quantity,
   )
 }
@@ -53,6 +55,8 @@ fn map_add_cards_row(
   add_cards_ports.AddCardsRow(
     set_code: row.set_code,
     collector_number: row.collector_number,
+    finish: row.finish,
+    language: row.language,
     quantity: row.quantity,
   )
 }

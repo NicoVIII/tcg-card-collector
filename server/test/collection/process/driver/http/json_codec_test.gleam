@@ -4,8 +4,8 @@ pub fn decode_import_collection_body_with_rows_test() {
   let json_string =
     "{"
     <> "\"rows\": ["
-    <> "  {\"set_code\": \"mh3\", \"collector_number\": \"1\", \"quantity\": 2},"
-    <> "  {\"set_code\": \"mh3\", \"collector_number\": \"2\", \"quantity\": 1}"
+    <> "  {\"set_code\": \"mh3\", \"collector_number\": \"1\", \"finish\": \"nonfoil\", \"language\": \"en\", \"quantity\": 2},"
+    <> "  {\"set_code\": \"mh3\", \"collector_number\": \"2\", \"finish\": \"foil\", \"language\": \"de\", \"quantity\": 1}"
     <> "]"
     <> "}"
 
@@ -17,11 +17,15 @@ pub fn decode_import_collection_body_with_rows_test() {
       collection_codec.ImportCollectionRow(
         set_code: "mh3",
         collector_number: "1",
+        finish: "nonfoil",
+        language: "en",
         quantity: 2,
       ),
       collection_codec.ImportCollectionRow(
         set_code: "mh3",
         collector_number: "2",
+        finish: "foil",
+        language: "de",
         quantity: 1,
       ),
     ]
@@ -42,7 +46,7 @@ pub fn decode_add_cards_body_with_rows_test() {
   let json_string =
     "{"
     <> "\"rows\": ["
-    <> "  {\"set_code\": \"mh3\", \"collector_number\": \"1\", \"quantity\": 2}"
+    <> "  {\"set_code\": \"mh3\", \"collector_number\": \"1\", \"finish\": \"nonfoil\", \"language\": \"en\", \"quantity\": 2}"
     <> "]"
     <> "}"
 
@@ -53,6 +57,8 @@ pub fn decode_add_cards_body_with_rows_test() {
       collection_codec.AddCardsRow(
         set_code: "mh3",
         collector_number: "1",
+        finish: "nonfoil",
+        language: "en",
         quantity: 2,
       ),
     ]

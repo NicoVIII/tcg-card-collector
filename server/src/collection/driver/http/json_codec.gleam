@@ -3,7 +3,13 @@ import gleam/json
 import gleam/result
 
 pub type ImportCollectionRow {
-  ImportCollectionRow(set_code: String, collector_number: String, quantity: Int)
+  ImportCollectionRow(
+    set_code: String,
+    collector_number: String,
+    finish: String,
+    language: String,
+    quantity: Int,
+  )
 }
 
 pub type ImportCollectionBody {
@@ -13,8 +19,16 @@ pub type ImportCollectionBody {
 fn import_collection_row_decoder() -> decode.Decoder(ImportCollectionRow) {
   use set_code <- decode.field("set_code", decode.string)
   use collector_number <- decode.field("collector_number", decode.string)
+  use finish <- decode.field("finish", decode.string)
+  use language <- decode.field("language", decode.string)
   use quantity <- decode.field("quantity", decode.int)
-  decode.success(ImportCollectionRow(set_code:, collector_number:, quantity:))
+  decode.success(ImportCollectionRow(
+    set_code:,
+    collector_number:,
+    finish:,
+    language:,
+    quantity:,
+  ))
 }
 
 pub fn decode_import_collection_body(
@@ -36,7 +50,13 @@ pub fn decode_import_collection_body(
 }
 
 pub type AddCardsRow {
-  AddCardsRow(set_code: String, collector_number: String, quantity: Int)
+  AddCardsRow(
+    set_code: String,
+    collector_number: String,
+    finish: String,
+    language: String,
+    quantity: Int,
+  )
 }
 
 pub type AddCardsBody {
@@ -46,8 +66,16 @@ pub type AddCardsBody {
 fn add_cards_row_decoder() -> decode.Decoder(AddCardsRow) {
   use set_code <- decode.field("set_code", decode.string)
   use collector_number <- decode.field("collector_number", decode.string)
+  use finish <- decode.field("finish", decode.string)
+  use language <- decode.field("language", decode.string)
   use quantity <- decode.field("quantity", decode.int)
-  decode.success(AddCardsRow(set_code:, collector_number:, quantity:))
+  decode.success(AddCardsRow(
+    set_code:,
+    collector_number:,
+    finish:,
+    language:,
+    quantity:,
+  ))
 }
 
 pub fn decode_add_cards_body(

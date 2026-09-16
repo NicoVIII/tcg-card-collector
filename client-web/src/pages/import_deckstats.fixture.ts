@@ -8,10 +8,12 @@
 //   collector_number, language, condition, comment, added
 //
 // Notable rows this sample exercises:
-//   - M19/85 appears twice (de + en) -> quantities aggregate to 3
-//   - M15/85 appears twice (de + en) -> quantities aggregate to 4
+//   - M19/85 appears as a de row and an en row: distinct kinds of copy
+//     (ADR 0010), not summed together
+//   - M15/85 likewise appears as separate de and en rows
 //   - MH2 "Abundant Harvest" 354 and 147 share a name but are distinct keys
-//   - a foil row (Aboshan's Desire, is_foil=1) -> foil flag is dropped
+//   - a foil row (Aboshan's Desire, is_foil=1) -> its collector_number is also
+//     empty, so it's rejected for that reason regardless of finish
 //   - rows with an empty collector_number (ODY, OGW x2, SCG, HOU, SOI) -> rejected
 //   - a promo set (PLIST) and a double-faced card name (SOI)
 export const DECKSTATS_FIXTURE_CSV = `amount,card_name,is_foil,is_pinned,is_signed,set_id,set_code,collector_number,language,condition,comment,added

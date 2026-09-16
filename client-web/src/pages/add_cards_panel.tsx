@@ -2,6 +2,14 @@ import { For, Show, createSignal } from "solid-js";
 import { A } from "@solidjs/router";
 import { useCardQuery } from "../data/card_catalog/query";
 import { useAddCardsMutation } from "../data/collection_add/mutation";
+import {
+  DEFAULT_FINISH,
+  DEFAULT_LANGUAGE,
+  FINISHES,
+  LANGUAGES,
+  type Finish,
+  type Language,
+} from "../data/collection/copy_kind";
 import { mapError } from "../data/http/error";
 import {
   type StagedEntry,
@@ -31,7 +39,8 @@ function StagedRow(props: { entry: StagedEntry; onRemove: () => void }) {
         <img class="staging-thumb" src={cardQuery.data?.image_uri} alt="" />
       </Show>
       <span class="staging-key">
-        {props.entry.quantity}x {props.entry.setCode} {props.entry.collectorNumber}
+        {props.entry.quantity}x {props.entry.setCode} {props.entry.collectorNumber} (
+        {props.entry.finish}·{props.entry.language})
       </span>
       <span class="staging-name" classList={{ "staging-name-unknown": cardQuery.data === null }}>
         {cardName()}
@@ -54,6 +63,8 @@ function StagedRow(props: { entry: StagedEntry; onRemove: () => void }) {
 export function AddCardsPanel() {
   const [setCode, setSetCode] = createSignal("");
   const [collectorNumber, setCollectorNumber] = createSignal("");
+  const [finish, setFinish] = createSignal<Finish>(DEFAULT_FINISH);
+  const [language, setLanguage] = createSignal<Language>(DEFAULT_LANGUAGE);
   const [quantity, setQuantity] = createSignal("1");
   const [staged, setStaged] = createSignal<StagedEntry[]>([]);
   const [formError, setFormError] = createSignal<string | null>(null);
@@ -68,6 +79,8 @@ export function AddCardsPanel() {
     const entry = normalizeEntry({
       setCode: setCode(),
       collectorNumber: collectorNumber(),
+      finish: finish(),
+      language: language(),
       quantity: Number.parseInt(quantity(), 10),
     });
     if (entry === null) {
@@ -126,6 +139,24 @@ export function AddCardsPanel() {
             placeholder="123"
             size={6}
           />
+        </label>
+        <label>
+          Finish
+          <select
+            value={finish()}
+            onChange={(event) => setFinish(event.currentTarget.value as Finish)}
+          >
+            <For each={FINISHES}>{(option) => <option value={option}>{option}</option>}</For>
+          </select>
+        </label>
+        <label>
+          Language
+          <select
+            value={language()}
+            onChange={(event) => setLanguage(event.currentTarget.value as Language)}
+          >
+            <For each={LANGUAGES}>{(option) => <option value={option}>{option}</option>}</For>
+          </select>
         </label>
         <label>
           Quantity

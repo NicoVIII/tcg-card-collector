@@ -2,10 +2,10 @@ import collection/domain/physical_card.{type PhysicalCard, PhysicalCard}
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option.{None, Some}
-import shared/domain/card_key.{type CardKey}
+import shared/domain/copy_key.{type CopyKey}
 
 pub opaque type Collection {
-  Collection(entries: Dict(CardKey, physical_card.Quantity))
+  Collection(entries: Dict(CopyKey, physical_card.Quantity))
 }
 
 /// Normalizes a batch of owned cards into a Collection: cards sharing a key
@@ -19,7 +19,7 @@ pub fn from_cards(cards: List(PhysicalCard)) -> Collection {
 
 fn entries_from_cards(
   cards: List(PhysicalCard),
-) -> Dict(CardKey, physical_card.Quantity) {
+) -> Dict(CopyKey, physical_card.Quantity) {
   list.fold(cards, dict.new(), fn(acc, card) {
     dict.upsert(acc, card.key, fn(existing) {
       case existing {

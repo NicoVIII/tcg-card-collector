@@ -35,7 +35,13 @@ export function CollectionPage() {
           </Show>
         }
       >
-        <CardGrid cards={cardsQuery.data?.data ?? []} />
+        <CardGrid
+          cards={(cardsQuery.data?.data ?? []).map((card) => ({
+            set_code: card.set_code,
+            collector_number: card.collector_number,
+            copies: card.copies,
+          }))}
+        />
         <Pagination
           offset={offset()}
           limit={PAGE_SIZE}

@@ -1,11 +1,24 @@
-import { Show } from "solid-js";
+import { For, Show } from "solid-js";
 import { useCardQuery } from "../data/card_catalog/query";
+
+export type CopyBadge = {
+  finish: string;
+  language: string;
+  quantity: number;
+};
 
 type Props = {
   set_code: string;
   collector_number: string;
-  quantity?: number;
+  copies?: CopyBadge[];
 };
+
+// One badge per kind of copy owned, so a printing held as e.g. two nonfoil-en
+// and one foil-de shows both at a glance (ADR 0010) rather than collapsing to
+// a single count.
+function badgeLabel(copy: CopyBadge): string {
+  return `${copy.quantity}× ${copy.finish}·${copy.language}`;
+}
 
 export function CardTile(props: Props) {
   const cardQuery = useCardQuery(() => ({
@@ -15,8 +28,12 @@ export function CardTile(props: Props) {
 
   return (
     <div class="card-tile">
-      <Show when={props.quantity !== undefined}>
-        <span class="card-badge">&times;{props.quantity}</span>
+      <Show when={props.copies !== undefined && props.copies.length > 0}>
+        <div class="card-badge-list">
+          <For each={props.copies}>
+            {(copy) => <span class="card-badge">{badgeLabel(copy)}</span>}
+          </For>
+        </div>
       </Show>
       <Show
         when={cardQuery.data}

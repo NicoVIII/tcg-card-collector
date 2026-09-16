@@ -5,7 +5,13 @@ import shared/infrastructure/stores/sqlite_store
 import sqlight
 
 pub type CardRow {
-  CardRow(set_code: String, collector_number: String, quantity: Int)
+  CardRow(
+    set_code: String,
+    collector_number: String,
+    finish: String,
+    language: String,
+    quantity: Int,
+  )
 }
 
 const insert_batch_size = 100
@@ -13,28 +19,39 @@ const insert_batch_size = 100
 fn card_row_decoder() -> decode.Decoder(CardRow) {
   use set_code <- decode.field(0, decode.string)
   use collector_number <- decode.field(1, decode.string)
-  use quantity <- decode.field(2, decode.int)
-  decode.success(CardRow(set_code:, collector_number:, quantity:))
+  use finish <- decode.field(2, decode.string)
+  use language <- decode.field(3, decode.string)
+  use quantity <- decode.field(4, decode.int)
+  decode.success(CardRow(
+    set_code:,
+    collector_number:,
+    finish:,
+    language:,
+    quantity:,
+  ))
 }
 
 // Unordered: a TEXT ORDER BY can't express the numeric-aware collector-number
 // order the grid needs, so the list_cards query sorts the rows in the app layer.
 pub fn list_cards() -> Result(List(CardRow), String) {
   sqlite_store.query(
-    "SELECT set_code, collector_number, quantity FROM collection;",
+    "SELECT set_code, collector_number, finish, language, quantity FROM collection;",
     [],
     card_row_decoder(),
   )
 }
 
 fn batch_values(batch: List(CardRow)) -> #(String, List(sqlight.Value)) {
-  let placeholders = sqlite_store.placeholders(list.length(batch), "(?, ?, ?)")
+  let placeholders =
+    sqlite_store.placeholders(list.length(batch), "(?, ?, ?, ?, ?)")
   let params =
     batch
     |> list.flat_map(fn(row: CardRow) {
       [
         sqlight.text(row.set_code),
         sqlight.text(row.collector_number),
+        sqlight.text(row.finish),
+        sqlight.text(row.language),
         sqlight.int(row.quantity),
       ]
     })
@@ -50,7 +67,7 @@ fn exec_batch(
   let sql =
     "INSERT INTO "
     <> table
-    <> " (set_code, collector_number, quantity) VALUES "
+    <> " (set_code, collector_number, finish, language, quantity) VALUES "
     <> placeholders
     <> suffix
   sqlite_store.exec(sql, params)
@@ -64,7 +81,7 @@ fn insert_rows(table: String, rows: List(CardRow)) -> Result(Nil, String) {
 
 fn upsert_rows(table: String, rows: List(CardRow)) -> Result(Nil, String) {
   let suffix =
-    " ON CONFLICT(set_code, collector_number) "
+    " ON CONFLICT(set_code, collector_number, finish, language) "
     <> "DO UPDATE SET quantity = quantity + excluded.quantity;"
   rows
   |> list.sized_chunk(insert_batch_size)
