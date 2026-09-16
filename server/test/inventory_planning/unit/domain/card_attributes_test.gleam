@@ -1,6 +1,9 @@
 import gleam/list
+import gleam/order
 import inventory_planning/domain/card_attributes as attrs
 import shared/domain/color_identity
+import shared/domain/finish
+import shared/domain/language
 import shared/domain/rarity
 
 // common < uncommon < special < bonus < rare < mythic
@@ -71,6 +74,21 @@ pub fn card_type_priority_test() {
   assert attrs.card_type_from_type_line("Tribal Instant — Arcane")
     == attrs.Instant
   assert attrs.card_type_from_type_line("Conspiracy") == attrs.Other
+}
+
+// nonfoil < foil < etched
+pub fn finish_total_order_test() {
+  let ascending = [finish.Nonfoil, finish.Foil, finish.Etched]
+  let ranks = list.map(ascending, attrs.finish_rank)
+  assert ranks == [0, 1, 2]
+}
+
+// English sorts before every other language; the rest compare by code.
+pub fn language_compare_en_first_test() {
+  assert attrs.compare_language_en_first(language.En, language.De) == order.Lt
+  assert attrs.compare_language_en_first(language.De, language.En) == order.Gt
+  assert attrs.compare_language_en_first(language.En, language.En) == order.Eq
+  assert attrs.compare_language_en_first(language.De, language.Fr) == order.Lt
 }
 
 pub fn card_type_parse_round_trip_test() {

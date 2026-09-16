@@ -10,6 +10,8 @@ pub fn returns_the_ledger_rows_test() {
     ports.PlacedLedgerRow(
       set_code: "m11",
       collector_number: "146",
+      finish: "nonfoil",
+      language: "en",
       location: "Bulk",
       quantity: 2,
     ),

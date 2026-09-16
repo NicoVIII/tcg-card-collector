@@ -16,6 +16,8 @@ pub fn encode_inventory_projection_nests_locations_and_cards_test() {
             name: "Grizzly Bears",
             set_code: "m11",
             collector_number: "182",
+            finish: "nonfoil",
+            language: "en",
             quantity: 2,
             color_identity: "G",
             rarity: "common",
@@ -28,7 +30,8 @@ pub fn encode_inventory_projection_nests_locations_and_cards_test() {
   assert json_codec.encode_inventory_projection(projection)
     == "{\"locations\":[{\"location_name\":\"Bulk\",\"rule_id\":\"\","
     <> "\"total_quantity\":2,\"cards\":[{\"name\":\"Grizzly Bears\","
-    <> "\"set_code\":\"m11\",\"collector_number\":\"182\",\"quantity\":2,"
+    <> "\"set_code\":\"m11\",\"collector_number\":\"182\",\"finish\":\"nonfoil\","
+    <> "\"language\":\"en\",\"quantity\":2,"
     <> "\"color_identity\":\"G\",\"rarity\":\"common\",\"card_type\":\"creature\"}]}],"
     <> "\"total_quantity\":2,\"unknown_count\":1}"
 }
@@ -38,6 +41,8 @@ pub fn encode_placed_ledger_lists_rows_test() {
     placed_ledger_ports.PlacedLedgerRow(
       set_code: "m11",
       collector_number: "182",
+      finish: "nonfoil",
+      language: "en",
       location: "Bulk",
       quantity: 3,
     ),
@@ -45,18 +50,22 @@ pub fn encode_placed_ledger_lists_rows_test() {
 
   assert json_codec.encode_placed_ledger(rows)
     == "{\"rows\":[{\"set_code\":\"m11\",\"collector_number\":\"182\","
+    <> "\"finish\":\"nonfoil\",\"language\":\"en\","
     <> "\"location\":\"Bulk\",\"quantity\":3}]}"
 }
 
 pub fn decode_placements_body_reads_the_placement_list_test() {
   let body =
     "{\"placements\":[{\"set_code\":\"lea\",\"collector_number\":\"1\","
+    <> "\"finish\":\"nonfoil\",\"language\":\"en\","
     <> "\"location_name\":\"Bulk\",\"quantity\":2}]}"
   assert json_codec.decode_placements_body(body)
     == Ok([
       json_codec.PlacementBody(
         set_code: "lea",
         collector_number: "1",
+        finish: "nonfoil",
+        language: "en",
         location_name: "Bulk",
         quantity: 2,
       ),

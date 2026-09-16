@@ -1,5 +1,11 @@
 import { skirClient } from "../http/skir_rpc";
 import {
+  fromWireFinishKind,
+  fromWireLanguageKind,
+  type Finish,
+  type Language,
+} from "../collection/copy_kind";
+import {
   DeleteInventoryRule,
   DeleteInventoryRuleRequest,
   UpdateBulkSpec,
@@ -42,6 +48,8 @@ export type ProjectionCard = {
   name: string;
   set_code: string;
   collector_number: string;
+  finish: Finish;
+  language: Language;
   quantity: number;
   color_identity: string;
   rarity: string;
@@ -92,6 +100,8 @@ function toInventoryProjection(response: RpcInventoryProjection): InventoryProje
         name: card.name,
         set_code: card.setCode,
         collector_number: card.collectorNumber,
+        finish: fromWireFinishKind(card.finish.union.kind),
+        language: fromWireLanguageKind(card.language.union.kind),
         quantity: card.quantity,
         color_identity: card.colorIdentity,
         rarity: card.rarity,

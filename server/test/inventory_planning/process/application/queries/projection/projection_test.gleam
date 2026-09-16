@@ -96,10 +96,34 @@ fn attrs(
 fn sample_ports() -> ports.InventoryProjectionPorts {
   build_ports(
     snapshot: [
-      ports.SnapshotRow(set_code: "lea", collector_number: "161", quantity: 1),
-      ports.SnapshotRow(set_code: "m11", collector_number: "146", quantity: 3),
-      ports.SnapshotRow(set_code: "m10", collector_number: "175", quantity: 1),
-      ports.SnapshotRow(set_code: "m11", collector_number: "182", quantity: 1),
+      ports.SnapshotRow(
+        set_code: "lea",
+        collector_number: "161",
+        finish: "nonfoil",
+        language: "en",
+        quantity: 1,
+      ),
+      ports.SnapshotRow(
+        set_code: "m11",
+        collector_number: "146",
+        finish: "nonfoil",
+        language: "en",
+        quantity: 3,
+      ),
+      ports.SnapshotRow(
+        set_code: "m10",
+        collector_number: "175",
+        finish: "nonfoil",
+        language: "en",
+        quantity: 1,
+      ),
+      ports.SnapshotRow(
+        set_code: "m11",
+        collector_number: "182",
+        finish: "nonfoil",
+        language: "en",
+        quantity: 1,
+      ),
     ],
     catalog: [
       #(
@@ -198,6 +222,8 @@ pub fn four_rule_cascade_places_every_copy_test() {
               name: "Lightning Bolt",
               set_code: "lea",
               collector_number: "161",
+              finish: "nonfoil",
+              language: "en",
               quantity: 1,
               color_identity: "R",
               rarity: "rare",
@@ -216,6 +242,8 @@ pub fn four_rule_cascade_places_every_copy_test() {
               name: "Lightning Bolt",
               set_code: "m11",
               collector_number: "146",
+              finish: "nonfoil",
+              language: "en",
               quantity: 1,
               color_identity: "R",
               rarity: "rare",
@@ -233,6 +261,8 @@ pub fn four_rule_cascade_places_every_copy_test() {
               name: "Grizzly Bears",
               set_code: "m10",
               collector_number: "175",
+              finish: "nonfoil",
+              language: "en",
               quantity: 1,
               color_identity: "G",
               rarity: "common",
@@ -251,6 +281,8 @@ pub fn four_rule_cascade_places_every_copy_test() {
               name: "Lightning Bolt",
               set_code: "m11",
               collector_number: "146",
+              finish: "nonfoil",
+              language: "en",
               quantity: 2,
               color_identity: "R",
               rarity: "rare",
@@ -260,6 +292,8 @@ pub fn four_rule_cascade_places_every_copy_test() {
               name: "Grizzly Bears",
               set_code: "m11",
               collector_number: "182",
+              finish: "nonfoil",
+              language: "en",
               quantity: 1,
               color_identity: "G",
               rarity: "common",
@@ -299,7 +333,13 @@ pub fn keys_missing_from_catalog_are_counted_and_bulked_test() {
   let ports =
     build_ports(
       snapshot: [
-        ports.SnapshotRow(set_code: "xyz", collector_number: "1", quantity: 2),
+        ports.SnapshotRow(
+          set_code: "xyz",
+          collector_number: "1",
+          finish: "nonfoil",
+          language: "en",
+          quantity: 2,
+        ),
       ],
       catalog: [],
       rules: ports.RulesModel(
@@ -320,6 +360,8 @@ pub fn keys_missing_from_catalog_are_counted_and_bulked_test() {
               name: "",
               set_code: "xyz",
               collector_number: "1",
+              finish: "nonfoil",
+              language: "en",
               quantity: 2,
               color_identity: "",
               rarity: "",
@@ -337,8 +379,20 @@ pub fn rule_sort_keys_order_cards_within_location_test() {
   let ports =
     build_ports(
       snapshot: [
-        ports.SnapshotRow(set_code: "aaa", collector_number: "1", quantity: 1),
-        ports.SnapshotRow(set_code: "bbb", collector_number: "2", quantity: 1),
+        ports.SnapshotRow(
+          set_code: "aaa",
+          collector_number: "1",
+          finish: "nonfoil",
+          language: "en",
+          quantity: 1,
+        ),
+        ports.SnapshotRow(
+          set_code: "bbb",
+          collector_number: "2",
+          finish: "nonfoil",
+          language: "en",
+          quantity: 1,
+        ),
       ],
       catalog: [
         #(
@@ -416,8 +470,20 @@ pub fn set_dates_port_wired_to_bucket_ordering_test() {
   let p =
     build_ports_with_dates(
       snapshot: [
-        ports.SnapshotRow(set_code: "zzz", collector_number: "1", quantity: 1),
-        ports.SnapshotRow(set_code: "aaa", collector_number: "2", quantity: 1),
+        ports.SnapshotRow(
+          set_code: "zzz",
+          collector_number: "1",
+          finish: "nonfoil",
+          language: "en",
+          quantity: 1,
+        ),
+        ports.SnapshotRow(
+          set_code: "aaa",
+          collector_number: "2",
+          finish: "nonfoil",
+          language: "en",
+          quantity: 1,
+        ),
       ],
       catalog: [
         #(
@@ -513,11 +579,15 @@ pub fn set_metadata_transitive_fetch_reaches_unowned_parent_test() {
           ports.SnapshotRow(
             set_code: "tgrn",
             collector_number: "1",
+            finish: "nonfoil",
+            language: "en",
             quantity: 1,
           ),
           ports.SnapshotRow(
             set_code: "twar",
             collector_number: "1",
+            finish: "nonfoil",
+            language: "en",
             quantity: 1,
           ),
         ])

@@ -4,6 +4,8 @@ import inventory_planning/domain/card_attributes.{type PlannedCard} as attrs
 import inventory_planning/domain/location_target.{Fixed, Template}
 import inventory_planning/domain/set_index
 import shared/domain/card_key
+import shared/domain/finish
+import shared/domain/language
 import shared/domain/oracle_id
 import shared/domain/rarity
 import shared/domain/release_date
@@ -18,6 +20,8 @@ fn card_with_color(colors: String) -> PlannedCard {
     key:,
     name: "Test",
     quantity: 1,
+    finish: finish.Nonfoil,
+    language: language.En,
     released_at: Some(date),
     oracle_id: Some(oracle),
     rarity: Some(rarity.Rare),
@@ -33,6 +37,8 @@ fn card_in_set(set_code: String) -> PlannedCard {
     key:,
     name: "Test",
     quantity: 1,
+    finish: finish.Nonfoil,
+    language: language.En,
     released_at: None,
     oracle_id: None,
     rarity: None,
@@ -113,6 +119,8 @@ pub fn renders_none_when_attribute_missing_test() {
       key:,
       name: "Test",
       quantity: 1,
+      finish: finish.Nonfoil,
+      language: language.En,
       released_at: None,
       oracle_id: None,
       rarity: None,

@@ -12,6 +12,9 @@ import inventory_planning/domain/rule_cascade
 import inventory_planning/domain/set_index
 import inventory_planning/domain/sort_spec
 import shared/domain/card_key
+import shared/domain/copy_key
+import shared/domain/finish
+import shared/domain/language
 import shared/domain/rarity
 
 pub type InventoryProjectionQuery {
@@ -36,11 +39,17 @@ pub fn execute(
   )
 
   let planned = list.filter_map(snapshot_rows, plan_card(_, attributes))
+  // A printing can now have several snapshot rows (one per kind of copy), so
+  // "unknown" counts distinct printings, not rows.
   let unknown_count =
-    list.count(snapshot_rows, fn(row) {
+    snapshot_rows
+    |> list.filter(fn(row) {
       dict.get(attributes, #(row.set_code, row.collector_number))
       |> result.is_error
     })
+    |> list.map(fn(row) { #(row.set_code, row.collector_number) })
+    |> list.unique
+    |> list.length
 
   let set_codes =
     list.map(planned, fn(c) { card_key.set_code_string(c.key) })
@@ -161,12 +170,14 @@ fn plan_card(
   row: projection_ports.SnapshotRow,
   attributes: Dict(#(String, String), projection_ports.CatalogAttributes),
 ) -> Result(PlannedCard, Nil) {
-  // The snapshot stores canonical keys, so this only fails on corrupt data — a
-  // row we genuinely cannot place, hence dropped.
+  // The snapshot stores canonical values, so this only fails on corrupt data —
+  // a row we genuinely cannot place, hence dropped.
   use key <- result.try(
-    card_key.from_user_input(
+    copy_key.new(
       set_code: row.set_code,
       collector_number: row.collector_number,
+      finish: row.finish,
+      language: row.language,
     )
     |> result.replace_error(Nil),
   )
@@ -175,9 +186,11 @@ fn plan_card(
   Ok(case found {
     Error(_) ->
       card_attributes.PlannedCard(
-        key: key,
+        key: copy_key.card_key(key),
         name: "",
         quantity: row.quantity,
+        finish: copy_key.finish(key),
+        language: copy_key.language(key),
         released_at: None,
         oracle_id: None,
         rarity: None,
@@ -186,9 +199,11 @@ fn plan_card(
       )
     Ok(attrs) ->
       card_attributes.PlannedCard(
-        key: key,
+        key: copy_key.card_key(key),
         name: attrs.name,
         quantity: row.quantity,
+        finish: copy_key.finish(key),
+        language: copy_key.language(key),
         released_at: attrs.released_at,
         oracle_id: attrs.oracle_id,
         rarity: Some(attrs.rarity),
@@ -229,6 +244,8 @@ fn to_card(
     name: card.name,
     set_code: card_key.set_code_string(card.key),
     collector_number: card_key.collector_number_string(card.key),
+    finish: finish.to_string(card.finish),
+    language: language.to_string(card.language),
     quantity: assignment.quantity,
     color_identity: card.color_identity
       |> option.map(card_attributes.color_identity_label)

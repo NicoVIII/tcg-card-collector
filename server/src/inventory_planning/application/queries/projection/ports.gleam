@@ -14,6 +14,8 @@ pub type ProjectionCard {
     name: String,
     set_code: String,
     collector_number: String,
+    finish: String,
+    language: String,
     quantity: Int,
     color_identity: String,
     rarity: String,
@@ -45,7 +47,13 @@ pub type Projection {
 // --- Driven ports ---------------------------------------------------------
 
 pub type SnapshotRow {
-  SnapshotRow(set_code: String, collector_number: String, quantity: Int)
+  SnapshotRow(
+    set_code: String,
+    collector_number: String,
+    finish: String,
+    language: String,
+    quantity: Int,
+  )
 }
 
 // The catalog's facts for one printing, already carried as the shared value

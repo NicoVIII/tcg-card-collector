@@ -24,6 +24,37 @@ struct InventoryProjectionRequest {
   unit: bool = 0;
 }
 
+// The identity of a kind of owned physical copy is (printing, finish,
+// language) — ADR 0010. Both value sets are closed; skir has no cross-file
+// import usable with this repo's nested skir-gleam-gen outDir, so they're
+// declared once per contract file that needs them (also in commands.skir).
+enum Finish {
+  nonfoil = 1;
+  foil = 2;
+  etched = 3;
+}
+
+enum Language {
+  en = 1;
+  es = 2;
+  fr = 3;
+  de = 4;
+  it = 5;
+  pt = 6;
+  ja = 7;
+  ko = 8;
+  ru = 9;
+  zhs = 10;
+  zht = 11;
+  he = 12;
+  la = 13;
+  grc = 14;
+  ar = 15;
+  sa = 16;
+  ph = 17;
+  qya = 18;
+}
+
 struct ProjectionCard {
   name: string = 0;
   set_code: string = 1;
@@ -32,6 +63,8 @@ struct ProjectionCard {
   color_identity: string = 4;
   rarity: string = 5;
   card_type: string = 6;
+  finish: Finish = 7;
+  language: Language = 8;
 }
 
 struct ProjectionLocation {
@@ -73,6 +106,8 @@ struct PlacedLedgerRow {
   collector_number: string = 1;
   location: string = 2;
   quantity: int32 = 3;
+  finish: Finish = 4;
+  language: Language = 5;
 }
 
 // Reuses method 306's response slot: the placement page no longer fetches

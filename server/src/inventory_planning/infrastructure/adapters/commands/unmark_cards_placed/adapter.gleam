@@ -12,6 +12,8 @@ fn to_row(model: ports.PlacementWriteModel) -> placed_cards_dao.PlacedCardRow {
   placed_cards_dao.PlacedCardRow(
     set_code: model.set_code,
     collector_number: model.collector_number,
+    finish: model.finish,
+    language: model.language,
     location: model.location,
     quantity: model.quantity,
   )

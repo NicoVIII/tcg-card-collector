@@ -28,6 +28,8 @@ function placementOf(location_name: string, card: SessionCard["card"]): CardPlac
   return {
     set_code: card.set_code,
     collector_number: card.collector_number,
+    finish: card.finish,
+    language: card.language,
     location_name,
     quantity: card.to_place_quantity,
   };
@@ -174,7 +176,8 @@ export function PlacementPage() {
                           {entry.card.to_place_quantity}x {entry.card.name}
                         </span>
                         <span class="placement-card-key">
-                          {entry.card.set_code} {entry.card.collector_number}
+                          {entry.card.set_code} {entry.card.collector_number} ({entry.card.finish}·
+                          {entry.card.language})
                         </span>
                         <span class="placement-card-hint">{betweenLabel(entry.card)}</span>
                       </span>

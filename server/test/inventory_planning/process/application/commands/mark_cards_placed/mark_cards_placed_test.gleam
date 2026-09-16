@@ -15,23 +15,55 @@ fn command(
   handler.MarkCardsPlacedCommand(placements: placements)
 }
 
+fn raw(
+  set_code set_code: String,
+  collector_number collector_number: String,
+  location_name location_name: String,
+  quantity quantity: Int,
+) -> handler.RawPlacement {
+  handler.RawPlacement(
+    set_code:,
+    collector_number:,
+    finish: "nonfoil",
+    language: "en",
+    location_name:,
+    quantity:,
+  )
+}
+
+fn write_model(
+  set_code set_code: String,
+  collector_number collector_number: String,
+  location location: String,
+  quantity quantity: Int,
+) -> ports.PlacementWriteModel {
+  ports.PlacementWriteModel(
+    set_code:,
+    collector_number:,
+    finish: "nonfoil",
+    language: "en",
+    location:,
+    quantity:,
+  )
+}
+
 pub fn normalized_and_merged_batch_reaches_the_port_test() {
   // Set codes lowercase, collector numbers trim; duplicate (key, location) sums;
   // the batch arrives sorted by key then location.
   let placements = [
-    handler.RawPlacement(
+    raw(
       set_code: "LEA",
       collector_number: "2",
       location_name: "Bulk",
       quantity: 1,
     ),
-    handler.RawPlacement(
+    raw(
       set_code: "lea",
       collector_number: "1",
       location_name: "Bulk",
       quantity: 2,
     ),
-    handler.RawPlacement(
+    raw(
       set_code: "lea",
       collector_number: "1",
       location_name: "Bulk",
@@ -40,17 +72,62 @@ pub fn normalized_and_merged_batch_reaches_the_port_test() {
   ]
 
   let expected = [
-    ports.PlacementWriteModel(
+    write_model(
       set_code: "lea",
       collector_number: "1",
       location: "Bulk",
       quantity: 5,
     ),
-    ports.PlacementWriteModel(
+    write_model(
       set_code: "lea",
       collector_number: "2",
       location: "Bulk",
       quantity: 1,
+    ),
+  ]
+
+  assert handler.execute(command(placements), capturing_port())
+    == Error(ports.PersistenceFailed(string.inspect(expected)))
+}
+
+// Same printing and location, different finish: the port sees two write
+// models, not one summed row (ADR 0010).
+pub fn different_finish_stays_a_separate_write_model_test() {
+  let placements = [
+    handler.RawPlacement(
+      set_code: "lea",
+      collector_number: "1",
+      finish: "nonfoil",
+      language: "en",
+      location_name: "Bulk",
+      quantity: 2,
+    ),
+    handler.RawPlacement(
+      set_code: "lea",
+      collector_number: "1",
+      finish: "foil",
+      language: "en",
+      location_name: "Bulk",
+      quantity: 1,
+    ),
+  ]
+
+  let expected = [
+    ports.PlacementWriteModel(
+      set_code: "lea",
+      collector_number: "1",
+      finish: "foil",
+      language: "en",
+      location: "Bulk",
+      quantity: 1,
+    ),
+    ports.PlacementWriteModel(
+      set_code: "lea",
+      collector_number: "1",
+      finish: "nonfoil",
+      language: "en",
+      location: "Bulk",
+      quantity: 2,
     ),
   ]
 
@@ -65,13 +142,13 @@ pub fn empty_batch_is_rejected_test() {
 
 pub fn invalid_placement_rejects_the_whole_batch_test() {
   let placements = [
-    handler.RawPlacement(
+    raw(
       set_code: "lea",
       collector_number: "1",
       location_name: "Bulk",
       quantity: 1,
     ),
-    handler.RawPlacement(
+    raw(
       set_code: "lea",
       collector_number: "2",
       location_name: "Bulk",
@@ -85,12 +162,7 @@ pub fn invalid_placement_rejects_the_whole_batch_test() {
 
 pub fn empty_location_is_rejected_test() {
   let placements = [
-    handler.RawPlacement(
-      set_code: "lea",
-      collector_number: "1",
-      location_name: "",
-      quantity: 1,
-    ),
+    raw(set_code: "lea", collector_number: "1", location_name: "", quantity: 1),
   ]
 
   assert handler.execute(command(placements), capturing_port())
@@ -99,7 +171,7 @@ pub fn empty_location_is_rejected_test() {
 
 pub fn port_failure_surfaces_as_persistence_failed_test() {
   let placements = [
-    handler.RawPlacement(
+    raw(
       set_code: "lea",
       collector_number: "1",
       location_name: "Bulk",

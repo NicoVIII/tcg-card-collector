@@ -44,11 +44,88 @@ fn map_projection_card(
     card.card_type,
     card.collector_number,
     card.color_identity,
+    query_finish_from_string(card.finish),
+    query_language_from_string(card.language),
     card.name,
     card.quantity,
     card.rarity,
     card.set_code,
   )
+}
+
+// Every wire enum used at this boundary is validated downstream (copy_key's
+// constructors): an unrecognized incoming variant maps to an empty string,
+// which fails validation and rejects the whole placement.
+fn command_finish_to_string(
+  value: inventory_planning_commands.Finish,
+) -> String {
+  case value {
+    inventory_planning_commands.FinishNonfoil -> "nonfoil"
+    inventory_planning_commands.FinishFoil -> "foil"
+    inventory_planning_commands.FinishEtched -> "etched"
+    inventory_planning_commands.FinishUnknown(_) -> ""
+  }
+}
+
+fn command_language_to_string(
+  value: inventory_planning_commands.Language,
+) -> String {
+  case value {
+    inventory_planning_commands.LanguageEn -> "en"
+    inventory_planning_commands.LanguageEs -> "es"
+    inventory_planning_commands.LanguageFr -> "fr"
+    inventory_planning_commands.LanguageDe -> "de"
+    inventory_planning_commands.LanguageIt -> "it"
+    inventory_planning_commands.LanguagePt -> "pt"
+    inventory_planning_commands.LanguageJa -> "ja"
+    inventory_planning_commands.LanguageKo -> "ko"
+    inventory_planning_commands.LanguageRu -> "ru"
+    inventory_planning_commands.LanguageZhs -> "zhs"
+    inventory_planning_commands.LanguageZht -> "zht"
+    inventory_planning_commands.LanguageHe -> "he"
+    inventory_planning_commands.LanguageLa -> "la"
+    inventory_planning_commands.LanguageGrc -> "grc"
+    inventory_planning_commands.LanguageAr -> "ar"
+    inventory_planning_commands.LanguageSa -> "sa"
+    inventory_planning_commands.LanguagePh -> "ph"
+    inventory_planning_commands.LanguageQya -> "qya"
+    inventory_planning_commands.LanguageUnknown(_) -> ""
+  }
+}
+
+fn query_finish_from_string(raw: String) -> inventory_planning_queries.Finish {
+  case raw {
+    "nonfoil" -> inventory_planning_queries.FinishNonfoil
+    "foil" -> inventory_planning_queries.FinishFoil
+    "etched" -> inventory_planning_queries.FinishEtched
+    _ -> inventory_planning_queries.finish_unknown
+  }
+}
+
+fn query_language_from_string(
+  raw: String,
+) -> inventory_planning_queries.Language {
+  case raw {
+    "en" -> inventory_planning_queries.LanguageEn
+    "es" -> inventory_planning_queries.LanguageEs
+    "fr" -> inventory_planning_queries.LanguageFr
+    "de" -> inventory_planning_queries.LanguageDe
+    "it" -> inventory_planning_queries.LanguageIt
+    "pt" -> inventory_planning_queries.LanguagePt
+    "ja" -> inventory_planning_queries.LanguageJa
+    "ko" -> inventory_planning_queries.LanguageKo
+    "ru" -> inventory_planning_queries.LanguageRu
+    "zhs" -> inventory_planning_queries.LanguageZhs
+    "zht" -> inventory_planning_queries.LanguageZht
+    "he" -> inventory_planning_queries.LanguageHe
+    "la" -> inventory_planning_queries.LanguageLa
+    "grc" -> inventory_planning_queries.LanguageGrc
+    "ar" -> inventory_planning_queries.LanguageAr
+    "sa" -> inventory_planning_queries.LanguageSa
+    "ph" -> inventory_planning_queries.LanguagePh
+    "qya" -> inventory_planning_queries.LanguageQya
+    _ -> inventory_planning_queries.language_unknown
+  }
 }
 
 pub fn map_upsert_inventory_rule_result(
@@ -104,6 +181,8 @@ fn map_placed_ledger_row(
 ) -> inventory_planning_queries.PlacedLedgerRow {
   inventory_planning_queries.placed_ledger_row_new(
     row.collector_number,
+    query_finish_from_string(row.finish),
+    query_language_from_string(row.language),
     row.location,
     row.quantity,
     row.set_code,
@@ -142,6 +221,8 @@ pub fn to_mark_raw_placement(
   mark_cards_placed_handler.RawPlacement(
     set_code: placement.set_code,
     collector_number: placement.collector_number,
+    finish: command_finish_to_string(placement.finish),
+    language: command_language_to_string(placement.language),
     location_name: placement.location_name,
     quantity: placement.quantity,
   )
@@ -153,6 +234,8 @@ pub fn to_unmark_raw_placement(
   unmark_cards_placed_handler.RawPlacement(
     set_code: placement.set_code,
     collector_number: placement.collector_number,
+    finish: command_finish_to_string(placement.finish),
+    language: command_language_to_string(placement.language),
     location_name: placement.location_name,
     quantity: placement.quantity,
   )

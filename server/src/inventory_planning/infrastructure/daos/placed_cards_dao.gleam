@@ -8,6 +8,8 @@ pub type PlacedCardRow {
   PlacedCardRow(
     set_code: String,
     collector_number: String,
+    finish: String,
+    language: String,
     location: String,
     quantity: Int,
   )
@@ -18,11 +20,15 @@ const insert_batch_size = 100
 fn placed_card_row_decoder() -> decode.Decoder(PlacedCardRow) {
   use set_code <- decode.field(0, decode.string)
   use collector_number <- decode.field(1, decode.string)
-  use location <- decode.field(2, decode.string)
-  use quantity <- decode.field(3, decode.int)
+  use finish <- decode.field(2, decode.string)
+  use language <- decode.field(3, decode.string)
+  use location <- decode.field(4, decode.string)
+  use quantity <- decode.field(5, decode.int)
   decode.success(PlacedCardRow(
     set_code:,
     collector_number:,
+    finish:,
+    language:,
     location:,
     quantity:,
   ))
@@ -30,8 +36,9 @@ fn placed_card_row_decoder() -> decode.Decoder(PlacedCardRow) {
 
 pub fn list() -> Result(List(PlacedCardRow), String) {
   sqlite_store.query(
-    "SELECT set_code, collector_number, location, quantity FROM placed_cards "
-      <> "ORDER BY set_code, collector_number, location;",
+    "SELECT set_code, collector_number, finish, language, location, quantity "
+      <> "FROM placed_cards "
+      <> "ORDER BY set_code, collector_number, finish, language, location;",
     [],
     placed_card_row_decoder(),
   )
@@ -41,6 +48,8 @@ fn row_params(row: PlacedCardRow) -> List(sqlight.Value) {
   [
     sqlight.text(row.set_code),
     sqlight.text(row.collector_number),
+    sqlight.text(row.finish),
+    sqlight.text(row.language),
     sqlight.text(row.location),
     sqlight.int(row.quantity),
   ]
@@ -52,13 +61,13 @@ fn row_params(row: PlacedCardRow) -> List(sqlight.Value) {
 
 fn increment_batch(batch: List(PlacedCardRow)) -> Result(Nil, String) {
   let placeholders =
-    sqlite_store.placeholders(list.length(batch), "(?, ?, ?, ?)")
+    sqlite_store.placeholders(list.length(batch), "(?, ?, ?, ?, ?, ?)")
   let params = list.flat_map(batch, row_params)
   let sql =
-    "INSERT INTO placed_cards (set_code, collector_number, location, quantity) "
+    "INSERT INTO placed_cards (set_code, collector_number, finish, language, location, quantity) "
     <> "VALUES "
     <> placeholders
-    <> " ON CONFLICT(set_code, collector_number, location) "
+    <> " ON CONFLICT(set_code, collector_number, finish, language, location) "
     <> "DO UPDATE SET quantity = quantity + excluded.quantity;"
   sqlite_store.exec(sql, params)
 }
@@ -75,12 +84,22 @@ pub fn increment(rows: List(PlacedCardRow)) -> Result(Nil, String) {
 // the decrement would drive to zero or below is deleted outright rather than
 // updated; only rows that stay positive are decremented.
 fn decrement_row(row: PlacedCardRow) -> Result(Nil, String) {
-  let PlacedCardRow(set_code:, collector_number:, location:, quantity:) = row
+  let PlacedCardRow(
+    set_code:,
+    collector_number:,
+    finish:,
+    language:,
+    location:,
+    quantity:,
+  ) = row
   let where_key =
-    " WHERE set_code = ? AND collector_number = ? AND location = ?"
+    " WHERE set_code = ? AND collector_number = ? AND finish = ? "
+    <> "AND language = ? AND location = ?"
   let key_params = [
     sqlight.text(set_code),
     sqlight.text(collector_number),
+    sqlight.text(finish),
+    sqlight.text(language),
     sqlight.text(location),
   ]
 

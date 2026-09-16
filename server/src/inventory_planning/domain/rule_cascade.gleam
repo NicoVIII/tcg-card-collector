@@ -69,7 +69,7 @@ pub fn project(
   // conservation holds even if the input carries duplicate printing keys.
   let remaining0 =
     list.fold(ordered, dict.new(), fn(acc, card) {
-      dict.upsert(acc, card_attributes.printing_key(card), fn(existing) {
+      dict.upsert(acc, card_attributes.copy_key_string(card), fn(existing) {
         option.unwrap(existing, 0) + card.quantity
       })
     })
@@ -118,7 +118,7 @@ fn apply_rule(
   let #(remaining_next, _claimed, assignments_rev) =
     list.fold(ordered, #(remaining, set.new(), []), fn(state, card) {
       let #(remaining, claimed, acc) = state
-      let key = card_attributes.printing_key(card)
+      let key = card_attributes.copy_key_string(card)
       let available = dict.get(remaining, key) |> result.unwrap(0)
       case available > 0 && card_predicate.matches(rule.predicate, card) {
         False -> state
@@ -184,7 +184,7 @@ fn build_bulk(
   let #(_, assignments_rev) =
     list.fold(ordered, #(remaining, []), fn(state, card) {
       let #(remaining, acc) = state
-      let key = card_attributes.printing_key(card)
+      let key = card_attributes.copy_key_string(card)
       let available = dict.get(remaining, key) |> result.unwrap(0)
       case available > 0 {
         True -> #(dict.insert(remaining, key, 0), [
@@ -408,14 +408,25 @@ fn total_quantity(assignments: List(Assignment)) -> Int {
 
 // "Prefer the oldest printing": released_at asc, then set_code, then
 // collector_number. An unknown released_at sorts first (treated as earliest).
+// Among kinds of copy of the same printing, finish then language break the
+// tie (ADR 0010), so a first-copy selector claims the nonfoil-en copy first.
 fn compare_canonical(a: PlannedCard, b: PlannedCard) -> order.Order {
   order.break_tie(
     card_attributes.compare_release_earliest_first(a.released_at, b.released_at),
     order.break_tie(
       set_code.compare(card_key.set_code(a.key), card_key.set_code(b.key)),
-      collector_number.compare(
-        card_key.collector_number(a.key),
-        card_key.collector_number(b.key),
+      order.break_tie(
+        collector_number.compare(
+          card_key.collector_number(a.key),
+          card_key.collector_number(b.key),
+        ),
+        order.break_tie(
+          int.compare(
+            card_attributes.finish_rank(a.finish),
+            card_attributes.finish_rank(b.finish),
+          ),
+          card_attributes.compare_language_en_first(a.language, b.language),
+        ),
       ),
     ),
   )

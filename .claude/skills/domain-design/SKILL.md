@@ -82,14 +82,15 @@ collector number, parent set). Flag:
 - **Enrichment may be absent.** A collection row can reference a printing the catalog
   doesn't carry; every design must state its behaviour for the unknown-to-catalog case
   (precedent: fails every predicate, cascades to bulk).
-- **Finish/language are modeled in Collection, not yet in Inventory Planning
-  (mid-migration, #89).** CopyKey `(CardKey, Finish, Language)` is the shared-kernel
-  identity of an owned copy (ADR 0010); Collection persists and lists quantity per
-  CopyKey. Inventory Planning's placement ledger and projection still collapse to
-  CardKey — the remaining half of #89 — so a design touching placement should still
-  flag anything that would make that follow-up harder. Condition is separate,
-  still-uncommitted debt with its own ADR needed. Introducing a new identity
-  component is ADR-weight, not a side effect.
+- **Finish and language are modeled, per ADR 0010 (#89).** CopyKey
+  `(CardKey, Finish, Language)` is the shared-kernel identity of an owned copy.
+  Collection persists and lists quantity per CopyKey; Inventory Planning's
+  placement ledger, cascade pool, and projection all key on CopyKey too — the
+  copy selectors and `first_per_printing`/`first_per_oracle` dedup are the one
+  deliberate exception, staying on CardKey/oracle identity by design. Condition
+  is separate, still-uncommitted debt with its own ADR needed. Adding another
+  identity component (or a language rule expression, or finish as a rule
+  expression — #71) is ADR-weight, not a side effect.
 - **Multi-user is flagged, not built.** Don't design against it (no domain semantics
   that only work with exactly one user of record), don't build it (no speculative
   user-scoping).

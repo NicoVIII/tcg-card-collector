@@ -7,9 +7,22 @@ fn row(
   location: String,
   quantity: Int,
 ) -> placed_cards_dao.PlacedCardRow {
+  copy(set_code, collector_number, "nonfoil", "en", location, quantity)
+}
+
+fn copy(
+  set_code: String,
+  collector_number: String,
+  finish: String,
+  language: String,
+  location: String,
+  quantity: Int,
+) -> placed_cards_dao.PlacedCardRow {
   placed_cards_dao.PlacedCardRow(
     set_code:,
     collector_number:,
+    finish:,
+    language:,
     location:,
     quantity:,
   )
@@ -46,6 +59,24 @@ pub fn same_key_in_two_locations_stays_separate_test() {
 
   assert placed_cards_dao.list()
     == Ok([row("lea", "1", "Binder", 1), row("lea", "1", "Bulk", 3)])
+}
+
+// The primary key includes finish and language: a placed copy of the same
+// printing and location in a different finish is a distinct row (ADR 0010).
+pub fn same_key_and_location_different_finish_stays_separate_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) =
+    placed_cards_dao.increment([
+      copy("lea", "1", "nonfoil", "en", "Binder", 1),
+      copy("lea", "1", "foil", "en", "Binder", 2),
+    ])
+
+  assert placed_cards_dao.list()
+    == Ok([
+      copy("lea", "1", "foil", "en", "Binder", 2),
+      copy("lea", "1", "nonfoil", "en", "Binder", 1),
+    ])
 }
 
 pub fn decrement_reduces_quantity_test() {

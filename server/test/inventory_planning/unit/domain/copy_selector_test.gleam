@@ -4,6 +4,8 @@ import inventory_planning/domain/copy_selector.{
   AllCopies, FirstCopyPerOracle, FirstCopyPerPrinting,
 }
 import shared/domain/card_key
+import shared/domain/finish
+import shared/domain/language
 import shared/domain/oracle_id
 import shared/domain/rarity
 import shared/domain/release_date
@@ -16,6 +18,8 @@ fn card(oracle: option.Option(String)) -> PlannedCard {
     key:,
     name: "Test",
     quantity: 1,
+    finish: finish.Nonfoil,
+    language: language.En,
     released_at: Some(date),
     oracle_id: option.then(oracle, fn(raw) {
       option.from_result(oracle_id.new(raw))

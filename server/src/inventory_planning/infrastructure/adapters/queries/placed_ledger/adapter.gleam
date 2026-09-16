@@ -10,6 +10,8 @@ pub fn new() -> ports.GetPlacedLedgerPort {
       ports.PlacedLedgerRow(
         set_code: row.set_code,
         collector_number: row.collector_number,
+        finish: row.finish,
+        language: row.language,
         location: row.location,
         quantity: row.quantity,
       )

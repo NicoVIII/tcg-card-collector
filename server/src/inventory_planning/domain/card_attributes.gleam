@@ -6,6 +6,8 @@ import gleam/result
 import gleam/string
 import shared/domain/card_key.{type CardKey}
 import shared/domain/color_identity.{type ColorIdentity}
+import shared/domain/finish.{type Finish}
+import shared/domain/language.{type Language}
 import shared/domain/oracle_id.{type OracleId}
 import shared/domain/rarity.{type Rarity}
 import shared/domain/release_date.{type ReleaseDate}
@@ -175,12 +177,15 @@ pub fn compare_release_earliest_first(
 // A collection row joined with whatever the catalog knew about it. oracle_id,
 // rarity, color_identity, and card_type are optional because a collection row
 // may reference a printing the catalog doesn't (yet) carry; such a card fails
-// every attribute predicate and cascades through to bulk.
+// every attribute predicate and cascades through to bulk. finish/language come
+// from the collection itself (ADR 0010), so they're never absent.
 pub type PlannedCard {
   PlannedCard(
     key: CardKey,
     name: String,
     quantity: Int,
+    finish: Finish,
+    language: Language,
     released_at: Option(ReleaseDate),
     oracle_id: Option(OracleId),
     rarity: Option(Rarity),
@@ -194,4 +199,38 @@ pub fn printing_key(card: PlannedCard) -> String {
   card_key.set_code_string(card.key)
   <> "/"
   <> card_key.collector_number_string(card.key)
+}
+
+// Canonical identity string for a kind of copy: the printing plus finish and
+// language. The remaining-copies pool is keyed on this, one entry per kind of
+// copy of a printing, distinct from `printing_key` which selectors still
+// dedupe on (ADR 0010).
+pub fn copy_key_string(card: PlannedCard) -> String {
+  printing_key(card)
+  <> "/"
+  <> finish.to_string(card.finish)
+  <> "/"
+  <> language.to_string(card.language)
+}
+
+// Total order among kinds of copy of one printing: nonfoil < foil < etched.
+// Inventory Planning's own policy (ADR 0010), changed only through rule order.
+pub fn finish_rank(value: Finish) -> Int {
+  case value {
+    finish.Nonfoil -> 0
+    finish.Foil -> 1
+    finish.Etched -> 2
+  }
+}
+
+// English before every other language, then the rest by Scryfall code. Also
+// Inventory Planning's own tiebreak (ADR 0010) — not a claim that a card's
+// "true" language is English, only a default sort preference.
+pub fn compare_language_en_first(a: Language, b: Language) -> Order {
+  case a, b {
+    language.En, language.En -> order.Eq
+    language.En, _ -> order.Lt
+    _, language.En -> order.Gt
+    _, _ -> string.compare(language.to_string(a), language.to_string(b))
+  }
 }

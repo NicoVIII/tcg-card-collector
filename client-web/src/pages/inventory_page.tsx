@@ -71,6 +71,8 @@ function ProjectionLocationTable(props: { location: ProjectionLocation }) {
             <th>Card</th>
             <th>Set</th>
             <th>#</th>
+            <th>Finish</th>
+            <th>Lang</th>
             <th>Qty</th>
             <th>Color</th>
             <th>Rarity</th>
@@ -84,6 +86,8 @@ function ProjectionLocationTable(props: { location: ProjectionLocation }) {
                 <td>{card.name}</td>
                 <td>{card.set_code}</td>
                 <td>{card.collector_number}</td>
+                <td>{card.finish}</td>
+                <td>{card.language}</td>
                 <td>{card.quantity}</td>
                 <td>{card.color_identity}</td>
                 <td>{card.rarity}</td>

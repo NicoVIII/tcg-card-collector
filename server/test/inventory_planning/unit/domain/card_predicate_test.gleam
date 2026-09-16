@@ -5,6 +5,8 @@ import inventory_planning/domain/card_predicate.{
   And, CardTypeIs, ColorIdentityIs, RarityAtLeast, RarityIn, SetCodeIn,
 }
 import shared/domain/card_key
+import shared/domain/finish
+import shared/domain/language
 import shared/domain/oracle_id
 import shared/domain/rarity
 import shared/domain/release_date
@@ -24,6 +26,8 @@ fn card(
     key:,
     name: "Test",
     quantity: 1,
+    finish: finish.Nonfoil,
+    language: language.En,
     released_at: Some(date),
     oracle_id: Some(oracle),
     rarity: Some(rarity_value),
@@ -145,6 +149,8 @@ pub fn missing_attribute_matches_false_test() {
       key:,
       name: "Test",
       quantity: 1,
+      finish: finish.Nonfoil,
+      language: language.En,
       released_at: None,
       oracle_id: None,
       rarity: None,

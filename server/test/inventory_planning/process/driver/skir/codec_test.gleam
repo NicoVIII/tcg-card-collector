@@ -1,5 +1,7 @@
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
+import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
+import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
@@ -24,6 +26,8 @@ pub fn map_projection_nests_locations_and_cards_test() {
             name: "Lightning Bolt",
             set_code: "m11",
             collector_number: "146",
+            finish: "foil",
+            language: "de",
             quantity: 1,
             color_identity: "R",
             rarity: "rare",
@@ -42,6 +46,8 @@ pub fn map_projection_nests_locations_and_cards_test() {
               "instant",
               "146",
               "R",
+              inventory_planning_queries.FinishFoil,
+              inventory_planning_queries.LanguageDe,
               "Lightning Bolt",
               1,
               "rare",
@@ -58,11 +64,46 @@ pub fn map_projection_nests_locations_and_cards_test() {
     )
 }
 
+// An unrecognized finish/language never reaches map_projection in practice
+// (the projection handler only ever produces canonical strings), but the
+// fallback to the wire's unknown variant is worth pinning directly.
+pub fn map_projection_card_falls_back_to_unknown_for_unrecognized_strings_test() {
+  let card =
+    projection_ports.ProjectionCard(
+      name: "",
+      set_code: "xyz",
+      collector_number: "1",
+      finish: "prerelease-stamped",
+      language: "elvish",
+      quantity: 1,
+      color_identity: "",
+      rarity: "",
+      card_type: "",
+    )
+  let projection =
+    projection_ports.Projection(unknown_count: 0, total_quantity: 1, locations: [
+      projection_ports.ProjectionLocation(
+        location_name: "Bulk",
+        rule_id: "",
+        total_quantity: 1,
+        cards: [card],
+      ),
+    ])
+
+  let mapped = inventory_planning_skir_codec.map_projection(projection)
+  let assert [location] = mapped.locations
+  let assert [mapped_card] = location.cards
+  assert mapped_card.finish == inventory_planning_queries.finish_unknown
+  assert mapped_card.language == inventory_planning_queries.language_unknown
+}
+
 pub fn map_placed_ledger_maps_rows_test() {
   let rows = [
     placed_ledger_ports.PlacedLedgerRow(
       set_code: "m11",
       collector_number: "146",
+      finish: "nonfoil",
+      language: "en",
       location: "Bulk",
       quantity: 2,
     ),
@@ -70,8 +111,59 @@ pub fn map_placed_ledger_maps_rows_test() {
 
   assert inventory_planning_skir_codec.map_placed_ledger(rows)
     == inventory_planning_queries.placed_ledger_new([
-      inventory_planning_queries.placed_ledger_row_new("146", "Bulk", 2, "m11"),
+      inventory_planning_queries.placed_ledger_row_new(
+        "146",
+        inventory_planning_queries.FinishNonfoil,
+        inventory_planning_queries.LanguageEn,
+        "Bulk",
+        2,
+        "m11",
+      ),
     ])
+}
+
+pub fn to_mark_raw_placement_maps_finish_and_language_test() {
+  let placement =
+    inventory_planning_commands.card_placement_new(
+      collector_number: "146",
+      finish: inventory_planning_commands.FinishFoil,
+      language: inventory_planning_commands.LanguageJa,
+      location_name: "Bulk",
+      quantity: 2,
+      set_code: "m11",
+    )
+
+  assert inventory_planning_skir_codec.to_mark_raw_placement(placement)
+    == mark_cards_placed_handler.RawPlacement(
+      set_code: "m11",
+      collector_number: "146",
+      finish: "foil",
+      language: "ja",
+      location_name: "Bulk",
+      quantity: 2,
+    )
+}
+
+pub fn to_unmark_raw_placement_maps_finish_and_language_test() {
+  let placement =
+    inventory_planning_commands.card_placement_new(
+      collector_number: "146",
+      finish: inventory_planning_commands.FinishEtched,
+      language: inventory_planning_commands.LanguageRu,
+      location_name: "Bulk",
+      quantity: 1,
+      set_code: "m11",
+    )
+
+  assert inventory_planning_skir_codec.to_unmark_raw_placement(placement)
+    == unmark_cards_placed_handler.RawPlacement(
+      set_code: "m11",
+      collector_number: "146",
+      finish: "etched",
+      language: "ru",
+      location_name: "Bulk",
+      quantity: 1,
+    )
 }
 
 pub fn mark_cards_placed_ok_maps_to_success_test() {

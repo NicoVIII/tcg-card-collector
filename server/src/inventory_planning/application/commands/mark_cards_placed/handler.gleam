@@ -9,6 +9,8 @@ pub type RawPlacement {
   RawPlacement(
     set_code: String,
     collector_number: String,
+    finish: String,
+    language: String,
     location_name: String,
     quantity: Int,
   )
@@ -53,6 +55,8 @@ fn validate(
   placement.new(
     set_code: raw.set_code,
     collector_number: raw.collector_number,
+    finish: raw.finish,
+    language: raw.language,
     location: raw.location_name,
     quantity: raw.quantity,
   )
@@ -62,6 +66,8 @@ fn to_write_model(p: placement.Placement) -> ports.PlacementWriteModel {
   ports.PlacementWriteModel(
     set_code: placement.set_code_string(p),
     collector_number: placement.collector_number_string(p),
+    finish: placement.finish_string(p),
+    language: placement.language_string(p),
     location: placement.location(p),
     quantity: placement.quantity(p),
   )

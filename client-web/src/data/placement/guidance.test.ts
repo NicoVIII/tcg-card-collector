@@ -1,13 +1,21 @@
 import { describe, expect, it } from "vitest";
 import type { InventoryProjection, ProjectionCard } from "../inventory_planning/request";
+import type { Finish, Language } from "../collection/copy_kind";
 import type { PlacedLedgerRow } from "./request";
 import { buildGuidance } from "./guidance";
 
-function card(collector_number: string, quantity: number): ProjectionCard {
+function card(
+  collector_number: string,
+  quantity: number,
+  finish: Finish = "nonfoil",
+  language: Language = "en",
+): ProjectionCard {
   return {
     name: `Card ${collector_number}`,
     set_code: "m11",
     collector_number,
+    finish,
+    language,
     quantity,
     color_identity: "",
     rarity: "",
@@ -35,8 +43,14 @@ function projection(locations: InventoryProjection["locations"]): InventoryProje
   };
 }
 
-function placed(collector_number: string, location: string, quantity: number): PlacedLedgerRow {
-  return { set_code: "m11", collector_number, location, quantity };
+function placed(
+  collector_number: string,
+  location: string,
+  quantity: number,
+  finish: Finish = "nonfoil",
+  language: Language = "en",
+): PlacedLedgerRow {
+  return { set_code: "m11", collector_number, finish, language, location, quantity };
 }
 
 describe("buildGuidance", () => {
@@ -65,6 +79,8 @@ describe("buildGuidance", () => {
               name: "Card 147",
               set_code: "m11",
               collector_number: "147",
+              finish: "nonfoil",
+              language: "en",
               to_place_quantity: 1,
               before: [
                 {
@@ -87,6 +103,8 @@ describe("buildGuidance", () => {
               name: "Card 149",
               set_code: "m11",
               collector_number: "149",
+              finish: "nonfoil",
+              language: "en",
               to_place_quantity: 1,
               before: [
                 {
@@ -109,6 +127,8 @@ describe("buildGuidance", () => {
               name: "Card 150",
               set_code: "m11",
               collector_number: "150",
+              finish: "nonfoil",
+              language: "en",
               to_place_quantity: 1,
               before: [
                 {
@@ -133,5 +153,21 @@ describe("buildGuidance", () => {
     const ledger = [placed("200", "Rare", 2)];
 
     expect(buildGuidance(proj, ledger)).toEqual({ locations: [], total_unplaced: 0 });
+  });
+
+  // A tick on one kind of copy must not cancel out another kind's count — the
+  // bug this guards against is keying only on (set_code, collector_number).
+  it("keeps different finishes of the same printing unplaced independently", () => {
+    const proj = projection([
+      location("Binder", [card("161", 1, "nonfoil", "en"), card("161", 1, "foil", "en")]),
+    ]);
+    const ledger = [placed("161", "Binder", 1, "foil", "en")];
+
+    const guidance = buildGuidance(proj, ledger);
+
+    expect(guidance.total_unplaced).toBe(1);
+    expect(guidance.locations).toHaveLength(1);
+    const [remaining] = guidance.locations[0]!.cards;
+    expect(remaining!.finish).toBe("nonfoil");
   });
 });

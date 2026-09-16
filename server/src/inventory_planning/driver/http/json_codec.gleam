@@ -51,6 +51,8 @@ fn encode_card(card: projection_ports.ProjectionCard) -> json.Json {
     #("name", json.string(card.name)),
     #("set_code", json.string(card.set_code)),
     #("collector_number", json.string(card.collector_number)),
+    #("finish", json.string(card.finish)),
+    #("language", json.string(card.language)),
     #("quantity", json.int(card.quantity)),
     #("color_identity", json.string(card.color_identity)),
     #("rarity", json.string(card.rarity)),
@@ -71,6 +73,8 @@ fn encode_placed_ledger_row(
   json.object([
     #("set_code", json.string(row.set_code)),
     #("collector_number", json.string(row.collector_number)),
+    #("finish", json.string(row.finish)),
+    #("language", json.string(row.language)),
     #("location", json.string(row.location)),
     #("quantity", json.int(row.quantity)),
   ])
@@ -80,6 +84,8 @@ pub type PlacementBody {
   PlacementBody(
     set_code: String,
     collector_number: String,
+    finish: String,
+    language: String,
     location_name: String,
     quantity: Int,
   )
@@ -91,11 +97,15 @@ pub fn decode_placements_body(
   let placement_decoder = {
     use set_code <- decode.field("set_code", decode.string)
     use collector_number <- decode.field("collector_number", decode.string)
+    use finish <- decode.field("finish", decode.string)
+    use language <- decode.field("language", decode.string)
     use location_name <- decode.field("location_name", decode.string)
     use quantity <- decode.field("quantity", decode.int)
     decode.success(PlacementBody(
       set_code:,
       collector_number:,
+      finish:,
+      language:,
       location_name:,
       quantity:,
     ))

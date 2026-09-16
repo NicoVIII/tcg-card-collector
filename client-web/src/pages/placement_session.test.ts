@@ -22,6 +22,8 @@ function card(collector_number: string, overrides: Partial<PlacementCard> = {}):
     name: `Card ${collector_number}`,
     set_code: "lea",
     collector_number,
+    finish: "nonfoil",
+    language: "en",
     to_place_quantity: 1,
     before: [],
     after: [],
@@ -43,6 +45,16 @@ describe("placement session ticking", () => {
     const ticked = tick(emptySession(), "Bulk", c, 0);
 
     expect(isTicked(ticked, "Binder", c)).toBe(false);
+  });
+
+  // A tick on one kind of copy must not read as a tick on another kind of the
+  // same printing in the same location (ADR 0010).
+  it("scopes ticks to a kind of copy", () => {
+    const nonfoil = card("1");
+    const foil = card("1", { finish: "foil" });
+    const ticked = tick(emptySession(), "Bulk", nonfoil, 0);
+
+    expect(isTicked(ticked, "Bulk", foil)).toBe(false);
   });
 });
 

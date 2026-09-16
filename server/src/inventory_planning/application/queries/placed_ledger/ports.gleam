@@ -8,6 +8,8 @@ pub type PlacedLedgerRow {
   PlacedLedgerRow(
     set_code: String,
     collector_number: String,
+    finish: String,
+    language: String,
     location: String,
     quantity: Int,
   )

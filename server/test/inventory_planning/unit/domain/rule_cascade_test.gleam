@@ -12,6 +12,8 @@ import inventory_planning/domain/rule_cascade.{
 import inventory_planning/domain/set_index.{SetMeta}
 import inventory_planning/domain/sort_spec
 import shared/domain/card_key
+import shared/domain/finish
+import shared/domain/language
 import shared/domain/oracle_id
 import shared/domain/rarity
 import shared/domain/release_date
@@ -65,6 +67,8 @@ fn card(
     key:,
     name:,
     quantity:,
+    finish: finish.Nonfoil,
+    language: language.En,
     released_at: date(released_at),
     oracle_id: option.from_result(oracle_id.new(oracle)),
     rarity: Some(rarity_value),
@@ -229,6 +233,46 @@ pub fn first_copy_per_oracle_dedupes_printings_test() {
   assert bulk.total_quantity == 3
 }
 
+// A first_per_printing rule over a printing owned as nonfoil-en and foil-de
+// claims the nonfoil-en copy: canonical order prefers nonfoil, then en, among
+// kinds of copy of one printing (ADR 0010, #89 acceptance).
+pub fn first_per_printing_prefers_nonfoil_en_among_kinds_of_copy_test() {
+  let nonfoil_en =
+    card("a", "1", "Bolt", 1, "2010-01-01", "o1", rarity.Rare, "R")
+  let foil_de =
+    attrs.PlannedCard(
+      ..card("a", "1", "Bolt", 1, "2010-01-01", "o1", rarity.Rare, "R"),
+      finish: finish.Foil,
+      language: language.De,
+    )
+  let cascade =
+    RuleCascade(
+      rules: [
+        rule(
+          "r1",
+          0,
+          copy_selector.FirstCopyPerPrinting,
+          "rarity >= rare",
+          "Binder",
+        ),
+      ],
+      bulk: bulk_spec.BulkSpec(location_name: "Bulk", sort_keys: []),
+    )
+  let buckets = rule_cascade.project(cascade, [nonfoil_en, foil_de], dict.new())
+
+  let binder = find_bucket(buckets, "Binder")
+  let assert [claimed] = binder.cards
+  assert claimed.card.finish == finish.Nonfoil
+  assert claimed.card.language == language.En
+
+  // The foil-de copy is a distinct kind of the same printing, still unclaimed.
+  let bulk = find_bucket(buckets, "Bulk")
+  assert bulk.total_quantity == 1
+  let assert [leftover] = bulk.cards
+  assert leftover.card.finish == finish.Foil
+  assert leftover.card.language == language.De
+}
+
 // A card whose printing isn't in the catalog (no attributes) fails every
 // attribute predicate and lands wholly in bulk.
 pub fn catalog_unknown_card_falls_to_bulk_test() {
@@ -239,6 +283,8 @@ pub fn catalog_unknown_card_falls_to_bulk_test() {
       key:,
       name: "Mystery Promo",
       quantity: 3,
+      finish: finish.Nonfoil,
+      language: language.En,
       released_at: None,
       oracle_id: None,
       rarity: None,
@@ -532,6 +578,8 @@ pub fn type_fan_out_rank_order_test() {
       key:,
       name: set_code,
       quantity: 1,
+      finish: finish.Nonfoil,
+      language: language.En,
       released_at: date("2000-01-01"),
       oracle_id: option.from_result(oracle_id.new("o-" <> set_code)),
       rarity: Some(rarity.Common),

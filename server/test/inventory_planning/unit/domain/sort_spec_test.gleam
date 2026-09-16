@@ -7,6 +7,8 @@ import inventory_planning/domain/sort_spec.{
   BySetCode,
 }
 import shared/domain/card_key
+import shared/domain/finish
+import shared/domain/language
 import shared/domain/oracle_id
 import shared/domain/rarity
 import shared/domain/release_date
@@ -25,6 +27,8 @@ fn card(
     key:,
     name:,
     quantity: 1,
+    finish: finish.Nonfoil,
+    language: language.En,
     released_at: Some(date),
     oracle_id: Some(oracle),
     rarity: Some(rarity.Common),
@@ -42,6 +46,8 @@ fn unknown_card(collector_number: String) -> PlannedCard {
     key:,
     name: "unknown",
     quantity: 1,
+    finish: finish.Nonfoil,
+    language: language.En,
     released_at: None,
     oracle_id: None,
     rarity: None,

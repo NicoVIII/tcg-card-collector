@@ -184,6 +184,8 @@ fn to_mark_raw_placement(
   mark_cards_placed_handler.RawPlacement(
     set_code: body.set_code,
     collector_number: body.collector_number,
+    finish: body.finish,
+    language: body.language,
     location_name: body.location_name,
     quantity: body.quantity,
   )
@@ -195,6 +197,8 @@ fn to_unmark_raw_placement(
   unmark_cards_placed_handler.RawPlacement(
     set_code: body.set_code,
     collector_number: body.collector_number,
+    finish: body.finish,
+    language: body.language,
     location_name: body.location_name,
     quantity: body.quantity,
   )

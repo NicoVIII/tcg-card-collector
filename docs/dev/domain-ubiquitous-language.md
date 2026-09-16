@@ -70,10 +70,11 @@ Purpose:
   collection through it into per-location pull-lists.
 
 Core terms:
-- PlannedCard: a collection row joined with whatever the catalog knew about it — the input the
-  cascade projects. Attributes are optional because a collection row may reference a printing
-  the catalog doesn't (yet) carry; such a card fails every attribute predicate and cascades to
-  bulk.
+- PlannedCard: a collection row (one per CopyKey) joined with whatever the catalog knew about it —
+  the input the cascade projects. finish and language come from the collection itself and are
+  never absent; the catalog-sourced attributes are optional because a collection row may reference
+  a printing the catalog doesn't (yet) carry, and such a card fails every attribute predicate and
+  cascades to bulk.
 - CardAttributes (module): planning's *policy* over the shared card facts — the rarity total
   order (common < uncommon < special < bonus < rare < mythic, so `rarity >= rare` excludes
   special/bonus), the land-first CardType reduction of the raw type line, and the color-identity
@@ -84,7 +85,12 @@ Core terms:
 - InventoryRule / CascadeRule: one waterfall step — a `position`, a copy `selector`, a match
   `predicate`, and a location `target`.
 - CopySelector: how many copies of a matching card a rule claims — all copies, the first copy per
-  printing, or the first copy per oracle identity.
+  printing, or the first copy per oracle identity. Both first-copy selectors dedupe on the printing
+  or oracle identity, never on CopyKey, so a rule still claims one physical copy total per printing
+  regardless of how many kinds of copy (finish/language) it's owned in. Among kinds of copy of one
+  printing, the canonical order prefers `nonfoil < foil < etched`, then `en` before every other
+  language — this is Inventory Planning's own tiebreak (ADR 0010), overridden only by routing a
+  copy with an earlier rule (#71).
 - Predicate: a rule's match condition — a conjunction (`and`) of set-code / rarity / color-identity /
   type clauses over a card's attributes. A clause referencing an attribute the card lacks is false,
   so the card cascades on.
@@ -104,13 +110,15 @@ Core terms:
 - BulkSpec: the single leftover-remainder location plus the sort-key list ordering its pile.
 - InventoryProjection: the computed placement — locations in cascade order, each with its cards and
   total, plus a count of collection keys unknown to the catalog.
-- PlacedCard: a ledger row recording that some copies of a key were physically placed in a location
-  (`(set_code, collector_number, location) → quantity`). The write side of placement — MarkCardsPlaced
+- PlacedCard: a ledger row recording that some copies of a kind of copy were physically placed in a
+  location (`(CopyKey, location) → quantity`). A location holding several kinds of copy of one
+  printing needs a tick that names which kind. The write side of placement — MarkCardsPlaced
   adds to it, UnmarkCardsPlaced subtracts.
-- Placement: one validated MarkCardsPlaced/UnmarkCardsPlaced entry (canonical key, non-empty location,
-  positive quantity).
-- Unplaced: **always derived, never stored** — collection quantity minus placed quantity per key,
-  clamped at zero. Storing it would let a card silently become lost; deriving it is self-healing.
+- Placement: one validated MarkCardsPlaced/UnmarkCardsPlaced entry (canonical CopyKey, non-empty
+  location, positive quantity).
+- Unplaced: **always derived, never stored** — collection quantity minus placed quantity per
+  CopyKey, clamped at zero. Storing it would let a card silently become lost; deriving it is
+  self-healing.
 - PlacementGuidance: the derived worklist — locations still holding unplaced copies (cascade order,
   empty ones dropped), each card's copies-still-to-place plus its cascade-order neighbours for
   physical orientation, and the grand total of unplaced copies.
