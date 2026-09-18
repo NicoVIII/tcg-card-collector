@@ -1,6 +1,7 @@
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
 import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
+import inventory_planning/application/commands/reorder_rules/ports as reorder_rules_ports
 import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
@@ -292,6 +293,33 @@ pub fn delete_failure_maps_to_internal_server_error_test() {
     == Error(service.ServiceError(
       service.E500xInternalServerError,
       "failed to delete inventory rule",
+    ))
+}
+
+pub fn reorder_ok_maps_to_success_test() {
+  assert inventory_planning_skir_codec.map_reorder_inventory_rules_result(Ok(
+      Nil,
+    ))
+    == Ok(inventory_planning_commands.ReorderInventoryRulesResponseSuccess)
+}
+
+pub fn reorder_not_a_permutation_maps_to_bad_request_test() {
+  assert inventory_planning_skir_codec.map_reorder_inventory_rules_result(Error(
+      reorder_rules_ports.NotAPermutation,
+    ))
+    == Error(service.ServiceError(
+      service.E400xBadRequest,
+      "rule order must list every existing rule exactly once",
+    ))
+}
+
+pub fn reorder_persistence_failure_maps_to_internal_server_error_test() {
+  assert inventory_planning_skir_codec.map_reorder_inventory_rules_result(
+      Error(reorder_rules_ports.PersistenceFailed("disk full")),
+    )
+    == Error(service.ServiceError(
+      service.E500xInternalServerError,
+      "failed to save rule order",
     ))
 }
 

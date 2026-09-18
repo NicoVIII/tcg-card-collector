@@ -2,6 +2,7 @@ import gleam/list
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
 import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
+import inventory_planning/application/commands/reorder_rules/ports as reorder_rules_ports
 import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
@@ -164,6 +165,19 @@ pub fn map_delete_inventory_rule_result(
     result,
     inventory_planning_commands.DeleteInventoryRuleResponseSuccess,
     error_presentation.delete_rule,
+  )
+}
+
+pub fn map_reorder_inventory_rules_result(
+  result: Result(Nil, reorder_rules_ports.ReorderInventoryRulesError),
+) -> Result(
+  inventory_planning_commands.ReorderInventoryRulesResponse,
+  service.ServiceError,
+) {
+  helpers.map_command(
+    result,
+    inventory_planning_commands.ReorderInventoryRulesResponseSuccess,
+    error_presentation.reorder_rules,
   )
 }
 

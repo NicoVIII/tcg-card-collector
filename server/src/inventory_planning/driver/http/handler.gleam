@@ -3,6 +3,7 @@ import gleam/http/response.{type Response}
 import gleam/list
 import inventory_planning/application/commands/delete_rule/handler as delete_rule_handler
 import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
+import inventory_planning/application/commands/reorder_rules/handler as reorder_rules_handler
 import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
 import inventory_planning/application/commands/update_bulk_spec/handler as update_bulk_spec_handler
 import inventory_planning/application/commands/upsert_rule/handler as upsert_rule_handler
@@ -74,6 +75,30 @@ pub fn handle_delete_inventory_rule(
           helpers.json_response(200, json_codec.encode_ok("rule deleted"))
         Error(error) ->
           helpers.error_response(error_presentation.delete_rule(error))
+      }
+  }
+}
+
+pub fn handle_reorder_inventory_rules(
+  req: Request(mist.Connection),
+  deps: Dependencies,
+) -> Response(mist.ResponseData) {
+  use body <- helpers.with_json_body(req)
+  case inventory_codec.decode_reorder_rules_body(body) {
+    Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
+    Ok(b) ->
+      case
+        reorder_rules_handler.execute(
+          reorder_rules_handler.ReorderInventoryRulesCommand(
+            ordered_ids: b.ordered_ids,
+          ),
+          deps.reorder_inventory_rules_ports,
+        )
+      {
+        Ok(_) ->
+          helpers.json_response(200, json_codec.encode_ok("rules reordered"))
+        Error(error) ->
+          helpers.error_response(error_presentation.reorder_rules(error))
       }
   }
 }

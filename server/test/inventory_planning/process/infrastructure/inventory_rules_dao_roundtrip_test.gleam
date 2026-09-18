@@ -48,3 +48,30 @@ pub fn rules_list_orders_by_position_test() {
   assert early.id == "early"
   assert late.id == "late"
 }
+
+pub fn list_ids_orders_by_position_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) = inventory_rules_dao.upsert(rule("late", 5))
+  let assert Ok(Nil) = inventory_rules_dao.upsert(rule("early", 1))
+
+  let assert Ok(ids) = inventory_rules_dao.list_ids()
+  assert ids == ["early", "late"]
+}
+
+pub fn set_positions_renumbers_every_row_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) = inventory_rules_dao.upsert(rule("a", 0))
+  let assert Ok(Nil) = inventory_rules_dao.upsert(rule("b", 1))
+
+  let assert Ok(Nil) =
+    inventory_rules_dao.set_positions([
+      inventory_rules_dao.RulePositionRow(id: "b", position: 0),
+      inventory_rules_dao.RulePositionRow(id: "a", position: 1),
+    ])
+
+  let assert Ok([first, second]) = inventory_rules_dao.list()
+  assert first.id == "b"
+  assert second.id == "a"
+}

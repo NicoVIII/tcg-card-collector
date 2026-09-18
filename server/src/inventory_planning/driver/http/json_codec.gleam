@@ -194,3 +194,19 @@ pub fn decode_delete_rule_body(
   json.parse(from: json_string, using: decoder)
   |> result.map_error(fn(_) { "invalid request body" })
 }
+
+pub type ReorderRulesBody {
+  ReorderRulesBody(ordered_ids: List(String))
+}
+
+pub fn decode_reorder_rules_body(
+  json_string: String,
+) -> Result(ReorderRulesBody, String) {
+  let decoder = {
+    use ordered_ids <- decode.field("ordered_ids", decode.list(decode.string))
+    decode.success(ReorderRulesBody(ordered_ids:))
+  }
+
+  json.parse(from: json_string, using: decoder)
+  |> result.map_error(fn(_) { "invalid request body" })
+}

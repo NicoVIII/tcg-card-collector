@@ -135,3 +135,14 @@ pub fn decode_update_bulk_spec_body_test() {
       sort_keys: "name,set_code",
     ))
 }
+
+pub fn decode_reorder_rules_body_test() {
+  let body = "{\"ordered_ids\":[\"b\",\"a\"]}"
+  assert json_codec.decode_reorder_rules_body(body)
+    == Ok(json_codec.ReorderRulesBody(ordered_ids: ["b", "a"]))
+}
+
+pub fn decode_reorder_rules_body_rejects_missing_field_test() {
+  assert json_codec.decode_reorder_rules_body("{}")
+    == Error("invalid request body")
+}

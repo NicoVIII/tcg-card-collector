@@ -29,6 +29,19 @@ method DeleteInventoryRule(
   DeleteInventoryRuleRequest
 ): DeleteInventoryRuleResponse = 302;
 
+struct ReorderInventoryRulesRequest {
+  ordered_ids: [string] = 0;
+}
+
+enum ReorderInventoryRulesResponse {
+  success = 1;
+  error = 2;
+}
+
+method ReorderInventoryRules(
+  ReorderInventoryRulesRequest
+): ReorderInventoryRulesResponse = 309;
+
 struct UpdateBulkSpecRequest {
   location_name: string = 0;
   sort_keys: string = 1;

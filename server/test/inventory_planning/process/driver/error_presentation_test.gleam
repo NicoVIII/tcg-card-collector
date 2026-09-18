@@ -1,5 +1,6 @@
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
+import inventory_planning/application/commands/reorder_rules/ports as reorder_rules_ports
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
@@ -37,6 +38,18 @@ pub fn persistence_failures_hide_the_reason_test() {
       unmark_cards_placed_ports.PersistenceFailed("disk full"),
     )
     == PresentedError(Internal, "failed to unmark cards placed")
+  assert error_presentation.reorder_rules(reorder_rules_ports.PersistenceFailed(
+      "disk full",
+    ))
+    == PresentedError(Internal, "failed to save rule order")
+}
+
+pub fn reorder_rules_not_a_permutation_is_a_bad_request_test() {
+  assert error_presentation.reorder_rules(reorder_rules_ports.NotAPermutation)
+    == PresentedError(
+      BadRequest,
+      "rule order must list every existing rule exactly once",
+    )
 }
 
 pub fn other_validation_errors_are_bad_requests_test() {

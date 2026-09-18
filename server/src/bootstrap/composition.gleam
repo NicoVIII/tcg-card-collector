@@ -27,6 +27,7 @@ import inventory_planning/driver/dependencies.{
 } as _
 import inventory_planning/infrastructure/adapters/commands/delete_rule/adapter as delete_rule_adapter
 import inventory_planning/infrastructure/adapters/commands/mark_cards_placed/adapter as mark_cards_placed_adapter
+import inventory_planning/infrastructure/adapters/commands/reorder_rules/adapter as reorder_rules_adapter
 import inventory_planning/infrastructure/adapters/commands/unmark_cards_placed/adapter as unmark_cards_placed_adapter
 import inventory_planning/infrastructure/adapters/commands/update_bulk_spec/adapter as update_bulk_spec_adapter
 import inventory_planning/infrastructure/adapters/commands/upsert_rule/adapter as upsert_rule_adapter
@@ -69,6 +70,7 @@ pub fn dependencies() -> Dependencies {
     inventory_planning: InventoryPlanningDependencies(
       upsert_inventory_rule_port: upsert_rule_adapter.new(),
       delete_inventory_rule_port: delete_rule_adapter.new(),
+      reorder_inventory_rules_ports: reorder_rules_adapter.new(),
       list_inventory_rules_port: list_rules_adapter.new(),
       inventory_projection_ports: projection_adapter.new(),
       get_bulk_spec_port: get_bulk_spec_adapter.new(),

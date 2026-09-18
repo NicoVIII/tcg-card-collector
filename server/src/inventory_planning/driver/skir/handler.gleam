@@ -1,6 +1,7 @@
 import gleam/list
 import inventory_planning/application/commands/delete_rule/handler as delete_rule_handler
 import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
+import inventory_planning/application/commands/reorder_rules/handler as reorder_rules_handler
 import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
 import inventory_planning/application/commands/update_bulk_spec/handler as update_bulk_spec_handler
 import inventory_planning/application/commands/upsert_rule/handler as upsert_rule_handler
@@ -52,6 +53,25 @@ fn handle_delete_inventory_rule(
       get_dependencies(ctx).delete_inventory_rule_port,
     )
     |> inventory_planning_skir_codec.map_delete_inventory_rule_result
+    |> helpers.respond
+  }
+}
+
+fn handle_reorder_inventory_rules(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_commands.ReorderInventoryRulesRequest,
+  inventory_planning_commands.ReorderInventoryRulesResponse,
+  context,
+) {
+  fn(req: inventory_planning_commands.ReorderInventoryRulesRequest, _, ctx) {
+    reorder_rules_handler.execute(
+      reorder_rules_handler.ReorderInventoryRulesCommand(
+        ordered_ids: req.ordered_ids,
+      ),
+      get_dependencies(ctx).reorder_inventory_rules_ports,
+    )
+    |> inventory_planning_skir_codec.map_reorder_inventory_rules_result
     |> helpers.respond
   }
 }
@@ -196,6 +216,10 @@ pub fn register(
   |> service.add_method(
     inventory_planning_commands.delete_inventory_rule_method(),
     handle_delete_inventory_rule(get_dependencies),
+  )
+  |> service.add_method(
+    inventory_planning_commands.reorder_inventory_rules_method(),
+    handle_reorder_inventory_rules(get_dependencies),
   )
   |> service.add_method(
     inventory_planning_queries.list_inventory_rules_method(),

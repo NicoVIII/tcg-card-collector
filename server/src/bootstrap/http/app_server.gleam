@@ -95,6 +95,11 @@ fn handle_request(
       inventory_http.handle_upsert_inventory_rule(req, deps.inventory_planning)
     Delete, "/api/inventory/rules" ->
       inventory_http.handle_delete_inventory_rule(req, deps.inventory_planning)
+    Put, "/api/inventory/rules/order" ->
+      inventory_http.handle_reorder_inventory_rules(
+        req,
+        deps.inventory_planning,
+      )
     Get, "/api/inventory/projection" ->
       inventory_http.handle_inventory_projection(deps.inventory_planning)
     Get, "/api/inventory/bulk-spec" ->
