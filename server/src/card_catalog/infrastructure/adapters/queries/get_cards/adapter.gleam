@@ -1,10 +1,12 @@
 import card_catalog/application/queries/get_cards/ports
 import card_catalog/infrastructure/daos/catalog_dao
+import gleam/float
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import shared/domain/color_identity
+import shared/domain/mana_value
 import shared/domain/oracle_id
 import shared/domain/rarity
 import shared/domain/release_date
@@ -37,6 +39,7 @@ fn to_read_model(
     color_identity: color_identity_raw,
     type_line:,
     released_at: released_at_raw,
+    cmc: cmc_raw,
   ) = row
   let corrupt = fn(field: String, value: String) {
     "corrupt catalog row "
@@ -56,9 +59,13 @@ fn to_read_model(
     color_identity.parse(color_identity_raw)
     |> result.replace_error(corrupt("color_identity", color_identity_raw)),
   )
-  use date <- result.map(
+  use date <- result.try(
     parse_optional(released_at_raw, release_date.parse)
     |> result.replace_error(corrupt("released_at", released_at_raw)),
+  )
+  use cmc <- result.map(
+    parse_optional_cmc(cmc_raw)
+    |> result.replace_error(corrupt("cmc", float_or_empty(cmc_raw))),
   )
   ports.CardReadModel(
     set_code:,
@@ -70,6 +77,7 @@ fn to_read_model(
     color_identity: colors,
     type_line:,
     released_at: date,
+    cmc:,
   )
 }
 
@@ -85,4 +93,20 @@ fn parse_optional(
         Error(Nil) -> Error(Nil)
       }
   }
+}
+
+// The stored value is already a REAL (a CHECK enforces non-negative on write),
+// so only mana_value's own invariant can fail here — kept for symmetry with
+// every other enrichment field's "corrupt storage is a read error" handling.
+fn parse_optional_cmc(
+  raw: Option(Float),
+) -> Result(Option(mana_value.ManaValue), Nil) {
+  case raw {
+    None -> Ok(None)
+    Some(value) -> mana_value.from_float(value) |> result.map(Some)
+  }
+}
+
+fn float_or_empty(raw: Option(Float)) -> String {
+  raw |> option.map(float.to_string) |> option.unwrap("")
 }

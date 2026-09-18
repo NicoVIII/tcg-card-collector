@@ -14,7 +14,9 @@ This document defines the MVP bounded contexts and the shared language for each 
 Value types every context may use: CardKey (the `(set_code, collector_number)`
 identity of a printing), CollectorNumber, NonEmptyString, and the
 context-independent card facts — Rarity (the enum, no ordering), ColorIdentity
-(canonical WUBRG color set), ReleaseDate, OracleId. CopyKey (`(CardKey, Finish,
+(canonical WUBRG color set), ReleaseDate, OracleId, ManaValue (Scryfall's
+`cmc`; "mana value" is the current official term for the same number — the
+type keeps that name, the DSL token keeps Scryfall's). CopyKey (`(CardKey, Finish,
 Language)`) is the identity of a kind of owned physical copy ([ADR
 0010](../decisions/0010-copy-key-finish-and-language.md)); Finish (`nonfoil |
 foil | etched`) and Language (Scryfall `lang` codes) are its two closed-set
@@ -34,8 +36,8 @@ Purpose:
 Core terms:
 - CardPrinting: one printed card as the source of truth knows it — identity
   (CardKey), name, image, and the enrichment facts (rarity, oracle id, color
-  identity, raw type line, release date), parsed into shared value types once
-  at the sync boundary.
+  identity, raw type line, release date, mana value), parsed into shared value
+  types once at the sync boundary.
 - CardSet: one set's metadata — code, name, release date, card count, official
   printed size, icon, and the parent-set link that chains a set family.
 - ProbeResult / RefreshRecord: trace of the last refresh probe — when, which

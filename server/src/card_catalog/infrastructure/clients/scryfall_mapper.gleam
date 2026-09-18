@@ -10,6 +10,7 @@ import gleam/result
 import gleam/string
 import shared/domain/card_key
 import shared/domain/color_identity
+import shared/domain/mana_value
 import shared/domain/non_empty_string
 import shared/domain/oracle_id
 import shared/domain/rarity
@@ -46,21 +47,33 @@ fn parse_optional_release_date(
   }
 }
 
+fn parse_optional_mana_value(
+  raw: String,
+) -> Result(Option(mana_value.ManaValue), Nil) {
+  case string.trim(raw) {
+    "" -> Ok(None)
+    trimmed -> mana_value.parse(trimmed) |> result.map(option.Some)
+  }
+}
+
+type Enrichment {
+  Enrichment(
+    oracle_id: Option(oracle_id.OracleId),
+    color_identity: color_identity.ColorIdentity,
+    released_at: Option(release_date.ReleaseDate),
+    cmc: Option(mana_value.ManaValue),
+  )
+}
+
 fn parse_enrichment(
   oracle_id_raw: String,
   color_identity_raw: String,
   released_at_raw: String,
-) -> Result(
-  #(
-    Option(oracle_id.OracleId),
-    color_identity.ColorIdentity,
-    Option(release_date.ReleaseDate),
-  ),
-  String,
-) {
+  cmc_raw: String,
+) -> Result(Enrichment, String) {
   let oracle = parse_optional_oracle_id(oracle_id_raw)
   // "" is a real colorless identity (Scryfall joins an empty color array),
-  // not a gap — hence not Option like the other two.
+  // not a gap — hence not Option like the others.
   use colors <- result.try(
     color_identity.parse(color_identity_raw)
     |> result.replace_error("invalid color_identity: " <> color_identity_raw),
@@ -69,7 +82,16 @@ fn parse_enrichment(
     parse_optional_release_date(released_at_raw)
     |> result.replace_error("invalid released_at: " <> released_at_raw),
   )
-  Ok(#(oracle, colors, date))
+  use cmc <- result.try(
+    parse_optional_mana_value(cmc_raw)
+    |> result.replace_error("invalid cmc: " <> cmc_raw),
+  )
+  Ok(Enrichment(
+    oracle_id: oracle,
+    color_identity: colors,
+    released_at: date,
+    cmc: cmc,
+  ))
 }
 
 // One line of the jq-normalised ndjson, still in Scryfall's raw spellings.
@@ -85,6 +107,7 @@ type RawCardRow {
     color_identity: String,
     type_line: String,
     released_at: String,
+    cmc: String,
   )
 }
 
@@ -99,6 +122,7 @@ fn raw_card_row_decoder() -> decode.Decoder(RawCardRow) {
   use color_identity <- decode.field("color_identity", decode.string)
   use type_line <- decode.field("type_line", decode.string)
   use released_at <- decode.field("released_at", decode.string)
+  use cmc <- decode.field("cmc", decode.string)
   decode.success(RawCardRow(
     id:,
     name:,
@@ -110,6 +134,7 @@ fn raw_card_row_decoder() -> decode.Decoder(RawCardRow) {
     color_identity:,
     type_line:,
     released_at:,
+    cmc:,
   ))
 }
 
@@ -136,8 +161,13 @@ fn parse_card_row(line: String) -> Result(card_printing.CardPrinting, String) {
     non_empty_string.new(raw.image_uri)
     |> result.replace_error(reject("empty image_uri")),
   )
-  use #(oracle, colors, date) <- result.try(
-    parse_enrichment(raw.oracle_id, raw.color_identity, raw.released_at)
+  use enrichment <- result.try(
+    parse_enrichment(
+      raw.oracle_id,
+      raw.color_identity,
+      raw.released_at,
+      raw.cmc,
+    )
     |> result.map_error(reject),
   )
   Ok(card_printing.CardPrinting(
@@ -146,12 +176,13 @@ fn parse_card_row(line: String) -> Result(card_printing.CardPrinting, String) {
     name:,
     rarity: rarity_val,
     image_uri:,
-    oracle_id: oracle,
-    color_identity: colors,
+    oracle_id: enrichment.oracle_id,
+    color_identity: enrichment.color_identity,
     // The raw printed line is the fact; "" is the multi-face layout gap (see
     // card_printing).
     type_line: raw.type_line,
-    released_at: date,
+    released_at: enrichment.released_at,
+    cmc: enrichment.cmc,
   ))
 }
 
@@ -178,6 +209,7 @@ fn card_to_csv_row(card: card_printing.CardPrinting) -> String {
     color_identity: colors,
     type_line: type_line,
     released_at: date,
+    cmc: cmc,
   ) = card
   csv_field(id)
   <> ","
@@ -198,6 +230,8 @@ fn card_to_csv_row(card: card_printing.CardPrinting) -> String {
   <> csv_field(type_line)
   <> ","
   <> csv_field(date |> option.map(release_date.to_string) |> option.unwrap(""))
+  <> ","
+  <> csv_field(cmc |> option.map(mana_value.to_string) |> option.unwrap(""))
 }
 
 fn validate_card_rows(lines: List(String)) -> List(card_printing.CardPrinting) {
@@ -216,15 +250,17 @@ fn run_jq(download_path: String, ndjson_path: String) -> Result(Nil, String) {
   // Enrichment fields tolerate multi-face/reversible layouts that expose no
   // top-level value: fall back to the first card face, then to "". color_identity
   // is a WUBRG letter array joined into a canonical-ish string; planning
-  // re-canonicalizes at its port boundary. The bulk file is gzipped JSON Lines;
-  // gzip -t runs first because sh has no portable pipefail to catch a corrupt
-  // archive mid-pipe.
+  // re-canonicalizes at its port boundary. cmc is stringified so the ndjson
+  // stays uniformly string-shaped like every other enrichment field (jq's `//`
+  // treats 0 as truthy, so a zero-cost card is not swallowed by the fallback).
+  // The bulk file is gzipped JSON Lines; gzip -t runs first because sh has no
+  // portable pipefail to catch a corrupt archive mid-pipe.
   let jq_script =
     "gzip -t < "
     <> shell.quote(download_path)
     <> " && gzip -dc < "
     <> shell.quote(download_path)
-    <> " | jq -c '{id: (.id // \"\"), name: (.name // \"\"), set_code: (.set // \"\"), collector_number: (.collector_number // \"\"), rarity: (.rarity // \"unknown\"), image_uri: (.image_uris.small // .card_faces[0].image_uris.small // \"\"), oracle_id: (.oracle_id // .card_faces[0].oracle_id // \"\"), color_identity: ((.color_identity // []) | join(\"\")), type_line: (.type_line // .card_faces[0].type_line // \"\"), released_at: (.released_at // \"\")}' > "
+    <> " | jq -c '{id: (.id // \"\"), name: (.name // \"\"), set_code: (.set // \"\"), collector_number: (.collector_number // \"\"), rarity: (.rarity // \"unknown\"), image_uri: (.image_uris.small // .card_faces[0].image_uris.small // \"\"), oracle_id: (.oracle_id // .card_faces[0].oracle_id // \"\"), color_identity: ((.color_identity // []) | join(\"\")), type_line: (.type_line // .card_faces[0].type_line // \"\"), released_at: (.released_at // \"\"), cmc: ((.cmc // .card_faces[0].cmc // \"\") | tostring)}' > "
     <> shell.quote(ndjson_path)
   case shell.run(jq_script) {
     Ok(_) -> {

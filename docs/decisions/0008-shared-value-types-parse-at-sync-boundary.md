@@ -63,7 +63,11 @@ existing skip-with-reason path (logged with the card id, counted in the
 
 - The DB schema, the skir contract, and the REST payloads are unchanged;
   only in-process types moved. Drivers serialize strong types back to the
-  canonical string forms.
+  canonical string forms. `catalog_cards.cmc` (#102) is the one exception: a
+  nullable `REAL` column, because SQLite can enforce that value's own
+  invariant (non-negative) at the DB boundary per ADR 0009 — a strength no
+  TEXT column has. The rule stays "strings at storage seams unless the
+  database can own the type's invariant directly."
 - Read-side adapters now parse stored strings into value types, so corrupt
   stored data surfaces as a query error instead of a silently degraded
   attribute. Refreshing the catalog rewrites the table, so recovery is cheap.

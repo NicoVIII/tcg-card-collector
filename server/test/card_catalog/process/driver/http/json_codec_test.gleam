@@ -1,7 +1,7 @@
 import card_catalog/application/queries/get_cards/ports as get_cards_ports
 import card_catalog/driver/http/json_codec
 import card_catalog/driver/refresh_launcher
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import shared/domain/color_identity
 import shared/domain/oracle_id
 import shared/domain/rarity
@@ -47,6 +47,7 @@ pub fn catalog_card_details_encode_all_attributes_test() {
       color_identity: red,
       type_line: "Creature — Human Wizard",
       released_at: Some(date),
+      cmc: None,
     )
   assert json_codec.encode_catalog_card_details([card])
     == "[{\"set_code\":\"grn\",\"collector_number\":\"173\","

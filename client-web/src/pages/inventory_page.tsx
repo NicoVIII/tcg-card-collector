@@ -405,8 +405,8 @@ export function InventoryPage() {
       <p class="hint">
         Sort keys are a comma-separated list ordering the cards within each location:{" "}
         <code>color_identity</code>, <code>type</code>, <code>name</code>, <code>set_code</code>,{" "}
-        <code>collector_number</code>, <code>rarity</code>, <code>released_at</code>. Empty keeps
-        the canonical order (release date, set, collector number).
+        <code>collector_number</code>, <code>rarity</code>, <code>released_at</code>,{" "}
+        <code>cmc</code>. Empty keeps the canonical order (release date, set, collector number).
       </p>
       <Show when={mutationError.messageFor("reorder") !== null}>
         <p role="alert">{mutationError.messageFor("reorder")}</p>
@@ -471,7 +471,7 @@ export function InventoryPage() {
       <p class="hint">
         Comma-separated sort keys ordering the leftover pile: <code>color_identity</code>,{" "}
         <code>type</code>, <code>name</code>, <code>set_code</code>, <code>collector_number</code>,{" "}
-        <code>rarity</code>, <code>released_at</code>.
+        <code>rarity</code>, <code>released_at</code>, <code>cmc</code>.
       </p>
       <ProjectionSection />
     </section>

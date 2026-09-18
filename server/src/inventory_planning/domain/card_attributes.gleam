@@ -7,6 +7,7 @@ import shared/domain/card_key.{type CardKey}
 import shared/domain/color_identity.{type ColorIdentity}
 import shared/domain/finish.{type Finish}
 import shared/domain/language.{type Language}
+import shared/domain/mana_value.{type ManaValue}
 import shared/domain/oracle_id.{type OracleId}
 import shared/domain/rarity.{type Rarity}
 import shared/domain/release_date.{type ReleaseDate}
@@ -197,6 +198,22 @@ pub fn compare_release_earliest_first(
   }
 }
 
+// Ordering policy for possibly-unknown mana value: unknown sorts last, like
+// every other optional attribute below (color/type/rarity) — unlike
+// released_at above, which deliberately puts unknown first. 0 (lands) is a
+// real value, never conflated with "the catalog doesn't know".
+pub fn compare_cmc_lowest_first(
+  left: Option(ManaValue),
+  right: Option(ManaValue),
+) -> Order {
+  case left, right {
+    None, None -> order.Eq
+    None, Some(_) -> order.Gt
+    Some(_), None -> order.Lt
+    Some(l), Some(r) -> mana_value.compare(l, r)
+  }
+}
+
 // A collection row joined with whatever the catalog knew about it. oracle_id,
 // rarity, color_identity, and card_type are optional because a collection row
 // may reference a printing the catalog doesn't (yet) carry; such a card fails
@@ -214,6 +231,7 @@ pub type PlannedCard {
     rarity: Option(Rarity),
     color_identity: Option(ColorIdentity),
     card_type: Option(CardType),
+    cmc: Option(ManaValue),
   )
 }
 

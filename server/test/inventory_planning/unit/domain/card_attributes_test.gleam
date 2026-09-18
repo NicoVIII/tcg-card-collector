@@ -1,9 +1,11 @@
 import gleam/list
+import gleam/option.{None, Some}
 import gleam/order
 import inventory_planning/domain/card_attributes as attrs
 import shared/domain/color_identity
 import shared/domain/finish
 import shared/domain/language
+import shared/domain/mana_value
 import shared/domain/rarity
 
 // common < uncommon < special < bonus < rare < mythic
@@ -113,4 +115,16 @@ pub fn finish_parse_round_trip_test() {
   assert list.all(all, fn(f) {
     attrs.parse_finish(finish.to_string(f)) == Ok(f)
   })
+}
+
+// cmc ascending; unknown sorts last (opposite of compare_release_earliest_first,
+// which sorts unknown first) — 0 is a real value, not a stand-in for unknown.
+pub fn cmc_compare_lowest_first_unknown_last_test() {
+  let assert Ok(zero) = mana_value.from_float(0.0)
+  let assert Ok(four) = mana_value.from_float(4.0)
+  assert attrs.compare_cmc_lowest_first(Some(zero), Some(four)) == order.Lt
+  assert attrs.compare_cmc_lowest_first(Some(four), Some(zero)) == order.Gt
+  assert attrs.compare_cmc_lowest_first(Some(zero), None) == order.Lt
+  assert attrs.compare_cmc_lowest_first(None, Some(zero)) == order.Gt
+  assert attrs.compare_cmc_lowest_first(None, None) == order.Eq
 }

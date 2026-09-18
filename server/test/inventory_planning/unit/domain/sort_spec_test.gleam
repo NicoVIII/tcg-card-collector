@@ -3,12 +3,13 @@ import gleam/option.{None, Some}
 import gleam/order
 import inventory_planning/domain/card_attributes.{type PlannedCard} as attrs
 import inventory_planning/domain/sort_spec.{
-  ByCardType, ByCollectorNumber, ByColorIdentity, ByName, ByRarity, ByReleasedAt,
-  BySetCode,
+  ByCardType, ByCollectorNumber, ByColorIdentity, ByManaValue, ByName, ByRarity,
+  ByReleasedAt, BySetCode,
 }
 import shared/domain/card_key
 import shared/domain/finish
 import shared/domain/language
+import shared/domain/mana_value
 import shared/domain/oracle_id
 import shared/domain/rarity
 import shared/domain/release_date
@@ -23,6 +24,7 @@ fn card(
   let assert Ok(color_identity) = attrs.parse_color_identity(colors)
   let assert Ok(date) = release_date.parse("2020-01-01")
   let assert Ok(oracle) = oracle_id.new("o")
+  let assert Ok(cmc) = mana_value.from_float(2.0)
   attrs.PlannedCard(
     key:,
     name:,
@@ -34,6 +36,7 @@ fn card(
     rarity: Some(rarity.Common),
     color_identity: Some(color_identity),
     card_type: Some(card_type),
+    cmc: Some(cmc),
   )
 }
 
@@ -53,6 +56,7 @@ fn unknown_card(collector_number: String) -> PlannedCard {
     rarity: None,
     color_identity: None,
     card_type: None,
+    cmc: None,
   )
 }
 
@@ -63,8 +67,8 @@ pub fn parses_sort_keys_test() {
 }
 
 pub fn parses_new_sort_keys_test() {
-  assert sort_spec.parse_sort_keys("collector_number,rarity,released_at")
-    == Ok([ByCollectorNumber, ByRarity, ByReleasedAt])
+  assert sort_spec.parse_sort_keys("collector_number,rarity,released_at,cmc")
+    == Ok([ByCollectorNumber, ByRarity, ByReleasedAt, ByManaValue])
 }
 
 pub fn sort_keys_round_trip_test() {
@@ -76,6 +80,7 @@ pub fn sort_keys_round_trip_test() {
     ByCollectorNumber,
     ByRarity,
     ByReleasedAt,
+    ByManaValue,
   ]
   assert sort_spec.parse_sort_keys(sort_spec.sort_keys_to_string(keys))
     == Ok(keys)
@@ -192,4 +197,30 @@ pub fn released_at_ascending_unknown_first_test() {
     list.sort(cards, fn(x, y) { sort_spec.compare_cards([ByReleasedAt], x, y) })
   // unknown_card has an empty released_at, so it sorts first.
   assert list.map(sorted, fn(c) { c.name }) == ["unknown", "old", "new"]
+}
+
+// cmc compares ascending; an unknown mana value sorts last (the opposite of
+// released_at above), and a real 0 (a land) sorts before every known cost,
+// never confused with unknown.
+pub fn cmc_ascending_unknown_last_test() {
+  let assert Ok(zero) = mana_value.from_float(0.0)
+  let land = attrs.PlannedCard(..card("land", "R", attrs.Land), cmc: Some(zero))
+  let assert Ok(four) = mana_value.from_float(4.0)
+  let bomb =
+    attrs.PlannedCard(..card("bomb", "R", attrs.Creature), cmc: Some(four))
+  let cards = [bomb, unknown_card("x"), land]
+  let sorted =
+    list.sort(cards, fn(x, y) { sort_spec.compare_cards([ByManaValue], x, y) })
+  assert list.map(sorted, fn(c) { c.name }) == ["land", "bomb", "unknown"]
+}
+
+// A cmc tie falls through to the next sort key.
+pub fn cmc_tie_breaks_on_next_key_test() {
+  let z = card("z", "R", attrs.Creature)
+  let a = card("a", "R", attrs.Creature)
+  let sorted =
+    list.sort([z, a], fn(x, y) {
+      sort_spec.compare_cards([ByManaValue, ByName], x, y)
+    })
+  assert list.map(sorted, fn(c) { c.name }) == ["a", "z"]
 }

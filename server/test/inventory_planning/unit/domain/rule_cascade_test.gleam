@@ -74,6 +74,7 @@ fn card(
     rarity: Some(rarity_value),
     color_identity: Some(color_identity),
     card_type: Some(attrs.Creature),
+    cmc: None,
   )
 }
 
@@ -290,6 +291,7 @@ pub fn catalog_unknown_card_falls_to_bulk_test() {
       rarity: None,
       color_identity: None,
       card_type: None,
+      cmc: None,
     )
   let buckets = rule_cascade.project(owner_cascade(), [unknown], dict.new())
   assert list.length(buckets) == 1
@@ -585,6 +587,7 @@ pub fn type_fan_out_rank_order_test() {
       rarity: Some(rarity.Common),
       color_identity: None,
       card_type: Some(card_type),
+      cmc: None,
     )
   }
   let land = make_typed("aaa", "1", attrs.Land)

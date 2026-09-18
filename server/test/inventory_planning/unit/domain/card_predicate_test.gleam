@@ -33,6 +33,7 @@ fn card(
     rarity: Some(rarity_value),
     color_identity: Some(color_identity),
     card_type: Some(card_type),
+    cmc: None,
   )
 }
 
@@ -183,6 +184,7 @@ pub fn missing_attribute_matches_false_test() {
       rarity: None,
       color_identity: None,
       card_type: None,
+      cmc: None,
     )
   let assert Ok(pred) = card_predicate.parse("rarity >= rare")
   assert !card_predicate.matches(pred, bare)

@@ -25,6 +25,7 @@ pub type CatalogCardRow {
     color_identity: String,
     type_line: String,
     released_at: String,
+    cmc: Option(Float),
   )
 }
 
@@ -159,6 +160,7 @@ fn card_row_decoder() -> decode.Decoder(CatalogCardRow) {
   use color_identity <- decode.field(6, decode.string)
   use type_line <- decode.field(7, decode.string)
   use released_at <- decode.field(8, decode.string)
+  use cmc <- decode.field(9, decode.optional(decode.float))
   decode.success(CatalogCardRow(
     set_code:,
     collector_number:,
@@ -169,6 +171,7 @@ fn card_row_decoder() -> decode.Decoder(CatalogCardRow) {
     color_identity:,
     type_line:,
     released_at:,
+    cmc:,
   ))
 }
 
@@ -192,7 +195,7 @@ fn get_by_keys_chunk(
     })
   sqlite_store.query(
     "SELECT set_code, collector_number, name, image_uri, rarity, "
-      <> "oracle_id, color_identity, type_line, released_at "
+      <> "oracle_id, color_identity, type_line, released_at, cmc "
       <> "FROM catalog_cards "
       <> "WHERE (set_code, collector_number) IN ("
       <> sqlite_store.placeholders(list.length(keys), "(?,?)")
@@ -356,7 +359,8 @@ pub fn bulk_load(csv_path: String) -> Result(Nil, String) {
     <> "\"  oracle_id TEXT,\" "
     <> "\"  color_identity TEXT,\" "
     <> "\"  type_line TEXT,\" "
-    <> "\"  released_at TEXT\" "
+    <> "\"  released_at TEXT,\" "
+    <> "\"  cmc TEXT\" "
     <> "\");\" "
     <> "\".mode csv\" "
     <> "\".import "
@@ -365,11 +369,12 @@ pub fn bulk_load(csv_path: String) -> Result(Nil, String) {
     <> "\"DELETE FROM catalog_cards;\" "
     <> "\"INSERT INTO catalog_cards (\" "
     <> "\"  id, name, set_code, collector_number, rarity, image_uri,\" "
-    <> "\"  oracle_id, color_identity, type_line, released_at\" "
+    <> "\"  oracle_id, color_identity, type_line, released_at, cmc\" "
     <> "\")\" "
     <> "\"SELECT\" "
     <> "\"  id, name, set_code, collector_number, rarity, image_uri,\" "
-    <> "\"  oracle_id, color_identity, type_line, released_at\" "
+    <> "\"  oracle_id, color_identity, type_line, released_at,\" "
+    <> "\"  CAST(NULLIF(cmc, '') AS REAL)\" "
     <> "\"FROM _catalog_import;\" "
     <> "\"DROP TABLE _catalog_import;\" "
     <> "\"COMMIT;\" > \"$sqltmp\"; "

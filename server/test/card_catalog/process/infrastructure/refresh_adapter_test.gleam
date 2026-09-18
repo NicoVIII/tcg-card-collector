@@ -129,10 +129,16 @@ pub fn import_populates_enrichment_attributes_test() {
   assert result == Ok(Nil)
 
   let assert Ok(rows) =
-    catalog_dao.get_by_keys([#("grn", "173"), #("sld", "1000"), #("mh1", "42")])
-  assert list.length(rows) == 3
+    catalog_dao.get_by_keys([
+      #("grn", "173"),
+      #("sld", "1000"),
+      #("mh1", "42"),
+      #("mh1", "43"),
+    ])
+  assert list.length(rows) == 4
 
-  // Normal card: multicolor identity joined, type_line and released_at present.
+  // Normal card: multicolor identity joined, type_line, released_at and cmc
+  // present.
   let assert Ok(guildmage) =
     list.find(rows, fn(row) {
       row.set_code == "grn" && row.collector_number == "173"
@@ -141,9 +147,10 @@ pub fn import_populates_enrichment_attributes_test() {
   assert guildmage.color_identity == "WU"
   assert guildmage.type_line == "Creature — Human Wizard"
   assert guildmage.released_at == "2018-10-05"
+  assert guildmage.cmc == option.Some(2.0)
 
-  // Reversible card: no top-level oracle_id/type_line/image_uris -> falls back
-  // to card_faces[0].
+  // Reversible card: no top-level oracle_id/type_line/image_uris/cmc -> falls
+  // back to card_faces[0] for all of them, including a fractional cmc.
   let assert Ok(reversible) =
     list.find(rows, fn(row) {
       row.set_code == "sld" && row.collector_number == "1000"
@@ -153,14 +160,25 @@ pub fn import_populates_enrichment_attributes_test() {
   assert reversible.oracle_id == "oracle-e2"
   assert reversible.color_identity == "G"
   assert reversible.type_line == "Legendary Creature — Elf"
+  assert reversible.cmc == option.Some(0.5)
 
-  // Colorless card: empty color_identity array joins to "".
+  // Colorless card: empty color_identity array joins to "". cmc: 0 (a real
+  // zero-cost card) must survive jq's `//` and the CSV round trip, not read
+  // back as unknown.
   let assert Ok(colorless) =
     list.find(rows, fn(row) {
       row.set_code == "mh1" && row.collector_number == "42"
     })
   assert colorless.color_identity == ""
   assert colorless.type_line == "Artifact — Thopter"
+  assert colorless.cmc == option.Some(0.0)
+
+  // No top-level cmc and no card_faces at all -> unknown, distinct from 0.
+  let assert Ok(no_cmc) =
+    list.find(rows, fn(row) {
+      row.set_code == "mh1" && row.collector_number == "43"
+    })
+  assert no_cmc.cmc == option.None
 }
 
 fn query_set_codes() -> List(String) {

@@ -48,6 +48,7 @@ fn catalog_attributes_adapter() -> ports.CatalogAttributesPort {
           color_identity: card.color_identity,
           type_line: card.type_line,
           released_at: card.released_at,
+          cmc: card.cmc,
         ),
       )
     })

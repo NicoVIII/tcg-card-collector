@@ -1,6 +1,7 @@
 import gleam/dict.{type Dict}
 import gleam/option.{type Option}
 import shared/domain/color_identity.{type ColorIdentity}
+import shared/domain/mana_value.{type ManaValue}
 import shared/domain/oracle_id.{type OracleId}
 import shared/domain/rarity.{type Rarity}
 import shared/domain/release_date.{type ReleaseDate}
@@ -67,6 +68,7 @@ pub type CatalogAttributes {
     color_identity: ColorIdentity,
     type_line: String,
     released_at: Option(ReleaseDate),
+    cmc: Option(ManaValue),
   )
 }
 

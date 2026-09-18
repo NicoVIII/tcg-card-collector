@@ -196,6 +196,7 @@ fn plan_card(
         rarity: None,
         color_identity: None,
         card_type: None,
+        cmc: None,
       )
     Ok(attrs) ->
       card_attributes.PlannedCard(
@@ -209,6 +210,7 @@ fn plan_card(
         rarity: Some(attrs.rarity),
         color_identity: Some(attrs.color_identity),
         card_type: reduce_card_type(attrs.type_line),
+        cmc: attrs.cmc,
       )
   })
 }

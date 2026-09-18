@@ -84,6 +84,7 @@ fn attrs(
     color_identity: colors,
     type_line: type_line,
     released_at: date(released),
+    cmc: None,
   )
 }
 
