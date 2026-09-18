@@ -1,4 +1,5 @@
 import { For, Show, createMemo, createSignal } from "solid-js";
+import { useSearchParams } from "@solidjs/router";
 import { mapError } from "../data/http/error";
 import { useInventoryProjectionQuery } from "../data/inventory_planning/query";
 import {
@@ -9,20 +10,21 @@ import { buildGuidance } from "../data/placement/guidance";
 import { usePlacedLedgerQuery } from "../data/placement/query";
 import type { CardPlacementInput } from "../data/placement/request";
 import {
+  type FocusedLocation,
+  type LocationSummary,
+  countLabel,
+  focusNameFrom,
+  focusedLocation,
+  locationSummaries,
+} from "./placement_focus";
+import {
   type PlacementSession,
   type SessionCard,
   betweenLabel,
   emptySession,
-  mergeLocationCards,
   tick,
-  tickedLocationNames,
   untick,
 } from "./placement_session";
-
-type DisplayLocation = {
-  location_name: string;
-  cards: SessionCard[];
-};
 
 function placementOf(location_name: string, card: SessionCard["card"]): CardPlacementInput {
   return {
@@ -35,9 +37,128 @@ function placementOf(location_name: string, card: SessionCard["card"]): CardPlac
   };
 }
 
+type PlacementRowProps = {
+  location_name: string;
+  entry: SessionCard;
+  index: number;
+  onTick: (location_name: string, entry: SessionCard, index: number) => void;
+  onUntick: (location_name: string, entry: SessionCard) => void;
+};
+
+function PlacementRow(props: PlacementRowProps) {
+  return (
+    <li class="placement-row" classList={{ "placement-row-done": props.entry.struck }}>
+      <input
+        type="checkbox"
+        checked={props.entry.struck}
+        aria-label={`Placed ${props.entry.card.name} (${props.entry.card.set_code} ${props.entry.card.collector_number})`}
+        onChange={() =>
+          props.entry.struck
+            ? props.onUntick(props.location_name, props.entry)
+            : props.onTick(props.location_name, props.entry, props.index)
+        }
+      />
+      <span class="placement-card">
+        <span class="placement-card-name">
+          {props.entry.card.to_place_quantity}x {props.entry.card.name}
+        </span>
+        <span class="placement-card-key">
+          {props.entry.card.set_code} {props.entry.card.collector_number} ({props.entry.card.finish}
+          ·{props.entry.card.language})
+        </span>
+        <span class="placement-card-hint">{betweenLabel(props.entry.card)}</span>
+      </span>
+    </li>
+  );
+}
+
+type LocationPanelProps = {
+  location: FocusedLocation;
+  markAllPending: boolean;
+  onTick: (location_name: string, entry: SessionCard, index: number) => void;
+  onUntick: (location_name: string, entry: SessionCard) => void;
+  onMarkAll: (location: FocusedLocation) => void;
+};
+
+function LocationPanel(props: LocationPanelProps) {
+  return (
+    <div class="placement-panel">
+      <button
+        type="button"
+        onClick={() => props.onMarkAll(props.location)}
+        disabled={props.markAllPending}
+      >
+        Mark all placed
+      </button>
+      <ul class="placement-list">
+        <For each={props.location.cards}>
+          {(entry, index) => (
+            <PlacementRow
+              location_name={props.location.location_name}
+              entry={entry}
+              index={index()}
+              onTick={props.onTick}
+              onUntick={props.onUntick}
+            />
+          )}
+        </For>
+      </ul>
+    </div>
+  );
+}
+
+type LocationRowProps = {
+  summary: LocationSummary;
+  panelId: string;
+  isOpen: boolean;
+  focused: FocusedLocation | null;
+  markAllPending: boolean;
+  onToggle: (location_name: string, headerEl: HTMLElement) => void;
+  onTick: (location_name: string, entry: SessionCard, index: number) => void;
+  onUntick: (location_name: string, entry: SessionCard) => void;
+  onMarkAll: (location: FocusedLocation) => void;
+};
+
+function LocationRow(props: LocationRowProps) {
+  let headerRef: HTMLButtonElement | undefined;
+
+  return (
+    <div class="placement-location">
+      <h3 class="placement-location-header">
+        <button
+          ref={(element) => {
+            headerRef = element;
+          }}
+          type="button"
+          class="placement-location-toggle"
+          aria-expanded={props.isOpen}
+          aria-controls={props.panelId}
+          onClick={() => headerRef && props.onToggle(props.summary.location_name, headerRef)}
+        >
+          <span aria-hidden="true">{props.isOpen ? "▾" : "▸"}</span>
+          <span>{props.summary.location_name}</span>
+          <span>{countLabel(props.summary)}</span>
+        </button>
+      </h3>
+      <Show when={props.isOpen && props.focused !== null}>
+        <div id={props.panelId}>
+          <LocationPanel
+            location={props.focused as FocusedLocation}
+            markAllPending={props.markAllPending}
+            onTick={props.onTick}
+            onUntick={props.onUntick}
+            onMarkAll={props.onMarkAll}
+          />
+        </div>
+      </Show>
+    </div>
+  );
+}
+
 export function PlacementPage() {
   const [session, setSession] = createSignal<PlacementSession>(emptySession());
   const [mutationError, setMutationError] = createSignal<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams<{ location?: string }>();
 
   const projectionQuery = useInventoryProjectionQuery();
   const ledgerQuery = usePlacedLedgerQuery();
@@ -59,34 +180,24 @@ export function PlacementPage() {
   const isError = () => projectionQuery.isError || ledgerQuery.isError;
   const loadError = () => projectionQuery.error ?? ledgerQuery.error;
 
-  // Cascade order from guidance, plus any location that only still shows because
-  // its cards were just ticked (guidance already dropped the emptied location).
-  const displayLocations = (): DisplayLocation[] => {
-    const current = session();
-    const guidanceLocations = guidance()?.locations ?? [];
-    const names: string[] = [];
-    const seen = new Set<string>();
-    for (const location of guidanceLocations) {
-      names.push(location.location_name);
-      seen.add(location.location_name);
-    }
-    for (const name of tickedLocationNames(current)) {
-      if (!seen.has(name)) {
-        names.push(name);
-      }
-    }
-    return names
-      .map((name) => {
-        const fresh = guidanceLocations.find((location) => location.location_name === name);
-        return {
-          location_name: name,
-          cards: mergeLocationCards(current, name, fresh?.cards ?? []),
-        };
-      })
-      .filter((location) => location.cards.length > 0);
-  };
+  const focusName = () => focusNameFrom(searchParams.location);
+
+  // Collapsed summaries for every location; only the open one pays the per-card
+  // merge, so ticking a card no longer re-derives (or re-renders) the rest.
+  const summaries = createMemo<LocationSummary[]>(() => locationSummaries(guidance(), session()));
+  const focused = createMemo<FocusedLocation | null>(() =>
+    focusedLocation(guidance(), session(), focusName()),
+  );
 
   const reportError = (error: unknown) => setMutationError(mapError(error).message);
+
+  // A history entry per open/close, not a replace: on a phone, back-to-close is
+  // the affordance alongside re-tapping the header. Scroll the tapped header back
+  // into view in case closing a location above it moved the page under it.
+  const toggleFocus = (location_name: string, headerEl: HTMLElement) => {
+    setSearchParams({ location: focusName() === location_name ? undefined : location_name });
+    headerEl.scrollIntoView({ block: "nearest" });
+  };
 
   const tickCard = (location_name: string, entry: SessionCard, index: number) => {
     setMutationError(null);
@@ -100,7 +211,7 @@ export function PlacementPage() {
     unmarkMutation.mutate([placementOf(location_name, entry.card)], { onError: reportError });
   };
 
-  const markAll = (location: DisplayLocation) => {
+  const markAll = (location: FocusedLocation) => {
     setMutationError(null);
     let next = session();
     const placements: CardPlacementInput[] = [];
@@ -121,8 +232,8 @@ export function PlacementPage() {
     <section>
       <h2>Place cards</h2>
       <p class="hint">
-        Cards you've added but not yet sorted into their storage locations. Tick each one as you
-        file it; untick a struck-through card to undo.
+        Cards you've added but not yet sorted into their storage locations. Open a location to file
+        it; tick each card as you place it, untick a struck-through card to undo.
       </p>
       <Show when={isLoading()}>
         <p>Loading placement guidance...</p>
@@ -137,55 +248,26 @@ export function PlacementPage() {
         <p class="hint">{guidance()?.total_unplaced} card(s) still to place.</p>
       </Show>
       <Show
-        when={displayLocations().length > 0}
+        when={summaries().length > 0}
         fallback={
           <Show when={!isLoading() && !isError()}>
             <p>Everything is placed. Nothing to sort right now.</p>
           </Show>
         }
       >
-        <For each={displayLocations()}>
-          {(location) => (
-            <div class="placement-location">
-              <div class="placement-location-header">
-                <h3>{location.location_name}</h3>
-                <button
-                  type="button"
-                  onClick={() => markAll(location)}
-                  disabled={markMutation.isPending}
-                >
-                  Mark all placed
-                </button>
-              </div>
-              <ul class="placement-list">
-                <For each={location.cards}>
-                  {(entry, index) => (
-                    <li class="placement-row" classList={{ "placement-row-done": entry.struck }}>
-                      <input
-                        type="checkbox"
-                        checked={entry.struck}
-                        aria-label={`Placed ${entry.card.name} (${entry.card.set_code} ${entry.card.collector_number})`}
-                        onChange={() =>
-                          entry.struck
-                            ? untickCard(location.location_name, entry)
-                            : tickCard(location.location_name, entry, index())
-                        }
-                      />
-                      <span class="placement-card">
-                        <span class="placement-card-name">
-                          {entry.card.to_place_quantity}x {entry.card.name}
-                        </span>
-                        <span class="placement-card-key">
-                          {entry.card.set_code} {entry.card.collector_number} ({entry.card.finish}·
-                          {entry.card.language})
-                        </span>
-                        <span class="placement-card-hint">{betweenLabel(entry.card)}</span>
-                      </span>
-                    </li>
-                  )}
-                </For>
-              </ul>
-            </div>
+        <For each={summaries()}>
+          {(summary, index) => (
+            <LocationRow
+              summary={summary}
+              panelId={`placement-panel-${index()}`}
+              isOpen={focusName() === summary.location_name}
+              focused={focused()}
+              markAllPending={markMutation.isPending}
+              onToggle={toggleFocus}
+              onTick={tickCard}
+              onUntick={untickCard}
+              onMarkAll={markAll}
+            />
           )}
         </For>
       </Show>

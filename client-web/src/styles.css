@@ -294,10 +294,36 @@ p[role="alert"] {
 }
 
 .placement-location-header {
+  margin: 0;
+}
+
+.page-panel button.placement-location-toggle {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 4px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+  font-weight: 600;
+}
+
+.page-panel button.placement-location-toggle:hover {
+  background: var(--bg);
+}
+
+.placement-panel {
+  margin-top: 8px;
+}
+
+.placement-panel > button {
+  margin-bottom: 8px;
 }
 
 .placement-list {
