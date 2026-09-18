@@ -6,7 +6,10 @@ import {
   isTicked,
   mergeLocationCards,
   tick,
+  tickAll,
   untick,
+  untickAll,
+  type SessionCard,
 } from "./placement_session";
 
 function neighbor(
@@ -55,6 +58,57 @@ describe("placement session ticking", () => {
     const ticked = tick(emptySession(), "Bulk", nonfoil, 0);
 
     expect(isTicked(ticked, "Bulk", foil)).toBe(false);
+  });
+});
+
+describe("tickAll / untickAll", () => {
+  function sessionCard(collector_number: string, struck = false): SessionCard {
+    return { card: card(collector_number), struck };
+  }
+
+  function tickAllOrThrow(session: ReturnType<typeof emptySession>, cards: SessionCard[]) {
+    const result = tickAll(session, "Bulk", cards);
+    if (result === null) {
+      throw new Error("expected tickAll to return a batch");
+    }
+    return result;
+  }
+
+  it("ticks every unstruck entry and returns the batch", () => {
+    const cards = [sessionCard("1"), sessionCard("2"), sessionCard("3")];
+
+    const { session, batch } = tickAllOrThrow(emptySession(), cards);
+
+    expect(batch.location_name).toBe("Bulk");
+    expect(batch.cards.map((c) => c.collector_number)).toEqual(["1", "2", "3"]);
+    for (const entry of cards) {
+      expect(isTicked(session, "Bulk", entry.card)).toBe(true);
+    }
+  });
+
+  it("skips already-struck entries", () => {
+    const cards = [sessionCard("1", true), sessionCard("2")];
+
+    const { batch } = tickAllOrThrow(emptySession(), cards);
+
+    expect(batch.cards.map((c) => c.collector_number)).toEqual(["2"]);
+  });
+
+  it("returns null when there is nothing left to mark", () => {
+    const cards = [sessionCard("1", true)];
+
+    expect(tickAll(emptySession(), "Bulk", cards)).toBeNull();
+  });
+
+  it("undoes a mark-all batch as a unit", () => {
+    const cards = [sessionCard("1"), sessionCard("2")];
+    const { session: marked, batch } = tickAllOrThrow(emptySession(), cards);
+
+    const restored = untickAll(marked, batch);
+
+    for (const entry of cards) {
+      expect(isTicked(restored, "Bulk", entry.card)).toBe(false);
+    }
   });
 });
 

@@ -19,12 +19,15 @@ import {
   locationSummaries,
 } from "./placement_focus";
 import {
+  type MarkAllBatch,
   type PlacementSession,
   type SessionCard,
   betweenLabel,
   emptySession,
   tick,
+  tickAll,
   untick,
+  untickAll,
 } from "./placement_session";
 
 function placementOf(location_name: string, card: SessionCard["card"]): CardPlacementInput {
@@ -76,21 +79,47 @@ function PlacementRow(props: PlacementRowProps) {
 type LocationPanelProps = {
   location: FocusedLocation;
   markAllPending: boolean;
+  undoable: MarkAllBatch | null;
+  undoPending: boolean;
   onTick: (location_name: string, entry: SessionCard, index: number) => void;
   onUntick: (location_name: string, entry: SessionCard) => void;
   onMarkAll: (location: FocusedLocation) => void;
+  onUndoMarkAll: (batch: MarkAllBatch) => void;
 };
 
+function unplacedCount(location: FocusedLocation): number {
+  return location.cards.filter((entry) => !entry.struck).length;
+}
+
 function LocationPanel(props: LocationPanelProps) {
+  const undoableHere = () =>
+    props.undoable !== null && props.undoable.location_name === props.location.location_name
+      ? props.undoable
+      : null;
+
   return (
     <div class="placement-panel">
       <button
         type="button"
         onClick={() => props.onMarkAll(props.location)}
-        disabled={props.markAllPending}
+        disabled={props.markAllPending || unplacedCount(props.location) === 0}
       >
-        Mark all placed
+        Mark all {unplacedCount(props.location)} placed
       </button>
+      <Show when={undoableHere()}>
+        {(batch) => (
+          <p class="hint" role="status">
+            {batch().cards.length} card(s) marked placed.{" "}
+            <button
+              type="button"
+              disabled={props.undoPending}
+              onClick={() => props.onUndoMarkAll(batch())}
+            >
+              Undo
+            </button>
+          </p>
+        )}
+      </Show>
       <ul class="placement-list">
         <For each={props.location.cards}>
           {(entry, index) => (
@@ -114,10 +143,13 @@ type LocationRowProps = {
   isOpen: boolean;
   focused: FocusedLocation | null;
   markAllPending: boolean;
+  undoable: MarkAllBatch | null;
+  undoPending: boolean;
   onToggle: (location_name: string, headerEl: HTMLElement) => void;
   onTick: (location_name: string, entry: SessionCard, index: number) => void;
   onUntick: (location_name: string, entry: SessionCard) => void;
   onMarkAll: (location: FocusedLocation) => void;
+  onUndoMarkAll: (batch: MarkAllBatch) => void;
 };
 
 function LocationRow(props: LocationRowProps) {
@@ -146,9 +178,12 @@ function LocationRow(props: LocationRowProps) {
           <LocationPanel
             location={props.focused as FocusedLocation}
             markAllPending={props.markAllPending}
+            undoable={props.undoable}
+            undoPending={props.undoPending}
             onTick={props.onTick}
             onUntick={props.onUntick}
             onMarkAll={props.onMarkAll}
+            onUndoMarkAll={props.onUndoMarkAll}
           />
         </div>
       </Show>
@@ -158,6 +193,9 @@ function LocationRow(props: LocationRowProps) {
 
 export function PlacementPage() {
   const [session, setSession] = createSignal<PlacementSession>(emptySession());
+  // The last mark-all batch, offered as a single undo — cleared by any other
+  // placement action so the offer always refers to "the thing you just did".
+  const [lastMarkAll, setLastMarkAll] = createSignal<MarkAllBatch | null>(null);
   const mutationError = createMutationError();
   const [searchParams, setSearchParams] = useSearchParams<{ location?: string }>();
 
@@ -194,12 +232,14 @@ export function PlacementPage() {
   // the affordance alongside re-tapping the header. Scroll the tapped header back
   // into view in case closing a location above it moved the page under it.
   const toggleFocus = (location_name: string, headerEl: HTMLElement) => {
+    setLastMarkAll(null);
     setSearchParams({ location: focusName() === location_name ? undefined : location_name });
     headerEl.scrollIntoView({ block: "nearest" });
   };
 
   const tickCard = (location_name: string, entry: SessionCard, index: number) => {
     mutationError.clear();
+    setLastMarkAll(null);
     setSession(tick(session(), location_name, entry.card, index));
     markMutation.mutate([placementOf(location_name, entry.card)], {
       onError: (error) => mutationError.report(error),
@@ -208,6 +248,7 @@ export function PlacementPage() {
 
   const untickCard = (location_name: string, entry: SessionCard) => {
     mutationError.clear();
+    setLastMarkAll(null);
     setSession(untick(session(), location_name, entry.card));
     unmarkMutation.mutate([placementOf(location_name, entry.card)], {
       onError: (error) => mutationError.report(error),
@@ -216,19 +257,31 @@ export function PlacementPage() {
 
   const markAll = (location: FocusedLocation) => {
     mutationError.clear();
-    let next = session();
-    const placements: CardPlacementInput[] = [];
-    location.cards.forEach((entry, index) => {
-      if (!entry.struck) {
-        next = tick(next, location.location_name, entry.card, index);
-        placements.push(placementOf(location.location_name, entry.card));
-      }
-    });
-    if (placements.length === 0) {
+    setLastMarkAll(null);
+    const result = tickAll(session(), location.location_name, location.cards);
+    if (result === null) {
       return;
     }
-    setSession(next);
-    markMutation.mutate(placements, { onError: (error) => mutationError.report(error) });
+    setSession(result.session);
+    const placements: CardPlacementInput[] = result.batch.cards.map((card) =>
+      placementOf(location.location_name, card),
+    );
+    markMutation.mutate(placements, {
+      onSuccess: () => setLastMarkAll(result.batch),
+      onError: (error) => mutationError.report(error),
+    });
+  };
+
+  const undoMarkAll = (batch: MarkAllBatch) => {
+    mutationError.clear();
+    setLastMarkAll(null);
+    setSession(untickAll(session(), batch));
+    const placements: CardPlacementInput[] = batch.cards.map((card) =>
+      placementOf(batch.location_name, card),
+    );
+    unmarkMutation.mutate(placements, {
+      onError: (error) => mutationError.report(error),
+    });
   };
 
   return (
@@ -266,10 +319,13 @@ export function PlacementPage() {
               isOpen={focusName() === summary.location_name}
               focused={focused()}
               markAllPending={markMutation.isPending}
+              undoable={lastMarkAll()}
+              undoPending={unmarkMutation.isPending}
               onToggle={toggleFocus}
               onTick={tickCard}
               onUntick={untickCard}
               onMarkAll={markAll}
+              onUndoMarkAll={undoMarkAll}
             />
           )}
         </For>

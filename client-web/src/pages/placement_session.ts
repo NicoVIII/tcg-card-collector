@@ -83,6 +83,35 @@ export function untick(
   return { ticked };
 }
 
+// The cards a "Mark all placed" tap struck, remembered so the action can be
+// undone as a single unit rather than one row at a time.
+export type MarkAllBatch = { location_name: string; cards: PlacementCard[] };
+
+// Ticks every not-yet-struck entry in a location at its current index, or
+// returns null when there was nothing left to mark (so the caller can skip
+// the mutation and the undo offer both).
+export function tickAll(
+  session: PlacementSession,
+  location_name: string,
+  cards: SessionCard[],
+): { session: PlacementSession; batch: MarkAllBatch } | null {
+  let next = session;
+  const batchCards: PlacementCard[] = [];
+  cards.forEach((entry, index) => {
+    if (entry.struck) return;
+    next = tick(next, location_name, entry.card, index);
+    batchCards.push(entry.card);
+  });
+  if (batchCards.length === 0) {
+    return null;
+  }
+  return { session: next, batch: { location_name, cards: batchCards } };
+}
+
+export function untickAll(session: PlacementSession, batch: MarkAllBatch): PlacementSession {
+  return batch.cards.reduce((acc, card) => untick(acc, batch.location_name, card), session);
+}
+
 export function tickedLocationNames(session: PlacementSession): string[] {
   const names = new Set<string>();
   for (const entry of Object.values(session.ticked)) {
