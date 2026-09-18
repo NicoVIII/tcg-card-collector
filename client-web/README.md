@@ -7,7 +7,8 @@ MVP routes:
 - /collection
 - /catalog
 - /inventory
-- /settings
+- /placement
+- /insights
 
 ## Quality
 
