@@ -33,7 +33,7 @@ Environment setup for a fresh clone (dbmate, lefthook), repository layout, and t
 
 Architecture decisions with real alternatives are recorded as ADRs in [docs/decisions/](docs/decisions/README.md). Check there before relitigating a settled design; a changed mind gets a superseding ADR, and a new decision of that weight gets a new record.
 
-Opinionated dual-mode (design-consult + review) aspect skills live in [.claude/skills/](.claude/skills/): `architecture`, `domain-design`, `contract-design`, `data-migrations`, `documentation`, `qa`, and `ux-design`. They encode this project's settled judgement, not generic best practices; consult the relevant one before designing or reviewing in its aspect.
+Opinionated dual-mode (design-consult + review) aspect skills live in [.claude/skills/](.claude/skills/): `architecture`, `domain-design`, `contract-design`, `data-migrations`, `documentation`, `qa`, and `ux-design`. They encode this project's settled judgement, not generic best practices; consult the relevant one before designing or reviewing in its aspect. Skip the consult where an accepted ADR or the issue itself already settles the question in that aspect — cite it instead.
 
 ## Issues
 

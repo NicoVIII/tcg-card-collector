@@ -48,9 +48,9 @@ target sets live in Insights, not Inventory Planning; there is no Settings conte
 Everything else is a module inside the context whose question it serves. Bounded
 contexts do not nest (see the architecture skill).
 
-**Definition of done (consult mode).** A placed concept is unfinished until its
-language-doc entry is drafted — term, meaning, and the boundary note saying what it
-does NOT own. Draft it; don't leave it as an exercise.
+**Definition of done (consult mode).** Every consult ends in the language doc — a new
+term gets a drafted entry (term, meaning, what it does NOT own); a changed policy
+updates the entry that already covers it. Don't leave it as an exercise.
 
 ## The Scryfall stance: conformist + parse-only ACL
 
