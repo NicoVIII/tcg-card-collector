@@ -7,6 +7,7 @@ import inventory_planning/domain/card_attributes.{
 }
 import shared/domain/card_key
 import shared/domain/color_identity.{type ColorIdentity}
+import shared/domain/finish.{type Finish}
 import shared/domain/rarity.{type Rarity}
 
 // A rule's match condition. No `or` and no nesting this milestone: a predicate
@@ -17,6 +18,7 @@ pub type Predicate {
   RarityIn(rarities: List(Rarity))
   ColorIdentityIs(color_identity: ColorIdentity)
   CardTypeIs(card_type: CardType)
+  FinishIn(finishes: List(Finish))
   And(left: Predicate, right: Predicate)
 }
 
@@ -28,6 +30,7 @@ pub type ParseError {
   UnknownRarity(value: String)
   UnknownColorIdentity(value: String)
   UnknownCardType(value: String)
+  UnknownFinish(value: String)
   EmptyList
 }
 
@@ -156,6 +159,10 @@ fn parse_eq(attr: String, value: String) -> Result(Predicate, ParseError) {
       card_attributes.parse_card_type(value)
       |> result.map(CardTypeIs)
       |> result.replace_error(UnknownCardType(value))
+    "finish" ->
+      card_attributes.parse_finish(value)
+      |> result.map(fn(f) { FinishIn([f]) })
+      |> result.replace_error(UnknownFinish(value))
     _ -> Error(UnknownAttribute(attr))
   }
 }
@@ -181,6 +188,13 @@ fn parse_in(attr: String, rest: List(Token)) -> Result(Predicate, ParseError) {
         |> result.replace_error(UnknownRarity(item))
       })
       |> result.map(RarityIn)
+    "finish" ->
+      items
+      |> list.try_map(fn(item) {
+        card_attributes.parse_finish(item)
+        |> result.replace_error(UnknownFinish(item))
+      })
+      |> result.map(FinishIn)
     _ -> Error(UnknownAttribute(attr))
   }
 }
@@ -233,14 +247,30 @@ pub fn to_string(predicate: Predicate) -> String {
       "color_identity = " <> card_attributes.color_identity_token(identity)
     CardTypeIs(card_type) ->
       "type = " <> card_attributes.card_type_to_string(card_type)
+    FinishIn(finishes) -> "finish " <> finish_clause_body(finishes)
     And(left, right) -> to_string(left) <> " and " <> to_string(right)
+  }
+}
+
+// A single finish reads as `= foil` — the issue's headline spelling, and the
+// dominant case — while a longer list reads as `in (foil, etched)` like every
+// other `_in` clause.
+fn finish_clause_body(finishes: List(Finish)) -> String {
+  case finishes {
+    [only] -> "= " <> finish.to_string(only)
+    _ ->
+      "in ("
+      <> { finishes |> list.map(finish.to_string) |> string.join(", ") }
+      <> ")"
   }
 }
 
 // --- Matching -------------------------------------------------------------
 
-// A clause referencing an attribute the card lacks is False, so the card
-// cascades on to a later rule.
+// A clause referencing a catalog-enrichment attribute the card lacks is
+// False, so the card cascades on to a later rule. finish comes from the
+// collection itself and is never absent (ADR 0010), so FinishIn has no such
+// case to handle.
 pub fn matches(predicate: Predicate, card: PlannedCard) -> Bool {
   case predicate {
     SetCodeIn(codes) -> list.contains(codes, card_key.set_code_string(card.key))
@@ -265,6 +295,7 @@ pub fn matches(predicate: Predicate, card: PlannedCard) -> Bool {
         option.Some(ct) -> ct == card_type
         option.None -> False
       }
+    FinishIn(finishes) -> list.contains(finishes, card.finish)
     And(left, right) -> matches(left, card) && matches(right, card)
   }
 }

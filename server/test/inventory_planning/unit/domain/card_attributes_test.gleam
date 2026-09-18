@@ -107,3 +107,10 @@ pub fn card_type_parse_round_trip_test() {
     attrs.parse_card_type(attrs.card_type_to_string(t)) == Ok(t)
   })
 }
+
+pub fn finish_parse_round_trip_test() {
+  let all = [finish.Nonfoil, finish.Foil, finish.Etched]
+  assert list.all(all, fn(f) {
+    attrs.parse_finish(finish.to_string(f)) == Ok(f)
+  })
+}

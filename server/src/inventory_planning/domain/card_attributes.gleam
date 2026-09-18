@@ -38,6 +38,11 @@ pub fn parse_rarity(raw: String) -> Result(Rarity, Nil) {
   rarity.parse(string.lowercase(string.trim(raw)))
 }
 
+// DSL spelling of a finish: user input, so trimmed and case-insensitive.
+pub fn parse_finish(raw: String) -> Result(Finish, Nil) {
+  finish.from_user_input(raw) |> result.replace_error(Nil)
+}
+
 // DSL spelling of a color identity: the joined-letter form ("WU") plus the
 // words "colorless"/"c". Letters in any order; the result is canonical.
 pub fn parse_color_identity(raw: String) -> Result(ColorIdentity, Nil) {

@@ -94,8 +94,9 @@ Core terms:
   language — this is Inventory Planning's own tiebreak (ADR 0010), overridden only by routing a
   copy with an earlier rule (#71).
 - Predicate: a rule's match condition — a conjunction (`and`) of set-code / rarity / color-identity /
-  type clauses over a card's attributes. A clause referencing an attribute the card lacks is false,
-  so the card cascades on.
+  type / finish clauses over a card's attributes. A clause referencing a catalog-enrichment
+  attribute the card lacks is false, so the card cascades on; finish comes from the collection
+  itself and is never absent (ADR 0010), so a finish clause always has a value to match.
 - Set family: a parent set plus all its Scryfall child sets (tokens, promos, art series, … — anything
   linked by `parent_set_code`), resolved transitively to a single family-root set code. The unit a
   `{set_family}` template gathers into one binder.

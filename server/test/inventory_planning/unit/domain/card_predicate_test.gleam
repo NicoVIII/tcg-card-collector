@@ -2,7 +2,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import inventory_planning/domain/card_attributes.{type PlannedCard} as attrs
 import inventory_planning/domain/card_predicate.{
-  And, CardTypeIs, ColorIdentityIs, RarityAtLeast, RarityIn, SetCodeIn,
+  And, CardTypeIs, ColorIdentityIs, FinishIn, RarityAtLeast, RarityIn, SetCodeIn,
 }
 import shared/domain/card_key
 import shared/domain/finish
@@ -66,6 +66,19 @@ pub fn parses_type_test() {
   assert card_predicate.parse("type = land") == Ok(CardTypeIs(attrs.Land))
 }
 
+pub fn parses_finish_equals_test() {
+  assert card_predicate.parse("finish = FOIL") == Ok(FinishIn([finish.Foil]))
+}
+
+pub fn parses_finish_in_test() {
+  assert card_predicate.parse("finish in (foil, etched)")
+    == Ok(FinishIn([finish.Foil, finish.Etched]))
+}
+
+pub fn rejects_unknown_finish_test() {
+  let assert Error(_) = card_predicate.parse("finish = shiny")
+}
+
 pub fn parses_conjunction_left_folded_test() {
   let assert Ok(pred) =
     card_predicate.parse(
@@ -99,6 +112,8 @@ pub fn round_trips_through_parse_test() {
     "color_identity = WU",
     "color_identity = colorless",
     "type = planeswalker",
+    "finish = etched",
+    "finish in (foil, etched)",
     "set_code in (grn) and rarity >= rare and type = creature",
   ]
   assert list.all(sources, fn(src) {
@@ -138,6 +153,18 @@ pub fn rarity_at_least_excludes_special_and_bonus_test() {
     pred,
     card("x", rarity.Bonus, "R", attrs.Creature),
   )
+}
+
+pub fn matches_finish_test() {
+  let assert Ok(pred) = card_predicate.parse("finish in (foil, etched)")
+  let foil_card =
+    attrs.PlannedCard(
+      ..card("x", rarity.Rare, "R", attrs.Creature),
+      finish: finish.Foil,
+    )
+  let nonfoil_card = card("x", rarity.Rare, "R", attrs.Creature)
+  assert card_predicate.matches(pred, foil_card)
+  assert !card_predicate.matches(pred, nonfoil_card)
 }
 
 // A clause on an attribute the card lacks is False.

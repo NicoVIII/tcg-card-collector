@@ -398,7 +398,8 @@ export function InventoryPage() {
         Expression is one or more conditions joined by <code>and</code>:{" "}
         <code>set_code in (grn, m19)</code>, <code>rarity {">"}= rare</code>,{" "}
         <code>rarity in (common, uncommon)</code>, <code>color_identity = WU</code> (or{" "}
-        <code>colorless</code>), <code>type = creature</code> — e.g.{" "}
+        <code>colorless</code>), <code>type = creature</code>, <code>finish = foil</code> (or{" "}
+        <code>finish in (foil, etched)</code>) — e.g.{" "}
         <code>set_code in (grn, m19) and rarity {">"}= rare</code>.
       </p>
       <p class="hint">
