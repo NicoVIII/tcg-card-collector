@@ -2,6 +2,7 @@ import { createMutation, useQueryClient } from "@tanstack/solid-query";
 import { queryKeys } from "../query-keys/factory";
 import {
   deleteInventoryRule,
+  reorderInventoryRules,
   updateBulkSpec,
   upsertInventoryRule,
   type BulkSpec,
@@ -25,6 +26,18 @@ export function useDeleteInventoryRuleMutation() {
 
   return createMutation(() => ({
     mutationFn: (id: string) => deleteInventoryRule(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryRules() });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryProjection() });
+    },
+  }));
+}
+
+export function useReorderInventoryRulesMutation() {
+  const queryClient = useQueryClient();
+
+  return createMutation(() => ({
+    mutationFn: (orderedIds: string[]) => reorderInventoryRules(orderedIds),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryRules() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryProjection() });

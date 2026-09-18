@@ -8,6 +8,8 @@ import {
 import {
   DeleteInventoryRule,
   DeleteInventoryRuleRequest,
+  ReorderInventoryRules,
+  ReorderInventoryRulesRequest,
   UpdateBulkSpec,
   UpdateBulkSpecRequest,
   UpsertInventoryRule,
@@ -143,6 +145,15 @@ export async function deleteInventoryRule(id: string): Promise<{ success: boolea
   const response = await skirClient.invokeRemote(
     DeleteInventoryRule,
     DeleteInventoryRuleRequest.create({ id }),
+  );
+
+  return { success: response.union.kind === "SUCCESS" };
+}
+
+export async function reorderInventoryRules(orderedIds: string[]): Promise<{ success: boolean }> {
+  const response = await skirClient.invokeRemote(
+    ReorderInventoryRules,
+    ReorderInventoryRulesRequest.create({ orderedIds }),
   );
 
   return { success: response.union.kind === "SUCCESS" };

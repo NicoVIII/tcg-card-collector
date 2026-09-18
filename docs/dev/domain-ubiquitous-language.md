@@ -83,7 +83,9 @@ Core terms:
   order and each **consumes** copies from what earlier rules left behind, so one copy is placed
   exactly once.
 - InventoryRule / CascadeRule: one waterfall step — a `position`, a copy `selector`, a match
-  `predicate`, and a location `target`.
+  `predicate`, and a location `target`. Reordering the cascade renumbers every rule's `position`
+  contiguously from 0 in one atomic write (`ReorderInventoryRules`) rather than editing one rule's
+  position at a time — equal or gapped positions are no longer reachable through the UI.
 - CopySelector: how many copies of a matching card a rule claims — all copies, the first copy per
   printing, or the first copy per oracle identity. Both first-copy selectors dedupe on the printing
   or oracle identity, never on CopyKey, so a rule still claims one physical copy total per printing
