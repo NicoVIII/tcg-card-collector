@@ -2,6 +2,7 @@ import { For, Show, createSignal } from "solid-js";
 import { mapError } from "../data/http/error";
 import { useMarkTargetSetMutation, useUnmarkTargetSetMutation } from "../data/insights/mutation";
 import { useSetCompletionQuery } from "../data/insights/query";
+import { createMutationError } from "../lib/mutation_error";
 
 export function InsightsPage() {
   const completionQuery = useSetCompletionQuery();
@@ -9,34 +10,34 @@ export function InsightsPage() {
   const unmarkMutation = useUnmarkTargetSetMutation();
 
   const [newSetCode, setNewSetCode] = createSignal("");
-  const [formError, setFormError] = createSignal<string | null>(null);
+  const formError = createMutationError();
 
   const addTargetSet = async () => {
-    setFormError(null);
+    formError.clear();
     const setCode = newSetCode().trim();
     if (setCode.length === 0) {
-      setFormError("Enter a set code.");
+      formError.report(new Error("Enter a set code."));
       return;
     }
 
     try {
       const response = await markMutation.mutateAsync(setCode);
       if (!response.success) {
-        setFormError("Could not add set as a target.");
+        formError.report(new Error("Could not add set as a target."));
         return;
       }
       setNewSetCode("");
     } catch (error) {
-      setFormError(mapError(error).message);
+      formError.report(error);
     }
   };
 
   const removeTargetSet = async (setCode: string) => {
-    setFormError(null);
+    formError.clear();
     try {
       await unmarkMutation.mutateAsync(setCode);
     } catch (error) {
-      setFormError(mapError(error).message);
+      formError.report(error);
     }
   };
 
@@ -54,8 +55,8 @@ export function InsightsPage() {
       <button onClick={addTargetSet} disabled={markMutation.isPending}>
         Add target set
       </button>
-      <Show when={formError() !== null}>
-        <p role="alert">{formError()}</p>
+      <Show when={formError.messageFor() !== null}>
+        <p role="alert">{formError.messageFor()}</p>
       </Show>
       <Show when={completionQuery.isLoading}>
         <p>Loading set completion...</p>

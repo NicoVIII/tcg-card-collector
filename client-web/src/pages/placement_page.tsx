@@ -1,6 +1,7 @@
 import { For, Show, createMemo, createSignal } from "solid-js";
 import { useSearchParams } from "@solidjs/router";
 import { mapError } from "../data/http/error";
+import { createMutationError } from "../lib/mutation_error";
 import { useInventoryProjectionQuery } from "../data/inventory_planning/query";
 import {
   useMarkCardsPlacedMutation,
@@ -157,7 +158,7 @@ function LocationRow(props: LocationRowProps) {
 
 export function PlacementPage() {
   const [session, setSession] = createSignal<PlacementSession>(emptySession());
-  const [mutationError, setMutationError] = createSignal<string | null>(null);
+  const mutationError = createMutationError();
   const [searchParams, setSearchParams] = useSearchParams<{ location?: string }>();
 
   const projectionQuery = useInventoryProjectionQuery();
@@ -189,8 +190,6 @@ export function PlacementPage() {
     focusedLocation(guidance(), session(), focusName()),
   );
 
-  const reportError = (error: unknown) => setMutationError(mapError(error).message);
-
   // A history entry per open/close, not a replace: on a phone, back-to-close is
   // the affordance alongside re-tapping the header. Scroll the tapped header back
   // into view in case closing a location above it moved the page under it.
@@ -200,19 +199,23 @@ export function PlacementPage() {
   };
 
   const tickCard = (location_name: string, entry: SessionCard, index: number) => {
-    setMutationError(null);
+    mutationError.clear();
     setSession(tick(session(), location_name, entry.card, index));
-    markMutation.mutate([placementOf(location_name, entry.card)], { onError: reportError });
+    markMutation.mutate([placementOf(location_name, entry.card)], {
+      onError: (error) => mutationError.report(error),
+    });
   };
 
   const untickCard = (location_name: string, entry: SessionCard) => {
-    setMutationError(null);
+    mutationError.clear();
     setSession(untick(session(), location_name, entry.card));
-    unmarkMutation.mutate([placementOf(location_name, entry.card)], { onError: reportError });
+    unmarkMutation.mutate([placementOf(location_name, entry.card)], {
+      onError: (error) => mutationError.report(error),
+    });
   };
 
   const markAll = (location: FocusedLocation) => {
-    setMutationError(null);
+    mutationError.clear();
     let next = session();
     const placements: CardPlacementInput[] = [];
     location.cards.forEach((entry, index) => {
@@ -225,7 +228,7 @@ export function PlacementPage() {
       return;
     }
     setSession(next);
-    markMutation.mutate(placements, { onError: reportError });
+    markMutation.mutate(placements, { onError: (error) => mutationError.report(error) });
   };
 
   return (
@@ -241,8 +244,8 @@ export function PlacementPage() {
       <Show when={isError()}>
         <p role="alert">{mapError(loadError()).message}</p>
       </Show>
-      <Show when={mutationError() !== null}>
-        <p role="alert">{mutationError()}</p>
+      <Show when={mutationError.messageFor() !== null}>
+        <p role="alert">{mutationError.messageFor()}</p>
       </Show>
       <Show when={(guidance()?.total_unplaced ?? 0) > 0}>
         <p class="hint">{guidance()?.total_unplaced} card(s) still to place.</p>
