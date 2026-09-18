@@ -1,4 +1,3 @@
-import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/order.{type Order}
@@ -64,21 +63,40 @@ pub fn color_identity_label(identity: ColorIdentity) -> String {
   }
 }
 
-// Sort key implementing display order WUBRG (mono) -> multicolor -> colorless.
-// The digit string encodes color ranks in canonical order so mono-colors sort
-// W, U, B, R, G rather than alphabetically.
-pub fn color_identity_sort_key(identity: ColorIdentity) -> #(Int, String) {
-  let colors = color_identity.colors(identity)
-  let digits =
-    colors
-    |> list.map(fn(c) { int.to_string(color_identity.color_rank(c)) })
-    |> string.join("")
-  let group = case list.length(colors) {
-    0 -> 2
-    1 -> 0
-    _ -> 1
+// The 26 multicolor identities in the order WOTC prints them on the cards
+// themselves: allied pairs, enemy pairs, shards, wedges, four-color (each
+// "missing one color"), five-color. Spelled in canonical WUBRG letter order to
+// match `color_identity.letters`, so a cycle that starts off-W here reads
+// shifted (e.g. Naya's "RGW" is listed as "WRG").
+const multicolor_order = [
+  "WU", "UB", "BR", "RG", "WG", "WB", "UR", "BG", "WR", "UG", "WUB", "UBR",
+  "BRG", "WRG", "WUG", "WBG", "WUR", "UBG", "WBR", "URG", "WUBR", "UBRG", "WBRG",
+  "WURG", "WUBG", "WUBRG",
+]
+
+// Position of a 2..5-color identity within `multicolor_order`. Every canonical
+// letter spelling of such an identity is in the table by construction; the
+// fallback (past every real entry) only matters if `Color` grows a case
+// without this table being extended to match.
+fn multicolor_rank(identity: ColorIdentity) -> Int {
+  let letters = color_identity.letters(identity)
+  multicolor_order
+  |> list.index_map(fn(item, index) { #(item, index) })
+  |> list.key_find(letters)
+  |> result.unwrap(list.length(multicolor_order))
+}
+
+// Total order over the 32 color identities: mono colors in WUBRG order, then
+// multicolor in WOTC's printed order (allied < enemy < shards < wedges <
+// four-color < five-color), then colorless last. Planning's display policy
+// over a shared representation (ADR 0008) — color identity has no intrinsic
+// order of its own.
+pub fn color_identity_rank(identity: ColorIdentity) -> Int {
+  case color_identity.colors(identity) {
+    [] -> 31
+    [color] -> color_identity.color_rank(color)
+    _ -> 5 + multicolor_rank(identity)
   }
-  #(group, digits)
 }
 
 // Priority list over the type line: the first type present wins.

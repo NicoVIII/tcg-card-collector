@@ -260,10 +260,11 @@ export function InventoryPage() {
         Location name may fan out with a placeholder: <code>{"{set_code}"}</code>,{" "}
         <code>{"{set_family}"}</code>, <code>{"{color_identity}"}</code> or <code>{"{type}"}</code>{" "}
         (e.g. <code>binder {"{color_identity}"}</code>). Rules claim copies in position order.
-        Fanned locations are ordered by set release date, WUBRG→multicolor→colorless, or type rank
-        (land first) respectively. <code>{"{set_family}"}</code> groups a set with its token/promo
-        child sets under the parent's binder — parent-set cards first, child-set cards after — and
-        orders those binders by the parent set's release date.
+        Fanned locations are ordered by set release date, color (WUBRG mono, then multicolor in
+        WOTC's printed order, then colorless), or type rank (land first) respectively.{" "}
+        <code>{"{set_family}"}</code> groups a set with its token/promo child sets under the
+        parent's binder — parent-set cards first, child-set cards after — and orders those binders
+        by the parent set's release date.
       </p>
       <p class="hint">
         Expression is one or more conditions joined by <code>and</code>:{" "}

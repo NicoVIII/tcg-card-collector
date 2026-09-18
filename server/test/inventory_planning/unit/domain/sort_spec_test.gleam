@@ -104,6 +104,29 @@ pub fn color_identity_ordering_test() {
   assert names == ["a", "b", "c", "d", "e"]
 }
 
+// The full 32-color-identity order (#103): mono in WUBRG order, then
+// multicolor in WOTC's printed order — allied pairs, enemy pairs, shards,
+// wedges, four-color (each "missing one color"), five-color — then colorless
+// last. Each string is the identity spelled the way WOTC prints it (e.g. the
+// enemy pair "RW", the shard "GWU"); parsing canonicalizes it.
+pub fn color_identity_full_ordering_test() {
+  let expected = [
+    "W", "U", "B", "R", "G", "WU", "UB", "BR", "RG", "GW", "WB", "UR", "BG",
+    "RW", "UG", "WUB", "UBR", "BRG", "RGW", "GWU", "WBG", "WUR", "UBG", "BRW",
+    "RGU", "WUBR", "UBRG", "BRGW", "RGWU", "GWUB", "WUBRG", "colorless",
+  ]
+  let cards =
+    expected
+    |> list.map(fn(colors) { card(colors, colors, attrs.Creature) })
+    // Reverse so the sort is actually exercised, not a pass-through.
+    |> list.reverse
+  let sorted =
+    list.sort(cards, fn(x, y) {
+      sort_spec.compare_cards([ByColorIdentity], x, y)
+    })
+  assert list.map(sorted, fn(c) { c.name }) == expected
+}
+
 pub fn secondary_sort_key_breaks_ties_test() {
   // Same color, different names -> name breaks the tie.
   let cards = [card("z", "R", attrs.Creature), card("a", "R", attrs.Creature)]

@@ -82,11 +82,7 @@ pub fn compare_cards(
 
 fn compare_by(key: SortKey, left: PlannedCard, right: PlannedCard) -> Order {
   case key {
-    ByColorIdentity ->
-      order.break_tie(
-        int.compare(color_group(left), color_group(right)),
-        string.compare(color_digits(left), color_digits(right)),
-      )
+    ByColorIdentity -> int.compare(color_rank(left), color_rank(right))
     ByCardType -> int.compare(type_rank(left), type_rank(right))
     ByName -> string.compare(left.name, right.name)
     BySetCode ->
@@ -109,18 +105,10 @@ fn compare_by(key: SortKey, left: PlannedCard, right: PlannedCard) -> Order {
 }
 
 // A card with no known color identity sorts as colorless (last group).
-fn color_sort_key(card: PlannedCard) -> #(Int, String) {
+fn color_rank(card: PlannedCard) -> Int {
   card.color_identity
-  |> option.map(card_attributes.color_identity_sort_key)
-  |> option.unwrap(#(2, ""))
-}
-
-fn color_group(card: PlannedCard) -> Int {
-  color_sort_key(card).0
-}
-
-fn color_digits(card: PlannedCard) -> String {
-  color_sort_key(card).1
+  |> option.map(card_attributes.color_identity_rank)
+  |> option.unwrap(31)
 }
 
 // A card with no known type sorts as Other (last).

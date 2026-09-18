@@ -102,8 +102,9 @@ Core terms:
   placeholder. Fan-out locations are ordered semantically within each rule: `{set_code}` by catalog
   release date ascending (falling back to the card's `released_at` when the set is not yet synced),
   `{set_family}` like `{set_code}` but keyed on the family root's release date/code (so tokens sort
-  beside their parent set, not off in their own `tXXX` bucket), `{color_identity}` by
-  WUBRG → multicolor → colorless, `{type}` by type rank (land first). Fixed targets sort
+  beside their parent set, not off in their own `tXXX` bucket), `{color_identity}` by mono colors in
+  WUBRG order, then multicolor in WOTC's printed order (allied pairs, enemy pairs, shards, wedges,
+  four-color, five-color), then colorless last, `{type}` by type rank (land first). Fixed targets sort
   alphabetically. Within a `{set_family}` binder, root-set cards come first and child-set cards after
   ("tokens at the back"), children ordered by their own release date then set code, and the rule's
   sort keys break ties within each group.
