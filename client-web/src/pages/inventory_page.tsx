@@ -1,4 +1,5 @@
 import { For, Show, createEffect, createSignal } from "solid-js";
+import { ConfirmButton } from "../components/confirm_button";
 import { mapError } from "../data/http/error";
 import {
   useDeleteInventoryRuleMutation,
@@ -158,14 +159,12 @@ function RuleRow(props: RuleRowProps) {
         >
           ▼
         </button>
-        <button
-          type="button"
-          aria-label={`Remove rule for ${props.rule.location_name}`}
-          onClick={() => props.onDelete(props.rule.id)}
+        <ConfirmButton
+          label="Remove"
+          ariaLabel={`Remove rule for ${props.rule.location_name}`}
           disabled={props.deletePending}
-        >
-          Remove
-        </button>
+          onConfirm={() => props.onDelete(props.rule.id)}
+        />
       </div>
       <Show when={props.deleteError !== null}>
         <p role="alert">{props.deleteError}</p>

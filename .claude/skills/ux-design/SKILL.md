@@ -43,6 +43,13 @@ binder), the UI is optimistic with undo; blocking would fight the user's hands. 
 the app's state is the reality (rules, preferences, imports), the UI is pessimistic —
 confirmed before shown — and destructive operations (import replaces the collection)
 demand explicit confirmation. Classify every new mutation by where the truth lives.
+The settled mechanism for each side (issue #67): an app-first destructive action gets
+the shared inline two-step `components/confirm_button.tsx` (arms to "Confirm?", the
+second click runs it) — never a modal, and never a bare one-click button. A world-first
+bulk action never gets that confirm even when it's destructive-shaped (placement's
+"Mark all placed" fires immediately); it gets a batch undo instead, offered as a unit
+(`placement_page.tsx`'s `lastMarkAll`), because a confirm on a workflow screen fights
+the user's hands the same way blocking a single tick would.
 
 **Fully responsive, everywhere.** Every screen owes a good small-viewport experience,
 workflow or management — a phone at the shelf is a first-class client. Missing touch

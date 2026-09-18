@@ -1,4 +1,5 @@
 import { For, Show, createSignal } from "solid-js";
+import { ConfirmButton } from "../components/confirm_button";
 import { mapError } from "../data/http/error";
 import { useMarkTargetSetMutation, useUnmarkTargetSetMutation } from "../data/insights/mutation";
 import { useSetCompletionQuery } from "../data/insights/query";
@@ -77,12 +78,12 @@ export function InsightsPage() {
             {(row) => (
               <li>
                 {row.set_code}: {row.owned} / {row.total ?? "—"}
-                <button
-                  onClick={() => removeTargetSet(row.set_code)}
+                <ConfirmButton
+                  label="Remove"
+                  ariaLabel={`Remove target set ${row.set_code}`}
                   disabled={unmarkMutation.isPending}
-                >
-                  Remove
-                </button>
+                  onConfirm={() => void removeTargetSet(row.set_code)}
+                />
               </li>
             )}
           </For>

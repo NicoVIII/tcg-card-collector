@@ -1,5 +1,6 @@
 import { For, Show, createSignal } from "solid-js";
 import { A } from "@solidjs/router";
+import { ConfirmButton } from "../components/confirm_button";
 import { useImportCollectionMutation } from "../data/collection_import/mutation";
 import { mapError } from "../data/http/error";
 import { type DeckstatsParseResult, parseDeckstatsCsv } from "./import_deckstats";
@@ -88,9 +89,11 @@ export function CollectionImportPage() {
       </Show>
       <Show when={canImport()}>
         <p>{rowCount()} row(s) parsed and ready to import.</p>
-        <button onClick={() => void submitImport()} disabled={mutation.isPending}>
-          Replace entire collection with {rowCount()} row(s)
-        </button>
+        <ConfirmButton
+          label={`Replace entire collection with ${rowCount()} row(s)`}
+          disabled={mutation.isPending}
+          onConfirm={() => void submitImport()}
+        />
       </Show>
       <Show when={submitError() !== null}>
         <p role="alert">{submitError()}</p>

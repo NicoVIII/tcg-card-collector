@@ -5,6 +5,7 @@
   --panel: #ffffff;
   --ink: #1b2430;
   --brand: #0f766e;
+  --danger: #b3261e;
 }
 
 body {
@@ -131,7 +132,7 @@ button:focus-visible {
 }
 
 p[role="alert"] {
-  color: #b3261e;
+  color: var(--danger);
 }
 
 .hint {
@@ -271,6 +272,11 @@ p[role="alert"] {
   border-color: #c7d1d8;
   background: transparent;
   color: var(--ink);
+}
+
+.page-panel button.confirm-armed {
+  border-color: var(--danger);
+  background: var(--danger);
 }
 
 /* Placement */
