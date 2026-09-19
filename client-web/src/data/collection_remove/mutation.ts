@@ -1,18 +1,18 @@
 import { createMutation, useQueryClient } from "@tanstack/solid-query";
 import { queryKeys } from "../query-keys/factory";
-import { postImportCollection, type ImportCollectionPayload } from "./request";
+import { postRemoveCards, type RemoveCardsPayload } from "./request";
 
-export function useImportCollectionMutation() {
+export function useRemoveCardsMutation() {
   const queryClient = useQueryClient();
 
   return createMutation(() => ({
-    mutationFn: (payload: ImportCollectionPayload) => postImportCollection(payload),
+    mutationFn: (payload: RemoveCardsPayload) => postRemoveCards(payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.collection() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.setCompletion() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryProjection() });
-      // A replace can also shrink the placed ledger below what's now owned
-      // (ADR 0011's reconciliation), so this invalidates it too.
+      // Unlike AddCards, a removal can shrink the placed ledger too (ADR
+      // 0011's reconciliation), so this invalidates it as well.
       await queryClient.invalidateQueries({ queryKey: queryKeys.placedLedger() });
     },
   }));

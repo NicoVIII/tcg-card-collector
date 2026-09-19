@@ -218,14 +218,16 @@ p[role="alert"] {
   gap: 12px;
 }
 
-.add-cards-panel {
+.add-cards-panel,
+.remove-cards-panel {
   border: 1px solid #dce4ea;
   border-radius: 8px;
   padding: 12px 16px;
   margin-bottom: 16px;
 }
 
-.add-cards-panel h3 {
+.add-cards-panel h3,
+.remove-cards-panel h3 {
   margin-top: 0;
 }
 

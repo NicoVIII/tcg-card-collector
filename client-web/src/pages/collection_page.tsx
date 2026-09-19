@@ -5,6 +5,7 @@ import { mapError } from "../data/http/error";
 import { CardGrid } from "../components/card_grid";
 import { Pagination } from "../components/pagination";
 import { AddCardsPanel } from "./add_cards_panel";
+import { RemoveCardsPanel } from "./remove_cards_panel";
 
 const PAGE_SIZE = 25;
 
@@ -21,6 +22,7 @@ export function CollectionPage() {
         <A href="/collection/import">Import / reset collection…</A>
       </div>
       <AddCardsPanel />
+      <RemoveCardsPanel />
       <Show when={cardsQuery.isLoading}>
         <p>Loading collection...</p>
       </Show>
