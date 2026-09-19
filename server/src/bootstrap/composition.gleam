@@ -5,6 +5,7 @@ import card_catalog/infrastructure/adapters/commands/refresh/adapter as refresh_
 import card_catalog/infrastructure/adapters/queries/get_cards/adapter as get_cards_adapter
 import card_catalog/infrastructure/adapters/queries/list_cards/adapter as list_cards_adapter
 import card_catalog/infrastructure/adapters/queries/refresh_status/adapter as refresh_status_adapter
+import collection/application/commands/import_collection/ports as import_collection_ports
 import collection/application/commands/remove_cards/ports as remove_cards_ports
 import collection/driver/dependencies.{
   type Dependencies as CollectionDependencies,
@@ -65,7 +66,12 @@ pub fn dependencies() -> Dependencies {
       refresh_worker_name: process.new_name("catalog_refresh_worker"),
     ),
     collection: CollectionDependencies(
-      import_collection_port: import_collection_adapter.new(),
+      import_collection_ports: import_collection_ports.ImportCollectionPorts(
+        replace_collection: import_collection_adapter.new(),
+        // TODO(#58): wire to the event bus once Inventory Planning's
+        // placed-ledger reconciliation subscriber exists.
+        notify_changed: fn(_) { Ok(Nil) },
+      ),
       add_cards_port: add_cards_adapter.new(),
       remove_cards_ports: remove_cards_ports.RemoveCardsPorts(
         decrement_cards: remove_cards_adapter.new(),

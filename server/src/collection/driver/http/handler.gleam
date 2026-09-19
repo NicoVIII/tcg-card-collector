@@ -40,7 +40,7 @@ pub fn handle_import_collection(
             b.rows,
             map_import_collection_row,
           )),
-          deps.import_collection_port,
+          deps.import_collection_ports,
         )
       {
         Ok(_) -> helpers.json_response(200, json_codec.encode_ok("accepted"))

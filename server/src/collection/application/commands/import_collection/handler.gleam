@@ -47,20 +47,31 @@ fn write_model_from_card(
 }
 
 /// An import replaces the whole collection with the sent rows; incremental
-/// additions go through the add_cards command instead.
+/// additions go through the add_cards command instead. A successful replace
+/// notifies any subscriber that owned quantities may have shrunk (ADR 0011);
+/// the notification's own result is ignored on purpose — a reconciliation
+/// failure must not fail an import that already committed its own write.
 pub fn execute(
   command: ImportCollectionCommand,
-  replace_collection: ports.ReplaceCollectionPort,
+  ports: ports.ImportCollectionPorts,
 ) -> command_result.CommandResult(ports.ImportCollectionError) {
   let ImportCollectionCommand(rows: rows) = command
 
   case validate_rows(rows) {
     Error(Nil) -> Error(ports.InvalidRows)
-    Ok(cards) ->
-      collection.from_cards(cards)
-      |> collection.to_cards
-      |> list.map(write_model_from_card)
-      |> replace_collection
-      |> result.map_error(ports.PersistenceFailed)
+    Ok(cards) -> {
+      let write_models =
+        collection.from_cards(cards)
+        |> collection.to_cards
+        |> list.map(write_model_from_card)
+
+      use _ <- result.try(
+        ports.replace_collection(write_models)
+        |> result.map_error(ports.PersistenceFailed),
+      )
+      // nolint: discarded_result -- ADR 0011: a reconciliation failure must not fail this command; the subscriber logs its own failures
+      let _ = ports.notify_changed(Nil)
+      Ok(Nil)
+    }
   }
 }

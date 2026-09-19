@@ -5,19 +5,26 @@ import gleam/option.{type Option, None, Some}
 import shared/domain/copy_key
 import support/ref
 
-fn build_replace_collection(
+fn build_ports(
   written written: ref.Ref(Option(List(ports.CollectionRowWriteModel))),
+  notified notified: ref.Ref(Bool),
   result result: Result(Nil, String),
-) -> ports.ReplaceCollectionPort {
-  fn(rows) {
-    case result {
-      Ok(Nil) -> {
-        ref.set(written, Some(rows))
-        Ok(Nil)
+) -> ports.ImportCollectionPorts {
+  ports.ImportCollectionPorts(
+    replace_collection: fn(rows) {
+      case result {
+        Ok(Nil) -> {
+          ref.set(written, Some(rows))
+          Ok(Nil)
+        }
+        Error(reason) -> Error(reason)
       }
-      Error(reason) -> Error(reason)
-    }
-  }
+    },
+    notify_changed: fn(_) {
+      ref.set(notified, True)
+      Ok(Nil)
+    },
+  )
 }
 
 fn row(
@@ -57,9 +64,10 @@ fn quantity_for(
   }
 }
 
-pub fn valid_rows_replace_the_collection_test() {
+pub fn valid_rows_replace_the_collection_and_notify_test() {
   let written = ref.new(None)
-  let replace_collection = build_replace_collection(written:, result: Ok(Nil))
+  let notified = ref.new(False)
+  let command_ports = build_ports(written:, notified:, result: Ok(Nil))
 
   let result =
     handler.execute(
@@ -67,7 +75,7 @@ pub fn valid_rows_replace_the_collection_test() {
         row(set_code: "lea", collector_number: "1", quantity: 4),
         row(set_code: "lea", collector_number: "2", quantity: 1),
       ]),
-      replace_collection,
+      command_ports,
     )
 
   assert result == Ok(Nil)
@@ -75,11 +83,13 @@ pub fn valid_rows_replace_the_collection_test() {
   let assert Some(rows) = ref.get(written)
   assert quantity_for(rows, "lea", "1") == Some(4)
   assert quantity_for(rows, "lea", "2") == Some(1)
+  assert ref.get(notified) == True
 }
 
 pub fn duplicate_keys_within_one_import_are_summed_test() {
   let written = ref.new(None)
-  let replace_collection = build_replace_collection(written:, result: Ok(Nil))
+  let notified = ref.new(False)
+  let command_ports = build_ports(written:, notified:, result: Ok(Nil))
 
   let result =
     handler.execute(
@@ -87,7 +97,7 @@ pub fn duplicate_keys_within_one_import_are_summed_test() {
         row(set_code: "lea", collector_number: "1", quantity: 2),
         row(set_code: "lea", collector_number: "1", quantity: 3),
       ]),
-      replace_collection,
+      command_ports,
     )
 
   assert result == Ok(Nil)
@@ -100,7 +110,8 @@ pub fn duplicate_keys_within_one_import_are_summed_test() {
 // Same printing, different finish: distinct kinds of copy, not summed.
 pub fn different_finish_stays_a_separate_row_test() {
   let written = ref.new(None)
-  let replace_collection = build_replace_collection(written:, result: Ok(Nil))
+  let notified = ref.new(False)
+  let command_ports = build_ports(written:, notified:, result: Ok(Nil))
 
   let result =
     handler.execute(
@@ -120,7 +131,7 @@ pub fn different_finish_stays_a_separate_row_test() {
           quantity: 1,
         ),
       ]),
-      replace_collection,
+      command_ports,
     )
 
   assert result == Ok(Nil)
@@ -141,7 +152,8 @@ pub fn different_finish_stays_a_separate_row_test() {
 
 pub fn one_invalid_row_rejects_the_whole_import_test() {
   let written = ref.new(None)
-  let replace_collection = build_replace_collection(written:, result: Ok(Nil))
+  let notified = ref.new(False)
+  let command_ports = build_ports(written:, notified:, result: Ok(Nil))
 
   let result =
     handler.execute(
@@ -149,39 +161,41 @@ pub fn one_invalid_row_rejects_the_whole_import_test() {
         row(set_code: "lea", collector_number: "1", quantity: 2),
         row(set_code: "", collector_number: "2", quantity: 1),
       ]),
-      replace_collection,
+      command_ports,
     )
 
   assert result == Error(ports.InvalidRows)
   assert ref.get(written) == None
+  assert ref.get(notified) == False
 }
 
 pub fn empty_import_is_rejected_test() {
   let written = ref.new(None)
-  let replace_collection = build_replace_collection(written:, result: Ok(Nil))
+  let notified = ref.new(False)
+  let command_ports = build_ports(written:, notified:, result: Ok(Nil))
 
   let result =
-    handler.execute(
-      handler.ImportCollectionCommand(rows: []),
-      replace_collection,
-    )
+    handler.execute(handler.ImportCollectionCommand(rows: []), command_ports)
 
   assert result == Error(ports.InvalidRows)
   assert ref.get(written) == None
+  assert ref.get(notified) == False
 }
 
-pub fn persistence_failure_reports_error_test() {
+pub fn persistence_failure_reports_error_and_does_not_notify_test() {
   let written = ref.new(None)
-  let replace_collection =
-    build_replace_collection(written:, result: Error("disk full"))
+  let notified = ref.new(False)
+  let command_ports =
+    build_ports(written:, notified:, result: Error("disk full"))
 
   let result =
     handler.execute(
       handler.ImportCollectionCommand(rows: [
         row(set_code: "lea", collector_number: "1", quantity: 1),
       ]),
-      replace_collection,
+      command_ports,
     )
 
   assert result == Error(ports.PersistenceFailed("disk full"))
+  assert ref.get(notified) == False
 }

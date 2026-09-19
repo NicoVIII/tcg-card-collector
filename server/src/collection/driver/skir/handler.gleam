@@ -23,7 +23,7 @@ fn handle_import_collection(
         req.rows,
         collection_skir_codec.to_import_collection_row,
       )),
-      get_dependencies(ctx).import_collection_port,
+      get_dependencies(ctx).import_collection_ports,
     )
     |> collection_skir_codec.map_import_collection_result
     |> helpers.respond
