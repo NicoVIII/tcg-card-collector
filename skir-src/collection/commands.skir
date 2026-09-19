@@ -77,3 +77,28 @@ enum AddCardsResponse {
 method AddCards(
   AddCardsRequest
 ): AddCardsResponse = 204;
+
+struct RemoveCardsRow {
+  set_code: string = 0;
+  collector_number: string = 1;
+  quantity: int32 = 2;
+  finish: Finish = 3;
+  language: Language = 4;
+}
+
+struct RemoveCardsRequest {
+  rows: [RemoveCardsRow] = 0;
+}
+
+enum RemoveCardsResponse {
+  // "removed" collides with skir's own tombstone keyword syntax (`removed N;`).
+  decremented = 1;
+  rejected = 2;
+}
+
+// 202 is a retired, unrelated slot from the dropped import-run-log method
+// (see ImportCollectionRequest's removed fields above) — not reused here,
+// since RemoveCards doesn't replace whatever used to live there.
+method RemoveCards(
+  RemoveCardsRequest
+): RemoveCardsResponse = 205;
