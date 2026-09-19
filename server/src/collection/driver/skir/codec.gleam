@@ -1,8 +1,11 @@
 import collection/application/commands/add_cards/ports as add_cards_ports
 import collection/application/commands/import_collection/ports as import_collection_ports
+import collection/application/commands/remove_cards/ports as remove_cards_ports
 import collection/application/queries/list_cards/ports as list_collection_cards_ports
+import collection/driver/error_presentation
 import gleam/list
 import shared/domain/card_key
+import shared/driver/skir/helpers
 import shared/driver/skir/skirout/collection/commands as collection_commands
 import shared/driver/skir/skirout/collection/queries as collection_queries
 import skir_client/service
@@ -31,6 +34,18 @@ pub fn map_add_cards_result(
   }
 }
 
+pub fn map_remove_cards_result(
+  result: Result(Nil, remove_cards_ports.RemoveCardsError),
+) -> Result(collection_commands.RemoveCardsResponse, service.ServiceError) {
+  case result {
+    Ok(_) -> Ok(collection_commands.RemoveCardsResponseDecremented)
+    Error(remove_cards_ports.InvalidRows) ->
+      Ok(collection_commands.RemoveCardsResponseRejected)
+    Error(remove_cards_ports.PersistenceFailed(reason)) ->
+      Error(helpers.service_error(error_presentation.remove_cards(reason)))
+  }
+}
+
 pub fn to_import_collection_row(
   row: collection_commands.ImportCollectionRow,
 ) -> import_collection_ports.ImportCollectionRow {
@@ -47,6 +62,18 @@ pub fn to_add_cards_row(
   row: collection_commands.AddCardsRow,
 ) -> add_cards_ports.AddCardsRow {
   add_cards_ports.AddCardsRow(
+    set_code: row.set_code,
+    collector_number: row.collector_number,
+    finish: command_finish_to_string(row.finish),
+    language: command_language_to_string(row.language),
+    quantity: row.quantity,
+  )
+}
+
+pub fn to_remove_cards_row(
+  row: collection_commands.RemoveCardsRow,
+) -> remove_cards_ports.RemoveCardsRow {
+  remove_cards_ports.RemoveCardsRow(
     set_code: row.set_code,
     collector_number: row.collector_number,
     finish: command_finish_to_string(row.finish),

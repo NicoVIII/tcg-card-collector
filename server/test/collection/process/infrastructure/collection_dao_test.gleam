@@ -109,3 +109,41 @@ pub fn replace_truncates_and_refills_collection_test() {
 
   assert rows_in("collection") == [card("blb", "9", 1)]
 }
+
+pub fn decrement_subtracts_leaving_a_positive_remainder_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) = collection_dao.upsert_cards([card("lea", "1", 4)])
+  let assert Ok(Nil) = collection_dao.decrement_cards([card("lea", "1", 1)])
+
+  assert collection_dao.list_cards() == Ok([card("lea", "1", 3)])
+}
+
+pub fn decrement_deletes_the_row_when_driven_to_zero_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) = collection_dao.upsert_cards([card("lea", "1", 4)])
+  let assert Ok(Nil) = collection_dao.decrement_cards([card("lea", "1", 4)])
+
+  assert collection_dao.list_cards() == Ok([])
+}
+
+// The CHECK (quantity > 0) forbids a negative row, so an over-removal deletes
+// the row outright rather than erroring — same clamp-to-zero-and-prune
+// contract as placed_cards_dao.decrement.
+pub fn decrement_deletes_the_row_when_the_removal_exceeds_owned_quantity_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) = collection_dao.upsert_cards([card("lea", "1", 2)])
+  let assert Ok(Nil) = collection_dao.decrement_cards([card("lea", "1", 5)])
+
+  assert collection_dao.list_cards() == Ok([])
+}
+
+pub fn decrement_on_an_absent_key_is_a_no_op_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) = collection_dao.decrement_cards([card("lea", "1", 1)])
+
+  assert collection_dao.list_cards() == Ok([])
+}

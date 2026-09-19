@@ -93,3 +93,48 @@ pub fn decode_add_cards_body(
   json.parse(from: json_string, using: decoder)
   |> result.map_error(fn(_) { "invalid request body" })
 }
+
+pub type RemoveCardsRow {
+  RemoveCardsRow(
+    set_code: String,
+    collector_number: String,
+    finish: String,
+    language: String,
+    quantity: Int,
+  )
+}
+
+pub type RemoveCardsBody {
+  RemoveCardsBody(rows: List(RemoveCardsRow))
+}
+
+fn remove_cards_row_decoder() -> decode.Decoder(RemoveCardsRow) {
+  use set_code <- decode.field("set_code", decode.string)
+  use collector_number <- decode.field("collector_number", decode.string)
+  use finish <- decode.field("finish", decode.string)
+  use language <- decode.field("language", decode.string)
+  use quantity <- decode.field("quantity", decode.int)
+  decode.success(RemoveCardsRow(
+    set_code:,
+    collector_number:,
+    finish:,
+    language:,
+    quantity:,
+  ))
+}
+
+pub fn decode_remove_cards_body(
+  json_string: String,
+) -> Result(RemoveCardsBody, String) {
+  let decoder = {
+    use rows <- decode.optional_field(
+      "rows",
+      [],
+      decode.list(remove_cards_row_decoder()),
+    )
+    decode.success(RemoveCardsBody(rows:))
+  }
+
+  json.parse(from: json_string, using: decoder)
+  |> result.map_error(fn(_) { "invalid request body" })
+}

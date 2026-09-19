@@ -58,10 +58,11 @@ Purpose:
 Core terms:
 - Collection: the current owned cards (CopyKey → quantity). The single source of truth other contexts read from. Consumers that care only about the printing (Insights' set completion, Inventory Planning's projection today) add up across CopyKeys and keep working on CardKey (ADR 0010).
 - ManualAddition: an incremental, synchronous addition of staged cards (AddCards command). Upserts the collection, summing quantities per CopyKey. A finish or language outside the closed sets rejects the whole batch.
+- ManualRemoval: an incremental, synchronous subtraction of staged cards (RemoveCards command) — AddCards' inverse. Decrements the collection per CopyKey, flooring at zero and pruning the row rather than erroring on an over-removal, so correcting a mistyped add doesn't require knowing the exact current count.
 - Import: a full statement of the collection (ImportCollection command). Replaces the collection outright, per CopyKey.
 
 Boundary notes:
-- Owns collection semantics only. Placement — whether a card is physically sorted — is Inventory Planning's, derived from the collection; Collection holds no placement state.
+- Owns collection semantics only. Placement — whether a card is physically sorted — is Inventory Planning's, derived from the collection; Collection holds no placement state. A ManualRemoval or Import that shrinks a key's quantity below what Inventory Planning has already marked placed is announced through the shared event bus (ADR 0011) rather than Collection reaching into Inventory Planning's ledger itself — see that context's boundary notes for the reconciliation policy.
 - Delegates card enrichment language to Card Catalog.
 - Display order for a printing's kinds of copy (finish, then language alphabetically) is Collection's own policy, distinct from Inventory Planning's canonical order over the same CopyKey components.
 

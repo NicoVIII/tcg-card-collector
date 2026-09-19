@@ -92,10 +92,47 @@ fn delete_all(table: String) -> Result(Nil, String) {
   sqlite_store.exec("DELETE FROM " <> table <> ";", [])
 }
 
-// The writes below span several statements on separate connections
-// (sqlite_store opens one per call), so they are not wrapped in a transaction.
-// Acceptable for a single-user app: no concurrent writer can interleave, and a
-// mid-write failure surfaces as an error the calling handler reports.
+// The CHECK (quantity > 0) forbids ever writing a non-positive row, so a row
+// the decrement would drive to zero or below is deleted outright rather than
+// updated; only rows that stay positive are decremented. The two statements
+// are mutually exclusive by their own WHERE clauses, so listing both per row
+// is safe to run unconditionally. Mirrors placed_cards_dao's decrement.
+fn decrement_row_statements(
+  row: CardRow,
+) -> List(#(String, List(sqlight.Value))) {
+  let CardRow(set_code:, collector_number:, finish:, language:, quantity:) = row
+  let where_key =
+    " WHERE set_code = ? AND collector_number = ? AND finish = ? AND language = ?"
+  let key_params = [
+    sqlight.text(set_code),
+    sqlight.text(collector_number),
+    sqlight.text(finish),
+    sqlight.text(language),
+  ]
+
+  [
+    #(
+      "DELETE FROM collection" <> where_key <> " AND quantity <= ?;",
+      list.append(key_params, [sqlight.int(quantity)]),
+    ),
+    #(
+      "UPDATE collection SET quantity = quantity - ?"
+        <> where_key
+        <> " AND quantity > ?;",
+      list.flatten([
+        [sqlight.int(quantity)],
+        key_params,
+        [sqlight.int(quantity)],
+      ]),
+    ),
+  ]
+}
+
+// replace_collection's two writes span separate connections
+// (sqlite_store opens one per call), so they are not wrapped in a
+// transaction. A mid-write failure surfaces as an error the calling handler
+// reports, but a truncate that succeeds followed by a failed refill leaves
+// an empty collection rather than the pre-import one — tracked in #44.
 
 /// An import states the whole collection: truncate the collection, then refill
 /// it. Placement state lives in inventory planning and derives from here.
@@ -109,4 +146,13 @@ pub fn replace_collection(rows: List(CardRow)) -> Result(Nil, String) {
 /// concern, derived from the collection rather than tracked here.
 pub fn upsert_cards(rows: List(CardRow)) -> Result(Nil, String) {
   upsert_rows("collection", rows)
+}
+
+/// A remove shrinks the collection, subtracting each row's quantity from the
+/// matching key, pruning any row driven to zero or below, all in one
+/// transaction. Decrementing an absent key is a no-op. Whether the shrink
+/// leaves the placed ledger claiming more copies than are owned is Inventory
+/// Planning's concern, reconciled via ADR 0011's event bus rather than here.
+pub fn decrement_cards(rows: List(CardRow)) -> Result(Nil, String) {
+  sqlite_store.exec_all_atomically(list.flat_map(rows, decrement_row_statements))
 }

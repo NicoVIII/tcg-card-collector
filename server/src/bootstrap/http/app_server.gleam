@@ -89,6 +89,8 @@ fn handle_request(
       collection_http.handle_import_collection(req, deps.collection)
     Post, "/api/collection/cards" ->
       collection_http.handle_add_cards(req, deps.collection)
+    Delete, "/api/collection/cards" ->
+      collection_http.handle_remove_cards(req, deps.collection)
     Get, "/api/inventory/rules" ->
       inventory_http.handle_list_inventory_rules(deps.inventory_planning)
     Put, "/api/inventory/rules" ->

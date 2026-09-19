@@ -5,12 +5,14 @@ import card_catalog/infrastructure/adapters/commands/refresh/adapter as refresh_
 import card_catalog/infrastructure/adapters/queries/get_cards/adapter as get_cards_adapter
 import card_catalog/infrastructure/adapters/queries/list_cards/adapter as list_cards_adapter
 import card_catalog/infrastructure/adapters/queries/refresh_status/adapter as refresh_status_adapter
+import collection/application/commands/remove_cards/ports as remove_cards_ports
 import collection/driver/dependencies.{
   type Dependencies as CollectionDependencies,
   Dependencies as CollectionDependencies,
 } as _
 import collection/infrastructure/adapters/commands/add_cards/adapter as add_cards_adapter
 import collection/infrastructure/adapters/commands/import_collection/adapter as import_collection_adapter
+import collection/infrastructure/adapters/commands/remove_cards/adapter as remove_cards_adapter
 import collection/infrastructure/adapters/queries/list_cards/adapter as list_collection_cards_adapter
 import gleam/erlang/process
 import gleam/io
@@ -65,6 +67,12 @@ pub fn dependencies() -> Dependencies {
     collection: CollectionDependencies(
       import_collection_port: import_collection_adapter.new(),
       add_cards_port: add_cards_adapter.new(),
+      remove_cards_ports: remove_cards_ports.RemoveCardsPorts(
+        decrement_cards: remove_cards_adapter.new(),
+        // TODO(#58): wire to the event bus once Inventory Planning's
+        // placed-ledger reconciliation subscriber exists.
+        notify_changed: fn(_) { Ok(Nil) },
+      ),
       list_collection_cards_port: list_collection_cards_adapter.new(),
     ),
     inventory_planning: InventoryPlanningDependencies(

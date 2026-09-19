@@ -1,5 +1,6 @@
 import collection/application/commands/add_cards/ports as add_cards_ports
 import collection/application/commands/import_collection/ports as import_collection_ports
+import collection/application/commands/remove_cards/ports as remove_cards_ports
 import collection/application/queries/list_cards/ports as list_collection_cards_ports
 import collection/driver/skir/codec as collection_skir_codec
 import shared/domain/card_key
@@ -48,6 +49,30 @@ pub fn add_cards_persistence_failed_maps_to_service_error_test() {
     == Error(service.ServiceError(
       service.E500xInternalServerError,
       "db unavailable",
+    ))
+}
+
+pub fn remove_cards_ok_maps_to_decremented_test() {
+  assert collection_skir_codec.map_remove_cards_result(Ok(Nil))
+    == Ok(collection_commands.RemoveCardsResponseDecremented)
+}
+
+pub fn remove_cards_invalid_rows_maps_to_rejected_test() {
+  assert collection_skir_codec.map_remove_cards_result(Error(
+      remove_cards_ports.InvalidRows,
+    ))
+    == Ok(collection_commands.RemoveCardsResponseRejected)
+}
+
+// Unlike Add/ImportCollection, the persistence-failure message is fixed
+// rather than echoing the raw reason — collection/driver/error_presentation.
+pub fn remove_cards_persistence_failed_maps_to_service_error_test() {
+  assert collection_skir_codec.map_remove_cards_result(
+      Error(remove_cards_ports.PersistenceFailed("db unavailable")),
+    )
+    == Error(service.ServiceError(
+      service.E500xInternalServerError,
+      "failed to remove cards from the collection",
     ))
 }
 
@@ -103,6 +128,26 @@ pub fn to_add_cards_row_maps_finish_and_language_test() {
       finish: "etched",
       language: "ja",
       quantity: 1,
+    )
+}
+
+pub fn to_remove_cards_row_maps_finish_and_language_test() {
+  let row =
+    collection_commands.remove_cards_row_new(
+      collector_number: "161",
+      finish: collection_commands.FinishFoil,
+      language: collection_commands.LanguageDe,
+      quantity: 2,
+      set_code: "lea",
+    )
+
+  assert collection_skir_codec.to_remove_cards_row(row)
+    == remove_cards_ports.RemoveCardsRow(
+      set_code: "lea",
+      collector_number: "161",
+      finish: "foil",
+      language: "de",
+      quantity: 2,
     )
 }
 
