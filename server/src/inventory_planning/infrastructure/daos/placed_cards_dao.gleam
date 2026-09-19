@@ -1,6 +1,5 @@
 import gleam/dynamic/decode
 import gleam/list
-import gleam/result
 import shared/infrastructure/stores/sqlite_store
 import sqlight
 
@@ -55,10 +54,6 @@ fn row_params(row: PlacedCardRow) -> List(sqlight.Value) {
   ]
 }
 
-// The writes below span several statements on separate connections
-// (sqlite_store opens one per call), so they are not wrapped in a transaction.
-// Acceptable for a single-user app: no concurrent writer can interleave.
-
 fn increment_batch(batch: List(PlacedCardRow)) -> Result(Nil, String) {
   let placeholders =
     sqlite_store.placeholders(list.length(batch), "(?, ?, ?, ?, ?, ?)")
@@ -82,8 +77,12 @@ pub fn increment(rows: List(PlacedCardRow)) -> Result(Nil, String) {
 
 // The CHECK (quantity > 0) forbids ever writing a non-positive row, so a row
 // the decrement would drive to zero or below is deleted outright rather than
-// updated; only rows that stay positive are decremented.
-fn decrement_row(row: PlacedCardRow) -> Result(Nil, String) {
+// updated; only rows that stay positive are decremented. The two statements
+// are mutually exclusive by their own WHERE clauses, so listing both per row
+// is safe to run unconditionally.
+fn decrement_row_statements(
+  row: PlacedCardRow,
+) -> List(#(String, List(sqlight.Value))) {
   let PlacedCardRow(
     set_code:,
     collector_number:,
@@ -103,20 +102,27 @@ fn decrement_row(row: PlacedCardRow) -> Result(Nil, String) {
     sqlight.text(location),
   ]
 
-  use _ <- result.try(sqlite_store.exec(
-    "DELETE FROM placed_cards" <> where_key <> " AND quantity <= ?;",
-    list.append(key_params, [sqlight.int(quantity)]),
-  ))
-  sqlite_store.exec(
-    "UPDATE placed_cards SET quantity = quantity - ?"
-      <> where_key
-      <> " AND quantity > ?;",
-    list.flatten([[sqlight.int(quantity)], key_params, [sqlight.int(quantity)]]),
-  )
+  [
+    #(
+      "DELETE FROM placed_cards" <> where_key <> " AND quantity <= ?;",
+      list.append(key_params, [sqlight.int(quantity)]),
+    ),
+    #(
+      "UPDATE placed_cards SET quantity = quantity - ?"
+        <> where_key
+        <> " AND quantity > ?;",
+      list.flatten([
+        [sqlight.int(quantity)],
+        key_params,
+        [sqlight.int(quantity)],
+      ]),
+    ),
+  ]
 }
 
 /// Subtracts each row's quantity from the matching (key, location), pruning any
-/// row driven to zero or below. Decrementing an absent row is a no-op.
+/// row driven to zero or below, all in one transaction. Decrementing an absent
+/// row is a no-op.
 pub fn decrement(rows: List(PlacedCardRow)) -> Result(Nil, String) {
-  list.try_each(rows, decrement_row)
+  sqlite_store.exec_all_atomically(list.flat_map(rows, decrement_row_statements))
 }
