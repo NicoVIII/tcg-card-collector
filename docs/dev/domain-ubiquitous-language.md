@@ -120,7 +120,8 @@ Core terms:
 - PlacedCard: a ledger row recording that some copies of a kind of copy were physically placed in a
   location (`(CopyKey, location) → quantity`). A location holding several kinds of copy of one
   printing needs a tick that names which kind. The write side of placement — MarkCardsPlaced
-  adds to it, UnmarkCardsPlaced subtracts.
+  adds to it, UnmarkCardsPlaced subtracts, and ReconcilePlacedLedger prunes it when Collection
+  announces owned quantities may have shrunk (a removal or a re-import) — see boundary notes.
 - Placement: one validated MarkCardsPlaced/UnmarkCardsPlaced entry (canonical CopyKey, non-empty
   location, positive quantity).
 - Unplaced: **always derived, never stored** — collection quantity minus placed quantity per
@@ -131,7 +132,15 @@ Core terms:
   physical orientation, and the grand total of unplaced copies.
 
 Boundary notes:
-- Owns cascade, rule, projection, and placement semantics.
+- Owns cascade, rule, projection, and placement semantics — including how the placed ledger
+  self-heals when the collection shrinks. Since Inventory Planning can depend on Collection but
+  never the reverse, ReconcilePlacedLedger runs as a subscriber to a shared event bus Collection
+  publishes to (ADR 0011) rather than Collection calling into it directly. It re-derives owned
+  quantities and the whole ledger on every run (no per-key payload) and, for any key whose placed
+  total exceeds what's owned, prunes that key's locations in alphabetical order until it doesn't —
+  an arbitrary but deterministic tie-break, since a plain quantity change carries no location to
+  blame. ReconcilePlacedLedger has no skir method or REST route; it is only ever invoked as an
+  event-bus subscriber.
 - Consumes collection and catalog data as inputs through application ports.
 - There is no separate Settings context. Target-set preferences for completion tracking belong to
   Insights, not here.

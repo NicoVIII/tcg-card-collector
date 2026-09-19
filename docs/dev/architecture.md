@@ -118,6 +118,9 @@ Shared cross-context code lives under `server/src/shared/`:
 
 - `shared/domain/` — shared kernel (`card_key`, `non_empty_string`); pure, no I/O.
 - `shared/application/command_result.gleam` — shared app type.
+- `shared/application/event_bus.gleam` — a generic, synchronous publish/subscribe
+  primitive so one bounded context can notify another (built at composition time)
+  without either importing the other. See [ADR 0011](../decisions/0011-in-process-event-bus-for-cross-context-reconciliation.md).
 - `shared/infrastructure/` — `os_runtime` (raw `os:cmd`/`getenv`),
   `shell.gleam` (subprocess wrapper), `stores/sqlite_store.gleam`
   (parameterized queries over `sqlight`).
