@@ -5,6 +5,7 @@ import {
   emptySession,
   isTicked,
   mergeLocationCards,
+  restoreTicks,
   tick,
   tickAll,
   untick,
@@ -105,6 +106,66 @@ describe("tickAll / untickAll", () => {
     const { session: marked, batch } = tickAllOrThrow(emptySession(), cards);
 
     const restored = untickAll(marked, batch);
+
+    for (const entry of cards) {
+      expect(isTicked(restored, "Bulk", entry.card)).toBe(false);
+    }
+  });
+});
+
+describe("restoreTicks", () => {
+  it("restores a tick that untick removed, at its original index", () => {
+    const a = card("1");
+    const b = card("2");
+    const before = tick(tick(emptySession(), "Bulk", a, 0), "Bulk", b, 1);
+    const current = untick(before, "Bulk", b);
+
+    const restored = restoreTicks(current, before, "Bulk", [b]);
+
+    expect(
+      mergeLocationCards(restored, "Bulk", [a]).map((entry) => entry.card.collector_number),
+    ).toEqual(["1", "2"]);
+  });
+
+  it("removes a tick that was not present before", () => {
+    const a = card("1");
+    const before = emptySession();
+    const current = tick(before, "Bulk", a, 0);
+
+    const restored = restoreTicks(current, before, "Bulk", [a]);
+
+    expect(isTicked(restored, "Bulk", a)).toBe(false);
+  });
+
+  it("leaves a tick made after the snapshot untouched", () => {
+    const a = card("1");
+    const b = card("2");
+    const before = emptySession();
+    // a is the tick being rolled back; b was ticked afterwards, while a's
+    // mutation was still in flight, and must survive the rollback.
+    const current = tick(tick(before, "Bulk", a, 0), "Bulk", b, 1);
+
+    const restored = restoreTicks(current, before, "Bulk", [a]);
+
+    expect(isTicked(restored, "Bulk", a)).toBe(false);
+    expect(isTicked(restored, "Bulk", b)).toBe(true);
+  });
+
+  it("restores a whole mark-all batch as a unit", () => {
+    const cards = [
+      { card: card("1"), struck: false },
+      { card: card("2"), struck: false },
+    ];
+    const before = emptySession();
+    const { session: current, batch } = (() => {
+      const result = tickAll(before, "Bulk", cards);
+      if (result === null) {
+        throw new Error("expected tickAll to return a batch");
+      }
+      return result;
+    })();
+
+    const restored = restoreTicks(current, before, batch.location_name, batch.cards);
 
     for (const entry of cards) {
       expect(isTicked(restored, "Bulk", entry.card)).toBe(false);

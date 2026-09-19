@@ -112,6 +112,28 @@ export function untickAll(session: PlacementSession, batch: MarkAllBatch): Place
   return batch.cards.reduce((acc, card) => untick(acc, batch.location_name, card), session);
 }
 
+// Puts the tick state of exactly these copies back the way `before` had it,
+// leaving every other entry in `current` alone — a failed mutation must not
+// discard ticks the user made while it was in flight. The inverse of both
+// tick/untick and tickAll/untickAll for a failed optimistic update.
+export function restoreTicks(
+  current: PlacementSession,
+  before: PlacementSession,
+  location_name: string,
+  cards: CopyIdentity[],
+): PlacementSession {
+  return cards.reduce((acc, card) => {
+    const key = entryKey(location_name, card);
+    const priorEntry = before.ticked[key];
+    if (priorEntry === undefined) {
+      const ticked = { ...acc.ticked };
+      delete ticked[key];
+      return { ticked };
+    }
+    return { ticked: { ...acc.ticked, [key]: priorEntry } };
+  }, current);
+}
+
 export function tickedLocationNames(session: PlacementSession): string[] {
   const names = new Set<string>();
   for (const entry of Object.values(session.ticked)) {

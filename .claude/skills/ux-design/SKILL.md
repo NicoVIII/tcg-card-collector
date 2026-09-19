@@ -39,7 +39,10 @@ A screen serving both natures is a design smell; say so before polishing it.
 
 **World-first vs app-first decides mutation posture.** When the physical world moved
 first and the app merely records it (ticking a placed card — the card IS in the
-binder), the UI is optimistic with undo; blocking would fight the user's hands. When
+binder), the UI is optimistic with undo; blocking would fight the user's hands. A
+failed call must roll the optimistic change back (targeted to what that call
+touched, not a wholesale snapshot restore, so a still-in-flight or later action
+survives) — otherwise the UI and the error message disagree (issue #51). When
 the app's state is the reality (rules, preferences, imports), the UI is pessimistic —
 confirmed before shown — and destructive operations (import replaces the collection)
 demand explicit confirmation. Classify every new mutation by where the truth lives.
@@ -87,8 +90,9 @@ or wants app-first optimism, say so before designing around it.
 a concrete change:
 
 - **Invariant violations (must fix)** — wrong mutation posture for the truth-side,
-  vanishing errors, unlabelled controls, workflow screens demanding two hands or
-  losing progress on reload.
+  an optimistic update that doesn't roll back on failure, vanishing errors,
+  unlabelled controls, workflow screens demanding two hands or losing progress on
+  reload.
 - **Experience debt (should fix)** — small-viewport failures, feedback bypassing the
   notification system, density wrong for the screen's nature.
 - **Open calls for the author** — nature-mixing screens, anything wanting real visual

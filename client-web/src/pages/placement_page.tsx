@@ -24,6 +24,7 @@ import {
   type SessionCard,
   betweenLabel,
   emptySession,
+  restoreTicks,
   tick,
   tickAll,
   untick,
@@ -237,28 +238,48 @@ export function PlacementPage() {
     headerEl.scrollIntoView({ block: "nearest" });
   };
 
+  // Failed mutations must not leave the optimistic tick standing — the ledger
+  // never got it, so the row must go back to what it looked like before this
+  // action, without disturbing any tick made while the request was in flight.
+  const rollback = (
+    before: PlacementSession,
+    location_name: string,
+    cards: SessionCard["card"][],
+  ) => {
+    setSession(restoreTicks(session(), before, location_name, cards));
+  };
+
   const tickCard = (location_name: string, entry: SessionCard, index: number) => {
     mutationError.clear();
     setLastMarkAll(null);
-    setSession(tick(session(), location_name, entry.card, index));
+    const before = session();
+    setSession(tick(before, location_name, entry.card, index));
     markMutation.mutate([placementOf(location_name, entry.card)], {
-      onError: (error) => mutationError.report(error),
+      onError: (error) => {
+        rollback(before, location_name, [entry.card]);
+        mutationError.report(error);
+      },
     });
   };
 
   const untickCard = (location_name: string, entry: SessionCard) => {
     mutationError.clear();
     setLastMarkAll(null);
-    setSession(untick(session(), location_name, entry.card));
+    const before = session();
+    setSession(untick(before, location_name, entry.card));
     unmarkMutation.mutate([placementOf(location_name, entry.card)], {
-      onError: (error) => mutationError.report(error),
+      onError: (error) => {
+        rollback(before, location_name, [entry.card]);
+        mutationError.report(error);
+      },
     });
   };
 
   const markAll = (location: FocusedLocation) => {
     mutationError.clear();
     setLastMarkAll(null);
-    const result = tickAll(session(), location.location_name, location.cards);
+    const before = session();
+    const result = tickAll(before, location.location_name, location.cards);
     if (result === null) {
       return;
     }
@@ -268,19 +289,27 @@ export function PlacementPage() {
     );
     markMutation.mutate(placements, {
       onSuccess: () => setLastMarkAll(result.batch),
-      onError: (error) => mutationError.report(error),
+      onError: (error) => {
+        rollback(before, location.location_name, result.batch.cards);
+        mutationError.report(error);
+      },
     });
   };
 
   const undoMarkAll = (batch: MarkAllBatch) => {
     mutationError.clear();
     setLastMarkAll(null);
-    setSession(untickAll(session(), batch));
+    const before = session();
+    setSession(untickAll(before, batch));
     const placements: CardPlacementInput[] = batch.cards.map((card) =>
       placementOf(batch.location_name, card),
     );
     unmarkMutation.mutate(placements, {
-      onError: (error) => mutationError.report(error),
+      onError: (error) => {
+        rollback(before, batch.location_name, batch.cards);
+        setLastMarkAll(batch);
+        mutationError.report(error);
+      },
     });
   };
 
