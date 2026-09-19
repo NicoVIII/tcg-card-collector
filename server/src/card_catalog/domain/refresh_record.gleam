@@ -24,6 +24,10 @@ pub type RefreshDecision {
 
 /// A probe is always due when there is no prior record or the last attempt
 /// failed (immediate retry). For successful or version-current probes, we wait one day.
+///
+/// The `None` case is also how a migration forces a reload: this is the first
+/// of the two gates a schema change must clear (see `decide` below), and
+/// `server/src/card_catalog/AGENTS.md` names the supported way to reach it.
 pub fn is_probe_due(record: Option(ProbeResult), now: Timestamp) -> Bool {
   case record {
     None -> True
@@ -39,6 +43,10 @@ pub fn is_probe_due(record: Option(ProbeResult), now: Timestamp) -> Bool {
 
 /// Skip when the upstream version matches what we already imported; otherwise
 /// fetch and import.
+///
+/// The `None` case is the second gate a migration-forced reload must clear —
+/// reaching it means nothing on its own if `is_probe_due` above never lets
+/// the handler get here.
 pub fn decide(
   record: Option(ProbeResult),
   fetched_updated_at: String,

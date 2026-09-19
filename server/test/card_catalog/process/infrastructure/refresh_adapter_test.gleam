@@ -337,6 +337,71 @@ pub fn unchanged_upstream_marks_skipped_test() {
   assert status == "skipped"
 }
 
+// Regression for #114: a migration that only nulls last_upstream_updated_at
+// (0005, 0011, 0012, 0013, 0018's mistake) never forces a reload, because
+// is_probe_due gates on last_probe_at first and returns before decide() ever
+// reads the field the migration touched.
+pub fn recent_probe_without_reset_imports_nothing_test() {
+  use _db <- test_db.with_temp_db()
+
+  // Seed: probed moments ago, so is_probe_due is False regardless of what
+  // last_upstream_updated_at holds.
+  let assert Ok(Nil) =
+    sqlite_store.exec(
+      "INSERT INTO catalog_sync_metadata "
+        <> "(id, last_probe_at, last_upstream_updated_at, last_refresh_status, updated_at) "
+        <> "VALUES (1, datetime('now'), ?, 'succeeded', CURRENT_TIMESTAMP);",
+      [sqlight.text(fixture_updated_at)],
+    )
+
+  let port = adapter.new_with_downloader(fake_downloader())
+  let result = handler.execute(handler.RefreshCatalogCommand, port)
+
+  assert result == Ok(Nil)
+  assert catalog_dao.list() == Ok([])
+
+  // Record is untouched: the handler never contacted upstream, so it wrote
+  // nothing (see the "No save" comment in handler.execute).
+  let status =
+    query_single_text(
+      "SELECT last_refresh_status FROM catalog_sync_metadata WHERE id = 1;",
+    )
+  assert status == "succeeded"
+}
+
+// The documented reset (server/src/card_catalog/AGENTS.md): clearing the
+// whole record forces a reload even when the last probe was moments ago,
+// because load_refresh_record then returns None, which both is_probe_due
+// and decide read as "contact upstream and import".
+pub fn reset_request_reimports_despite_recent_probe_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) =
+    sqlite_store.exec(
+      "INSERT INTO catalog_sync_metadata "
+        <> "(id, last_probe_at, last_upstream_updated_at, last_refresh_status, updated_at) "
+        <> "VALUES (1, datetime('now'), ?, 'succeeded', CURRENT_TIMESTAMP);",
+      [sqlight.text(fixture_updated_at)],
+    )
+
+  // What a migration requesting a reset does.
+  let assert Ok(Nil) =
+    sqlite_store.exec("DELETE FROM catalog_sync_metadata;", [])
+
+  let port = adapter.new_with_downloader(fake_downloader())
+  let result = handler.execute(handler.RefreshCatalogCommand, port)
+
+  assert result == Ok(Nil)
+  let assert Ok(cards) = catalog_dao.list()
+  assert list.length(cards) == 3
+
+  let status =
+    query_single_text(
+      "SELECT last_refresh_status FROM catalog_sync_metadata WHERE id = 1;",
+    )
+  assert status == "succeeded"
+}
+
 // Scryfall once dropped the link the client read; a missing jsonl_download_uri
 // must fail the refresh with a reason naming it instead of importing nothing.
 pub fn metadata_without_jsonl_uri_fails_naming_the_field_test() {
