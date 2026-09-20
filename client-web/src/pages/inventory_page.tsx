@@ -395,6 +395,14 @@ export function InventoryPage() {
         binders by the parent set's release date.
       </p>
       <p class="hint">
+        Selector decides how many copies a rule claims: every copy, the first copy per printing, or
+        the first copy per card — one per oracle identity, however many printings of it you own.
+        Where several of your copies qualify, the earliest in canonical order wins: release date
+        (oldest first, unknown dates before all others), then set code, then collector number. Two
+        copies of one printing then break that tie by finish (nonfoil, foil, etched) and language
+        (English, then by code) — steps that never outrank an older printing.
+      </p>
+      <p class="hint">
         Expression is one or more conditions joined by <code>and</code>:{" "}
         <code>set_code in (grn, m19)</code>, <code>rarity {">"}= rare</code>,{" "}
         <code>rarity in (common, uncommon)</code>, <code>color_identity = WU</code> (or{" "}
@@ -406,7 +414,8 @@ export function InventoryPage() {
         Sort keys are a comma-separated list ordering the cards within each location:{" "}
         <code>color_identity</code>, <code>type</code>, <code>name</code>, <code>set_code</code>,{" "}
         <code>collector_number</code>, <code>rarity</code>, <code>released_at</code>,{" "}
-        <code>cmc</code>. Empty keeps the canonical order (release date, set, collector number).
+        <code>cmc</code>. Empty keeps the canonical order described above. Sort keys only order what
+        a location shows — which copy a rule claims is the selector's business.
       </p>
       <Show when={mutationError.messageFor("reorder") !== null}>
         <p role="alert">{mutationError.messageFor("reorder")}</p>
