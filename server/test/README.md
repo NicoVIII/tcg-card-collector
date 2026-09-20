@@ -99,6 +99,17 @@ Targeted tests for the complex or important parts of *any* layer. Their purpose 
 
 ---
 
+## A third area: `migrations/` (data-preservation tests)
+
+`test/migrations/` sits beside the per-context trees, not inside one. It exists to prove a different promise than `process/` and `unit/` do: that a migration touching a user-authored table carries forward the rows that were already there, not just that the resulting schema is correct.
+
+- **Why a third area, not `process/infrastructure/` in the owning context.** The migration chain (`db/migrations/*.sql`) is one flat, global sequence — dbmate doesn't partition it by bounded context, and a migration like 0014 rewrites tables across several contexts in one file. Filing its test under one context's `process/infrastructure/` would misrepresent what it covers, and a cross-context migration would have no honest home at all. ADR 0003's two-axis split is about the tests *within* a context; this area is orthogonal to it, not a third axis competing with it.
+- **Assertions are about data, not schema.** `test/support/test_db.with_seeded_upgrade` seeds a temp DB at the schema immediately before the migration under test, applies that one migration, then hands control back — the test reads the affected table back (through the owning DAO, when one already exists) and asserts on the exact rows that survived. The Scryfall catalog is exempt: it's external data a re-sync restores, so it needs no such test.
+- **Seeds are frozen, one file per migration.** `test/migrations/seeds/<migration_stem>.sql` is plain checked-in SQL, written against the schema as it stood one migration earlier, and is never edited to match a later reshape of the same table — editing a seed after the fact would silently change what an already-passing test asserts against. A schema change gets its own new seed for its own new migration.
+- **The rule this area exists to enforce** lives in `server/AGENTS.md` and `.claude/skills/data-migrations/SKILL.md`: a migration that touches a user-authored table ships a test here, or the release notes say plainly what it loses.
+
+---
+
 ## Deferred / per-project (not in this layout yet)
 
 These were discussed and intentionally left out for now. Revisit per project.
