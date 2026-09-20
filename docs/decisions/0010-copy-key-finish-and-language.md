@@ -1,6 +1,6 @@
 # 0010 — Owned copies are identified by CopyKey (printing, finish, language)
 
-- Status: accepted
+- Status: accepted; canonical claim order and the rule-order escape hatch superseded by [0013](0013-claim-order-prefers-best-copy.md)
 - Date: 2026-09-13
 
 ## Context
