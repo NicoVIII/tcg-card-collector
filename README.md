@@ -30,6 +30,7 @@ docker run -d -p 8080:8080 -v tcg-data:/data ghcr.io/nicoviii/tcg-card-collector
 - Migrations run automatically at container start
 - Bind mounts must be writable by the container user (`webapp`, uid 1000)
 - **No authentication — do not expose to untrusted networks**
+- The running version shows in the page footer, and at `curl http://localhost:8080/api/version`
 
 ### Image tags
 

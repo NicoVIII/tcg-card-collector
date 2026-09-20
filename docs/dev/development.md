@@ -55,3 +55,15 @@ Install with `lefthook install`. Pre-commit hooks run the full check suite on st
 docker build -t tcg-cc-local .
 docker run -d -p 8080:8080 -v tcg-dev-data:/data tcg-cc-local
 ```
+
+## Versioning & Releases
+
+`server/gleam.toml`'s `version` field is the **single source of truth** — nothing else declares it (`client-web/package.json` doesn't carry one, on purpose). The running server reads it back from the compiled Erlang application resource file and serves it over both `GET /api/version` and the Skir `GetAppVersion` method; the web UI shows it in the page footer.
+
+To cut a release:
+
+1. Bump `version` in `server/gleam.toml`, commit.
+2. Tag `v<version>` (e.g. `v0.1.0`) and push the tag. CI verifies the tag matches `server/gleam.toml` before building, and fails the build if they've drifted.
+3. Bump `server/gleam.toml` to the next development version right after tagging. `0.1.0-dev+<sha>` sorts *before* `0.1.0`, so leaving it at the just-released version would make every subsequent `main` image claim to predate a version already shipped.
+
+A `main`-branch or local build is never mistaken for a release: the image is built with `APP_CHANNEL=dev`, which appends `-dev+<short sha>` (`-dev+local` for a plain `docker build` with no build args, and for `just dev`). A `v*`-tag build passes `APP_CHANNEL=release`, giving the bare version.
