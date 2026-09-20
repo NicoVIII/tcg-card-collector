@@ -29,6 +29,8 @@ Names and boundaries are reviewed before bodies exist, because they are cheap to
 
 Task runner is `just` with `::` module scoping (`just --list` for everything). The most-used commands: `just dev` (run backend + frontend), `just check` (all checks), `just skir-gen` (regenerate from contract).
 
+A commit subject's `(#N)` is the issue it serves, not a PR — Dependabot and external agents are the only PR traffic here.
+
 Environment setup for a fresh clone (dbmate, lefthook), repository layout, and the full quality-gate reference live in [docs/dev/development.md](docs/dev/development.md).
 
 A user-visible change adds its line to [`CHANGELOG.md`](CHANGELOG.md)'s `## Unreleased` section in the same commit — internals, refactors, and dependency bumps don't. See [docs/dev/development.md](docs/dev/development.md) § Versioning & Releases for the release procedure.
