@@ -2,3 +2,8 @@ build/
 .gleam/
 erlang-shipment/
 *.db
+
+# Local checkouts for hacking on git dependencies (glinter_arch is fetched via
+# gleam.toml, never from here). This was a submodule until 4aac620, so a clone
+# left here gets silently re-added as a gitlink by `git add -A`.
+vendor/
