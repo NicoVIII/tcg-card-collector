@@ -42,7 +42,9 @@ import inventory_planning/infrastructure/adapters/queries/get_bulk_spec/adapter 
 import inventory_planning/infrastructure/adapters/queries/list_rules/adapter as list_rules_adapter
 import inventory_planning/infrastructure/adapters/queries/placed_ledger/adapter as placed_ledger_adapter
 import inventory_planning/infrastructure/adapters/queries/projection/adapter as projection_adapter
+import shared/application/app_version.{type AppVersion}
 import shared/application/event_bus
+import shared/infrastructure/runtime_version
 
 pub type Dependencies {
   Dependencies(
@@ -50,6 +52,7 @@ pub type Dependencies {
     collection: CollectionDependencies,
     inventory_planning: InventoryPlanningDependencies,
     insights: InsightsDependencies,
+    app_version: AppVersion,
   )
 }
 
@@ -125,5 +128,6 @@ pub fn dependencies() -> Dependencies {
       unmark_target_set_port: unmark_target_set_adapter.new(),
       set_completion_ports: set_completion_adapter.new(),
     ),
+    app_version: runtime_version.read(),
   )
 }

@@ -14,6 +14,7 @@ import gleam/string
 import insights/driver/http/handler as insights_http
 import inventory_planning/driver/http/handler as inventory_http
 import mist
+import shared/driver/http/app_version as app_version_http
 import shared/driver/http/helpers
 import shared/driver/http/json_codec
 import shared/driver/http/static_files
@@ -124,6 +125,7 @@ fn handle_request(
       insights_http.handle_unmark_target_set(req, deps.insights)
     Get, "/api/skir" | Post, "/api/skir" ->
       skir_router.handle_request(req, server_name)
+    Get, "/api/version" -> app_version_http.handle(deps.app_version)
     Get, path -> handle_get_fallback(path, static_root)
     _, _ -> helpers.json_response(404, json_codec.encode_error("not found"))
   }

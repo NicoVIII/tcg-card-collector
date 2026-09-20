@@ -4,6 +4,7 @@ import collection/driver/skir/handler as collection_skir
 import gleam/erlang/process
 import insights/driver/skir/handler as insights_skir
 import inventory_planning/driver/skir/handler as inventory_skir
+import shared/driver/skir/app_version as app_version_skir
 import skir_client/service
 
 pub type RpcService =
@@ -26,6 +27,7 @@ pub fn make_service() -> RpcService {
   |> collection_skir.register(fn(ctx: Dependencies) { ctx.collection })
   |> inventory_skir.register(fn(ctx: Dependencies) { ctx.inventory_planning })
   |> insights_skir.register(fn(ctx: Dependencies) { ctx.insights })
+  |> app_version_skir.register(fn(ctx: Dependencies) { ctx.app_version })
 }
 
 fn handle_server_message(

@@ -1,0 +1,15 @@
+struct GetAppVersionRequest {
+  unit: bool = 0;
+}
+
+// One semver string carrying the whole build identity: "0.1.0" for a released
+// image, "0.1.0-dev+<short sha>" for a main image, "0.1.0-dev+local"
+// otherwise. Deliberately not split into parts — nothing parses it, a human
+// reads it.
+struct AppVersion {
+  version: string = 0;
+}
+
+method GetAppVersion(
+  GetAppVersionRequest
+): AppVersion = 601;

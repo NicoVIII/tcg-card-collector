@@ -21,4 +21,8 @@ describe("query key factory", () => {
   it("builds a deterministic placed ledger key", () => {
     expect(queryKeys.placedLedger()).toEqual(["inventory_planning", "placed_ledger"]);
   });
+
+  it("builds a deterministic app version key", () => {
+    expect(queryKeys.appVersion()).toEqual(["system", "app_version"]);
+  });
 });
