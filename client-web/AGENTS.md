@@ -21,7 +21,7 @@ Rules:
 - Per-card lookups batch through `@yornaath/batshit` (`data/card_catalog/batcher.ts`) — follow that pattern for new N+1-shaped reads.
 - `src/data/skirout/` is generated — **never edit**; change `skir-src/` and run `just skir-gen`.
 - **View state that should survive a reload goes through `useSearchParams`** (`@solidjs/router`), not a bare signal or browser storage — a reload or a shared link should land the user back where they were (precedent: the open-location focus in `pages/placement_page.tsx`).
-- A data dir may hold a derivation module beyond the `request`/`query`/`mutation` trio when logic that once lived server-side moves to the client. `data/placement/guidance.ts` folds the cached projection + the placed ledger into placement guidance (see [ADR 0006](../docs/decisions/0006-placement-guidance-derived-client-side.md)) — such modules are pure and vitest-covered, and anything that changes the projection must invalidate `inventoryProjection`.
+- A data dir may hold a derivation module beyond the `request`/`query`/`mutation` trio when logic that once lived server-side moves to the client. `data/placement/guidance.ts` folds the cached projection + the placed ledger into placement guidance (see [ADR 0006](../docs/decisions/0006-placement-guidance-derived-client-side.md)); `data/placement/resort.ts` folds the same two inputs the other way, into the re-sort worklist of ledger↔projection drift (see [ADR 0014](../docs/decisions/0014-resort-worklist-is-derived-locations-stay-text.md)) — such modules are pure and vitest-covered, and anything that changes the projection must invalidate `inventoryProjection`.
 
 ## Structure & Testing
 

@@ -13,6 +13,7 @@ See [docs/vision.md](docs/vision.md) for why the project exists, where it is hea
 - CSV collection import replacing the live collection
 - Adding, removing, or adjusting owned quantities, correcting the placed ledger to match
 - Location rules and inventory projections for physical sorting
+- A re-sort worklist flags placed copies a rule change left behind, and re-points a renamed location's records without treating it as a physical move
 - All of it available over Skir RPC and REST
 
 ## Status

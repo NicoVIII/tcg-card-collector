@@ -125,16 +125,36 @@ Core terms:
 - PlacedCard: a ledger row recording that some copies of a kind of copy were physically placed in a
   location (`(CopyKey, location) → quantity`). A location holding several kinds of copy of one
   printing needs a tick that names which kind. The write side of placement — MarkCardsPlaced
-  adds to it, UnmarkCardsPlaced subtracts, and ReconcilePlacedLedger prunes it when Collection
-  announces owned quantities may have shrunk (a removal or a re-import) — see boundary notes.
+  adds to it, UnmarkCardsPlaced subtracts, ReconcilePlacedLedger prunes it when Collection
+  announces owned quantities may have shrunk (a removal or a re-import), and RelocatePlacedCards
+  re-points a whole location's rows onto another location with no CopyKey involved — a bookkeeping
+  fix for a rule-target rename, not a record of copies physically moving ([ADR
+  0014](../decisions/0014-resort-worklist-is-derived-locations-stay-text.md)) — see boundary notes.
 - Placement: one validated MarkCardsPlaced/UnmarkCardsPlaced entry (canonical CopyKey, non-empty
   location, positive quantity).
-- Unplaced: **always derived, never stored** — collection quantity minus placed quantity per
-  CopyKey, clamped at zero. Storing it would let a card silently become lost; deriving it is
-  self-healing.
+- Unplaced: **always derived, never stored**, per `(CopyKey, location)` — a projected location's
+  quantity minus what's placed there, clamped at zero. Storing it would let a card silently become
+  lost; deriving it is self-healing. `PlacementGuidance.total_unplaced` is the sum of this across
+  locations, not a second, independent definition computed from the collection total — the two
+  disagreeing in the presence of drift was ADR 0014's bug to close.
+- Misplaced: **always derived, never stored**, Unplaced's mirror — per `(CopyKey, location)`, what's
+  placed there minus what's currently projected there, clamped at zero. Non-zero only where the
+  ledger claims a copy sits somewhere the *current* projection no longer sends it (a rule
+  re-target, a deleted rule, or a claim-order change moving which copy a rule claims — ADR 0013).
+  Not to be confused with #108's AuditFinding (`Missing`/`Unexpected`): Misplaced compares the
+  ledger against the *projection*; AuditFinding compares the ledger against *physical reality*.
+  Different comparisons, different bugs.
+- ResortWorklist: the derived worklist of Misplaced copies (`data/placement/resort.ts`,
+  `buildResortWorklist`), grouped by their stale location and paired with the locations where that
+  same copy is currently Unplaced — its candidate destinations. A group is flagged as looking like a
+  rename only when its whole stale location has vanished from the projection and every misplaced
+  copy in it shares exactly one destination — a human-confirmed heuristic, not a claim the system
+  can verify, resolved by RelocatePlacedCards; any other shape resolves by pulling copies out
+  (UnmarkCardsPlaced) to re-enter PlacementGuidance for their new location ([ADR
+  0014](../decisions/0014-resort-worklist-is-derived-locations-stay-text.md)).
 - PlacementGuidance: the derived worklist — locations still holding unplaced copies (cascade order,
   empty ones dropped), each card's copies-still-to-place plus its cascade-order neighbours for
-  physical orientation, and the grand total of unplaced copies.
+  physical orientation, and the grand total of unplaced copies (Unplaced, summed).
 
 Boundary notes:
 - Owns cascade, rule, projection, and placement semantics — including how the placed ledger
