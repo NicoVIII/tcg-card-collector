@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@solidjs/router": "^1.0.0",
-    "@tanstack/solid-query": "^5.102.8",
+    "@tanstack/solid-query": "^5.103.1",
     "@yornaath/batshit": "^0.14.0",
     "skir-client": "^1.0.19",
     "solid-js": "^1.9.3",
