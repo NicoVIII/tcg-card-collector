@@ -5,9 +5,11 @@ import { createMutationError } from "../lib/mutation_error";
 import { useInventoryProjectionQuery } from "../data/inventory_planning/query";
 import {
   useMarkCardsPlacedMutation,
+  useRelocatePlacedCardsMutation,
   useUnmarkCardsPlacedMutation,
 } from "../data/placement/mutation";
 import { buildGuidance } from "../data/placement/guidance";
+import { type ResortEntry, type ResortGroup, buildResortWorklist } from "../data/placement/resort";
 import { usePlacedLedgerQuery } from "../data/placement/query";
 import type { CardPlacementInput } from "../data/placement/request";
 import {
@@ -30,6 +32,114 @@ import {
   untick,
   untickAll,
 } from "./placement_session";
+import {
+  type ResortSession,
+  emptyResortSession,
+  filterResortWorklist,
+  resolveEntry,
+  resolveGroup,
+  unresolveEntry,
+  unresolveGroup,
+} from "./resort_session";
+
+type LastResortAction =
+  | { kind: "pull_out"; from_location: string; entry: ResortEntry }
+  | { kind: "relocate"; from_location: string; to_location: string };
+
+function lastResortActionLabel(action: LastResortAction): string {
+  return action.kind === "pull_out" ? "Pulled out." : "Record updated.";
+}
+
+function entryPlacement(from_location: string, entry: ResortEntry): CardPlacementInput {
+  return {
+    set_code: entry.set_code,
+    collector_number: entry.collector_number,
+    finish: entry.finish,
+    language: entry.language,
+    location_name: from_location,
+    quantity: entry.quantity,
+  };
+}
+
+type ResortEntryRowProps = {
+  from_location: string;
+  entry: ResortEntry;
+  pending: boolean;
+  onPullOut: (from_location: string, entry: ResortEntry) => void;
+};
+
+function ResortEntryRow(props: ResortEntryRowProps) {
+  return (
+    <li class="placement-row">
+      <span class="placement-card">
+        <span class="placement-card-name">
+          {props.entry.quantity}x{" "}
+          {props.entry.name === ""
+            ? `${props.entry.set_code} ${props.entry.collector_number}`
+            : props.entry.name}
+        </span>
+        <span class="placement-card-key">
+          {props.entry.set_code} {props.entry.collector_number} ({props.entry.finish}·
+          {props.entry.language})
+        </span>
+        <span class="placement-card-hint">
+          {props.entry.destinations.length === 0
+            ? "No location currently wants this copy."
+            : `Belongs at ${props.entry.destinations.map((d) => d.location_name).join(", ")}.`}
+        </span>
+      </span>
+      <button
+        type="button"
+        class="resort-pull-out"
+        disabled={props.pending}
+        onClick={() => props.onPullOut(props.from_location, props.entry)}
+      >
+        Pull out
+      </button>
+    </li>
+  );
+}
+
+type ResortGroupPanelProps = {
+  group: ResortGroup;
+  pending: boolean;
+  onPullOut: (from_location: string, entry: ResortEntry) => void;
+  onUpdateRecordOnly: (group: ResortGroup) => void;
+};
+
+function ResortGroupPanel(props: ResortGroupPanelProps) {
+  return (
+    <div class="placement-panel">
+      <h4>{props.group.from_location}</h4>
+      <Show when={props.group.looks_like_rename}>
+        {(destination) => (
+          <p class="hint">
+            Looks like a rename — nothing physically moved.{" "}
+            <button
+              type="button"
+              disabled={props.pending}
+              onClick={() => props.onUpdateRecordOnly(props.group)}
+            >
+              Update record only: {props.group.from_location} → {destination()}
+            </button>
+          </p>
+        )}
+      </Show>
+      <ul class="placement-list">
+        <For each={props.group.entries}>
+          {(entry) => (
+            <ResortEntryRow
+              from_location={props.group.from_location}
+              entry={entry}
+              pending={props.pending}
+              onPullOut={props.onPullOut}
+            />
+          )}
+        </For>
+      </ul>
+    </div>
+  );
+}
 
 function placementOf(location_name: string, card: SessionCard["card"]): CardPlacementInput {
   return {
@@ -192,11 +302,103 @@ function LocationRow(props: LocationRowProps) {
   );
 }
 
+type ResortActionsDeps = {
+  resortSession: () => ResortSession;
+  setResortSession: (session: ResortSession) => void;
+  setLastMarkAll: (batch: MarkAllBatch | null) => void;
+  setLastResortAction: (action: LastResortAction | null) => void;
+  clearMutationError: () => void;
+  reportMutationError: (error: unknown) => void;
+  markMutation: { mutate: ReturnType<typeof useMarkCardsPlacedMutation>["mutate"] };
+  unmarkMutation: { mutate: ReturnType<typeof useUnmarkCardsPlacedMutation>["mutate"] };
+  relocateMutation: { mutate: ReturnType<typeof useRelocatePlacedCardsMutation>["mutate"] };
+};
+
+// Out of PlacementPage's own body so its branching doesn't count against that
+// component's complexity budget — each action here is small and single-
+// purpose on its own; wiring them into signals is what made the host function
+// too big.
+function createResortActions(deps: ResortActionsDeps) {
+  const pullOutEntry = (from_location: string, entry: ResortEntry) => {
+    deps.clearMutationError();
+    deps.setLastMarkAll(null);
+    deps.setLastResortAction(null);
+    deps.setResortSession(resolveEntry(deps.resortSession(), from_location, entry));
+    deps.unmarkMutation.mutate([entryPlacement(from_location, entry)], {
+      onSuccess: () => deps.setLastResortAction({ kind: "pull_out", from_location, entry }),
+      onError: (error) => {
+        deps.setResortSession(unresolveEntry(deps.resortSession(), from_location, entry));
+        deps.reportMutationError(error);
+      },
+    });
+  };
+
+  const updateRecordOnly = (group: ResortGroup) => {
+    const to_location = group.looks_like_rename;
+    if (to_location === null) {
+      return;
+    }
+    deps.clearMutationError();
+    deps.setLastMarkAll(null);
+    deps.setLastResortAction(null);
+    deps.setResortSession(resolveGroup(deps.resortSession(), group.from_location));
+    deps.relocateMutation.mutate(
+      { from_location: group.from_location, to_location },
+      {
+        onSuccess: () =>
+          deps.setLastResortAction({
+            kind: "relocate",
+            from_location: group.from_location,
+            to_location,
+          }),
+        onError: (error) => {
+          deps.setResortSession(unresolveGroup(deps.resortSession(), group.from_location));
+          deps.reportMutationError(error);
+        },
+      },
+    );
+  };
+
+  // Reverses whichever of the two resort actions ran last: re-marking a
+  // pulled-out copy restores the drift it pulled out of, and relocating the
+  // other direction puts a "just fixed the record" group back the way it was.
+  const undoPullOut = (action: Extract<LastResortAction, { kind: "pull_out" }>) => {
+    deps.markMutation.mutate([entryPlacement(action.from_location, action.entry)], {
+      onSuccess: () =>
+        deps.setResortSession(
+          unresolveEntry(deps.resortSession(), action.from_location, action.entry),
+        ),
+      onError: (error) => deps.reportMutationError(error),
+    });
+  };
+
+  const undoRelocate = (action: Extract<LastResortAction, { kind: "relocate" }>) => {
+    deps.relocateMutation.mutate(
+      { from_location: action.to_location, to_location: action.from_location },
+      {
+        onSuccess: () =>
+          deps.setResortSession(unresolveGroup(deps.resortSession(), action.from_location)),
+        onError: (error) => deps.reportMutationError(error),
+      },
+    );
+  };
+
+  const undoResortAction = (action: LastResortAction) => {
+    deps.clearMutationError();
+    deps.setLastResortAction(null);
+    return action.kind === "pull_out" ? undoPullOut(action) : undoRelocate(action);
+  };
+
+  return { pullOutEntry, updateRecordOnly, undoResortAction };
+}
+
 export function PlacementPage() {
   const [session, setSession] = createSignal<PlacementSession>(emptySession());
   // The last mark-all batch, offered as a single undo — cleared by any other
   // placement action so the offer always refers to "the thing you just did".
   const [lastMarkAll, setLastMarkAll] = createSignal<MarkAllBatch | null>(null);
+  const [resortSession, setResortSession] = createSignal<ResortSession>(emptyResortSession());
+  const [lastResortAction, setLastResortAction] = createSignal<LastResortAction | null>(null);
   const mutationError = createMutationError();
   const [searchParams, setSearchParams] = useSearchParams<{ location?: string }>();
 
@@ -204,6 +406,7 @@ export function PlacementPage() {
   const ledgerQuery = usePlacedLedgerQuery();
   const markMutation = useMarkCardsPlacedMutation();
   const unmarkMutation = useUnmarkCardsPlacedMutation();
+  const relocateMutation = useRelocatePlacedCardsMutation();
 
   // Guidance is derived client-side: the projection (cached, invariant to
   // placement) folded against the placed ledger (cheap, refetched per tick).
@@ -216,9 +419,31 @@ export function PlacementPage() {
     return buildGuidance(projection, ledger);
   });
 
+  // Same two inputs, folded the other way: copies the ledger records
+  // somewhere the projection no longer sends them (#107). Resolved
+  // entries/groups are hidden immediately, before the ledger refetch confirms
+  // it — the same optimistic-before-refetch posture as a placement tick.
+  const resortWorklist = createMemo(() => {
+    const projection = projectionQuery.data;
+    const ledger = ledgerQuery.data;
+    if (projection === undefined || ledger === undefined) {
+      return undefined;
+    }
+    return filterResortWorklist(buildResortWorklist(projection, ledger), resortSession());
+  });
+  const resortGroups = createMemo(() => resortWorklist()?.groups ?? []);
+  const misplacedCount = createMemo(() => resortWorklist()?.total_misplaced ?? 0);
+  const resortActionPending = createMemo(
+    () => unmarkMutation.isPending || relocateMutation.isPending,
+  );
+  const undoResortPending = createMemo(
+    () => unmarkMutation.isPending || markMutation.isPending || relocateMutation.isPending,
+  );
+
   const isLoading = () => projectionQuery.isLoading || ledgerQuery.isLoading;
   const isError = () => projectionQuery.isError || ledgerQuery.isError;
   const loadError = () => projectionQuery.error ?? ledgerQuery.error;
+  const nothingToDo = createMemo(() => !isLoading() && !isError() && misplacedCount() === 0);
 
   const focusName = () => focusNameFrom(searchParams.location);
 
@@ -234,6 +459,7 @@ export function PlacementPage() {
   // into view in case closing a location above it moved the page under it.
   const toggleFocus = (location_name: string, headerEl: HTMLElement) => {
     setLastMarkAll(null);
+    setLastResortAction(null);
     setSearchParams({ location: focusName() === location_name ? undefined : location_name });
     headerEl.scrollIntoView({ block: "nearest" });
   };
@@ -252,6 +478,7 @@ export function PlacementPage() {
   const tickCard = (location_name: string, entry: SessionCard, index: number) => {
     mutationError.clear();
     setLastMarkAll(null);
+    setLastResortAction(null);
     const before = session();
     setSession(tick(before, location_name, entry.card, index));
     markMutation.mutate([placementOf(location_name, entry.card)], {
@@ -265,6 +492,7 @@ export function PlacementPage() {
   const untickCard = (location_name: string, entry: SessionCard) => {
     mutationError.clear();
     setLastMarkAll(null);
+    setLastResortAction(null);
     const before = session();
     setSession(untick(before, location_name, entry.card));
     unmarkMutation.mutate([placementOf(location_name, entry.card)], {
@@ -278,6 +506,7 @@ export function PlacementPage() {
   const markAll = (location: FocusedLocation) => {
     mutationError.clear();
     setLastMarkAll(null);
+    setLastResortAction(null);
     const before = session();
     const result = tickAll(before, location.location_name, location.cards);
     if (result === null) {
@@ -299,6 +528,7 @@ export function PlacementPage() {
   const undoMarkAll = (batch: MarkAllBatch) => {
     mutationError.clear();
     setLastMarkAll(null);
+    setLastResortAction(null);
     const before = session();
     setSession(untickAll(before, batch));
     const placements: CardPlacementInput[] = batch.cards.map((card) =>
@@ -312,6 +542,18 @@ export function PlacementPage() {
       },
     });
   };
+
+  const { pullOutEntry, updateRecordOnly, undoResortAction } = createResortActions({
+    resortSession,
+    setResortSession,
+    setLastMarkAll,
+    setLastResortAction,
+    clearMutationError: mutationError.clear,
+    reportMutationError: mutationError.report,
+    markMutation,
+    unmarkMutation,
+    relocateMutation,
+  });
 
   return (
     <section>
@@ -332,10 +574,45 @@ export function PlacementPage() {
       <Show when={(guidance()?.total_unplaced ?? 0) > 0}>
         <p class="hint">{guidance()?.total_unplaced} card(s) still to place.</p>
       </Show>
+      <Show when={misplacedCount() > 0}>
+        <p class="hint">{misplacedCount()} card(s) need re-sorting.</p>
+      </Show>
+      <Show when={lastResortAction()}>
+        {(action) => (
+          <p class="hint" role="status">
+            {lastResortActionLabel(action())}{" "}
+            <button
+              type="button"
+              disabled={undoResortPending()}
+              onClick={() => undoResortAction(action())}
+            >
+              Undo
+            </button>
+          </p>
+        )}
+      </Show>
+      <Show when={misplacedCount() > 0}>
+        <section class="placement-location">
+          <h3>Re-sort ({misplacedCount()})</h3>
+          <p class="hint">
+            These copies are recorded in a location the current rules no longer send them to.
+          </p>
+          <For each={resortGroups()}>
+            {(group) => (
+              <ResortGroupPanel
+                group={group}
+                pending={resortActionPending()}
+                onPullOut={pullOutEntry}
+                onUpdateRecordOnly={updateRecordOnly}
+              />
+            )}
+          </For>
+        </section>
+      </Show>
       <Show
         when={summaries().length > 0}
         fallback={
-          <Show when={!isLoading() && !isError()}>
+          <Show when={nothingToDo()}>
             <p>Everything is placed. Nothing to sort right now.</p>
           </Show>
         }

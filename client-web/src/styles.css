@@ -371,3 +371,9 @@ p[role="alert"] {
   color: #6b7780;
   font-size: 0.85em;
 }
+
+/* A re-sort row's Pull out button sits at the row's end instead of a
+   checkbox at its start — the same .placement-row flex layout otherwise. */
+.resort-pull-out {
+  margin-left: auto;
+}
