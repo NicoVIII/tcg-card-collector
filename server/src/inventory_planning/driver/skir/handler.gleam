@@ -1,6 +1,7 @@
 import gleam/list
 import inventory_planning/application/commands/delete_rule/handler as delete_rule_handler
 import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
+import inventory_planning/application/commands/relocate_placed_cards/handler as relocate_placed_cards_handler
 import inventory_planning/application/commands/reorder_rules/handler as reorder_rules_handler
 import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
 import inventory_planning/application/commands/update_bulk_spec/handler as update_bulk_spec_handler
@@ -204,6 +205,26 @@ fn handle_unmark_cards_placed(
   }
 }
 
+fn handle_relocate_placed_cards(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_commands.RelocatePlacedCardsRequest,
+  inventory_planning_commands.RelocatePlacedCardsResponse,
+  context,
+) {
+  fn(req: inventory_planning_commands.RelocatePlacedCardsRequest, _, ctx) {
+    relocate_placed_cards_handler.execute(
+      relocate_placed_cards_handler.RelocatePlacedCardsCommand(
+        from_location: req.from_location_name,
+        to_location: req.to_location_name,
+      ),
+      get_dependencies(ctx).relocate_placed_cards_port,
+    )
+    |> inventory_planning_skir_codec.map_relocate_placed_cards_result
+    |> helpers.respond
+  }
+}
+
 pub fn register(
   svc: service.Service(Nil, context, Nil),
   get_dependencies: fn(context) -> Dependencies,
@@ -248,5 +269,9 @@ pub fn register(
   |> service.add_method(
     inventory_planning_commands.unmark_cards_placed_method(),
     handle_unmark_cards_placed(get_dependencies),
+  )
+  |> service.add_method(
+    inventory_planning_commands.relocate_placed_cards_method(),
+    handle_relocate_placed_cards(get_dependencies),
   )
 }

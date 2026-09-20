@@ -1,5 +1,6 @@
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
+import inventory_planning/application/commands/relocate_placed_cards/ports as relocate_placed_cards_ports
 import inventory_planning/application/commands/reorder_rules/ports as reorder_rules_ports
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
@@ -21,5 +22,6 @@ pub type Dependencies {
     get_placed_ledger_port: placed_ledger_ports.GetPlacedLedgerPort,
     mark_cards_placed_port: mark_cards_placed_ports.MarkCardsPlacedPort,
     unmark_cards_placed_port: unmark_cards_placed_ports.UnmarkCardsPlacedPort,
+    relocate_placed_cards_port: relocate_placed_cards_ports.RelocatePlacedCardsPort,
   )
 }

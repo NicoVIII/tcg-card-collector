@@ -1,5 +1,6 @@
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
+import inventory_planning/application/commands/relocate_placed_cards/ports as relocate_placed_cards_ports
 import inventory_planning/application/commands/reorder_rules/ports as reorder_rules_ports
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
@@ -42,6 +43,10 @@ pub fn persistence_failures_hide_the_reason_test() {
       "disk full",
     ))
     == PresentedError(Internal, "failed to save rule order")
+  assert error_presentation.relocate_placed_cards(
+      relocate_placed_cards_ports.PersistenceFailed("disk full"),
+    )
+    == PresentedError(Internal, "failed to relocate placed cards")
 }
 
 pub fn reorder_rules_not_a_permutation_is_a_bad_request_test() {
@@ -65,4 +70,8 @@ pub fn other_validation_errors_are_bad_requests_test() {
       unmark_cards_placed_ports.InvalidPlacements,
     )
     == PresentedError(BadRequest, "invalid placements")
+  assert error_presentation.relocate_placed_cards(
+      relocate_placed_cards_ports.InvalidRelocation,
+    )
+    == PresentedError(BadRequest, "invalid relocation")
 }

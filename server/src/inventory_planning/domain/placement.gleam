@@ -112,3 +112,46 @@ pub fn merge(placements: List(Placement)) -> List(Placement) {
   |> dict.values
   |> list.sort(fn(a, b) { compare_identity(identity(a), identity(b)) })
 }
+
+pub type RelocationError {
+  EmptyFromLocation
+  EmptyToLocation
+  SameLocation
+}
+
+// Re-points every ledger row at one location onto another — the bookkeeping
+// fix for a rule-target rename (#107), as opposed to Placement's physical
+// move of specific copies. Opaque so the only way to hold one is through
+// `new_relocation`, which guarantees two distinct, trimmed, non-empty
+// locations: `from == to` would make the DAO's DELETE wipe the rows its
+// INSERT just merged.
+pub opaque type Relocation {
+  Relocation(from: NonEmptyString, to: NonEmptyString)
+}
+
+pub fn new_relocation(
+  from from: String,
+  to to: String,
+) -> Result(Relocation, RelocationError) {
+  use from_nes <- result.try(
+    non_empty_string.new(string.trim(from))
+    |> result.replace_error(EmptyFromLocation),
+  )
+  use to_nes <- result.try(
+    non_empty_string.new(string.trim(to))
+    |> result.replace_error(EmptyToLocation),
+  )
+  use <- bool.guard(
+    non_empty_string.to_string(from_nes) == non_empty_string.to_string(to_nes),
+    Error(SameLocation),
+  )
+  Ok(Relocation(from: from_nes, to: to_nes))
+}
+
+pub fn relocation_from(relocation: Relocation) -> String {
+  non_empty_string.to_string(relocation.from)
+}
+
+pub fn relocation_to(relocation: Relocation) -> String {
+  non_empty_string.to_string(relocation.to)
+}

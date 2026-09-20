@@ -126,3 +126,23 @@ fn decrement_row_statements(
 pub fn decrement(rows: List(PlacedCardRow)) -> Result(Nil, String) {
   sqlite_store.exec_all_atomically(list.flat_map(rows, decrement_row_statements))
 }
+
+/// Moves every row at `from` onto `to`, summing into any row already there —
+/// a rule-target rename's ledger fix (#107): no copy of card physically moved,
+/// only the record of where it sits. Caller guarantees `from != to` (domain
+/// `Relocation`), so the INSERT...SELECT always completes before the DELETE
+/// removes its own source rows.
+pub fn relocate(from: String, to: String) -> Result(Nil, String) {
+  let insert_sql =
+    "INSERT INTO placed_cards (set_code, collector_number, finish, language, location, quantity) "
+    <> "SELECT set_code, collector_number, finish, language, ?, quantity "
+    <> "FROM placed_cards WHERE location = ? "
+    <> "ON CONFLICT(set_code, collector_number, finish, language, location) "
+    <> "DO UPDATE SET quantity = quantity + excluded.quantity;"
+  let delete_sql = "DELETE FROM placed_cards WHERE location = ?;"
+
+  sqlite_store.exec_all_atomically([
+    #(insert_sql, [sqlight.text(to), sqlight.text(from)]),
+    #(delete_sql, [sqlight.text(from)]),
+  ])
+}

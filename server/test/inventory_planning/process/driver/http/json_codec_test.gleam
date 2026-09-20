@@ -146,3 +146,20 @@ pub fn decode_reorder_rules_body_rejects_missing_field_test() {
   assert json_codec.decode_reorder_rules_body("{}")
     == Error("invalid request body")
 }
+
+pub fn decode_relocate_placed_cards_body_test() {
+  let body =
+    "{\"from_location_name\":\"Box 1\",\"to_location_name\":\"Binder A\"}"
+  assert json_codec.decode_relocate_placed_cards_body(body)
+    == Ok(json_codec.RelocatePlacedCardsBody(
+      from_location_name: "Box 1",
+      to_location_name: "Binder A",
+    ))
+}
+
+pub fn decode_relocate_placed_cards_body_rejects_missing_field_test() {
+  assert json_codec.decode_relocate_placed_cards_body(
+      "{\"from_location_name\":\"Box 1\"}",
+    )
+    == Error("invalid request body")
+}

@@ -33,6 +33,7 @@ import inventory_planning/driver/dependencies.{
 import inventory_planning/infrastructure/adapters/commands/delete_rule/adapter as delete_rule_adapter
 import inventory_planning/infrastructure/adapters/commands/mark_cards_placed/adapter as mark_cards_placed_adapter
 import inventory_planning/infrastructure/adapters/commands/reconcile_placed_ledger/adapter as reconcile_placed_ledger_adapter
+import inventory_planning/infrastructure/adapters/commands/relocate_placed_cards/adapter as relocate_placed_cards_adapter
 import inventory_planning/infrastructure/adapters/commands/reorder_rules/adapter as reorder_rules_adapter
 import inventory_planning/infrastructure/adapters/commands/unmark_cards_placed/adapter as unmark_cards_placed_adapter
 import inventory_planning/infrastructure/adapters/commands/update_bulk_spec/adapter as update_bulk_spec_adapter
@@ -117,6 +118,7 @@ pub fn dependencies() -> Dependencies {
       get_placed_ledger_port: placed_ledger_adapter.new(),
       mark_cards_placed_port: mark_cards_placed_adapter.new(),
       unmark_cards_placed_port: unmark_cards_placed_adapter.new(),
+      relocate_placed_cards_port: relocate_placed_cards_adapter.new(),
     ),
     insights: InsightsDependencies(
       mark_target_set_port: mark_target_set_adapter.new(),

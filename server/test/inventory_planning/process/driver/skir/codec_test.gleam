@@ -1,6 +1,7 @@
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
 import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
+import inventory_planning/application/commands/relocate_placed_cards/ports as relocate_placed_cards_ports
 import inventory_planning/application/commands/reorder_rules/ports as reorder_rules_ports
 import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
@@ -208,6 +209,28 @@ pub fn unmark_cards_placed_persistence_failure_maps_to_internal_server_error_tes
     == Error(service.ServiceError(
       service.E500xInternalServerError,
       "failed to unmark cards placed",
+    ))
+}
+
+pub fn relocate_placed_cards_ok_maps_to_success_test() {
+  assert inventory_planning_skir_codec.map_relocate_placed_cards_result(Ok(Nil))
+    == Ok(inventory_planning_commands.RelocatePlacedCardsResponseSuccess)
+}
+
+pub fn relocate_placed_cards_invalid_maps_to_bad_request_test() {
+  assert inventory_planning_skir_codec.map_relocate_placed_cards_result(Error(
+      relocate_placed_cards_ports.InvalidRelocation,
+    ))
+    == Error(service.ServiceError(service.E400xBadRequest, "invalid relocation"))
+}
+
+pub fn relocate_placed_cards_persistence_failure_maps_to_internal_server_error_test() {
+  assert inventory_planning_skir_codec.map_relocate_placed_cards_result(
+      Error(relocate_placed_cards_ports.PersistenceFailed("disk full")),
+    )
+    == Error(service.ServiceError(
+      service.E500xInternalServerError,
+      "failed to relocate placed cards",
     ))
 }
 

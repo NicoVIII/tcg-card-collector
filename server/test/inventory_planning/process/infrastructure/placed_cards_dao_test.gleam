@@ -114,6 +114,59 @@ pub fn decrementing_an_absent_row_is_a_no_op_test() {
   assert placed_cards_dao.list() == Ok([])
 }
 
+pub fn relocate_moves_rows_to_the_new_location_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) =
+    placed_cards_dao.increment([
+      row("lea", "1", "Box 1", 2),
+      row("lea", "2", "Box 1", 1),
+    ])
+  let assert Ok(Nil) = placed_cards_dao.relocate("Box 1", "Binder A")
+
+  assert placed_cards_dao.list()
+    == Ok([row("lea", "1", "Binder A", 2), row("lea", "2", "Binder A", 1)])
+}
+
+// A relocation into a location that already holds some of the same key sums
+// into it rather than overwriting — the same merge behaviour `increment`
+// already gives a fresh row.
+pub fn relocate_merges_into_an_existing_row_at_the_destination_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) =
+    placed_cards_dao.increment([
+      row("lea", "1", "Box 1", 2),
+      row("lea", "1", "Binder A", 5),
+    ])
+  let assert Ok(Nil) = placed_cards_dao.relocate("Box 1", "Binder A")
+
+  assert placed_cards_dao.list() == Ok([row("lea", "1", "Binder A", 7)])
+}
+
+pub fn relocate_leaves_other_locations_untouched_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) =
+    placed_cards_dao.increment([
+      row("lea", "1", "Box 1", 2),
+      row("lea", "1", "Bulk", 4),
+    ])
+  let assert Ok(Nil) = placed_cards_dao.relocate("Box 1", "Binder A")
+
+  assert placed_cards_dao.list()
+    == Ok([row("lea", "1", "Binder A", 2), row("lea", "1", "Bulk", 4)])
+}
+
+pub fn relocating_an_absent_location_is_a_no_op_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) = placed_cards_dao.increment([row("lea", "1", "Bulk", 1)])
+  let assert Ok(Nil) = placed_cards_dao.relocate("Box 1", "Binder A")
+
+  assert placed_cards_dao.list() == Ok([row("lea", "1", "Bulk", 1)])
+}
+
 pub fn list_orders_by_key_then_location_test() {
   use _db <- test_db.with_temp_db()
 

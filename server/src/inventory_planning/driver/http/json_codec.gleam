@@ -210,3 +210,23 @@ pub fn decode_reorder_rules_body(
   json.parse(from: json_string, using: decoder)
   |> result.map_error(fn(_) { "invalid request body" })
 }
+
+pub type RelocatePlacedCardsBody {
+  RelocatePlacedCardsBody(from_location_name: String, to_location_name: String)
+}
+
+pub fn decode_relocate_placed_cards_body(
+  json_string: String,
+) -> Result(RelocatePlacedCardsBody, String) {
+  let decoder = {
+    use from_location_name <- decode.field("from_location_name", decode.string)
+    use to_location_name <- decode.field("to_location_name", decode.string)
+    decode.success(RelocatePlacedCardsBody(
+      from_location_name:,
+      to_location_name:,
+    ))
+  }
+
+  json.parse(from: json_string, using: decoder)
+  |> result.map_error(fn(_) { "invalid request body" })
+}

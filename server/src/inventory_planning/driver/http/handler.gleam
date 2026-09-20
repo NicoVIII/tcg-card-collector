@@ -3,6 +3,7 @@ import gleam/http/response.{type Response}
 import gleam/list
 import inventory_planning/application/commands/delete_rule/handler as delete_rule_handler
 import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
+import inventory_planning/application/commands/relocate_placed_cards/handler as relocate_placed_cards_handler
 import inventory_planning/application/commands/reorder_rules/handler as reorder_rules_handler
 import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
 import inventory_planning/application/commands/update_bulk_spec/handler as update_bulk_spec_handler
@@ -199,6 +200,31 @@ pub fn handle_unmark_cards_placed(
           helpers.json_response(200, json_codec.encode_ok("cards unplaced"))
         Error(error) ->
           helpers.error_response(error_presentation.unmark_cards_placed(error))
+      }
+  }
+}
+
+pub fn handle_relocate_placed_cards(
+  req: Request(mist.Connection),
+  deps: Dependencies,
+) -> Response(mist.ResponseData) {
+  use body <- helpers.with_json_body(req)
+  case inventory_codec.decode_relocate_placed_cards_body(body) {
+    Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
+    Ok(b) ->
+      case
+        relocate_placed_cards_handler.execute(
+          relocate_placed_cards_handler.RelocatePlacedCardsCommand(
+            from_location: b.from_location_name,
+            to_location: b.to_location_name,
+          ),
+          deps.relocate_placed_cards_port,
+        )
+      {
+        Ok(_) ->
+          helpers.json_response(200, json_codec.encode_ok("cards relocated"))
+        Error(error) ->
+          helpers.error_response(error_presentation.relocate_placed_cards(error))
       }
   }
 }

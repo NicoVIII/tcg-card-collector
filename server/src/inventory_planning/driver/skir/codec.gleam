@@ -2,6 +2,7 @@ import gleam/list
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
 import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
+import inventory_planning/application/commands/relocate_placed_cards/ports as relocate_placed_cards_ports
 import inventory_planning/application/commands/reorder_rules/ports as reorder_rules_ports
 import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
@@ -226,6 +227,19 @@ pub fn map_unmark_cards_placed_result(
     result,
     inventory_planning_commands.UnmarkCardsPlacedResponseSuccess,
     error_presentation.unmark_cards_placed,
+  )
+}
+
+pub fn map_relocate_placed_cards_result(
+  result: Result(Nil, relocate_placed_cards_ports.RelocatePlacedCardsError),
+) -> Result(
+  inventory_planning_commands.RelocatePlacedCardsResponse,
+  service.ServiceError,
+) {
+  helpers.map_command(
+    result,
+    inventory_planning_commands.RelocatePlacedCardsResponseSuccess,
+    error_presentation.relocate_placed_cards,
   )
 }
 

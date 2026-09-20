@@ -150,6 +150,36 @@ pub fn merge_keeps_different_finish_as_separate_placements_test() {
     == [#("foil", 1), #("nonfoil", 2)]
 }
 
+pub fn new_relocation_trims_both_locations_test() {
+  let assert Ok(relocation) =
+    placement.new_relocation(from: " Box 1 ", to: " Binder A ")
+
+  assert placement.relocation_from(relocation) == "Box 1"
+  assert placement.relocation_to(relocation) == "Binder A"
+}
+
+pub fn new_relocation_rejects_an_empty_from_location_test() {
+  assert placement.new_relocation(from: "   ", to: "Binder A")
+    == Error(placement.EmptyFromLocation)
+}
+
+pub fn new_relocation_rejects_an_empty_to_location_test() {
+  assert placement.new_relocation(from: "Box 1", to: "   ")
+    == Error(placement.EmptyToLocation)
+}
+
+pub fn new_relocation_rejects_the_same_location_test() {
+  assert placement.new_relocation(from: "Box 1", to: "Box 1")
+    == Error(placement.SameLocation)
+}
+
+// Trimming can make two textually-different inputs the same location; that
+// must be caught too, not just a byte-identical `from`/`to`.
+pub fn new_relocation_rejects_the_same_location_after_trim_test() {
+  assert placement.new_relocation(from: "Box 1 ", to: " Box 1")
+    == Error(placement.SameLocation)
+}
+
 pub fn merge_orders_by_set_code_then_collector_number_then_location_test() {
   let place = fn(set_code, collector_number, location) {
     let assert Ok(p) =

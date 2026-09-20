@@ -1,5 +1,6 @@
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
+import inventory_planning/application/commands/relocate_placed_cards/ports as relocate_placed_cards_ports
 import inventory_planning/application/commands/reorder_rules/ports as reorder_rules_ports
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
@@ -73,5 +74,16 @@ pub fn unmark_cards_placed(
       PresentedError(BadRequest, "invalid placements")
     unmark_cards_placed_ports.PersistenceFailed(_) ->
       PresentedError(Internal, "failed to unmark cards placed")
+  }
+}
+
+pub fn relocate_placed_cards(
+  error: relocate_placed_cards_ports.RelocatePlacedCardsError,
+) -> PresentedError {
+  case error {
+    relocate_placed_cards_ports.InvalidRelocation ->
+      PresentedError(BadRequest, "invalid relocation")
+    relocate_placed_cards_ports.PersistenceFailed(_) ->
+      PresentedError(Internal, "failed to relocate placed cards")
   }
 }

@@ -121,3 +121,21 @@ enum UnmarkCardsPlacedResponse {
 method UnmarkCardsPlaced(
   UnmarkCardsPlacedRequest
 ): UnmarkCardsPlacedResponse = 308;
+
+// Re-points every placed_cards row at one location onto another in a single
+// atomic write, with no CopyKey involved — the ledger bookkeeping fix for a
+// rule-target rename (#107), as opposed to MarkCardsPlaced/UnmarkCardsPlaced
+// which record a physical move of specific copies.
+struct RelocatePlacedCardsRequest {
+  from_location_name: string = 0;
+  to_location_name: string = 1;
+}
+
+enum RelocatePlacedCardsResponse {
+  success = 1;
+  error = 2;
+}
+
+method RelocatePlacedCards(
+  RelocatePlacedCardsRequest
+): RelocatePlacedCardsResponse = 310;
