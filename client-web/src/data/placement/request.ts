@@ -3,6 +3,8 @@ import {
   CardPlacement,
   MarkCardsPlaced,
   MarkCardsPlacedRequest,
+  RelocatePlacedCards,
+  RelocatePlacedCardsRequest,
   UnmarkCardsPlaced,
   UnmarkCardsPlacedRequest,
 } from "../skirout/inventory_planning/commands.js";
@@ -128,6 +130,25 @@ export async function unmarkCardsPlaced(
   const response = await skirClient.invokeRemote(
     UnmarkCardsPlaced,
     UnmarkCardsPlacedRequest.create({ placements: toRpcPlacements(placements) }),
+  );
+
+  return { success: response.union.kind === "SUCCESS" };
+}
+
+// Re-points every ledger row at `from_location_name` onto `to_location_name`
+// — the "it's the same box, just renamed" resolution for a re-sort group
+// (data/placement/resort.ts). No CopyKey involved: this is a bookkeeping fix,
+// not a record of cards physically moving.
+export async function relocatePlacedCards(
+  from_location_name: string,
+  to_location_name: string,
+): Promise<{ success: boolean }> {
+  const response = await skirClient.invokeRemote(
+    RelocatePlacedCards,
+    RelocatePlacedCardsRequest.create({
+      fromLocationName: from_location_name,
+      toLocationName: to_location_name,
+    }),
   );
 
   return { success: response.union.kind === "SUCCESS" };
