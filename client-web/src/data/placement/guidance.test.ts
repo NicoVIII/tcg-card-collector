@@ -148,11 +148,27 @@ describe("buildGuidance", () => {
 
   it("drops fully-placed locations and clamps over-placement at zero", () => {
     const proj = projection([location("Rare", [card("200", 1)])]);
-    // The ledger holds more than the projection: to_place and total_unplaced
-    // both clamp to zero rather than going negative.
+    // The ledger holds more than the projection: to_place clamps to zero
+    // rather than going negative. The excess is misplaced work, not this
+    // module's concern (data/placement/resort.ts).
     const ledger = [placed("200", "Rare", 2)];
 
     expect(buildGuidance(proj, ledger)).toEqual({ locations: [], total_unplaced: 0 });
+  });
+
+  // The regression #107 exists to close: total_unplaced must equal what the
+  // location lists actually show, even when the ledger holds copies at a
+  // location the projection no longer targets at all.
+  it("agrees with the location lists when the ledger holds drift", () => {
+    const proj = projection([location("Binder A", [card("161", 2)])]);
+    const ledger = [placed("161", "Box 1", 2)];
+
+    const guidance = buildGuidance(proj, ledger);
+
+    expect(guidance.total_unplaced).toBe(
+      guidance.locations.reduce((sum, location) => sum + location.total_quantity, 0),
+    );
+    expect(guidance.total_unplaced).toBe(2);
   });
 
   // A tick on one kind of copy must not cancel out another kind's count — the

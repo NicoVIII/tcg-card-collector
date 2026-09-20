@@ -26,22 +26,10 @@ type CopyIdentity = {
 const atKey = (copy: CopyIdentity, location: string): string =>
   `${copy.set_code} ${copy.collector_number} ${copy.finish} ${copy.language} ${location}`;
 
-const totalKey = (copy: CopyIdentity): string =>
-  `${copy.set_code} ${copy.collector_number} ${copy.finish} ${copy.language}`;
-
 function indexPlacedAt(ledger: PlacedLedgerRow[]): Map<string, number> {
   const placed = new Map<string, number>();
   for (const row of ledger) {
     const key = atKey(row, row.location);
-    placed.set(key, (placed.get(key) ?? 0) + row.quantity);
-  }
-  return placed;
-}
-
-function indexPlacedTotal(ledger: PlacedLedgerRow[]): Map<string, number> {
-  const placed = new Map<string, number>();
-  for (const row of ledger) {
-    const key = totalKey(row);
     placed.set(key, (placed.get(key) ?? 0) + row.quantity);
   }
   return placed;
@@ -113,31 +101,11 @@ function buildLocation(
   };
 }
 
-// Quantity is conserved across the cascade, so a key's collection total is the
-// sum of its projected copies; unplaced is that minus what's been placed,
-// clamped at zero and summed.
-function totalUnplaced(projection: InventoryProjection, placedTotal: Map<string, number>): number {
-  const projectedTotal = new Map<string, number>();
-  for (const location of projection.locations) {
-    for (const card of location.cards) {
-      const key = totalKey(card);
-      projectedTotal.set(key, (projectedTotal.get(key) ?? 0) + card.quantity);
-    }
-  }
-
-  let sum = 0;
-  for (const [key, projected] of projectedTotal) {
-    sum += Math.max(0, projected - (placedTotal.get(key) ?? 0));
-  }
-  return sum;
-}
-
 export function buildGuidance(
   projection: InventoryProjection,
   ledger: PlacedLedgerRow[],
 ): PlacementGuidance {
   const placedAt = indexPlacedAt(ledger);
-  const placedTotal = indexPlacedTotal(ledger);
 
   const locations: PlacementLocation[] = [];
   for (const location of projection.locations) {
@@ -147,8 +115,12 @@ export function buildGuidance(
     }
   }
 
-  return {
-    locations,
-    total_unplaced: totalUnplaced(projection, placedTotal),
-  };
+  // The sum of what the lists below actually show — not a second definition
+  // of "unplaced" computed independently, which is exactly how the header and
+  // the lists used to disagree in the presence of drift (#107). A copy placed
+  // somewhere the rules no longer send it is not "unplaced" by this number;
+  // it's misplaced (data/placement/resort.ts), a different kind of work.
+  const total_unplaced = locations.reduce((sum, location) => sum + location.total_quantity, 0);
+
+  return { locations, total_unplaced };
 }
