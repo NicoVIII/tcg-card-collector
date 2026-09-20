@@ -120,6 +120,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # A release tag published with a stale server/gleam.toml would ship an
+      # image labelled e.g. 0.2.0 that reports 0.1.0 over REST/Skir — the one
+      # hazard the single-source-of-truth model doesn't already rule out.
+      - name: Verify tag matches server/gleam.toml version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          toml_version="$(grep -m1 '^version = ' server/gleam.toml | sed -E 's/version = "(.*)"/\1/')"
+          if [ "$tag_version" != "$toml_version" ]; then
+            echo "::error::Tag v$tag_version does not match server/gleam.toml version $toml_version"
+            exit 1
+          fi
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -149,5 +162,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_CHANNEL=${{ startsWith(github.ref, 'refs/tags/v') && 'release' || 'dev' }}
+            APP_COMMIT=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

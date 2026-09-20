@@ -74,6 +74,12 @@ RUN wget -qO /dbmate \
 
 FROM erlang:${ERLANG_VERSION}-alpine
 
+# Build identity only, not an operator-tunable setting: "release" on a `v*`
+# tag build, "dev" otherwise (main, PRs, local `docker build`) — so a main
+# image can never pass for the release it followed (issue #91).
+ARG APP_CHANNEL=dev
+ARG APP_COMMIT=local
+
 RUN apk add --no-cache curl jq sqlite && adduser -D -H -h /app webapp
 
 COPY --from=server-builder --chown=webapp /app/build/erlang-shipment/ /app/
@@ -86,7 +92,9 @@ RUN chmod +x /app/start.sh
 
 ENV STATIC_DIR=/app/static \
     TCG_DB_FILE=/data/tcg-card-collector.db \
-    PORT=8080
+    PORT=8080 \
+    TCG_APP_CHANNEL=${APP_CHANNEL} \
+    TCG_APP_COMMIT=${APP_COMMIT}
 
 RUN mkdir /data && chown webapp:webapp /data
 
