@@ -46,6 +46,13 @@ everything any context still owns (the 0008 precedent: seed the living collectio
 drop the import-history tables). Before a destructive migration touches a real DB, the
 db file gets copied; a missing backup step in the plan is a finding.
 
+**Upgrades never lose user data (the v0.1.0 promise).** From v0.1.0 on, a released
+migration carries collection, placement and rule data forward intact. The Scryfall
+catalog is exempt — an up may drop it when a re-sync restores it. Losing anything else
+is a breaking change: it ships only if the release notes say so plainly, and a migration
+plan that loses user data without that note is a finding. README's "Data preservation"
+section is the user-facing wording — keep the two in step.
+
 **Context isolation extends into the database.** Every table is owned by exactly one
 bounded context; no SQL statement reads another context's tables and no foreign key
 crosses contexts — cross-context data flows through Gleam facades via application
@@ -78,7 +85,8 @@ concrete change:
   cross-context SQL/FKs, string-built SQL outside the ADR 0005 exception, missing or
   asymmetric downs.
 - **Risks (should fix)** — destructive steps without the forward-migration or backup
-  plan, speculative indexes, surrogate keys shadowing natural identity.
+  plan, unannounced user-data loss (missing release-notes callout), speculative indexes,
+  surrogate keys shadowing natural identity.
 - **Open calls for the author** — schema shapes that would harden the finish/language
   debt (see the domain-design skill), anything ADR-weight.
 

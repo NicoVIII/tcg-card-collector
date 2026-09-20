@@ -18,9 +18,7 @@ and does not migrate itself.
 
 ## Data volume
 
-Mount a writable volume at `/data`. The database lives there. Back up by
-copying that single file.
+Mount a writable volume at `/data`. The database lives there.
 
-```
-docker run -d -p 8080:8080 -v tcg-data:/data ghcr.io/nicoviii/tcg-card-collector:latest
-```
+Running the image, choosing a tag, upgrading, and backup/restore are documented
+in the root [README](../README.md#self-hosting).
