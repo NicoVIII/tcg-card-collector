@@ -274,6 +274,101 @@ pub fn first_per_printing_prefers_nonfoil_en_among_kinds_of_copy_test() {
   assert leftover.card.language == language.De
 }
 
+// The four tests below isolate one canonical-order step each. The test above
+// varies finish and language together, so it passes under orderings that rank
+// those two steps very differently — it can't pin either on its own.
+
+fn copy_of(
+  base: PlannedCard,
+  finish_value: finish.Finish,
+  language_value: language.Language,
+) -> PlannedCard {
+  attrs.PlannedCard(..base, finish: finish_value, language: language_value)
+}
+
+// The single copy a first-copy rule claims out of `cards`. Input order is
+// deliberately not canonical order in the callers, so a test that passes is
+// evidence the comparator did the work rather than the list order.
+fn claimed_copy(
+  cards: List(PlannedCard),
+  selector: copy_selector.CopySelector,
+) -> PlannedCard {
+  let cascade =
+    RuleCascade(
+      rules: [rule("r1", 0, selector, "rarity >= rare", "Binder")],
+      bulk: bulk_spec.BulkSpec(location_name: "Bulk", sort_keys: []),
+    )
+  let buckets = rule_cascade.project(cascade, cards, dict.new())
+  let assert [claimed] = find_bucket(buckets, "Binder").cards
+  claimed.card
+}
+
+fn bolt(set_code: String, released_at: String) -> PlannedCard {
+  card(set_code, "1", "Bolt", 1, released_at, "same", rarity.Rare, "R")
+}
+
+// Finish alone, within one printing: nonfoil beats foil beats etched.
+pub fn first_per_printing_prefers_nonfoil_over_foil_and_etched_test() {
+  let base = bolt("a", "2010-01-01")
+  let claimed =
+    claimed_copy(
+      [
+        copy_of(base, finish.Etched, language.En),
+        copy_of(base, finish.Foil, language.En),
+        copy_of(base, finish.Nonfoil, language.En),
+      ],
+      copy_selector.FirstCopyPerPrinting,
+    )
+
+  assert claimed.finish == finish.Nonfoil
+}
+
+// Language alone, within one printing: English wins.
+pub fn first_per_printing_prefers_en_over_other_languages_test() {
+  let base = bolt("a", "2010-01-01")
+  let claimed =
+    claimed_copy(
+      [
+        copy_of(base, finish.Nonfoil, language.De),
+        copy_of(base, finish.Nonfoil, language.En),
+      ],
+      copy_selector.FirstCopyPerPrinting,
+    )
+
+  assert claimed.language == language.En
+}
+
+// Across printings of one card, release date outranks finish: the older
+// nonfoil is claimed even though the newer printing is owned as a foil.
+pub fn first_per_oracle_release_date_outranks_finish_test() {
+  let claimed =
+    claimed_copy(
+      [
+        copy_of(bolt("b", "2010-01-01"), finish.Foil, language.En),
+        copy_of(bolt("a", "1993-08-05"), finish.Nonfoil, language.En),
+      ],
+      copy_selector.FirstCopyPerOracle,
+    )
+
+  assert card_key.set_code_string(claimed.key) == "a"
+  assert claimed.finish == finish.Nonfoil
+}
+
+// Same for language: the older German copy beats the newer English one.
+pub fn first_per_oracle_release_date_outranks_language_test() {
+  let claimed =
+    claimed_copy(
+      [
+        copy_of(bolt("b", "2010-01-01"), finish.Nonfoil, language.En),
+        copy_of(bolt("a", "1993-08-05"), finish.Nonfoil, language.De),
+      ],
+      copy_selector.FirstCopyPerOracle,
+    )
+
+  assert card_key.set_code_string(claimed.key) == "a"
+  assert claimed.language == language.De
+}
+
 // A card whose printing isn't in the catalog (no attributes) fails every
 // attribute predicate and lands wholly in bulk.
 pub fn catalog_unknown_card_falls_to_bulk_test() {
