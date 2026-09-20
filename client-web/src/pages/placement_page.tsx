@@ -11,7 +11,7 @@ import {
 import { buildGuidance } from "../data/placement/guidance";
 import { type ResortEntry, type ResortGroup, buildResortWorklist } from "../data/placement/resort";
 import { usePlacedLedgerQuery } from "../data/placement/query";
-import type { CardPlacementInput } from "../data/placement/request";
+import type { CardPlacementInput, PlacementCard } from "../data/placement/request";
 import {
   type FocusedLocation,
   type LocationSummary,
@@ -19,13 +19,15 @@ import {
   focusNameFrom,
   focusedLocation,
   locationSummaries,
+  totalToPlace,
+  unplacedRowCount,
 } from "./placement_focus";
 import {
   type MarkAllBatch,
   type PlacementSession,
-  type SessionCard,
   betweenLabel,
   emptySession,
+  isTicked,
   restoreTicks,
   tick,
   tickAll,
@@ -141,7 +143,7 @@ function ResortGroupPanel(props: ResortGroupPanelProps) {
   );
 }
 
-function placementOf(location_name: string, card: SessionCard["card"]): CardPlacementInput {
+function placementOf(location_name: string, card: PlacementCard): CardPlacementInput {
   return {
     set_code: card.set_code,
     collector_number: card.collector_number,
@@ -154,34 +156,43 @@ function placementOf(location_name: string, card: SessionCard["card"]): CardPlac
 
 type PlacementRowProps = {
   location_name: string;
-  entry: SessionCard;
+  card: PlacementCard;
+  session: PlacementSession;
   index: number;
-  onTick: (location_name: string, entry: SessionCard, index: number) => void;
-  onUntick: (location_name: string, entry: SessionCard) => void;
+  onTick: (location_name: string, card: PlacementCard, index: number) => void;
+  onUntick: (location_name: string, card: PlacementCard) => void;
 };
 
+// struck is asked of the session per render rather than carried on the row
+// object — that's what keeps `props.card` the same reference across a tick
+// elsewhere in the list, which is what lets <For> (keyed by reference in
+// LocationPanel below) skip rebuilding every other row (#105).
 function PlacementRow(props: PlacementRowProps) {
+  const struck = () => isTicked(props.session, props.location_name, props.card);
+
   return (
-    <li class="placement-row" classList={{ "placement-row-done": props.entry.struck }}>
+    <li class="placement-row" classList={{ "placement-row-done": struck() }}>
       <input
         type="checkbox"
-        checked={props.entry.struck}
-        aria-label={`Placed ${props.entry.card.name} (${props.entry.card.set_code} ${props.entry.card.collector_number})`}
+        checked={struck()}
+        aria-label={`Placed ${props.card.name} (${props.card.set_code} ${props.card.collector_number})`}
         onChange={() =>
-          props.entry.struck
-            ? props.onUntick(props.location_name, props.entry)
-            : props.onTick(props.location_name, props.entry, props.index)
+          struck()
+            ? props.onUntick(props.location_name, props.card)
+            : props.onTick(props.location_name, props.card, props.index)
         }
       />
       <span class="placement-card">
         <span class="placement-card-name">
-          {props.entry.card.to_place_quantity}x {props.entry.card.name}
+          {props.card.to_place_quantity}x {props.card.name}
         </span>
         <span class="placement-card-key">
-          {props.entry.card.set_code} {props.entry.card.collector_number} ({props.entry.card.finish}
-          ·{props.entry.card.language})
+          {props.card.set_code} {props.card.collector_number} ({props.card.finish}·
+          {props.card.language})
         </span>
-        <span class="placement-card-hint">{betweenLabel(props.entry.card)}</span>
+        <span class="placement-card-hint">
+          {betweenLabel(props.session, props.location_name, props.card)}
+        </span>
       </span>
     </li>
   );
@@ -189,33 +200,31 @@ function PlacementRow(props: PlacementRowProps) {
 
 type LocationPanelProps = {
   location: FocusedLocation;
+  session: PlacementSession;
   markAllPending: boolean;
   undoable: MarkAllBatch | null;
   undoPending: boolean;
-  onTick: (location_name: string, entry: SessionCard, index: number) => void;
-  onUntick: (location_name: string, entry: SessionCard) => void;
+  onTick: (location_name: string, card: PlacementCard, index: number) => void;
+  onUntick: (location_name: string, card: PlacementCard) => void;
   onMarkAll: (location: FocusedLocation) => void;
   onUndoMarkAll: (batch: MarkAllBatch) => void;
 };
-
-function unplacedCount(location: FocusedLocation): number {
-  return location.cards.filter((entry) => !entry.struck).length;
-}
 
 function LocationPanel(props: LocationPanelProps) {
   const undoableHere = () =>
     props.undoable !== null && props.undoable.location_name === props.location.location_name
       ? props.undoable
       : null;
+  const unplaced = () => unplacedRowCount(props.session, props.location);
 
   return (
     <div class="placement-panel">
       <button
         type="button"
         onClick={() => props.onMarkAll(props.location)}
-        disabled={props.markAllPending || unplacedCount(props.location) === 0}
+        disabled={props.markAllPending || unplaced() === 0}
       >
-        Mark all {unplacedCount(props.location)} placed
+        Mark all {unplaced()} placed
       </button>
       <Show when={undoableHere()}>
         {(batch) => (
@@ -233,10 +242,11 @@ function LocationPanel(props: LocationPanelProps) {
       </Show>
       <ul class="placement-list">
         <For each={props.location.cards}>
-          {(entry, index) => (
+          {(card, index) => (
             <PlacementRow
               location_name={props.location.location_name}
-              entry={entry}
+              card={card}
+              session={props.session}
               index={index()}
               onTick={props.onTick}
               onUntick={props.onUntick}
@@ -248,23 +258,42 @@ function LocationPanel(props: LocationPanelProps) {
   );
 }
 
+function summaryFor(summaries: LocationSummary[], location_name: string): LocationSummary {
+  return (
+    summaries.find((summary) => summary.location_name === location_name) ?? {
+      location_name,
+      to_place_quantity: 0,
+    }
+  );
+}
+
 type LocationRowProps = {
-  summary: LocationSummary;
+  location_name: string;
+  // The whole-page summaries list, not this row's own summary — <For> below
+  // keys the outer list by `location_name` (a stable primitive) precisely so
+  // a tick's fresh `summaries()` array doesn't tear down every LocationRow,
+  // including the open one and its whole card list (#105). Passing a fresh
+  // LocationSummary object per row instead would undo that: it changes
+  // reference every tick just like the row objects mergeLocationCards used
+  // to build, and <For> would be back to keying on ephemeral identity.
+  summaries: () => LocationSummary[];
   panelId: string;
   isOpen: boolean;
   focused: FocusedLocation | null;
+  session: PlacementSession;
   markAllPending: boolean;
   undoable: MarkAllBatch | null;
   undoPending: boolean;
   onToggle: (location_name: string, headerEl: HTMLElement) => void;
-  onTick: (location_name: string, entry: SessionCard, index: number) => void;
-  onUntick: (location_name: string, entry: SessionCard) => void;
+  onTick: (location_name: string, card: PlacementCard, index: number) => void;
+  onUntick: (location_name: string, card: PlacementCard) => void;
   onMarkAll: (location: FocusedLocation) => void;
   onUndoMarkAll: (batch: MarkAllBatch) => void;
 };
 
 function LocationRow(props: LocationRowProps) {
   let headerRef: HTMLButtonElement | undefined;
+  const summary = () => summaryFor(props.summaries(), props.location_name);
 
   return (
     <div class="placement-location">
@@ -277,17 +306,18 @@ function LocationRow(props: LocationRowProps) {
           class="placement-location-toggle"
           aria-expanded={props.isOpen}
           aria-controls={props.panelId}
-          onClick={() => headerRef && props.onToggle(props.summary.location_name, headerRef)}
+          onClick={() => headerRef && props.onToggle(props.location_name, headerRef)}
         >
           <span aria-hidden="true">{props.isOpen ? "▾" : "▸"}</span>
-          <span>{props.summary.location_name}</span>
-          <span>{countLabel(props.summary)}</span>
+          <span>{props.location_name}</span>
+          <span>{countLabel(summary())}</span>
         </button>
       </h3>
       <Show when={props.isOpen && props.focused !== null}>
         <div id={props.panelId}>
           <LocationPanel
             location={props.focused as FocusedLocation}
+            session={props.session}
             markAllPending={props.markAllPending}
             undoable={props.undoable}
             undoPending={props.undoPending}
@@ -450,6 +480,14 @@ export function PlacementPage() {
   // Collapsed summaries for every location; only the open one pays the per-card
   // merge, so ticking a card no longer re-derives (or re-renders) the rest.
   const summaries = createMemo<LocationSummary[]>(() => locationSummaries(guidance(), session()));
+  // Rendered separately from `summaries()`: a fresh LocationSummary object per
+  // location every tick would defeat the point below (<For> keys by
+  // reference), but a location's *name* is a stable string across a tick, so
+  // deriving just the names keeps the open location's row keyed the same way
+  // tick over tick.
+  const locationNames = createMemo<string[]>(() =>
+    summaries().map((summary) => summary.location_name),
+  );
   const focused = createMemo<FocusedLocation | null>(() =>
     focusedLocation(guidance(), session(), focusName()),
   );
@@ -467,37 +505,33 @@ export function PlacementPage() {
   // Failed mutations must not leave the optimistic tick standing — the ledger
   // never got it, so the row must go back to what it looked like before this
   // action, without disturbing any tick made while the request was in flight.
-  const rollback = (
-    before: PlacementSession,
-    location_name: string,
-    cards: SessionCard["card"][],
-  ) => {
+  const rollback = (before: PlacementSession, location_name: string, cards: PlacementCard[]) => {
     setSession(restoreTicks(session(), before, location_name, cards));
   };
 
-  const tickCard = (location_name: string, entry: SessionCard, index: number) => {
+  const tickCard = (location_name: string, card: PlacementCard, index: number) => {
     mutationError.clear();
     setLastMarkAll(null);
     setLastResortAction(null);
     const before = session();
-    setSession(tick(before, location_name, entry.card, index));
-    markMutation.mutate([placementOf(location_name, entry.card)], {
+    setSession(tick(before, location_name, card, index));
+    markMutation.mutate([placementOf(location_name, card)], {
       onError: (error) => {
-        rollback(before, location_name, [entry.card]);
+        rollback(before, location_name, [card]);
         mutationError.report(error);
       },
     });
   };
 
-  const untickCard = (location_name: string, entry: SessionCard) => {
+  const untickCard = (location_name: string, card: PlacementCard) => {
     mutationError.clear();
     setLastMarkAll(null);
     setLastResortAction(null);
     const before = session();
-    setSession(untick(before, location_name, entry.card));
-    unmarkMutation.mutate([placementOf(location_name, entry.card)], {
+    setSession(untick(before, location_name, card));
+    unmarkMutation.mutate([placementOf(location_name, card)], {
       onError: (error) => {
-        rollback(before, location_name, [entry.card]);
+        rollback(before, location_name, [card]);
         mutationError.report(error);
       },
     });
@@ -571,8 +605,8 @@ export function PlacementPage() {
       <Show when={mutationError.messageFor() !== null}>
         <p role="alert">{mutationError.messageFor()}</p>
       </Show>
-      <Show when={(guidance()?.total_unplaced ?? 0) > 0}>
-        <p class="hint">{guidance()?.total_unplaced} card(s) still to place.</p>
+      <Show when={totalToPlace(summaries()) > 0}>
+        <p class="hint">{totalToPlace(summaries())} card(s) still to place.</p>
       </Show>
       <Show when={misplacedCount() > 0}>
         <p class="hint">{misplacedCount()} card(s) need re-sorting.</p>
@@ -617,13 +651,15 @@ export function PlacementPage() {
           </Show>
         }
       >
-        <For each={summaries()}>
-          {(summary, index) => (
+        <For each={locationNames()}>
+          {(location_name, index) => (
             <LocationRow
-              summary={summary}
+              location_name={location_name}
+              summaries={summaries}
               panelId={`placement-panel-${index()}`}
-              isOpen={focusName() === summary.location_name}
+              isOpen={focusName() === location_name}
               focused={focused()}
+              session={session()}
               markAllPending={markMutation.isPending}
               undoable={lastMarkAll()}
               undoPending={unmarkMutation.isPending}

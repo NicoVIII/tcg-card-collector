@@ -10,15 +10,23 @@ import {
   tickAll,
   untick,
   untickAll,
-  type SessionCard,
 } from "./placement_session";
 
 function neighbor(
   name: string,
   collector_number: string,
   already_placed: boolean,
+  overrides: Partial<Pick<PlacementNeighbor, "finish" | "language">> = {},
 ): PlacementNeighbor {
-  return { name, set_code: "lea", collector_number, already_placed };
+  return {
+    name,
+    set_code: "lea",
+    collector_number,
+    finish: "nonfoil",
+    language: "en",
+    already_placed,
+    ...overrides,
+  };
 }
 
 function card(collector_number: string, overrides: Partial<PlacementCard> = {}): PlacementCard {
@@ -63,11 +71,7 @@ describe("placement session ticking", () => {
 });
 
 describe("tickAll / untickAll", () => {
-  function sessionCard(collector_number: string, struck = false): SessionCard {
-    return { card: card(collector_number), struck };
-  }
-
-  function tickAllOrThrow(session: ReturnType<typeof emptySession>, cards: SessionCard[]) {
+  function tickAllOrThrow(session: ReturnType<typeof emptySession>, cards: PlacementCard[]) {
     const result = tickAll(session, "Bulk", cards);
     if (result === null) {
       throw new Error("expected tickAll to return a batch");
@@ -76,39 +80,42 @@ describe("tickAll / untickAll", () => {
   }
 
   it("ticks every unstruck entry and returns the batch", () => {
-    const cards = [sessionCard("1"), sessionCard("2"), sessionCard("3")];
+    const cards = [card("1"), card("2"), card("3")];
 
     const { session, batch } = tickAllOrThrow(emptySession(), cards);
 
     expect(batch.location_name).toBe("Bulk");
     expect(batch.cards.map((c) => c.collector_number)).toEqual(["1", "2", "3"]);
-    for (const entry of cards) {
-      expect(isTicked(session, "Bulk", entry.card)).toBe(true);
+    for (const c of cards) {
+      expect(isTicked(session, "Bulk", c)).toBe(true);
     }
   });
 
   it("skips already-struck entries", () => {
-    const cards = [sessionCard("1", true), sessionCard("2")];
+    const already = card("1");
+    const fresh = card("2");
+    const struckSession = tick(emptySession(), "Bulk", already, 0);
 
-    const { batch } = tickAllOrThrow(emptySession(), cards);
+    const { batch } = tickAllOrThrow(struckSession, [already, fresh]);
 
     expect(batch.cards.map((c) => c.collector_number)).toEqual(["2"]);
   });
 
   it("returns null when there is nothing left to mark", () => {
-    const cards = [sessionCard("1", true)];
+    const already = card("1");
+    const struckSession = tick(emptySession(), "Bulk", already, 0);
 
-    expect(tickAll(emptySession(), "Bulk", cards)).toBeNull();
+    expect(tickAll(struckSession, "Bulk", [already])).toBeNull();
   });
 
   it("undoes a mark-all batch as a unit", () => {
-    const cards = [sessionCard("1"), sessionCard("2")];
+    const cards = [card("1"), card("2")];
     const { session: marked, batch } = tickAllOrThrow(emptySession(), cards);
 
     const restored = untickAll(marked, batch);
 
-    for (const entry of cards) {
-      expect(isTicked(restored, "Bulk", entry.card)).toBe(false);
+    for (const c of cards) {
+      expect(isTicked(restored, "Bulk", c)).toBe(false);
     }
   });
 });
@@ -123,7 +130,7 @@ describe("restoreTicks", () => {
     const restored = restoreTicks(current, before, "Bulk", [b]);
 
     expect(
-      mergeLocationCards(restored, "Bulk", [a]).map((entry) => entry.card.collector_number),
+      mergeLocationCards(restored, "Bulk", [a]).map((entry) => entry.collector_number),
     ).toEqual(["1", "2"]);
   });
 
@@ -152,10 +159,7 @@ describe("restoreTicks", () => {
   });
 
   it("restores a whole mark-all batch as a unit", () => {
-    const cards = [
-      { card: card("1"), struck: false },
-      { card: card("2"), struck: false },
-    ];
+    const cards = [card("1"), card("2")];
     const before = emptySession();
     const { session: current, batch } = (() => {
       const result = tickAll(before, "Bulk", cards);
@@ -167,14 +171,14 @@ describe("restoreTicks", () => {
 
     const restored = restoreTicks(current, before, batch.location_name, batch.cards);
 
-    for (const entry of cards) {
-      expect(isTicked(restored, "Bulk", entry.card)).toBe(false);
+    for (const c of cards) {
+      expect(isTicked(restored, "Bulk", c)).toBe(false);
     }
   });
 });
 
 describe("mergeLocationCards", () => {
-  it("re-inserts a ticked card struck-through at its recorded index", () => {
+  it("re-inserts a ticked card at its recorded index", () => {
     const a = card("1");
     const b = card("2");
     const c = card("3");
@@ -183,11 +187,8 @@ describe("mergeLocationCards", () => {
 
     const merged = mergeLocationCards(session, "Bulk", [a, c]);
 
-    expect(merged.map((entry) => [entry.card.collector_number, entry.struck])).toEqual([
-      ["1", false],
-      ["2", true],
-      ["3", false],
-    ]);
+    expect(merged.map((entry) => entry.collector_number)).toEqual(["1", "2", "3"]);
+    expect(merged.map((entry) => isTicked(session, "Bulk", entry))).toEqual([false, true, false]);
   });
 
   it("does not duplicate a ticked card that is still in the fresh guidance", () => {
@@ -196,7 +197,21 @@ describe("mergeLocationCards", () => {
 
     const merged = mergeLocationCards(session, "Bulk", [a]);
 
-    expect(merged).toEqual([{ card: a, struck: false }]);
+    expect(merged).toEqual([a]);
+  });
+
+  // Reference stability is the load-bearing invariant of #105: <For> keys by
+  // reference, so a card the fresh guidance still lists must come back as the
+  // exact same object, not a copy — otherwise every row is torn down and
+  // rebuilt on every tick regardless of which one changed.
+  it("keeps the same object reference for a card the fresh guidance still lists", () => {
+    const a = card("1");
+    const b = card("2");
+
+    const merged = mergeLocationCards(emptySession(), "Bulk", [a, b]);
+
+    expect(merged[0]).toBe(a);
+    expect(merged[1]).toBe(b);
   });
 });
 
@@ -207,7 +222,7 @@ describe("betweenLabel", () => {
       after: [neighbor("Right", "4", true)],
     });
 
-    expect(betweenLabel(c)).toBe("Goes between Near and Right.");
+    expect(betweenLabel(emptySession(), "Bulk", c)).toBe("Goes between Near and Right.");
   });
 
   it("gives consecutive unplaced cards after a placed card distinct hints", () => {
@@ -222,9 +237,13 @@ describe("betweenLabel", () => {
       after: [],
     });
 
-    expect(betweenLabel(first)).toBe("Goes right after Placed.");
-    expect(betweenLabel(second)).toBe("Goes after Card 3 — also still to place.");
-    expect(betweenLabel(first)).not.toBe(betweenLabel(second));
+    expect(betweenLabel(emptySession(), "Bulk", first)).toBe("Goes right after Placed.");
+    expect(betweenLabel(emptySession(), "Bulk", second)).toBe(
+      "Goes after Card 3 — also still to place.",
+    );
+    expect(betweenLabel(emptySession(), "Bulk", first)).not.toBe(
+      betweenLabel(emptySession(), "Bulk", second),
+    );
   });
 
   it("anchors after the placed predecessor when nothing after is placed", () => {
@@ -233,7 +252,7 @@ describe("betweenLabel", () => {
       after: [neighbor("New", "4", false)],
     });
 
-    expect(betweenLabel(c)).toBe("Goes right after Near.");
+    expect(betweenLabel(emptySession(), "Bulk", c)).toBe("Goes right after Near.");
   });
 
   it("anchors before the placed successor when nothing before is placed", () => {
@@ -242,7 +261,7 @@ describe("betweenLabel", () => {
       after: [neighbor("Near", "4", true)],
     });
 
-    expect(betweenLabel(c)).toBe("Goes right before Near.");
+    expect(betweenLabel(emptySession(), "Bulk", c)).toBe("Goes right before Near.");
   });
 
   it("falls back to still-to-place neighbours when none are placed", () => {
@@ -251,11 +270,13 @@ describe("betweenLabel", () => {
       after: [neighbor("B", "4", false)],
     });
 
-    expect(betweenLabel(c)).toBe("Goes between A and B — both still to place.");
+    expect(betweenLabel(emptySession(), "Bulk", c)).toBe(
+      "Goes between A and B — both still to place.",
+    );
   });
 
   it("falls back to the location edge when there are no neighbours", () => {
-    expect(betweenLabel(card("1"))).toBe("Only card to place here.");
+    expect(betweenLabel(emptySession(), "Bulk", card("1"))).toBe("Only card to place here.");
   });
 
   it("labels a catalog-gap neighbour by its key", () => {
@@ -263,6 +284,28 @@ describe("betweenLabel", () => {
       before: [neighbor("", "2", true)],
     });
 
-    expect(betweenLabel(c)).toBe("Goes right after lea 2.");
+    expect(betweenLabel(emptySession(), "Bulk", c)).toBe("Goes right after lea 2.");
+  });
+
+  // Without the ledger refetch this session relies on (#105, ADR 0015), a
+  // neighbour ticked just now must still read as placed — otherwise the very
+  // next card's hint would regress the moment you tick the one before it.
+  it("anchors on a neighbour ticked this session, before the ledger confirms it", () => {
+    const near = card("2");
+    const c = card("3", { before: [neighbor("Near", "2", false)] });
+    const session = tick(emptySession(), "Bulk", near, 1);
+
+    expect(betweenLabel(session, "Bulk", c)).toBe("Goes right after Near.");
+  });
+
+  // A tick on one kind of copy must not anchor a hint for a different kind of
+  // the same printing (ADR 0010) — the same guard guidance.ts and resort.ts
+  // both carry.
+  it("does not anchor on a session tick of a different finish", () => {
+    const near = card("2", { finish: "foil" });
+    const c = card("3", { before: [neighbor("Near", "2", false, { finish: "nonfoil" })] });
+    const session = tick(emptySession(), "Bulk", near, 1);
+
+    expect(betweenLabel(session, "Bulk", c)).toBe("Goes after Near — also still to place.");
   });
 });

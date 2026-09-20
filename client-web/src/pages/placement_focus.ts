@@ -1,7 +1,10 @@
-import type { PlacementGuidance } from "../data/placement/request";
+import type {
+  PlacementCard,
+  PlacementGuidance,
+  PlacementLocation,
+} from "../data/placement/request";
 import {
   type PlacementSession,
-  type SessionCard,
   isTicked,
   mergeLocationCards,
   tickedLocationNames,
@@ -18,7 +21,7 @@ export type LocationSummary = {
 
 export type FocusedLocation = {
   location_name: string;
-  cards: SessionCard[];
+  cards: PlacementCard[];
 };
 
 // Locations with work left, in cascade order, then any location kept alive only by
@@ -41,15 +44,23 @@ function listedNames(guidance: PlacementGuidance | undefined, session: Placement
   return names;
 }
 
+function locationsByName(guidance: PlacementGuidance | undefined): Map<string, PlacementLocation> {
+  const byName = new Map<string, PlacementLocation>();
+  for (const location of guidance?.locations ?? []) {
+    byName.set(location.location_name, location);
+  }
+  return byName;
+}
+
 // A card ticked this session is still counted in `guidance` until the ledger
 // refetch lands (guidance is server-truth-based), so it's subtracted here the same
 // way `mergeLocationCards` marks it struck in the open list.
 function toPlaceQuantity(
-  guidance: PlacementGuidance | undefined,
+  locations: Map<string, PlacementLocation>,
   session: PlacementSession,
   location_name: string,
 ): number {
-  const location = guidance?.locations.find((entry) => entry.location_name === location_name);
+  const location = locations.get(location_name);
   if (location === undefined) {
     return 0;
   }
@@ -63,14 +74,24 @@ export function locationSummaries(
   guidance: PlacementGuidance | undefined,
   session: PlacementSession,
 ): LocationSummary[] {
+  const locations = locationsByName(guidance);
   return listedNames(guidance, session).map((location_name) => ({
     location_name,
-    to_place_quantity: toPlaceQuantity(guidance, session, location_name),
+    to_place_quantity: toPlaceQuantity(locations, session, location_name),
   }));
 }
 
 export function countLabel(summary: LocationSummary): string {
   return summary.to_place_quantity > 0 ? `${summary.to_place_quantity} card(s)` : "Placed";
+}
+
+// The header total: the sum of what the location lists actually show, the
+// same definition `PlacementGuidance.total_unplaced` uses (#107) — but
+// session-adjusted, since a tick's ledger refetch is deliberately skipped
+// (#105, ADR 0015) and `guidance.total_unplaced` alone would overcount by
+// what this session already struck.
+export function totalToPlace(summaries: LocationSummary[]): number {
+  return summaries.reduce((sum, summary) => sum + summary.to_place_quantity, 0);
 }
 
 // The router hands ?location= back as string | string[] | undefined depending on
@@ -97,4 +118,10 @@ export function focusedLocation(
     return null;
   }
   return { location_name: name, cards };
+}
+
+// Rows still to tick in the open location — drives the "Mark all N placed"
+// label and whether that button is enabled.
+export function unplacedRowCount(session: PlacementSession, location: FocusedLocation): number {
+  return location.cards.filter((card) => !isTicked(session, location.location_name, card)).length;
 }

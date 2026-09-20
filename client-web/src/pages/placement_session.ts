@@ -16,11 +16,6 @@ export type PlacementSession = {
   ticked: Record<string, TickedEntry>;
 };
 
-export type SessionCard = {
-  card: PlacementCard;
-  struck: boolean;
-};
-
 export function emptySession(): PlacementSession {
   return { ticked: {} };
 }
@@ -36,15 +31,6 @@ type CopyIdentity = {
 
 function entryKey(location_name: string, card: CopyIdentity): string {
   return `${location_name} ${card.set_code} ${card.collector_number} ${card.finish} ${card.language}`;
-}
-
-function sameCard(a: CopyIdentity, b: CopyIdentity): boolean {
-  return (
-    a.set_code === b.set_code &&
-    a.collector_number === b.collector_number &&
-    a.finish === b.finish &&
-    a.language === b.language
-  );
 }
 
 export function isTicked(
@@ -93,14 +79,14 @@ export type MarkAllBatch = { location_name: string; cards: PlacementCard[] };
 export function tickAll(
   session: PlacementSession,
   location_name: string,
-  cards: SessionCard[],
+  cards: PlacementCard[],
 ): { session: PlacementSession; batch: MarkAllBatch } | null {
   let next = session;
   const batchCards: PlacementCard[] = [];
-  cards.forEach((entry, index) => {
-    if (entry.struck) return;
-    next = tick(next, location_name, entry.card, index);
-    batchCards.push(entry.card);
+  cards.forEach((card, index) => {
+    if (isTicked(session, location_name, card)) return;
+    next = tick(next, location_name, card, index);
+    batchCards.push(card);
   });
   if (batchCards.length === 0) {
     return null;
@@ -144,21 +130,26 @@ export function tickedLocationNames(session: PlacementSession): string[] {
 
 // Re-inserts the session's struck cards into a location's fresh guidance cards
 // at their recorded positions, so a just-ticked card stays visible in place.
+// Whether a returned card is struck is not stored here — it's asked of the
+// session per-row (isTicked) — so a card guidance still lists keeps the exact
+// object reference it arrived with. That reference stability is what lets
+// `<For>` skip rebuilding rows a tick didn't touch (#105).
 export function mergeLocationCards(
   session: PlacementSession,
   location_name: string,
   cards: PlacementCard[],
-): SessionCard[] {
-  const merged: SessionCard[] = cards.map((card) => ({ card, struck: false }));
+): PlacementCard[] {
+  const merged = cards.slice();
 
-  const struck = Object.values(session.ticked)
+  const freshKeys = new Set(cards.map((card) => entryKey(location_name, card)));
+  const strayTicks = Object.values(session.ticked)
     .filter((entry) => entry.location_name === location_name)
-    .filter((entry) => !cards.some((card) => sameCard(card, entry.card)))
+    .filter((entry) => !freshKeys.has(entryKey(location_name, entry.card)))
     .sort((a, b) => a.index - b.index);
 
-  for (const entry of struck) {
+  for (const entry of strayTicks) {
     const at = Math.min(Math.max(entry.index, 0), merged.length);
-    merged.splice(at, 0, { card: entry.card, struck: true });
+    merged.splice(at, 0, entry.card);
   }
 
   return merged;
@@ -169,11 +160,23 @@ function neighborLabel(neighbor: PlacementNeighbor): string {
 }
 
 function placedAnchorLabel(
+  session: PlacementSession,
+  location_name: string,
   before: PlacementNeighbor | undefined,
   after: PlacementNeighbor | undefined,
 ): string | null {
-  const beforePlaced = before?.already_placed === true;
-  const afterPlaced = after?.already_placed === true;
+  // A neighbour reads as placed either because the ledger already says so, or
+  // because this session ticked it — the card is in the binder either way,
+  // which is what the hint promises the user (ux-design: anchor on cards the
+  // user can physically see). Without the session check, ticking a card would
+  // make the very next card's hint regress to the weaker unplaced fallback
+  // until the ledger refetch landed — and #105 stops that refetch. Written as
+  // `x !== undefined && ...` rather than a helper so TS's control-flow
+  // narrowing carries through to the neighborLabel(before/after) calls below.
+  const beforePlaced =
+    before !== undefined && (before.already_placed || isTicked(session, location_name, before));
+  const afterPlaced =
+    after !== undefined && (after.already_placed || isTicked(session, location_name, after));
 
   if (beforePlaced && afterPlaced) {
     return `Goes between ${neighborLabel(before)} and ${neighborLabel(after)}.`;
@@ -210,8 +213,14 @@ function unplacedAnchorLabel(
 // placed card would point at the wrong slot and give every card in a run of
 // consecutive unplaced cards the same hint. A placed neighbour is preferred as
 // the anchor when present, since it is physically there to find.
-export function betweenLabel(card: PlacementCard): string {
+export function betweenLabel(
+  session: PlacementSession,
+  location_name: string,
+  card: PlacementCard,
+): string {
   const before = card.before[0];
   const after = card.after[0];
-  return placedAnchorLabel(before, after) ?? unplacedAnchorLabel(before, after);
+  return (
+    placedAnchorLabel(session, location_name, before, after) ?? unplacedAnchorLabel(before, after)
+  );
 }

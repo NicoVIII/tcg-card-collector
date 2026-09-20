@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { PlacementCard, PlacementGuidance } from "../data/placement/request";
-import { countLabel, focusNameFrom, focusedLocation, locationSummaries } from "./placement_focus";
-import { emptySession, tick } from "./placement_session";
+import {
+  countLabel,
+  focusNameFrom,
+  focusedLocation,
+  locationSummaries,
+  totalToPlace,
+  unplacedRowCount,
+} from "./placement_focus";
+import { emptySession, isTicked, tick } from "./placement_session";
 
 function card(collector_number: string, overrides: Partial<PlacementCard> = {}): PlacementCard {
   return {
@@ -123,14 +130,48 @@ describe("focusedLocation", () => {
 
     const focused = focusedLocation(g, session, "Binder");
 
-    expect(focused?.cards.map((entry) => [entry.card.collector_number, entry.struck])).toEqual([
-      ["1", false],
-      ["2", true],
-      ["3", false],
-    ]);
+    expect(focused?.cards.map((c) => c.collector_number)).toEqual(["1", "2", "3"]);
+    expect(focused?.cards.map((c) => isTicked(session, "Binder", c))).toEqual([false, true, false]);
+  });
+
+  // The merge must hand back guidance's own card objects, not copies — that
+  // reference stability is what lets <For> skip rebuilding unchanged rows on
+  // a tick (#105).
+  it("keeps the same object reference for a card the fresh guidance still lists", () => {
+    const a = card("1");
+    const g = guidance([{ location_name: "Binder", cards: [a] }]);
+
+    const focused = focusedLocation(g, emptySession(), "Binder");
+
+    expect(focused?.cards[0]).toBe(a);
   });
 
   it("returns null while guidance hasn't loaded, even with a name in the URL", () => {
     expect(focusedLocation(undefined, emptySession(), "Binder")).toBeNull();
+  });
+});
+
+describe("unplacedRowCount", () => {
+  it("counts rows the session hasn't ticked yet", () => {
+    const a = card("1");
+    const b = card("2");
+    const session = tick(emptySession(), "Binder", a, 0);
+
+    expect(unplacedRowCount(session, { location_name: "Binder", cards: [a, b] })).toBe(1);
+  });
+});
+
+describe("totalToPlace", () => {
+  it("sums the quantity across every listed location", () => {
+    expect(
+      totalToPlace([
+        { location_name: "Binder", to_place_quantity: 2 },
+        { location_name: "Bulk", to_place_quantity: 3 },
+      ]),
+    ).toBe(5);
+  });
+
+  it("is zero for an empty list", () => {
+    expect(totalToPlace([])).toBe(0);
   });
 });

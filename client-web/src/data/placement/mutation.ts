@@ -7,14 +7,24 @@ import {
   unmarkCardsPlaced,
 } from "./request";
 
+// Marks the ledger stale without refetching it: the placement page already
+// applies the tick to its session state and derives guidance from that, so a
+// refetch here would only pay for a full ledger read and projection refold
+// per tick to reconfirm what the page already shows (#105, ADR 0015). The
+// ledger reconciles the next time something mounts it.
+function markLedgerStale(queryClient: ReturnType<typeof useQueryClient>) {
+  return queryClient.invalidateQueries({
+    queryKey: queryKeys.placedLedger(),
+    refetchType: "none",
+  });
+}
+
 export function useMarkCardsPlacedMutation() {
   const queryClient = useQueryClient();
 
   return createMutation(() => ({
     mutationFn: (placements: CardPlacementInput[]) => markCardsPlaced(placements),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.placedLedger() });
-    },
+    onSuccess: () => markLedgerStale(queryClient),
   }));
 }
 
@@ -23,9 +33,7 @@ export function useUnmarkCardsPlacedMutation() {
 
   return createMutation(() => ({
     mutationFn: (placements: CardPlacementInput[]) => unmarkCardsPlaced(placements),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.placedLedger() });
-    },
+    onSuccess: () => markLedgerStale(queryClient),
   }));
 }
 

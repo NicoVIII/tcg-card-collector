@@ -52,6 +52,8 @@ function neighbors(
     name: card.name,
     set_code: card.set_code,
     collector_number: card.collector_number,
+    finish: card.finish,
+    language: card.language,
     already_placed: placedAtQty(placedAt, card, location_name) > 0,
   }));
 }

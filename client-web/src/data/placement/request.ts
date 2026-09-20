@@ -41,6 +41,11 @@ export type PlacementNeighbor = {
   name: string;
   set_code: string;
   collector_number: string;
+  // A tick names a specific kind of copy (ADR 0010); the session keys its
+  // ticks the same way, so betweenLabel can recognise a neighbour ticked this
+  // session as placed without waiting on the ledger refetch.
+  finish: Finish;
+  language: Language;
   already_placed: boolean;
 };
 

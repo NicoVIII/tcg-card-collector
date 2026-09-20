@@ -136,7 +136,11 @@ Core terms:
   quantity minus what's placed there, clamped at zero. Storing it would let a card silently become
   lost; deriving it is self-healing. `PlacementGuidance.total_unplaced` is the sum of this across
   locations, not a second, independent definition computed from the collection total — the two
-  disagreeing in the presence of drift was ADR 0014's bug to close.
+  disagreeing in the presence of drift was ADR 0014's bug to close. The Place cards page header
+  shows a session-adjusted variant of this same sum (`totalToPlace`, `pages/placement_focus.ts`),
+  not `total_unplaced` itself: a placement tick deliberately skips refetching the ledger ([ADR
+  0015](../decisions/0015-placement-tick-does-not-refetch-the-ledger.md)), so `total_unplaced`
+  alone would overcount by whatever the current session already struck until the next page mount.
 - Misplaced: **always derived, never stored**, Unplaced's mirror — per `(CopyKey, location)`, what's
   placed there minus what's currently projected there, clamped at zero. Non-zero only where the
   ledger claims a copy sits somewhere the *current* projection no longer sends it (a rule
