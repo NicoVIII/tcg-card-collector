@@ -225,7 +225,7 @@ pub fn first_copy_per_oracle_dedupes_printings_test() {
   let color_binder = find_bucket(buckets, "binder G")
   assert color_binder.total_quantity == 1
 
-  // Prefer the oldest printing: the claimed copy is set "a" (released earlier).
+  // Both copies are nonfoil-en, so release date decides: set "a" is claimed.
   let assert [assignment] = color_binder.cards
   assert card_key.set_code_string(assignment.card.key) == "a"
 
@@ -235,8 +235,9 @@ pub fn first_copy_per_oracle_dedupes_printings_test() {
 }
 
 // A first_per_printing rule over a printing owned as nonfoil-en and foil-de
-// claims the nonfoil-en copy: canonical order prefers nonfoil, then en, among
-// kinds of copy of one printing (ADR 0010, #89 acceptance).
+// claims the nonfoil-en copy — on language alone (ADR 0013), since en decides
+// before finish is consulted. Kept as the combined case; the per-step tests
+// below are what actually pin the order.
 pub fn first_per_printing_prefers_nonfoil_en_among_kinds_of_copy_test() {
   let nonfoil_en =
     card("a", "1", "Bolt", 1, "2010-01-01", "o1", rarity.Rare, "R")
@@ -274,9 +275,9 @@ pub fn first_per_printing_prefers_nonfoil_en_among_kinds_of_copy_test() {
   assert leftover.card.language == language.De
 }
 
-// The four tests below isolate one canonical-order step each. The test above
-// varies finish and language together, so it passes under orderings that rank
-// those two steps very differently — it can't pin either on its own.
+// The tests below isolate one claim-order step each. The test above varies
+// finish and language together, so it passes under orderings that rank those two
+// steps very differently — it can't pin either on its own.
 
 fn copy_of(
   base: PlannedCard,
@@ -307,8 +308,8 @@ fn bolt(set_code: String, released_at: String) -> PlannedCard {
   card(set_code, "1", "Bolt", 1, released_at, "same", rarity.Rare, "R")
 }
 
-// Finish alone, within one printing: nonfoil beats foil beats etched.
-pub fn first_per_printing_prefers_nonfoil_over_foil_and_etched_test() {
+// Finish alone, within one printing: etched beats foil beats nonfoil.
+pub fn first_per_printing_prefers_etched_over_foil_and_nonfoil_test() {
   let base = bolt("a", "2010-01-01")
   let claimed =
     claimed_copy(
@@ -320,7 +321,7 @@ pub fn first_per_printing_prefers_nonfoil_over_foil_and_etched_test() {
       copy_selector.FirstCopyPerPrinting,
     )
 
-  assert claimed.finish == finish.Nonfoil
+  assert claimed.finish == finish.Etched
 }
 
 // Language alone, within one printing: English wins.
@@ -338,9 +339,9 @@ pub fn first_per_printing_prefers_en_over_other_languages_test() {
   assert claimed.language == language.En
 }
 
-// Across printings of one card, release date outranks finish: the older
-// nonfoil is claimed even though the newer printing is owned as a foil.
-pub fn first_per_oracle_release_date_outranks_finish_test() {
+// Across printings of one card, finish outranks release date: the newer foil is
+// claimed even though an older printing is owned as a nonfoil.
+pub fn first_per_oracle_finish_outranks_release_date_test() {
   let claimed =
     claimed_copy(
       [
@@ -350,12 +351,13 @@ pub fn first_per_oracle_release_date_outranks_finish_test() {
       copy_selector.FirstCopyPerOracle,
     )
 
-  assert card_key.set_code_string(claimed.key) == "a"
-  assert claimed.finish == finish.Nonfoil
+  assert card_key.set_code_string(claimed.key) == "b"
+  assert claimed.finish == finish.Foil
 }
 
-// Same for language: the older German copy beats the newer English one.
-pub fn first_per_oracle_release_date_outranks_language_test() {
+// Same for language, which outranks finish in turn: the newer English copy beats
+// the older German one.
+pub fn first_per_oracle_language_outranks_release_date_test() {
   let claimed =
     claimed_copy(
       [
@@ -365,8 +367,20 @@ pub fn first_per_oracle_release_date_outranks_language_test() {
       copy_selector.FirstCopyPerOracle,
     )
 
+  assert card_key.set_code_string(claimed.key) == "b"
+  assert claimed.language == language.En
+}
+
+// The deterministic tail: two printings alike in every earlier step fall back to
+// set code, so the claimed copy doesn't depend on input order.
+pub fn first_per_oracle_same_date_breaks_tie_on_set_code_test() {
+  let claimed =
+    claimed_copy(
+      [bolt("b", "2010-01-01"), bolt("a", "2010-01-01")],
+      copy_selector.FirstCopyPerOracle,
+    )
+
   assert card_key.set_code_string(claimed.key) == "a"
-  assert claimed.language == language.De
 }
 
 // A card whose printing isn't in the catalog (no attributes) fails every

@@ -92,10 +92,15 @@ Core terms:
 - CopySelector: how many copies of a matching card a rule claims — all copies, the first copy per
   printing, or the first copy per oracle identity. Both first-copy selectors dedupe on the printing
   or oracle identity, never on CopyKey, so a rule still claims one physical copy total per printing
-  regardless of how many kinds of copy (finish/language) it's owned in. Among kinds of copy of one
-  printing, the canonical order prefers `nonfoil < foil < etched`, then `en` before every other
-  language — this is Inventory Planning's own tiebreak (ADR 0010), overridden only by routing a
-  copy with an earlier rule (#71).
+  regardless of how many kinds of copy (finish/language) it's owned in. *Which* copy it claims is
+  the canonical order (ADR 0013): language (`en` first, then by code), then finish
+  (`etched > foil > nonfoil`), then release date (oldest first, unknown first), then set code, then
+  collector number. Language and finish outrank printing identity, so a first-copy rule claims the
+  best copy of a card rather than its oldest printing. This is Inventory Planning's own policy over
+  the shared value types, not a property of them, and it is currently fixed (#121 makes it
+  configurable). Rule order cannot override it: an earlier rule can route copies to a *different*
+  location, but each rule's dedupe set starts empty, so it cannot express a preference within one
+  location.
 - Predicate: a rule's match condition — a conjunction (`and`) of set-code / rarity / color-identity /
   type / finish clauses over a card's attributes. A clause referencing a catalog-enrichment
   attribute the card lacks is false, so the card cascades on; finish comes from the collection

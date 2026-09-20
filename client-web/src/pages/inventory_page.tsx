@@ -397,10 +397,11 @@ export function InventoryPage() {
       <p class="hint">
         Selector decides how many copies a rule claims: every copy, the first copy per printing, or
         the first copy per card — one per oracle identity, however many printings of it you own.
-        Where several of your copies qualify, the earliest in canonical order wins: release date
-        (oldest first, unknown dates before all others), then set code, then collector number. Two
-        copies of one printing then break that tie by finish (nonfoil, foil, etched) and language
-        (English, then by code) — steps that never outrank an older printing.
+        Where several of your copies qualify, the earliest in canonical order wins: language
+        (English, then by code), then finish (etched, foil, nonfoil), then release date (oldest
+        first, unknown dates before all others), then set code, then collector number. Language and
+        finish come before release date, so a first-copy rule claims your best copy of a card, not
+        its oldest printing.
       </p>
       <p class="hint">
         Expression is one or more conditions joined by <code>and</code>:{" "}

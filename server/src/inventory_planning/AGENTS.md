@@ -10,4 +10,4 @@ Users configure rules through three small DSLs, each owned by one domain parser:
 
 The parsers and their unit tests (`server/test/inventory_planning/unit/domain/`) are the syntax reference — don't duplicate the grammar in docs.
 
-**UI hint sync (unenforced):** the inventory page (`client-web/src/pages/inventory_page.tsx`) restates the DSL surface in user-facing hint paragraphs. Any change to expression syntax, placeholders, or sort keys must update those hints too.
+**UI hint sync (unenforced):** the inventory page (`client-web/src/pages/inventory_page.tsx`) restates the DSL surface in user-facing hint paragraphs. Any change to expression syntax, placeholders, sort keys, or the canonical claim order in `domain/rule_cascade.gleam` must update those hints too.

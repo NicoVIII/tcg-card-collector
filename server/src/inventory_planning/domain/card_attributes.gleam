@@ -254,8 +254,9 @@ pub fn copy_key_string(card: PlannedCard) -> String {
   <> language.to_string(card.language)
 }
 
-// Total order among kinds of copy of one printing: nonfoil < foil < etched.
-// Inventory Planning's own policy (ADR 0010), changed only through rule order.
+// A rank over finishes, ascending: nonfoil < foil < etched. Inventory Planning's
+// own policy (ADR 0010). It is a rank, not a preference — the claim order reads
+// it descending, so the etched copy is the one claimed (ADR 0013).
 pub fn finish_rank(value: Finish) -> Int {
   case value {
     finish.Nonfoil -> 0
@@ -264,9 +265,9 @@ pub fn finish_rank(value: Finish) -> Int {
   }
 }
 
-// English before every other language, then the rest by Scryfall code. Also
-// Inventory Planning's own tiebreak (ADR 0010) — not a claim that a card's
-// "true" language is English, only a default sort preference.
+// English before every other language, then the rest by Scryfall code. Inventory
+// Planning's own policy and the first step of the claim order (ADR 0013) — not a
+// claim that a card's "true" language is English, only a sort preference.
 pub fn compare_language_en_first(a: Language, b: Language) -> Order {
   case a, b {
     language.En, language.En -> order.Eq

@@ -15,6 +15,7 @@ import inventory_planning/domain/set_index.{type SetIndex}
 import inventory_planning/domain/sort_spec
 import shared/domain/card_key
 import shared/domain/collector_number
+import shared/domain/finish.{type Finish}
 import shared/domain/release_date.{type ReleaseDate}
 import shared/domain/set_code
 
@@ -62,7 +63,7 @@ pub fn project(
   cards: List(PlannedCard),
   sets: SetIndex,
 ) -> List(LocationBucket) {
-  // 1. Canonical order — "prefer the oldest printing" for first-copy rules.
+  // 1. Claim order — "the best copy of each card" for first-copy rules.
   let ordered = list.sort(cards, by: compare_canonical)
 
   // 2. Remaining copies per printing. Summed, not overwritten, so quantity
@@ -301,6 +302,8 @@ fn compare_by_attribute(
   }
 }
 
+// Bucket order is display, not claim order: a binder's siblings still run
+// oldest-set-first even though its contents are claimed best-copy-first.
 fn compare_buckets(
   target: location_target.LocationTarget,
   l: FannedBucket,
@@ -406,26 +409,35 @@ fn total_quantity(assignments: List(Assignment)) -> Int {
   list.fold(assignments, 0, fn(sum, a) { sum + a.quantity })
 }
 
-// "Prefer the oldest printing": released_at asc, then set_code, then
-// collector_number. An unknown released_at sorts first (treated as earliest).
-// Among kinds of copy of the same printing, finish then language break the
-// tie (ADR 0010), so a first-copy selector claims the nonfoil-en copy first.
+// etched > foil > nonfoil — the reverse of `finish_rank`'s ascending order, so
+// the premium copy is the one a first-copy rule claims (ADR 0013).
+fn compare_finish_best_first(a: Finish, b: Finish) -> order.Order {
+  int.compare(card_attributes.finish_rank(b), card_attributes.finish_rank(a))
+}
+
+// Claim order: which physical copy a first-copy selector takes when several of
+// the owned copies qualify — "the best copy of each card" (ADR 0013, superseding
+// ADR 0010's oldest-printing order). Language and finish outrank printing
+// identity; set code and collector number are the deterministic tail without
+// which two copies could compare equal. An unknown released_at still sorts
+// first, and the same helper still orders buckets, which is why it is not
+// reversed here.
 fn compare_canonical(a: PlannedCard, b: PlannedCard) -> order.Order {
   order.break_tie(
-    card_attributes.compare_release_earliest_first(a.released_at, b.released_at),
+    card_attributes.compare_language_en_first(a.language, b.language),
     order.break_tie(
-      set_code.compare(card_key.set_code(a.key), card_key.set_code(b.key)),
+      compare_finish_best_first(a.finish, b.finish),
       order.break_tie(
-        collector_number.compare(
-          card_key.collector_number(a.key),
-          card_key.collector_number(b.key),
+        card_attributes.compare_release_earliest_first(
+          a.released_at,
+          b.released_at,
         ),
         order.break_tie(
-          int.compare(
-            card_attributes.finish_rank(a.finish),
-            card_attributes.finish_rank(b.finish),
+          set_code.compare(card_key.set_code(a.key), card_key.set_code(b.key)),
+          collector_number.compare(
+            card_key.collector_number(a.key),
+            card_key.collector_number(b.key),
           ),
-          card_attributes.compare_language_en_first(a.language, b.language),
         ),
       ),
     ),
