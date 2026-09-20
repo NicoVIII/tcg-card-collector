@@ -1,5 +1,7 @@
 import collection/infrastructure/daos/collection_dao
 import gleam/dynamic/decode
+import gleam/int
+import gleam/list
 import shared/infrastructure/stores/sqlite_store
 import support/test_db
 
@@ -108,6 +110,38 @@ pub fn replace_truncates_and_refills_collection_test() {
   let assert Ok(Nil) = collection_dao.replace_collection([card("blb", "9", 1)])
 
   assert rows_in("collection") == [card("blb", "9", 1)]
+}
+
+// Regression: a failed replace must not leave the collection empty (#44) —
+// same shape as catalog_dao_replace_sets_test's failed_replace test. The
+// primary key includes finish and language, so the two identical rows
+// collide and the insert errors.
+pub fn failed_replace_keeps_the_previous_collection_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) = collection_dao.upsert_cards([card("lea", "1", 4)])
+
+  let assert Error(_) =
+    collection_dao.replace_collection([card("blb", "9", 1), card("blb", "9", 1)])
+
+  assert collection_dao.list_cards() == Ok([card("lea", "1", 4)])
+}
+
+// Regression: upsert_cards chunks its inserts at 100 rows (#44) — a failure
+// in a later chunk must not leave an earlier chunk's insert applied. 101
+// rows forces two chunks; the CHECK (quantity > 0) rejects the row in the
+// second chunk.
+pub fn failed_add_leaves_the_collection_unchanged_test() {
+  use _db <- test_db.with_temp_db()
+
+  let valid_rows =
+    list.repeat(Nil, 100)
+    |> list.index_map(fn(_, i) { card("lea", int.to_string(i), 1) })
+  let rows = list.append(valid_rows, [card("lea", "100", 0)])
+
+  let assert Error(_) = collection_dao.upsert_cards(rows)
+
+  assert collection_dao.list_cards() == Ok([])
 }
 
 pub fn decrement_subtracts_leaving_a_positive_remainder_test() {
