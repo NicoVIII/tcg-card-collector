@@ -85,6 +85,10 @@ Four contexts: **card_catalog**, **collection**, **inventory_planning**,
   carry NOT NULL / CHECK / real-identity PKs — the DB is a boundary other
   writers (sqlite3 CLI, manual surgery) can reach, so invariants are parsed on
   the way in too ([ADR 0009](../docs/decisions/0009-db-as-boundary-strict-tables.md)).
+- **A migration that rewrites or drops a user-authored table ships a
+  data-preservation test** in `test/migrations/` (`with_seeded_upgrade`,
+  `test/README.md` § "A third area") — or the release notes say what it
+  loses. See the `data-migrations` skill.
 - `sqlite_store.exec` opens a fresh connection per call — statements that must
   succeed or fail together go through `sqlite_store.exec_all_atomically`,
   never composed from separate `exec` calls.

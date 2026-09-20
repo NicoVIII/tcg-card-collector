@@ -53,6 +53,16 @@ is a breaking change: it ships only if the release notes say so plainly, and a m
 plan that loses user data without that note is a finding. README's "Data preservation"
 section is the user-facing wording — keep the two in step.
 
+The promise is proven, not asserted: a migration that rewrites or drops a
+user-authored table (`collection`, `placed_cards`, `inventory_rules`,
+`inventory_bulk_spec`, `target_sets`) ships a data-preservation test in
+`server/test/migrations/`, using `support/test_db.with_seeded_upgrade` —
+a temp DB is seeded at the schema one migration earlier, the migration under
+test is applied, and the test asserts on the exact rows that survived. A
+migration in this category that reviews clean on schema but has no such test
+is a finding; `server/test/README.md` § "A third area" has the full mechanics
+and the frozen-seed convention.
+
 **Context isolation extends into the database.** Every table is owned by exactly one
 bounded context; no SQL statement reads another context's tables and no foreign key
 crosses contexts — cross-context data flows through Gleam facades via application
