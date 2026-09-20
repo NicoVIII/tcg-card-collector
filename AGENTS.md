@@ -31,6 +31,8 @@ Task runner is `just` with `::` module scoping (`just --list` for everything). T
 
 Environment setup for a fresh clone (dbmate, lefthook), repository layout, and the full quality-gate reference live in [docs/dev/development.md](docs/dev/development.md).
 
+A user-visible change adds its line to [`CHANGELOG.md`](CHANGELOG.md)'s `## Unreleased` section in the same commit — internals, refactors, and dependency bumps don't. See [docs/dev/development.md](docs/dev/development.md) § Versioning & Releases for the release procedure.
+
 Architecture decisions with real alternatives are recorded as ADRs in [docs/decisions/](docs/decisions/README.md). Check there before relitigating a settled design; a changed mind gets a superseding ADR, and a new decision of that weight gets a new record.
 
 Opinionated dual-mode (design-consult + review) aspect skills live in [.claude/skills/](.claude/skills/): `architecture`, `domain-design`, `contract-design`, `data-migrations`, `documentation`, `qa`, and `ux-design`. They encode this project's settled judgement, not generic best practices; consult the relevant one before designing or reviewing in its aspect. Skip the consult where an accepted ADR or the issue itself already settles the question in that aspect — cite it instead.

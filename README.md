@@ -45,6 +45,8 @@ Pin `X.Y` or `X.Y.Z` for a self-hosted instance; don't run `latest` unattended.
 
 ### Upgrading
 
+Check [CHANGELOG.md](CHANGELOG.md) for the target version's notes before upgrading — what changed and any action the upgrade needs.
+
 1. [Back up](#backup--restore) the database.
 2. `docker pull` the new tag.
 3. Recreate the container (`docker stop` + `docker rm` the old one, `docker run` with the new tag and the same volume). Migrations run automatically on start.
@@ -74,7 +76,7 @@ docker cp <container>:/data/backup.db ./backup.db
 
 ### Data preservation
 
-From v0.1.0 on, an upgrade never loses collection or inventory data. A release that can't guarantee this says so explicitly in its release notes.
+From v0.1.0 on, an upgrade never loses collection or inventory data. A release that can't guarantee this says so explicitly in its [release notes](CHANGELOG.md).
 
 The Scryfall catalog is external data and isn't covered by this promise — a migration may drop it, provided a re-sync restores it.
 

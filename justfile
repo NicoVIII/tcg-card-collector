@@ -42,6 +42,10 @@ dbmate-install:
 dbmate-migrate:
   sh ./scripts/dbmate_up.sh
 
+# preview a release's CHANGELOG.md section the way CI will read it
+changelog-section version:
+  sh ./scripts/changelog_section.sh {{version}}
+
 devcontainer-shellcheck:
   find .devcontainer container -type f -name '*.sh' -print0 | xargs -0r shellcheck
 

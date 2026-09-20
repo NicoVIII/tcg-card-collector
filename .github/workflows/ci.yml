@@ -133,6 +133,12 @@ jobs:
             exit 1
           fi
 
+      # A tag with no matching CHANGELOG.md section would publish an image
+      # with no release notes for it -- fail before building, not after.
+      - name: Verify CHANGELOG.md has a section for this tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: sh ./scripts/changelog_section.sh "${GITHUB_REF_NAME#v}" >/dev/null
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -167,3 +173,24 @@ jobs:
             APP_COMMIT=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  github-release:
+    needs: [build-and-push]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Depends on build-and-push so the release page never points at a
+      # version whose image failed to publish.
+      - name: Create GitHub Release from the CHANGELOG.md section
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sh ./scripts/changelog_section.sh "${GITHUB_REF_NAME#v}" > release-notes.md
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md
