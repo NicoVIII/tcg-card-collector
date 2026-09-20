@@ -6,6 +6,8 @@ TypeScript is split on purpose: `@typescript/native` (TS 7) provides `tsc` for `
 
 The eslint config carries the code-shape floor — top-down order (`@typescript-eslint/no-use-before-define`), `complexity`, `max-depth` — at the backend's glinter thresholds. Escape hatch: `// eslint-disable-next-line <rule> -- <reason>` on the line above.
 
+oxlint runs with `--deny-warnings`, so its whole default rule set is a hard gate rather than advisory output. An oxlint bump that adds a default rule can therefore turn CI red: fix the code, or suppress the one rule with a reason — don't drop the flag (see #131).
+
 ## Data Layer (`src/data/`)
 
 One directory per backend capability, each split into three files:
