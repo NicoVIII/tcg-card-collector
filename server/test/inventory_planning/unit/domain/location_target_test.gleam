@@ -53,6 +53,18 @@ pub fn parses_fixed_when_no_placeholder_test() {
   assert location_target.parse("Bulk") == Fixed("Bulk")
 }
 
+// A padded target would render a location the placed ledger's trimmed keys
+// (`placement.new`) can never match — permanent drift no re-sort action could
+// clear (#107). Trimmed at the same boundary instead.
+pub fn parses_fixed_target_trimmed_test() {
+  assert location_target.parse("  Bulk  ") == Fixed("Bulk")
+}
+
+pub fn parses_template_target_trimmed_test() {
+  assert location_target.parse("  Binder {set_code}  ")
+    == Template("Binder ", location_target.SetCodeAttribute, "")
+}
+
 pub fn parses_template_test() {
   assert location_target.parse("binder {color_identity}")
     == Template("binder ", location_target.ColorIdentityAttribute, "")

@@ -28,8 +28,11 @@ const placeholders = [
 
 // A location string with no known placeholder is a Fixed target; otherwise it
 // splits into prefix/attribute/suffix around the first placeholder found.
+// Trimmed up front: an untrimmed target renders a projected location the
+// placed ledger (which trims on write — `placement.new`) can never match,
+// stranding placement ticks as permanent drift no re-sort action can clear.
 pub fn parse(raw: String) -> LocationTarget {
-  parse_loop(raw, placeholders)
+  parse_loop(string.trim(raw), placeholders)
 }
 
 fn parse_loop(
