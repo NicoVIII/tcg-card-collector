@@ -108,7 +108,7 @@ pub fn dependencies() -> Dependencies {
         decrement_cards: remove_cards_adapter.new(),
         notify_changed: notify_collection_changed,
       ),
-      list_collection_cards_port: list_collection_cards_adapter.new(),
+      list_collection_cards_ports: list_collection_cards_adapter.new(),
     ),
     inventory_planning: InventoryPlanningDependencies(
       upsert_inventory_rule_port: upsert_rule_adapter.new(),

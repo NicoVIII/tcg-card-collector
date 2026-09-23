@@ -82,8 +82,10 @@ fn handle_list_collection_cards(
       list_collection_cards_handler.ListCollectionCardsQuery(
         offset: req.offset,
         limit: req.limit,
+        name: collection_skir_codec.to_name_filter(req),
+        set_code: collection_skir_codec.to_set_code_filter(req),
       ),
-      get_dependencies(ctx).list_collection_cards_port,
+      get_dependencies(ctx).list_collection_cards_ports,
     )
     |> helpers.map_query(collection_skir_codec.map_collection_card_page(
       _,

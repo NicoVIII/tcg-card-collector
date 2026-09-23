@@ -19,6 +19,8 @@ Each release section uses only the subheadings it needs:
 ### Added
 
 - Search the Catalog page by card name (case-insensitive substring) and set code.
+- Search the Collection page the same way, and list the collection over REST
+  (`GET /api/collection/cards`).
 
 ## v0.1.0 — unreleased
 

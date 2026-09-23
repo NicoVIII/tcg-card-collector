@@ -2,8 +2,10 @@ import gleam/bit_array
 import gleam/bytes_tree
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
+import gleam/int
 import gleam/list
 import gleam/option.{type Option}
+import gleam/result
 import mist
 import shared/driver/http/json_codec
 import shared/driver/presented_error.{type PresentedError, BadRequest, Internal}
@@ -47,13 +49,28 @@ pub fn query_response(
 
 /// A malformed query string (bad percent-encoding) reads as no params, the
 /// same as an absent one — there's nothing more specific to tell the caller.
-pub fn query_param(
-  req: Request(mist.Connection),
-  key: String,
-) -> Option(String) {
+/// Generic over `body` (unlike the body-reading helpers above) since it only
+/// touches `req.query` — which also makes it constructible with a plain
+/// `request.new()` in tests, no `mist.Connection` needed.
+pub fn query_param(req: Request(body), key: String) -> Option(String) {
   case request.get_query(req) {
     Ok(params) -> list.key_find(params, key) |> option.from_result
     Error(_) -> option.None
+  }
+}
+
+/// Absent means `default`; present but non-integer is the caller's error to
+/// turn into a 400.
+pub fn int_query_param(
+  req: Request(body),
+  key: String,
+  default: Int,
+) -> Result(Int, String) {
+  case query_param(req, key) {
+    option.None -> Ok(default)
+    option.Some(raw) ->
+      int.parse(raw)
+      |> result.map_error(fn(_) { "invalid " <> key <> " query parameter" })
   }
 }
 

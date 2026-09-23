@@ -31,6 +31,17 @@ describe("query key factory", () => {
     ]);
   });
 
+  it("builds deterministic collection keys, filter included", () => {
+    expect(queryKeys.collectionList({ name: "bolt", set_code: "" }, 0, 25)).toEqual([
+      "collection",
+      "list",
+      "bolt",
+      "",
+      0,
+      25,
+    ]);
+  });
+
   it("builds a deterministic projection key", () => {
     expect(queryKeys.inventoryProjection()).toEqual(["inventory_planning", "projection"]);
   });

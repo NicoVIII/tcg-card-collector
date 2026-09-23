@@ -3,7 +3,9 @@ import collection/application/commands/import_collection/ports as import_collect
 import collection/application/commands/remove_cards/ports as remove_cards_ports
 import collection/application/queries/list_cards/ports as list_collection_cards_ports
 import collection/driver/skir/codec as collection_skir_codec
+import gleam/option.{None, Some}
 import shared/domain/card_key
+import shared/domain/set_code
 import shared/driver/skir/skirout/collection/commands as collection_commands
 import shared/driver/skir/skirout/collection/queries as collection_queries
 import skir_client/service
@@ -193,4 +195,37 @@ pub fn map_collection_card_page_maps_printings_and_echoes_paging_test() {
         quantity: 1,
       ),
     ]
+}
+
+pub fn to_name_filter_trims_and_treats_blank_as_absent_test() {
+  let with_name =
+    collection_queries.list_collection_cards_request_new(
+      limit: 0,
+      name: Some(" Bolt "),
+      offset: 0,
+      set_code: None,
+    )
+  assert collection_skir_codec.to_name_filter(with_name) == Some("Bolt")
+
+  let blank =
+    collection_queries.list_collection_cards_request_new(
+      limit: 0,
+      name: Some("   "),
+      offset: 0,
+      set_code: None,
+    )
+  assert collection_skir_codec.to_name_filter(blank) == None
+}
+
+pub fn to_set_code_filter_parses_a_present_value_test() {
+  let req =
+    collection_queries.list_collection_cards_request_new(
+      limit: 0,
+      name: None,
+      offset: 0,
+      set_code: Some(" LEA "),
+    )
+
+  let assert Ok(lea) = set_code.new("lea")
+  assert collection_skir_codec.to_set_code_filter(req) == Some(lea)
 }

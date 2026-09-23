@@ -32,9 +32,13 @@ graph TD
     InventoryPlanning --> Collection
     Insights --> CardCatalog
     Insights --> Collection
+    Collection --> CardCatalog
 ```
 
-- **Card Catalog** and **Collection** are upstream: they depend on no other context.
+- **Card Catalog** is the only context with no dependencies of its own.
+- **Collection** depends on Card Catalog for queries only — never from a command
+  (import/add/remove must keep working with an empty or unsynced catalog); see
+  [ADR 0016](../decisions/0016-collection-reads-catalog-for-queries.md).
 - **Inventory Planning** and **Insights** are downstream consumers of both.
 
 A cross-BC dependency is only legal in one shape: the consumer's

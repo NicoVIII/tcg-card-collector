@@ -184,6 +184,9 @@ pub fn main() {
         #(InventoryPlanning, Collection),
         #(Insights, CardCatalog),
         #(Insights, Collection),
+        // Query-only in practice (ADR 0016) — not enforced by this rule,
+        // which only checks context pairs, not layers within a pair.
+        #(Collection, CardCatalog),
       ],
     )
   let config =

@@ -63,7 +63,7 @@ Core terms:
 
 Boundary notes:
 - Owns collection semantics only. Placement — whether a card is physically sorted — is Inventory Planning's, derived from the collection; Collection holds no placement state. A ManualRemoval or Import that shrinks a key's quantity below what Inventory Planning has already marked placed is announced through the shared event bus (ADR 0011) rather than Collection reaching into Inventory Planning's ledger itself — see that context's boundary notes for the reconciliation policy.
-- Delegates card enrichment language to Card Catalog.
+- Delegates card enrichment language to Card Catalog, and — for `ListCollectionCards`' name search only — reads it: a query-only dependency (ADR 0016). Commands never read Card Catalog, so import/add/remove keep working against an empty or unsynced catalog. An owned printing absent from the catalog still matches a set-code filter (part of its own CardKey) but never a name filter.
 - Display order for a printing's kinds of copy (finish, then language alphabetically) is Collection's own policy, distinct from Inventory Planning's canonical order over the same CopyKey components.
 
 ## Inventory Planning

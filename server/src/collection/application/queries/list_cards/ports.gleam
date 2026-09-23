@@ -1,3 +1,4 @@
+import gleam/set.{type Set}
 import shared/domain/card_key.{type CardKey}
 import shared/domain/copy_key.{type CopyKey}
 
@@ -21,8 +22,18 @@ pub type CollectionCardPage {
   CollectionCardPage(printings: List(OwnedPrinting), total: Int)
 }
 
-pub type ListCollectionCardsPort {
-  ListCollectionCardsPort(
-    list_cards: fn() -> Result(List(CollectionCopyReadModel), String),
+pub type ListCardsPort =
+  fn() -> Result(List(CollectionCopyReadModel), String)
+
+// The Card Catalog keys whose name (case-insensitive substring) matches —
+// read through card_catalog/driver/gleam (ADR 0016), called only when a name
+// filter is present.
+pub type CardKeysNamedPort =
+  fn(String) -> Result(Set(CardKey), String)
+
+pub type ListCollectionCardsPorts {
+  ListCollectionCardsPorts(
+    list_cards: ListCardsPort,
+    card_keys_named: CardKeysNamedPort,
   )
 }

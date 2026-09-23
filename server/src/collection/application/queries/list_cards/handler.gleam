@@ -2,31 +2,43 @@ import collection/application/queries/list_cards/ports
 import gleam/dict
 import gleam/int
 import gleam/list
-import gleam/option
+import gleam/option.{type Option, None, Some}
 import gleam/order
 import gleam/result
+import gleam/set
 import gleam/string
 import shared/domain/card_key
 import shared/domain/collector_number
 import shared/domain/copy_key
 import shared/domain/finish
-import shared/domain/set_code
+import shared/domain/set_code.{type SetCode}
 
 pub type ListCollectionCardsQuery {
-  ListCollectionCardsQuery(offset: Int, limit: Int)
+  ListCollectionCardsQuery(
+    offset: Int,
+    limit: Int,
+    name: Option(String),
+    set_code: Option(SetCode),
+  )
 }
 
 pub fn execute(
   query: ListCollectionCardsQuery,
-  port: ports.ListCollectionCardsPort,
+  ports: ports.ListCollectionCardsPorts,
 ) -> Result(ports.CollectionCardPage, String) {
-  use rows <- result.try(port.list_cards())
+  use rows <- result.try(ports.list_cards())
   let printings =
     rows
     |> group_by_printing
     |> list.sort(by: compare_printings)
-  let total = list.length(printings)
-  let paged_printings = paginate_printings(printings, query.offset, query.limit)
+    |> filter_by_set_code(query.set_code)
+  use filtered <- result.try(filter_by_name(
+    printings,
+    query.name,
+    ports.card_keys_named,
+  ))
+  let total = list.length(filtered)
+  let paged_printings = paginate_printings(filtered, query.offset, query.limit)
   Ok(ports.CollectionCardPage(printings: paged_printings, total: total))
 }
 
@@ -104,6 +116,41 @@ fn compare_printings(
       card_key.collector_number(b.key),
     ),
   )
+}
+
+// Matches on the printing's own CardKey — an owned printing the catalog
+// doesn't carry still matches its set code (ADR 0016).
+fn filter_by_set_code(
+  printings: List(ports.OwnedPrinting),
+  target: Option(SetCode),
+) -> List(ports.OwnedPrinting) {
+  case target {
+    None -> printings
+    Some(code) ->
+      list.filter(printings, fn(printing) {
+        card_key.set_code(printing.key) == code
+      })
+  }
+}
+
+// Reaches into Card Catalog only when a name filter is present (ADR 0016);
+// an owned printing absent from the catalog never matches a name.
+fn filter_by_name(
+  printings: List(ports.OwnedPrinting),
+  name: Option(String),
+  card_keys_named: ports.CardKeysNamedPort,
+) -> Result(List(ports.OwnedPrinting), String) {
+  case name {
+    None -> Ok(printings)
+    Some(query) -> {
+      use matching_keys <- result.try(card_keys_named(query))
+      Ok(
+        list.filter(printings, fn(printing) {
+          set.contains(matching_keys, printing.key)
+        }),
+      )
+    }
+  }
 }
 
 fn paginate_printings(

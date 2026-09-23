@@ -4,6 +4,7 @@ import collection/application/queries/list_cards/ports as list_cards_ports
 // nolint: depends_only_on -- glinter_arch doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a gleam-libs change
 import collection/infrastructure/adapters/queries/list_cards/adapter as list_cards_adapter
 import gleam/list
+import gleam/option.{None}
 import gleam/result
 import shared/domain/card_key.{type CardKey}
 import shared/domain/copy_key.{type CopyKey}
@@ -23,7 +24,12 @@ pub type OwnedCopy {
 
 fn fetch_page() -> Result(list_cards_ports.CollectionCardPage, String) {
   list_cards_handler.execute(
-    list_cards_handler.ListCollectionCardsQuery(offset: 0, limit: 0),
+    list_cards_handler.ListCollectionCardsQuery(
+      offset: 0,
+      limit: 0,
+      name: None,
+      set_code: None,
+    ),
     list_cards_adapter.new(),
   )
 }

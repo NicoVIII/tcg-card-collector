@@ -1,6 +1,8 @@
+import collection/application/queries/list_cards/ports as list_cards_ports
 import gleam/dynamic/decode
 import gleam/json
 import gleam/result
+import shared/domain/card_key
 
 pub type ImportCollectionRow {
   ImportCollectionRow(
@@ -137,4 +139,39 @@ pub fn decode_remove_cards_body(
 
   json.parse(from: json_string, using: decoder)
   |> result.map_error(fn(_) { "invalid request body" })
+}
+
+pub fn encode_collection_card_page(
+  page: list_cards_ports.CollectionCardPage,
+  offset: Int,
+  limit: Int,
+) -> String {
+  json.object([
+    #("data", json.array(page.printings, of: encode_owned_printing)),
+    #("total", json.int(page.total)),
+    #("offset", json.int(offset)),
+    #("limit", json.int(limit)),
+  ])
+  |> json.to_string
+}
+
+fn encode_owned_printing(
+  printing: list_cards_ports.OwnedPrinting,
+) -> json.Json {
+  json.object([
+    #("set_code", json.string(card_key.set_code_string(printing.key))),
+    #(
+      "collector_number",
+      json.string(card_key.collector_number_string(printing.key)),
+    ),
+    #("copies", json.array(printing.copies, of: encode_owned_copy)),
+  ])
+}
+
+fn encode_owned_copy(copy: list_cards_ports.OwnedCopy) -> json.Json {
+  json.object([
+    #("finish", json.string(copy.finish)),
+    #("language", json.string(copy.language)),
+    #("quantity", json.int(copy.quantity)),
+  ])
 }
