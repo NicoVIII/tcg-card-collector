@@ -8,6 +8,7 @@ import inventory_planning/domain/card_attributes.{
 import shared/domain/card_key
 import shared/domain/color_identity.{type ColorIdentity}
 import shared/domain/finish.{type Finish}
+import shared/domain/language.{type Language}
 import shared/domain/rarity.{type Rarity}
 
 // A rule's match condition. No `or` and no nesting this milestone: a predicate
@@ -19,6 +20,12 @@ pub type Predicate {
   ColorIdentityIs(color_identity: ColorIdentity)
   CardTypeIs(card_type: CardType)
   FinishIn(finishes: List(Finish))
+  LanguageIn(languages: List(Language))
+  SetCodeIsNot(set_code: String)
+  ColorIdentityIsNot(color_identity: ColorIdentity)
+  CardTypeIsNot(card_type: CardType)
+  FinishIsNot(finish: Finish)
+  LanguageIsNot(language: Language)
   And(left: Predicate, right: Predicate)
 }
 
@@ -31,6 +38,7 @@ pub type ParseError {
   UnknownColorIdentity(value: String)
   UnknownCardType(value: String)
   UnknownFinish(value: String)
+  UnknownLanguage(value: String)
   EmptyList
 }
 
@@ -42,6 +50,7 @@ type Token {
   RParen
   Comma
   Eq
+  NotEq
   Gte
 }
 
@@ -74,6 +83,12 @@ fn lex_loop(
           case rest {
             ["=", ..rest2] -> lex_loop(rest2, "", [Gte, ..flush(pending, acc)])
             _ -> Error(MalformedClause(">"))
+          }
+        "!" ->
+          case rest {
+            ["=", ..rest2] ->
+              lex_loop(rest2, "", [NotEq, ..flush(pending, acc)])
+            _ -> Error(MalformedClause("!"))
           }
         _ -> lex_loop(rest, pending <> g, acc)
       }
@@ -137,6 +152,7 @@ fn depth(tokens: List(Token)) -> Int {
 fn parse_clause(tokens: List(Token)) -> Result(Predicate, ParseError) {
   case tokens {
     [Ident(attr), Eq, Ident(value)] -> parse_eq(attr, value)
+    [Ident(attr), NotEq, Ident(value)] -> parse_not_eq(attr, value)
     [Ident(attr), Gte, Ident(value)] -> parse_gte(attr, value)
     [Ident(attr), Ident(kw), LParen, ..rest] ->
       case string.lowercase(kw) {
@@ -163,6 +179,33 @@ fn parse_eq(attr: String, value: String) -> Result(Predicate, ParseError) {
       card_attributes.parse_finish(value)
       |> result.map(fn(f) { FinishIn([f]) })
       |> result.replace_error(UnknownFinish(value))
+    "language" ->
+      card_attributes.parse_language(value)
+      |> result.map(fn(l) { LanguageIn([l]) })
+      |> result.replace_error(UnknownLanguage(value))
+    _ -> Error(UnknownAttribute(attr))
+  }
+}
+
+fn parse_not_eq(attr: String, value: String) -> Result(Predicate, ParseError) {
+  case string.lowercase(attr) {
+    "set_code" -> Ok(SetCodeIsNot(string.lowercase(value)))
+    "color_identity" ->
+      card_attributes.parse_color_identity(value)
+      |> result.map(ColorIdentityIsNot)
+      |> result.replace_error(UnknownColorIdentity(value))
+    "type" ->
+      card_attributes.parse_card_type(value)
+      |> result.map(CardTypeIsNot)
+      |> result.replace_error(UnknownCardType(value))
+    "finish" ->
+      card_attributes.parse_finish(value)
+      |> result.map(FinishIsNot)
+      |> result.replace_error(UnknownFinish(value))
+    "language" ->
+      card_attributes.parse_language(value)
+      |> result.map(LanguageIsNot)
+      |> result.replace_error(UnknownLanguage(value))
     _ -> Error(UnknownAttribute(attr))
   }
 }
@@ -195,6 +238,13 @@ fn parse_in(attr: String, rest: List(Token)) -> Result(Predicate, ParseError) {
         |> result.replace_error(UnknownFinish(item))
       })
       |> result.map(FinishIn)
+    "language" ->
+      items
+      |> list.try_map(fn(item) {
+        card_attributes.parse_language(item)
+        |> result.replace_error(UnknownLanguage(item))
+      })
+      |> result.map(LanguageIn)
     _ -> Error(UnknownAttribute(attr))
   }
 }
@@ -222,6 +272,7 @@ fn render_clause(tokens: List(Token)) -> String {
       RParen -> ")"
       Comma -> ","
       Eq -> "="
+      NotEq -> "!="
       Gte -> ">="
     }
   })
@@ -247,30 +298,41 @@ pub fn to_string(predicate: Predicate) -> String {
       "color_identity = " <> card_attributes.color_identity_token(identity)
     CardTypeIs(card_type) ->
       "type = " <> card_attributes.card_type_to_string(card_type)
-    FinishIn(finishes) -> "finish " <> finish_clause_body(finishes)
+    FinishIn(finishes) ->
+      "finish " <> equals_or_in_body(list.map(finishes, finish.to_string))
+    LanguageIn(languages) ->
+      "language " <> equals_or_in_body(list.map(languages, language.to_string))
+    SetCodeIsNot(code) -> "set_code != " <> code
+    ColorIdentityIsNot(identity) ->
+      "color_identity != " <> card_attributes.color_identity_token(identity)
+    CardTypeIsNot(card_type) ->
+      "type != " <> card_attributes.card_type_to_string(card_type)
+    FinishIsNot(value) -> "finish != " <> finish.to_string(value)
+    LanguageIsNot(value) -> "language != " <> language.to_string(value)
     And(left, right) -> to_string(left) <> " and " <> to_string(right)
   }
 }
 
-// A single finish reads as `= foil` — the issue's headline spelling, and the
+// A single value reads as `= foil` — the issue's headline spelling, and the
 // dominant case — while a longer list reads as `in (foil, etched)` like every
-// other `_in` clause.
-fn finish_clause_body(finishes: List(Finish)) -> String {
-  case finishes {
-    [only] -> "= " <> finish.to_string(only)
-    _ ->
-      "in ("
-      <> { finishes |> list.map(finish.to_string) |> string.join(", ") }
-      <> ")"
+// other `_in` clause. Shared by FinishIn and LanguageIn, the DSL's two
+// single-value-or-list clauses.
+fn equals_or_in_body(values: List(String)) -> String {
+  case values {
+    [only] -> "= " <> only
+    _ -> "in (" <> string.join(values, ", ") <> ")"
   }
 }
 
 // --- Matching -------------------------------------------------------------
 
 // A clause referencing a catalog-enrichment attribute the card lacks is
-// False, so the card cascades on to a later rule. finish comes from the
-// collection itself and is never absent (ADR 0010), so FinishIn has no such
-// case to handle.
+// False, so the card cascades on to a later rule. finish and language come
+// from the collection itself and are never absent (ADR 0010), so FinishIn and
+// LanguageIn have no such case to handle. Negation doesn't flip this:
+// ColorIdentityIsNot/CardTypeIsNot are also False for a card whose enrichment
+// is absent (ADR 0017) — "the catalog doesn't know" is never a match,
+// positive or negated.
 pub fn matches(predicate: Predicate, card: PlannedCard) -> Bool {
   case predicate {
     SetCodeIn(codes) -> list.contains(codes, card_key.set_code_string(card.key))
@@ -296,6 +358,20 @@ pub fn matches(predicate: Predicate, card: PlannedCard) -> Bool {
         option.None -> False
       }
     FinishIn(finishes) -> list.contains(finishes, card.finish)
+    LanguageIn(languages) -> list.contains(languages, card.language)
+    SetCodeIsNot(code) -> card_key.set_code_string(card.key) != code
+    ColorIdentityIsNot(identity) ->
+      case card.color_identity {
+        option.Some(ci) -> ci != identity
+        option.None -> False
+      }
+    CardTypeIsNot(card_type) ->
+      case card.card_type {
+        option.Some(ct) -> ct != card_type
+        option.None -> False
+      }
+    FinishIsNot(value) -> card.finish != value
+    LanguageIsNot(value) -> card.language != value
     And(left, right) -> matches(left, card) && matches(right, card)
   }
 }

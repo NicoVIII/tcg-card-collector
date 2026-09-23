@@ -89,9 +89,10 @@ collector number, parent set). Flag:
   copy selectors and `first_per_printing`/`first_per_oracle` dedup are the one
   deliberate exception, staying on CardKey/oracle identity by design. Condition
   is separate, still-uncommitted debt with its own ADR needed. Adding another
-  identity component, or a language rule expression, is ADR-weight, not a side
-  effect — finish as a rule expression (#71) was already settled by ADR 0010
-  itself and needed no new one.
+  identity component is ADR-weight, not a side effect — finish as a rule
+  expression (#71) was already settled by ADR 0010 itself and needed no new
+  one, and a language rule expression plus DSL-wide `!=` was settled by
+  ADR 0017 (#112).
 - **Multi-user is flagged, not built.** Don't design against it (no domain semantics
   that only work with exactly one user of record), don't build it (no speculative
   user-scoping).

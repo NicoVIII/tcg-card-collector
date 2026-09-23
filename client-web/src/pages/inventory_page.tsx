@@ -542,14 +542,20 @@ export function InventoryPage() {
         <code>rarity in (common, uncommon)</code>, <code>color_identity = WU</code> (or{" "}
         <code>colorless</code>), <code>type = creature</code>, <code>finish = foil</code> (or{" "}
         <code>finish in (foil, etched)</code>) — e.g.{" "}
-        <code>set_code in (grn, m19) and rarity {">"}= rare</code>.
+        <code>set_code in (grn, m19) and rarity {">"}= rare</code>. Any of <code>set_code</code>,{" "}
+        <code>color_identity</code>, <code>type</code>, <code>finish</code> also takes{" "}
+        <code>!=</code> instead of <code>=</code>, e.g. <code>finish != foil</code>.{" "}
+        <code>language = de</code> (or <code>language in (de, fr)</code>,{" "}
+        <code>language != en</code>) matches printed language — e.g. <code>language != en</code>{" "}
+        routes every non-English copy.
       </p>
       <p class="hint">
         Sort keys are a comma-separated list ordering the cards within each location:{" "}
         <code>color_identity</code>, <code>type</code>, <code>name</code>, <code>set_code</code>,{" "}
         <code>collector_number</code>, <code>rarity</code>, <code>released_at</code>,{" "}
-        <code>cmc</code>. Empty keeps the canonical order described above. Sort keys only order what
-        a location shows — which copy a rule claims is the selector's business.
+        <code>cmc</code>, <code>language</code> (English first, then by code). Empty keeps the
+        canonical order described above. Sort keys only order what a location shows — which copy a
+        rule claims is the selector's business.
       </p>
       <Show when={mutationError.messageFor("reorder") !== null}>
         <p role="alert">{mutationError.messageFor("reorder")}</p>
@@ -614,7 +620,7 @@ export function InventoryPage() {
       <p class="hint">
         Comma-separated sort keys ordering the leftover pile: <code>color_identity</code>,{" "}
         <code>type</code>, <code>name</code>, <code>set_code</code>, <code>collector_number</code>,{" "}
-        <code>rarity</code>, <code>released_at</code>, <code>cmc</code>.
+        <code>rarity</code>, <code>released_at</code>, <code>cmc</code>, <code>language</code>.
       </p>
       <ProjectionSection />
     </section>

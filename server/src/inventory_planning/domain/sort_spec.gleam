@@ -21,6 +21,7 @@ pub type SortKey {
   ByRarity
   ByReleasedAt
   ByManaValue
+  ByLanguage
 }
 
 fn parse_sort_key(raw: String) -> Result(SortKey, Nil) {
@@ -33,6 +34,7 @@ fn parse_sort_key(raw: String) -> Result(SortKey, Nil) {
     "rarity" -> Ok(ByRarity)
     "released_at" -> Ok(ByReleasedAt)
     "cmc" -> Ok(ByManaValue)
+    "language" -> Ok(ByLanguage)
     _ -> Error(Nil)
   }
 }
@@ -47,6 +49,7 @@ fn sort_key_to_string(key: SortKey) -> String {
     ByRarity -> "rarity"
     ByReleasedAt -> "released_at"
     ByManaValue -> "cmc"
+    ByLanguage -> "language"
   }
 }
 
@@ -105,6 +108,8 @@ fn compare_by(key: SortKey, left: PlannedCard, right: PlannedCard) -> Order {
         right.released_at,
       )
     ByManaValue -> card_attributes.compare_cmc_lowest_first(left.cmc, right.cmc)
+    ByLanguage ->
+      card_attributes.compare_language_en_first(left.language, right.language)
   }
 }
 

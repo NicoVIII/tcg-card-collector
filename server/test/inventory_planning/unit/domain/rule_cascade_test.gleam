@@ -831,3 +831,40 @@ pub fn family_unknown_set_is_own_bucket_test() {
   let bucket = find_bucket(buckets, "Binder xyz")
   assert bucket.total_quantity == 1
 }
+
+// --- Language clause (#112) ------------------------------------------------
+
+// A `language != en` rule claims every non-English copy into its own
+// location, leaving bulk with none of them — the issue's acceptance case for
+// routing non-English copies to a dedicated binder.
+pub fn language_not_eq_claims_every_non_english_copy_test() {
+  let cascade =
+    RuleCascade(
+      rules: [
+        rule(
+          "r1",
+          1,
+          copy_selector.AllCopies,
+          "language != en",
+          "Other languages",
+        ),
+      ],
+      bulk: bulk_spec.BulkSpec("Bulk", []),
+    )
+  let cards = [
+    card("a", "1", "Bolt", 1, "2010-01-01", "o1", rarity.Common, "R"),
+    copy_of(bolt("b", "2010-01-01"), finish.Nonfoil, language.De),
+    copy_of(bolt("c", "2010-01-01"), finish.Nonfoil, language.Ja),
+  ]
+  let buckets = rule_cascade.project(cascade, cards, dict.new())
+
+  let other_languages = find_bucket(buckets, "Other languages")
+  assert other_languages.total_quantity == 2
+  assert list.all(other_languages.cards, fn(a) {
+    a.card.language != language.En
+  })
+
+  let bulk = find_bucket(buckets, "Bulk")
+  assert bulk.total_quantity == 1
+  assert list.all(bulk.cards, fn(a) { a.card.language == language.En })
+}
