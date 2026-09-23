@@ -542,7 +542,9 @@ export function InventoryPage() {
         <code>rarity in (common, uncommon)</code>, <code>color_identity = WU</code> (or{" "}
         <code>colorless</code>), <code>type = creature</code>, <code>finish = foil</code> (or{" "}
         <code>finish in (foil, etched)</code>) — e.g.{" "}
-        <code>set_code in (grn, m19) and rarity {">"}= rare</code>.
+        <code>set_code in (grn, m19) and rarity {">"}= rare</code>. Any of <code>set_code</code>,{" "}
+        <code>color_identity</code>, <code>type</code>, <code>finish</code> also takes{" "}
+        <code>!=</code> instead of <code>=</code>, e.g. <code>finish != foil</code>.
       </p>
       <p class="hint">
         Sort keys are a comma-separated list ordering the cards within each location:{" "}

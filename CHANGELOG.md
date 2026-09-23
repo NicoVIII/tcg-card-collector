@@ -16,6 +16,11 @@ Each release section uses only the subheadings it needs:
 
 ## Unreleased
 
+### Added
+
+- Inventory rules can negate `set_code`, `color_identity`, `type`, and `finish` clauses with
+  `!=` (e.g. `finish != foil`).
+
 ## v0.1.0 — 2026-09-23
 
 First tagged release. See [README.md](https://github.com/NicoVIII/tcg-card-collector/blob/v0.1.0/README.md) § What works today for what the
