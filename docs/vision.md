@@ -18,7 +18,9 @@ Three purposes, all first-class:
 
 The MVP vertical slice works end-to-end: catalog sync from Scryfall, CSV collection import plus incremental manual adds, and inventory rules and projections — over both Skir RPC and REST.
 
-The first numbered release, [v0.1.0](https://github.com/NicoVIII/tcg-card-collector/milestone/1), targets data-safe personal use: upgrades stop losing data, and the core loop holds up at real collection size.
+[v0.1.0](https://github.com/NicoVIII/tcg-card-collector/milestone/1) made it safe for personal use: upgrades don't lose data, the core loop holds up at real collection size, and versioned images ship through a written release procedure.
+
+The next release, [v0.2.0](https://github.com/NicoVIII/tcg-card-collector/milestone/2), targets portability: everything hand-made in the app can be exported to a file and imported into another install without loss.
 
 ## Direction
 
@@ -28,7 +30,7 @@ Themes, deliberately unordered — this is not a committed sequence:
 - **Set-completion tracking.** Mark specific sets as collection targets and get an overview of collection state against them.
 - **Import pipeline breadth.** More sources and formats, and incremental imports/diffs instead of full snapshots only.
 - **Collection insights.** Search and filtering across the collection, statistics, pricing/value via Scryfall data.
-- **Packaging & deployment.** Make `container/` real: a published image, a release process, and an upgrade/migration story.
+- **Data portability.** Hand-made state (collection, rules, targets, placement) can leave the app in a documented format and come back, independent of the SQLite file.
 
 The deployment model today is a single user on a trusted network; the app has no authentication. Multi-user support is a real future direction and a known architectural commitment — flagged here so it isn't designed against, but not built yet.
 
