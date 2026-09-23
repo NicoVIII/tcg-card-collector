@@ -3,8 +3,8 @@ import gleam/option.{None, Some}
 import gleam/order
 import inventory_planning/domain/card_attributes.{type PlannedCard} as attrs
 import inventory_planning/domain/sort_spec.{
-  ByCardType, ByCollectorNumber, ByColorIdentity, ByManaValue, ByName, ByRarity,
-  ByReleasedAt, BySetCode,
+  ByCardType, ByCollectorNumber, ByColorIdentity, ByLanguage, ByManaValue,
+  ByName, ByRarity, ByReleasedAt, BySetCode,
 }
 import shared/domain/card_key
 import shared/domain/finish
@@ -71,6 +71,10 @@ pub fn parses_new_sort_keys_test() {
     == Ok([ByCollectorNumber, ByRarity, ByReleasedAt, ByManaValue])
 }
 
+pub fn parses_language_sort_key_test() {
+  assert sort_spec.parse_sort_keys("language") == Ok([ByLanguage])
+}
+
 pub fn sort_keys_round_trip_test() {
   let keys = [
     ByColorIdentity,
@@ -81,6 +85,7 @@ pub fn sort_keys_round_trip_test() {
     ByRarity,
     ByReleasedAt,
     ByManaValue,
+    ByLanguage,
   ]
   assert sort_spec.parse_sort_keys(sort_spec.sort_keys_to_string(keys))
     == Ok(keys)
@@ -223,4 +228,21 @@ pub fn cmc_tie_breaks_on_next_key_test() {
       sort_spec.compare_cards([ByManaValue, ByName], x, y)
     })
   assert list.map(sorted, fn(c) { c.name }) == ["a", "z"]
+}
+
+// language sorts English first, then the rest by code (#112) — the same
+// policy as the claim order's language step (ADR 0013), reused here as the
+// sort key's comparator.
+pub fn language_ordering_english_first_then_by_code_test() {
+  let ja =
+    attrs.PlannedCard(..card("ja", "R", attrs.Creature), language: language.Ja)
+  let de =
+    attrs.PlannedCard(..card("de", "R", attrs.Creature), language: language.De)
+  let en =
+    attrs.PlannedCard(..card("en", "R", attrs.Creature), language: language.En)
+  let sorted =
+    list.sort([ja, de, en], fn(x, y) {
+      sort_spec.compare_cards([ByLanguage], x, y)
+    })
+  assert list.map(sorted, fn(c) { c.name }) == ["en", "de", "ja"]
 }

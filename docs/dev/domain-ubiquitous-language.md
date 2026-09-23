@@ -102,11 +102,12 @@ Core terms:
   location, but each rule's dedupe set starts empty, so it cannot express a preference within one
   location.
 - Predicate: a rule's match condition — a conjunction (`and`) of set-code / rarity / color-identity /
-  type / finish clauses over a card's attributes. A clause referencing a catalog-enrichment
-  attribute the card lacks is false, so the card cascades on; finish comes from the collection
-  itself and is never absent (ADR 0010), so a finish clause always has a value to match.
-  `set_code`, `color_identity`, `type` and `finish` also take `!=` (ADR 0017); negation doesn't
-  flip the cascade-on-unknown behavior — a negated clause on absent enrichment is still false.
+  type / finish / language clauses over a card's attributes. A clause referencing a
+  catalog-enrichment attribute the card lacks is false, so the card cascades on; finish and
+  language come from the collection itself and are never absent (ADR 0010), so a finish or
+  language clause always has a value to match. `set_code`, `color_identity`, `type`, `finish` and
+  `language` also take `!=` (ADR 0017); negation doesn't flip the cascade-on-unknown behavior — a
+  negated clause on absent enrichment is still false.
 - Set family: a parent set plus all its Scryfall child sets (tokens, promos, art series, … — anything
   linked by `parent_set_code`), resolved transitively to a single family-root set code. The unit a
   `{set_family}` template gathers into one binder.

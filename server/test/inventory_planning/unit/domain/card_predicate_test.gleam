@@ -3,7 +3,8 @@ import gleam/option.{None, Some}
 import inventory_planning/domain/card_attributes.{type PlannedCard} as attrs
 import inventory_planning/domain/card_predicate.{
   And, CardTypeIs, CardTypeIsNot, ColorIdentityIs, ColorIdentityIsNot, FinishIn,
-  FinishIsNot, RarityAtLeast, RarityIn, SetCodeIn, SetCodeIsNot,
+  FinishIsNot, LanguageIn, LanguageIsNot, RarityAtLeast, RarityIn, SetCodeIn,
+  SetCodeIsNot,
 }
 import shared/domain/card_key
 import shared/domain/finish
@@ -127,6 +128,26 @@ pub fn rejects_bare_bang_test() {
   let assert Error(_) = card_predicate.parse("set_code ! grn")
 }
 
+pub fn parses_language_equals_test() {
+  assert card_predicate.parse("language = DE") == Ok(LanguageIn([language.De]))
+}
+
+pub fn parses_language_in_test() {
+  assert card_predicate.parse("language in (de, fr)")
+    == Ok(LanguageIn([language.De, language.Fr]))
+}
+
+pub fn parses_language_not_eq_test() {
+  assert card_predicate.parse("language != en")
+    == Ok(LanguageIsNot(language.En))
+}
+
+// Unknown codes report a specific error, not a generic malformed-clause one.
+pub fn rejects_unknown_language_test() {
+  assert card_predicate.parse("language = xx")
+    == Error(card_predicate.UnknownLanguage("xx"))
+}
+
 pub fn parses_conjunction_left_folded_test() {
   let assert Ok(pred) =
     card_predicate.parse(
@@ -166,6 +187,9 @@ pub fn round_trips_through_parse_test() {
     "color_identity != WU",
     "type != land",
     "finish != foil",
+    "language = de",
+    "language in (de, fr)",
+    "language != en",
     "set_code in (grn) and rarity >= rare and type = creature",
   ]
   assert list.all(sources, fn(src) {
@@ -258,4 +282,35 @@ pub fn negated_enrichment_clause_matches_false_when_unknown_test() {
   let assert Ok(type_pred) = card_predicate.parse("type != land")
   assert !card_predicate.matches(color_pred, bare_card())
   assert !card_predicate.matches(type_pred, bare_card())
+}
+
+pub fn matches_language_in_test() {
+  let assert Ok(pred) = card_predicate.parse("language in (de, fr)")
+  let de_card =
+    attrs.PlannedCard(
+      ..card("x", rarity.Rare, "R", attrs.Creature),
+      language: language.De,
+    )
+  assert card_predicate.matches(pred, de_card)
+  assert !card_predicate.matches(
+    pred,
+    card("x", rarity.Rare, "R", attrs.Creature),
+  )
+}
+
+// language is never absent (ADR 0010), so unlike color_identity/type, != on it
+// has no unknown-enrichment case to fall through — it just needs to route
+// every non-English copy, the issue's headline acceptance case.
+pub fn matches_language_not_eq_en_test() {
+  let assert Ok(pred) = card_predicate.parse("language != en")
+  let de_card =
+    attrs.PlannedCard(
+      ..card("x", rarity.Rare, "R", attrs.Creature),
+      language: language.De,
+    )
+  assert card_predicate.matches(pred, de_card)
+  assert !card_predicate.matches(
+    pred,
+    card("x", rarity.Rare, "R", attrs.Creature),
+  )
 }

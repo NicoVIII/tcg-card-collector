@@ -44,6 +44,12 @@ pub fn parse_finish(raw: String) -> Result(Finish, Nil) {
   finish.from_user_input(raw) |> result.replace_error(Nil)
 }
 
+// DSL spelling of a language: user input, so trimmed and case-insensitive
+// Scryfall lang codes ("en", "de", "zhs", ...).
+pub fn parse_language(raw: String) -> Result(Language, Nil) {
+  language.from_user_input(raw) |> result.replace_error(Nil)
+}
+
 // DSL spelling of a color identity: the joined-letter form ("WU") plus the
 // words "colorless"/"c". Letters in any order; the result is canonical.
 pub fn parse_color_identity(raw: String) -> Result(ColorIdentity, Nil) {
