@@ -1,6 +1,7 @@
 import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
 import { useSearchParams } from "@solidjs/router";
 import { ConfirmButton } from "../components/confirm_button";
+import { CardSearchForm } from "../components/card_search_form";
 import { Pagination } from "../components/pagination";
 import { mapError } from "../data/http/error";
 import {
@@ -12,6 +13,11 @@ import {
 import { SELECTOR_OPTIONS } from "../data/inventory_planning/options";
 import { randomUUID } from "../lib/uuid";
 import { createMutationError } from "../lib/mutation_error";
+import {
+  filterFromSearchParams,
+  searchParamsFromFilter,
+  type CardFilter,
+} from "../lib/card_filter";
 import type { InventoryRule, ProjectionCard } from "../data/inventory_planning/request";
 import {
   useBulkSpecQuery,
@@ -31,6 +37,7 @@ import { focusNameFrom } from "./placement_focus";
 import {
   PROJECTION_PAGE_SIZE,
   countLabel,
+  filterIsActive,
   openLocationCards,
   projectionSummaries,
   type ProjectionLocationSummary,
@@ -289,6 +296,7 @@ function ProjectionLocationPanel(props: ProjectionLocationPanelProps) {
 
 type ProjectionLocationRowProps = {
   summary: ProjectionLocationSummary;
+  filterActive: boolean;
   panelId: string;
   isOpen: boolean;
   cards: ProjectionCard[] | null;
@@ -318,7 +326,7 @@ function ProjectionLocationRow(props: ProjectionLocationRowProps) {
             {props.summary.location_name}
             {props.summary.is_bulk ? " (bulk remainder)" : ""}
           </span>
-          <span>{countLabel(props.summary)}</span>
+          <span>{countLabel(props.summary, props.filterActive)}</span>
         </button>
       </h4>
       <Show when={props.isOpen && props.cards !== null}>
@@ -336,17 +344,28 @@ function ProjectionLocationRow(props: ProjectionLocationRowProps) {
 
 function ProjectionSection() {
   const projectionQuery = useInventoryProjectionQuery();
-  const [searchParams, setSearchParams] = useSearchParams<{ location?: string }>();
+  const [searchParams, setSearchParams] = useSearchParams<{
+    location?: string;
+    name?: string;
+    set?: string;
+  }>();
+  const filter = createMemo<CardFilter>(() => filterFromSearchParams(searchParams));
+  const filterActive = createMemo(() => filterIsActive(filter()));
   const openName = () => focusNameFrom(searchParams.location);
-  // Owned here (not per-panel) so opening a different location can reset it
-  // directly, the same way collection_page.tsx's `search` calls
-  // `setOffset(0)` alongside `setSearchParams` — no effect needed to notice
-  // the change after the fact.
+  // Owned here (not per-panel) so opening a different location or running a
+  // new search can reset it directly, the same way collection_page.tsx's
+  // `search` calls `setOffset(0)` alongside `setSearchParams` — no effect
+  // needed to notice the change after the fact.
   const [offset, setOffset] = createSignal(0);
 
   const unknownCount = () => projectionQuery.data?.unknown_count ?? 0;
-  const summaries = createMemo(() => projectionSummaries(projectionQuery.data));
-  const openCards = createMemo(() => openLocationCards(projectionQuery.data, openName()));
+  const summaries = createMemo(() => projectionSummaries(projectionQuery.data, filter()));
+  const openCards = createMemo(() => openLocationCards(projectionQuery.data, openName(), filter()));
+
+  const search = (next: CardFilter) => {
+    setOffset(0);
+    setSearchParams({ location: searchParams.location, ...searchParamsFromFilter(next) });
+  };
 
   // A history entry per open/close (not a replace), mirroring
   // placement_page.tsx's toggleFocus — back-to-close is the phone affordance
@@ -372,14 +391,16 @@ function ProjectionSection() {
           attributes.
         </p>
       </Show>
+      <CardSearchForm filter={filter()} onSearch={search} />
       <Show
         when={!projectionQuery.isError && summaries().length > 0}
-        fallback={<p>No projection data.</p>}
+        fallback={<p>{filterActive() ? "No projected cards match." : "No projection data."}</p>}
       >
         <For each={summaries()}>
           {(summary, index) => (
             <ProjectionLocationRow
               summary={summary}
+              filterActive={filterActive()}
               panelId={`projection-panel-${index()}`}
               isOpen={openName() === summary.location_name}
               cards={openName() === summary.location_name ? openCards() : null}
