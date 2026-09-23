@@ -3,7 +3,7 @@ import gleam/option
 import gleam/result
 import gleam/string
 import inventory_planning/domain/card_attributes.{
-  type CardType, type PlannedCard,
+  type CardType, type PlannedCard, type Supertype,
 }
 import shared/domain/card_key
 import shared/domain/color_identity.{type ColorIdentity}
@@ -21,11 +21,13 @@ pub type Predicate {
   CardTypeIs(card_type: CardType)
   FinishIn(finishes: List(Finish))
   LanguageIn(languages: List(Language))
+  SupertypeIn(supertypes: List(Supertype))
   SetCodeIsNot(set_code: String)
   ColorIdentityIsNot(color_identity: ColorIdentity)
   CardTypeIsNot(card_type: CardType)
   FinishIsNot(finish: Finish)
   LanguageIsNot(language: Language)
+  SupertypeIsNot(supertype: Supertype)
   And(left: Predicate, right: Predicate)
 }
 
@@ -39,6 +41,7 @@ pub type ParseError {
   UnknownCardType(value: String)
   UnknownFinish(value: String)
   UnknownLanguage(value: String)
+  UnknownSupertype(value: String)
   EmptyList
 }
 
@@ -183,6 +186,10 @@ fn parse_eq(attr: String, value: String) -> Result(Predicate, ParseError) {
       card_attributes.parse_language(value)
       |> result.map(fn(l) { LanguageIn([l]) })
       |> result.replace_error(UnknownLanguage(value))
+    "supertype" ->
+      card_attributes.parse_supertype(value)
+      |> result.map(fn(s) { SupertypeIn([s]) })
+      |> result.replace_error(UnknownSupertype(value))
     _ -> Error(UnknownAttribute(attr))
   }
 }
@@ -206,6 +213,10 @@ fn parse_not_eq(attr: String, value: String) -> Result(Predicate, ParseError) {
       card_attributes.parse_language(value)
       |> result.map(LanguageIsNot)
       |> result.replace_error(UnknownLanguage(value))
+    "supertype" ->
+      card_attributes.parse_supertype(value)
+      |> result.map(SupertypeIsNot)
+      |> result.replace_error(UnknownSupertype(value))
     _ -> Error(UnknownAttribute(attr))
   }
 }
@@ -245,6 +256,13 @@ fn parse_in(attr: String, rest: List(Token)) -> Result(Predicate, ParseError) {
         |> result.replace_error(UnknownLanguage(item))
       })
       |> result.map(LanguageIn)
+    "supertype" ->
+      items
+      |> list.try_map(fn(item) {
+        card_attributes.parse_supertype(item)
+        |> result.replace_error(UnknownSupertype(item))
+      })
+      |> result.map(SupertypeIn)
     _ -> Error(UnknownAttribute(attr))
   }
 }
@@ -302,6 +320,12 @@ pub fn to_string(predicate: Predicate) -> String {
       "finish " <> equals_or_in_body(list.map(finishes, finish.to_string))
     LanguageIn(languages) ->
       "language " <> equals_or_in_body(list.map(languages, language.to_string))
+    SupertypeIn(supertypes) ->
+      "supertype "
+      <> equals_or_in_body(list.map(
+        supertypes,
+        card_attributes.supertype_to_string,
+      ))
     SetCodeIsNot(code) -> "set_code != " <> code
     ColorIdentityIsNot(identity) ->
       "color_identity != " <> card_attributes.color_identity_token(identity)
@@ -309,6 +333,8 @@ pub fn to_string(predicate: Predicate) -> String {
       "type != " <> card_attributes.card_type_to_string(card_type)
     FinishIsNot(value) -> "finish != " <> finish.to_string(value)
     LanguageIsNot(value) -> "language != " <> language.to_string(value)
+    SupertypeIsNot(value) ->
+      "supertype != " <> card_attributes.supertype_to_string(value)
     And(left, right) -> to_string(left) <> " and " <> to_string(right)
   }
 }
@@ -330,9 +356,11 @@ fn equals_or_in_body(values: List(String)) -> String {
 // False, so the card cascades on to a later rule. finish and language come
 // from the collection itself and are never absent (ADR 0010), so FinishIn and
 // LanguageIn have no such case to handle. Negation doesn't flip this:
-// ColorIdentityIsNot/CardTypeIsNot are also False for a card whose enrichment
-// is absent (ADR 0017) — "the catalog doesn't know" is never a match,
-// positive or negated.
+// ColorIdentityIsNot/CardTypeIsNot/SupertypeIsNot are also False for a card
+// whose enrichment is absent (ADR 0017) — "the catalog doesn't know" is never
+// a match, positive or negated. SupertypeIn/SupertypeIsNot test membership in
+// card.supertypes rather than equality — a card can carry more than one
+// supertype ("Basic Snow Land"), unlike every other attribute here.
 pub fn matches(predicate: Predicate, card: PlannedCard) -> Bool {
   case predicate {
     SetCodeIn(codes) -> list.contains(codes, card_key.set_code_string(card.key))
@@ -359,6 +387,12 @@ pub fn matches(predicate: Predicate, card: PlannedCard) -> Bool {
       }
     FinishIn(finishes) -> list.contains(finishes, card.finish)
     LanguageIn(languages) -> list.contains(languages, card.language)
+    SupertypeIn(supertypes) ->
+      case card.supertypes {
+        option.Some(card_supertypes) ->
+          list.any(supertypes, list.contains(card_supertypes, _))
+        option.None -> False
+      }
     SetCodeIsNot(code) -> card_key.set_code_string(card.key) != code
     ColorIdentityIsNot(identity) ->
       case card.color_identity {
@@ -372,6 +406,11 @@ pub fn matches(predicate: Predicate, card: PlannedCard) -> Bool {
       }
     FinishIsNot(value) -> card.finish != value
     LanguageIsNot(value) -> card.language != value
+    SupertypeIsNot(value) ->
+      case card.supertypes {
+        option.Some(card_supertypes) -> !list.contains(card_supertypes, value)
+        option.None -> False
+      }
     And(left, right) -> matches(left, card) && matches(right, card)
   }
 }

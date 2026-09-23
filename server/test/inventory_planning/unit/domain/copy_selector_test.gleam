@@ -27,6 +27,7 @@ fn card(oracle: option.Option(String)) -> PlannedCard {
     rarity: Some(rarity.Rare),
     color_identity: None,
     card_type: None,
+    supertypes: None,
     cmc: None,
   )
 }

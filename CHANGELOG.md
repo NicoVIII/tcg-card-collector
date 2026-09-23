@@ -23,6 +23,9 @@ Each release section uses only the subheadings it needs:
 - Inventory rules can match printed language (`language = de`, `language in (de, fr)`,
   `language != en`) and sort by it (`language`, English first then by code), so non-English
   copies can be routed to their own binder or box.
+- Inventory rules can match a card's supertype (`supertype = basic`, `supertype in (basic,
+  legendary)`, `supertype != basic`), so `type = land and supertype = basic` routes the 12 basic
+  lands to their own box separately from every other land.
 
 ## v0.1.0 — 2026-09-23
 

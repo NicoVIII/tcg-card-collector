@@ -36,6 +36,7 @@ fn card(
     rarity: Some(rarity.Common),
     color_identity: Some(color_identity),
     card_type: Some(card_type),
+    supertypes: Some([]),
     cmc: Some(cmc),
   )
 }
@@ -56,6 +57,7 @@ fn unknown_card(collector_number: String) -> PlannedCard {
     rarity: None,
     color_identity: None,
     card_type: None,
+    supertypes: None,
     cmc: None,
   )
 }

@@ -190,6 +190,59 @@ pub fn card_type_rank(card_type: CardType) -> Int {
   }
 }
 
+// CR 205.4a's closed supertype set. A card can carry more than one
+// ("Basic Snow Land — Plains"), unlike CardType's single reduced value.
+pub type Supertype {
+  Legendary
+  Basic
+  Snow
+  World
+  Ongoing
+}
+
+pub fn parse_supertype(raw: String) -> Result(Supertype, Nil) {
+  case string.lowercase(string.trim(raw)) {
+    "legendary" -> Ok(Legendary)
+    "basic" -> Ok(Basic)
+    "snow" -> Ok(Snow)
+    "world" -> Ok(World)
+    "ongoing" -> Ok(Ongoing)
+    _ -> Error(Nil)
+  }
+}
+
+pub fn supertype_to_string(value: Supertype) -> String {
+  case value {
+    Legendary -> "legendary"
+    Basic -> "basic"
+    Snow -> "snow"
+    World -> "world"
+    Ongoing -> "ongoing"
+  }
+}
+
+// Supertypes print left of card types, so they're a prefix of the type line's
+// words — a positional walk, not the substring test card_type_from_type_line
+// uses. Stops at the first word that isn't a supertype, so a subtype that
+// happens to share a supertype's spelling (after the em dash) is never
+// reached.
+pub fn supertypes_from_type_line(type_line: String) -> List(Supertype) {
+  type_line
+  |> string.split(" ")
+  |> supertype_prefix
+}
+
+fn supertype_prefix(words: List(String)) -> List(Supertype) {
+  case words {
+    [] -> []
+    [word, ..rest] ->
+      case parse_supertype(word) {
+        Ok(supertype) -> [supertype, ..supertype_prefix(rest)]
+        Error(Nil) -> []
+      }
+  }
+}
+
 // Ordering policy for possibly-unknown release dates: unknown sorts first,
 // treated as earliest (the pre-strong-typing '' behaviour).
 pub fn compare_release_earliest_first(
@@ -221,10 +274,13 @@ pub fn compare_cmc_lowest_first(
 }
 
 // A collection row joined with whatever the catalog knew about it. oracle_id,
-// rarity, color_identity, and card_type are optional because a collection row
-// may reference a printing the catalog doesn't (yet) carry; such a card fails
-// every attribute predicate and cascades through to bulk. finish/language come
-// from the collection itself (ADR 0010), so they're never absent.
+// rarity, color_identity, card_type, and supertypes are optional because a
+// collection row may reference a printing the catalog doesn't (yet) carry;
+// such a card fails every attribute predicate and cascades through to bulk.
+// finish/language come from the collection itself (ADR 0010), so they're
+// never absent. supertypes is `Some([])` for a known card with no
+// supertypes — distinct from `None` (catalog doesn't know), since `!=`
+// clauses must not treat the two the same (ADR 0017).
 pub type PlannedCard {
   PlannedCard(
     key: CardKey,
@@ -237,6 +293,7 @@ pub type PlannedCard {
     rarity: Option(Rarity),
     color_identity: Option(ColorIdentity),
     card_type: Option(CardType),
+    supertypes: Option(List(Supertype)),
     cmc: Option(ManaValue),
   )
 }

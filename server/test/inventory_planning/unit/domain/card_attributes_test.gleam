@@ -78,6 +78,48 @@ pub fn card_type_priority_test() {
   assert attrs.card_type_from_type_line("Conspiracy") == attrs.Other
 }
 
+// Supertypes are a positional prefix, not a substring test: they stop at the
+// first word that isn't one of CR 205.4a's five, so a subtype after the em
+// dash never gets swept in.
+pub fn supertypes_prefix_walk_test() {
+  assert attrs.supertypes_from_type_line("Basic Land — Plains") == [attrs.Basic]
+  // Wastes: no subtype after the type.
+  assert attrs.supertypes_from_type_line("Basic Land") == [attrs.Basic]
+  // Snow-Covered Wastes: two supertypes, no subtype.
+  assert attrs.supertypes_from_type_line("Basic Snow Land")
+    == [attrs.Basic, attrs.Snow]
+  // Snow-Covered Plains: two supertypes, with a subtype.
+  assert attrs.supertypes_from_type_line("Basic Snow Land — Plains")
+    == [attrs.Basic, attrs.Snow]
+  assert attrs.supertypes_from_type_line("Legendary Creature — Elf")
+    == [attrs.Legendary]
+  // A nonbasic land carries no supertype.
+  assert attrs.supertypes_from_type_line("Land — Gate") == []
+  assert attrs.supertypes_from_type_line("Creature — Bear") == []
+  assert attrs.supertypes_from_type_line("") == []
+}
+
+pub fn supertype_parse_round_trip_test() {
+  let all = [
+    attrs.Legendary,
+    attrs.Basic,
+    attrs.Snow,
+    attrs.World,
+    attrs.Ongoing,
+  ]
+  assert list.all(all, fn(s) {
+    attrs.parse_supertype(attrs.supertype_to_string(s)) == Ok(s)
+  })
+}
+
+pub fn supertype_parse_trims_and_lowercases_test() {
+  assert attrs.parse_supertype("  BASIC  ") == Ok(attrs.Basic)
+}
+
+pub fn supertype_parse_rejects_unknown_test() {
+  let assert Error(_) = attrs.parse_supertype("mythic")
+}
+
 // nonfoil < foil < etched
 pub fn finish_total_order_test() {
   let ascending = [finish.Nonfoil, finish.Foil, finish.Etched]

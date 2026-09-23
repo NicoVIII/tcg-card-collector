@@ -441,6 +441,81 @@ pub fn rule_sort_keys_order_cards_within_location_test() {
   assert list.map(location.cards, fn(c) { c.name }) == ["Apple", "Zebra"]
 }
 
+// A `supertype = basic` rule claims a Basic Land row and leaves a same-typed
+// nonbasic land to bulk — proves the handler wires attrs.type_line through
+// reduce_supertypes, not just reduce_card_type (#115).
+pub fn supertype_basic_rule_routes_basic_land_test() {
+  let ports =
+    build_ports(
+      snapshot: [
+        ports.SnapshotRow(
+          set_code: "lea",
+          collector_number: "288",
+          finish: "nonfoil",
+          language: "en",
+          quantity: 4,
+        ),
+        ports.SnapshotRow(
+          set_code: "grn",
+          collector_number: "251",
+          finish: "nonfoil",
+          language: "en",
+          quantity: 2,
+        ),
+      ],
+      catalog: [
+        #(
+          #("lea", "288"),
+          attrs(
+            name: "Plains",
+            rarity: "common",
+            oracle: "o-plains",
+            color: "",
+            type_line: "Basic Land — Plains",
+            released: "1993-08-05",
+          ),
+        ),
+        #(
+          #("grn", "251"),
+          attrs(
+            name: "Gateway Plaza",
+            rarity: "common",
+            oracle: "o-gate",
+            color: "",
+            type_line: "Land — Gate",
+            released: "2018-10-05",
+          ),
+        ),
+      ],
+      rules: ports.RulesModel(
+        rules: [
+          ports.RuleRow(
+            id: "r-basic",
+            position: 0,
+            selector: "all",
+            expression: "type = land and supertype = basic",
+            location_name: "Basics",
+            sort_keys: "",
+          ),
+        ],
+        bulk: ports.BulkSpecRow(location_name: "Bulk", sort_keys: ""),
+      ),
+    )
+
+  let assert Ok(projection) =
+    handler.execute(handler.InventoryProjectionQuery, ports)
+  let assert [basics, bulk] = projection.locations
+  assert basics.location_name == "Basics"
+  assert basics.total_quantity == 4
+  let assert [plains] = basics.cards
+  assert plains.name == "Plains"
+
+  assert bulk.location_name == "Bulk"
+  assert bulk.total_quantity == 2
+  let assert [gate] = bulk.cards
+  assert gate.name == "Gateway Plaza"
+}
+
 pub fn invalid_stored_rule_sort_keys_propagate_as_error_test() {
   let ports =
     build_ports(

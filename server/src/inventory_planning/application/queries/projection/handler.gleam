@@ -196,6 +196,7 @@ fn plan_card(
         rarity: None,
         color_identity: None,
         card_type: None,
+        supertypes: None,
         cmc: None,
       )
     Ok(attrs) ->
@@ -210,6 +211,7 @@ fn plan_card(
         rarity: Some(attrs.rarity),
         color_identity: Some(attrs.color_identity),
         card_type: reduce_card_type(attrs.type_line),
+        supertypes: reduce_supertypes(attrs.type_line),
         cmc: attrs.cmc,
       )
   })
@@ -222,6 +224,18 @@ fn reduce_card_type(type_line: String) -> Option(card_attributes.CardType) {
   case type_line {
     "" -> None
     _ -> Some(card_attributes.card_type_from_type_line(type_line))
+  }
+}
+
+// Same catalog-gap shape as reduce_card_type: an empty type_line (multi-face
+// layouts, ADR 0008) stays None rather than Some([]), so `supertype != x`
+// still cascades a card the catalog can't attest to instead of matching it.
+fn reduce_supertypes(
+  type_line: String,
+) -> Option(List(card_attributes.Supertype)) {
+  case type_line {
+    "" -> None
+    _ -> Some(card_attributes.supertypes_from_type_line(type_line))
   }
 }
 

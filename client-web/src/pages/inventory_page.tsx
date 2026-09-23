@@ -543,11 +543,16 @@ export function InventoryPage() {
         <code>colorless</code>), <code>type = creature</code>, <code>finish = foil</code> (or{" "}
         <code>finish in (foil, etched)</code>) — e.g.{" "}
         <code>set_code in (grn, m19) and rarity {">"}= rare</code>. Any of <code>set_code</code>,{" "}
-        <code>color_identity</code>, <code>type</code>, <code>finish</code> also takes{" "}
-        <code>!=</code> instead of <code>=</code>, e.g. <code>finish != foil</code>.{" "}
+        <code>color_identity</code>, <code>type</code>, <code>finish</code>, <code>supertype</code>{" "}
+        also takes <code>!=</code> instead of <code>=</code>, e.g. <code>finish != foil</code>.{" "}
         <code>language = de</code> (or <code>language in (de, fr)</code>,{" "}
         <code>language != en</code>) matches printed language — e.g. <code>language != en</code>{" "}
-        routes every non-English copy.
+        routes every non-English copy. <code>supertype = basic</code> (or{" "}
+        <code>supertype in (basic, legendary)</code>, <code>supertype != basic</code>) matches a
+        card carrying that supertype (Legendary, Basic, Snow, World, or Ongoing) — unlike{" "}
+        <code>type</code>, it matches if the card has <em>any</em> of the listed supertypes, since a
+        card can carry more than one (a snow basic land carries both Basic and Snow).{" "}
+        <code>type = land and supertype = basic</code> singles out the 12 basic lands.
       </p>
       <p class="hint">
         Sort keys are a comma-separated list ordering the cards within each location:{" "}

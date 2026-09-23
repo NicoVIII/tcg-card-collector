@@ -27,6 +27,7 @@ fn card_with_color(colors: String) -> PlannedCard {
     rarity: Some(rarity.Rare),
     color_identity: Some(color_identity),
     card_type: Some(attrs.Creature),
+    supertypes: Some([]),
     cmc: None,
   )
 }
@@ -45,6 +46,7 @@ fn card_in_set(set_code: String) -> PlannedCard {
     rarity: None,
     color_identity: None,
     card_type: None,
+    supertypes: None,
     cmc: None,
   )
 }
@@ -140,6 +142,7 @@ pub fn renders_none_when_attribute_missing_test() {
       rarity: None,
       color_identity: None,
       card_type: None,
+      supertypes: None,
       cmc: None,
     )
   let target = location_target.parse("binder {color_identity}")

@@ -74,6 +74,7 @@ fn card(
     rarity: Some(rarity_value),
     color_identity: Some(color_identity),
     card_type: Some(attrs.Creature),
+    supertypes: Some([]),
     cmc: None,
   )
 }
@@ -400,6 +401,7 @@ pub fn catalog_unknown_card_falls_to_bulk_test() {
       rarity: None,
       color_identity: None,
       card_type: None,
+      supertypes: None,
       cmc: None,
     )
   let buckets = rule_cascade.project(owner_cascade(), [unknown], dict.new())
@@ -696,6 +698,7 @@ pub fn type_fan_out_rank_order_test() {
       rarity: Some(rarity.Common),
       color_identity: None,
       card_type: Some(card_type),
+      supertypes: Some([]),
       cmc: None,
     )
   }
@@ -837,6 +840,71 @@ pub fn family_unknown_set_is_own_bucket_test() {
 // A `language != en` rule claims every non-English copy into its own
 // location, leaving bulk with none of them — the issue's acceptance case for
 // routing non-English copies to a dedicated binder.
+// `type = land and supertype = basic` / `type = land and supertype != basic`
+// partition every land into exactly one of the two buckets, none in bulk —
+// the issue's headline acceptance case (#115).
+pub fn supertype_basic_and_nonbasic_partition_lands_test() {
+  let cascade =
+    RuleCascade(
+      rules: [
+        rule(
+          "r1",
+          1,
+          copy_selector.AllCopies,
+          "type = land and supertype = basic",
+          "Basics",
+        ),
+        rule(
+          "r2",
+          2,
+          copy_selector.AllCopies,
+          "type = land and supertype != basic",
+          "Nonbasic lands",
+        ),
+      ],
+      bulk: bulk_spec.BulkSpec("Bulk", []),
+    )
+  // Distinct printings (the remaining-copies pool is keyed on printing +
+  // finish + language, ADR 0010) — a shared key here would merge these
+  // quantities before the predicate ever runs.
+  let plains =
+    attrs.PlannedCard(
+      ..card("x", "1", "Plains", 1, "2010-01-01", "o1", rarity.Common, "R"),
+      card_type: Some(attrs.Land),
+      supertypes: Some([attrs.Basic]),
+    )
+  let snow_wastes =
+    attrs.PlannedCard(
+      ..card("x", "2", "Snow Wastes", 1, "2010-01-01", "o2", rarity.Common, "R"),
+      card_type: Some(attrs.Land),
+      supertypes: Some([attrs.Basic, attrs.Snow]),
+    )
+  let gate =
+    attrs.PlannedCard(
+      ..card("x", "3", "Gate", 1, "2010-01-01", "o3", rarity.Common, "R"),
+      card_type: Some(attrs.Land),
+      supertypes: Some([]),
+    )
+  let creature =
+    attrs.PlannedCard(
+      ..card("x", "4", "Bear", 1, "2010-01-01", "o4", rarity.Common, "R"),
+      card_type: Some(attrs.Creature),
+      supertypes: Some([]),
+    )
+  let cards = [plains, snow_wastes, gate, creature]
+  let buckets = rule_cascade.project(cascade, cards, dict.new())
+
+  let basics = find_bucket(buckets, "Basics")
+  assert basics.total_quantity == 2
+
+  let nonbasic_lands = find_bucket(buckets, "Nonbasic lands")
+  assert nonbasic_lands.total_quantity == 1
+
+  let bulk = find_bucket(buckets, "Bulk")
+  assert bulk.total_quantity == 1
+  assert list.all(bulk.cards, fn(a) { a.card.card_type == Some(attrs.Creature) })
+}
+
 pub fn language_not_eq_claims_every_non_english_copy_test() {
   let cascade =
     RuleCascade(

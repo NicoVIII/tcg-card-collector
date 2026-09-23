@@ -4,7 +4,7 @@ import inventory_planning/domain/card_attributes.{type PlannedCard} as attrs
 import inventory_planning/domain/card_predicate.{
   And, CardTypeIs, CardTypeIsNot, ColorIdentityIs, ColorIdentityIsNot, FinishIn,
   FinishIsNot, LanguageIn, LanguageIsNot, RarityAtLeast, RarityIn, SetCodeIn,
-  SetCodeIsNot,
+  SetCodeIsNot, SupertypeIn, SupertypeIsNot,
 }
 import shared/domain/card_key
 import shared/domain/finish
@@ -35,6 +35,7 @@ fn card(
     rarity: Some(rarity_value),
     color_identity: Some(color_identity),
     card_type: Some(card_type),
+    supertypes: Some([]),
     cmc: None,
   )
 }
@@ -53,6 +54,7 @@ fn bare_card() -> PlannedCard {
     rarity: None,
     color_identity: None,
     card_type: None,
+    supertypes: None,
     cmc: None,
   )
 }
@@ -148,6 +150,28 @@ pub fn rejects_unknown_language_test() {
     == Error(card_predicate.UnknownLanguage("xx"))
 }
 
+pub fn parses_supertype_equals_test() {
+  assert card_predicate.parse("supertype = BASIC")
+    == Ok(SupertypeIn([attrs.Basic]))
+}
+
+pub fn parses_supertype_in_test() {
+  assert card_predicate.parse("supertype in (basic, legendary)")
+    == Ok(SupertypeIn([attrs.Basic, attrs.Legendary]))
+}
+
+pub fn parses_supertype_not_eq_test() {
+  assert card_predicate.parse("supertype != basic")
+    == Ok(SupertypeIsNot(attrs.Basic))
+}
+
+// Unknown words report a supertype-specific error, not a generic
+// malformed-clause one — mirroring rejects_unknown_language_test.
+pub fn rejects_unknown_supertype_test() {
+  assert card_predicate.parse("supertype = mythic")
+    == Error(card_predicate.UnknownSupertype("mythic"))
+}
+
 pub fn parses_conjunction_left_folded_test() {
   let assert Ok(pred) =
     card_predicate.parse(
@@ -190,6 +214,9 @@ pub fn round_trips_through_parse_test() {
     "language = de",
     "language in (de, fr)",
     "language != en",
+    "supertype = basic",
+    "supertype in (basic, legendary)",
+    "supertype != basic",
     "set_code in (grn) and rarity >= rare and type = creature",
   ]
   assert list.all(sources, fn(src) {
@@ -313,4 +340,62 @@ pub fn matches_language_not_eq_en_test() {
     pred,
     card("x", rarity.Rare, "R", attrs.Creature),
   )
+}
+
+// `supertype = basic` matches a card carrying Basic among possibly several
+// supertypes ("Basic Snow Land") — membership, not equality, unlike type.
+pub fn matches_supertype_equals_test() {
+  let assert Ok(pred) = card_predicate.parse("supertype = basic")
+  let basic_snow_land =
+    attrs.PlannedCard(
+      ..card("x", rarity.Common, "R", attrs.Land),
+      supertypes: Some([attrs.Basic, attrs.Snow]),
+    )
+  assert card_predicate.matches(pred, basic_snow_land)
+  assert !card_predicate.matches(
+    pred,
+    card("x", rarity.Common, "R", attrs.Land),
+  )
+}
+
+// `in (...)` matches a card carrying either listed supertype.
+pub fn matches_supertype_in_either_test() {
+  let assert Ok(pred) = card_predicate.parse("supertype in (basic, legendary)")
+  let legendary_creature =
+    attrs.PlannedCard(
+      ..card("x", rarity.Rare, "R", attrs.Creature),
+      supertypes: Some([attrs.Legendary]),
+    )
+  assert card_predicate.matches(pred, legendary_creature)
+  assert !card_predicate.matches(
+    pred,
+    card("x", rarity.Rare, "R", attrs.Creature),
+  )
+}
+
+// `!=` excludes a card that carries the supertype among others — the snow
+// basic isn't nonbasic just because it also carries Snow.
+pub fn matches_supertype_not_eq_excludes_multi_supertype_card_test() {
+  let assert Ok(pred) = card_predicate.parse("supertype != basic")
+  let basic_snow_land =
+    attrs.PlannedCard(
+      ..card("x", rarity.Common, "R", attrs.Land),
+      supertypes: Some([attrs.Basic, attrs.Snow]),
+    )
+  let gate =
+    attrs.PlannedCard(
+      ..card("x", rarity.Common, "R", attrs.Land),
+      supertypes: Some([]),
+    )
+  assert !card_predicate.matches(pred, basic_snow_land)
+  assert card_predicate.matches(pred, gate)
+}
+
+// Negation doesn't flip the unknown-enrichment case for supertype either — a
+// card the catalog doesn't know fails != the same way it fails =.
+pub fn supertype_clauses_match_false_when_unknown_test() {
+  let assert Ok(eq_pred) = card_predicate.parse("supertype = basic")
+  let assert Ok(not_eq_pred) = card_predicate.parse("supertype != basic")
+  assert !card_predicate.matches(eq_pred, bare_card())
+  assert !card_predicate.matches(not_eq_pred, bare_card())
 }
