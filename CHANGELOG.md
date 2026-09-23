@@ -16,6 +16,12 @@ Each release section uses only the subheadings it needs:
 
 ## Unreleased
 
+### Added
+
+- Search the Catalog page by card name (case-insensitive substring) and set code.
+- Search the Collection page the same way, and list the collection over REST
+  (`GET /api/collection/cards`).
+
 ## v0.1.0 — unreleased
 
 First tagged release. See [README.md](README.md) § What works today for what the

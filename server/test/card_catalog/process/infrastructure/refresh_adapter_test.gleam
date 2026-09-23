@@ -101,7 +101,7 @@ pub fn import_succeeds_and_loads_cards_test() {
 
   // 4 cards in the fixture but test-id-004 has rarity "mythical_rare" (unknown)
   // and must be skipped; only 3 valid cards should be persisted
-  let assert Ok(cards) = catalog_dao.list()
+  let assert Ok(cards) = catalog_dao.list(option.None, option.None)
   assert list.length(cards) == 3
 
   // Metadata should reflect succeeded
@@ -327,7 +327,7 @@ pub fn unchanged_upstream_marks_skipped_test() {
   assert result == Ok(Nil)
 
   // No cards should have been imported
-  assert catalog_dao.list() == Ok([])
+  assert catalog_dao.list(option.None, option.None) == Ok([])
 
   // Metadata should be skipped
   let status =
@@ -358,7 +358,7 @@ pub fn recent_probe_without_reset_imports_nothing_test() {
   let result = handler.execute(handler.RefreshCatalogCommand, port)
 
   assert result == Ok(Nil)
-  assert catalog_dao.list() == Ok([])
+  assert catalog_dao.list(option.None, option.None) == Ok([])
 
   // Record is untouched: the handler never contacted upstream, so it wrote
   // nothing (see the "No save" comment in handler.execute).
@@ -392,7 +392,7 @@ pub fn reset_request_reimports_despite_recent_probe_test() {
   let result = handler.execute(handler.RefreshCatalogCommand, port)
 
   assert result == Ok(Nil)
-  let assert Ok(cards) = catalog_dao.list()
+  let assert Ok(cards) = catalog_dao.list(option.None, option.None)
   assert list.length(cards) == 3
 
   let status =
@@ -415,5 +415,5 @@ pub fn metadata_without_jsonl_uri_fails_naming_the_field_test() {
   let assert Error(error) = handler.execute(handler.RefreshCatalogCommand, port)
 
   assert string.contains(error.reason, "jsonl_download_uri")
-  assert catalog_dao.list() == Ok([])
+  assert catalog_dao.list(option.None, option.None) == Ok([])
 }

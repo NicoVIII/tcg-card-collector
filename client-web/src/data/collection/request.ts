@@ -6,6 +6,7 @@ import {
   CollectionCopy as RpcCollectionCopy,
 } from "../skirout/collection/queries.js";
 import { fromWireFinishKind, fromWireLanguageKind, type Finish, type Language } from "./copy_kind";
+import { type CardFilter, toWireFilter } from "../../lib/card_filter";
 
 export type CollectionCopy = {
   finish: Finish;
@@ -48,12 +49,13 @@ function toCollectionCardList(response: RpcCollectionCardList): CollectionCardLi
 }
 
 export async function listCollectionCards(
+  filter: CardFilter,
   offset: number,
   limit: number,
 ): Promise<CollectionCardList> {
   const response = await skirClient.invokeRemote(
     ListCollectionCards,
-    ListCollectionCardsRequest.create({ offset, limit }),
+    ListCollectionCardsRequest.create({ offset, limit, ...toWireFilter(filter) }),
     "POST",
   );
 

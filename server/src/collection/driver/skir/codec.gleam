@@ -4,7 +4,10 @@ import collection/application/commands/remove_cards/ports as remove_cards_ports
 import collection/application/queries/list_cards/ports as list_collection_cards_ports
 import collection/driver/error_presentation
 import gleam/list
+import gleam/option.{type Option}
 import shared/domain/card_key
+import shared/domain/set_code.{type SetCode}
+import shared/driver/search_filter
 import shared/driver/skir/helpers
 import shared/driver/skir/skirout/collection/commands as collection_commands
 import shared/driver/skir/skirout/collection/queries as collection_queries
@@ -169,6 +172,18 @@ fn map_owned_printing(
     copies: list.map(printing.copies, map_owned_copy),
     set_code: card_key.set_code_string(printing.key),
   )
+}
+
+pub fn to_name_filter(
+  req: collection_queries.ListCollectionCardsRequest,
+) -> Option(String) {
+  search_filter.parse_name(req.name)
+}
+
+pub fn to_set_code_filter(
+  req: collection_queries.ListCollectionCardsRequest,
+) -> Option(SetCode) {
+  search_filter.parse_set_code(req.set_code)
 }
 
 pub fn map_collection_card_page(

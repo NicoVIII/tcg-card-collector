@@ -1,19 +1,33 @@
-import { Show, createSignal } from "solid-js";
-import { A } from "@solidjs/router";
+import { Show, createMemo, createSignal } from "solid-js";
+import { A, useSearchParams } from "@solidjs/router";
 import { useCollectionCardsQuery } from "../data/collection/query";
 import { mapError } from "../data/http/error";
 import { CardGrid } from "../components/card_grid";
+import { CardSearchForm } from "../components/card_search_form";
 import { Pagination } from "../components/pagination";
+import {
+  type CardFilter,
+  filterFromSearchParams,
+  searchParamsFromFilter,
+} from "../lib/card_filter";
 import { AddCardsPanel } from "./add_cards_panel";
 import { RemoveCardsPanel } from "./remove_cards_panel";
 
 const PAGE_SIZE = 25;
 
 export function CollectionPage() {
+  const [searchParams, setSearchParams] = useSearchParams<{ name?: string; set?: string }>();
+  const filter = createMemo(() => filterFromSearchParams(searchParams));
   const [offset, setOffset] = createSignal(0);
-  const cardsQuery = useCollectionCardsQuery(offset, () => PAGE_SIZE);
+  const cardsQuery = useCollectionCardsQuery(filter, offset, () => PAGE_SIZE);
+  const isFiltered = () => filter().name !== "" || filter().set_code !== "";
 
   const total = () => cardsQuery.data?.total ?? 0;
+
+  const search = (next: CardFilter) => {
+    setOffset(0);
+    setSearchParams(searchParamsFromFilter(next));
+  };
 
   return (
     <section>
@@ -23,6 +37,7 @@ export function CollectionPage() {
       </div>
       <AddCardsPanel />
       <RemoveCardsPanel />
+      <CardSearchForm filter={filter()} onSearch={search} />
       <Show when={cardsQuery.isLoading}>
         <p>Loading collection...</p>
       </Show>
@@ -33,7 +48,7 @@ export function CollectionPage() {
         when={(cardsQuery.data?.data?.length ?? 0) > 0}
         fallback={
           <Show when={!cardsQuery.isLoading}>
-            <p>No cards in collection.</p>
+            <p>{isFiltered() ? "No cards match your search." : "No cards in collection."}</p>
           </Show>
         }
       >

@@ -6,12 +6,17 @@ import {
   getCatalogRefreshStatus,
   listCatalogCards,
 } from "./request";
+import type { CardFilter } from "../../lib/card_filter";
 import { queryKeys } from "../query-keys/factory";
 
-export function useCatalogCardsQuery(offset: () => number, limit: () => number) {
+export function useCatalogCardsQuery(
+  filter: () => CardFilter,
+  offset: () => number,
+  limit: () => number,
+) {
   return createQuery(() => ({
-    queryKey: queryKeys.catalogList(offset(), limit()),
-    queryFn: () => listCatalogCards(offset(), limit()),
+    queryKey: queryKeys.catalogList(filter(), offset(), limit()),
+    queryFn: () => listCatalogCards(filter(), offset(), limit()),
   }));
 }
 

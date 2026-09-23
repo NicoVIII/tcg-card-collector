@@ -8,6 +8,6 @@ pub type Dependencies {
     import_collection_ports: import_collection_ports.ImportCollectionPorts,
     add_cards_port: add_cards_ports.UpsertCardsPort,
     remove_cards_ports: remove_cards_ports.RemoveCardsPorts,
-    list_collection_cards_port: list_cards_ports.ListCollectionCardsPort,
+    list_collection_cards_ports: list_cards_ports.ListCollectionCardsPorts,
   )
 }

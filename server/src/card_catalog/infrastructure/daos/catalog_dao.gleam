@@ -175,12 +175,24 @@ fn card_row_decoder() -> decode.Decoder(CatalogCardRow) {
   ))
 }
 
-pub fn list() -> Result(List(CatalogKeyTuple), String) {
+// `instr` over `lower(name)` keeps `%`/`_` in user input literal (no LIKE
+// escaping needed) at the cost of ASCII-only case folding.
+pub fn list(
+  name: Option(String),
+  set_code: Option(String),
+) -> Result(List(CatalogKeyTuple), String) {
   sqlite_store.query(
     "SELECT set_code, collector_number "
       <> "FROM catalog_cards "
+      <> "WHERE (? IS NULL OR instr(lower(name), lower(?)) > 0) "
+      <> "AND (? IS NULL OR set_code = ?) "
       <> "ORDER BY name ASC, set_code ASC, collector_number ASC;",
-    [],
+    [
+      sqlight.nullable(sqlight.text, name),
+      sqlight.nullable(sqlight.text, name),
+      sqlight.nullable(sqlight.text, set_code),
+      sqlight.nullable(sqlight.text, set_code),
+    ],
     key_row_decoder(),
   )
 }

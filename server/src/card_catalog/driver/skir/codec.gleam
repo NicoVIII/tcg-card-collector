@@ -10,6 +10,7 @@ import shared/domain/color_identity
 import shared/domain/oracle_id
 import shared/domain/rarity
 import shared/domain/release_date
+import shared/driver/search_filter
 import shared/driver/skir/skirout/card_catalog/commands as card_catalog_commands
 import shared/driver/skir/skirout/card_catalog/queries as card_catalog_queries
 
@@ -40,6 +41,15 @@ pub fn to_key_pair(
   key: card_catalog_queries.CatalogCardKey,
 ) -> #(String, String) {
   #(key.set_code, key.collector_number)
+}
+
+pub fn to_catalog_card_filter(
+  req: card_catalog_queries.ListCatalogCardsRequest,
+) -> list_cards_ports.CatalogCardFilter {
+  list_cards_ports.CatalogCardFilter(
+    name: search_filter.parse_name(req.name),
+    set_code: search_filter.parse_set_code(req.set_code),
+  )
 }
 
 fn clamp_non_negative(value: Int) -> Int {

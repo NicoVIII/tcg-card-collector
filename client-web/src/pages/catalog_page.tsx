@@ -1,12 +1,19 @@
 import { Show, createEffect, createMemo, createSignal, onCleanup, type Accessor } from "solid-js";
 import { useQueryClient, type QueryClient } from "@tanstack/solid-query";
+import { useSearchParams } from "@solidjs/router";
 import { useRefreshCatalogMutation } from "../data/card_catalog/mutation";
 import { useCatalogCardsQuery, useCatalogRefreshStatusQuery } from "../data/card_catalog/query";
 import type { CatalogRefreshStatus } from "../data/card_catalog/request";
 import { mapError } from "../data/http/error";
 import { queryKeys } from "../data/query-keys/factory";
 import { CardGrid } from "../components/card_grid";
+import { CardSearchForm } from "../components/card_search_form";
 import { Pagination } from "../components/pagination";
+import {
+  type CardFilter,
+  filterFromSearchParams,
+  searchParamsFromFilter,
+} from "../lib/card_filter";
 import {
   finishedFeedback,
   hasFinishedSince,
@@ -58,13 +65,22 @@ function LastRefreshLine(props: { status: CatalogRefreshStatus }) {
 }
 
 function CatalogCards() {
+  const [searchParams, setSearchParams] = useSearchParams<{ name?: string; set?: string }>();
+  const filter = createMemo(() => filterFromSearchParams(searchParams));
   const [offset, setOffset] = createSignal(0);
-  const keysQuery = useCatalogCardsQuery(offset, () => PAGE_SIZE);
+  const keysQuery = useCatalogCardsQuery(filter, offset, () => PAGE_SIZE);
   const cards = () => keysQuery.data?.data ?? [];
   const total = () => keysQuery.data?.total ?? 0;
+  const isFiltered = () => filter().name !== "" || filter().set_code !== "";
+
+  const search = (next: CardFilter) => {
+    setOffset(0);
+    setSearchParams(searchParamsFromFilter(next));
+  };
 
   return (
     <>
+      <CardSearchForm filter={filter()} onSearch={search} />
       <Show when={keysQuery.isLoading}>
         <p>Loading cards...</p>
       </Show>
@@ -75,7 +91,7 @@ function CatalogCards() {
         when={cards().length > 0}
         fallback={
           <Show when={!keysQuery.isLoading}>
-            <p>No cards found.</p>
+            <p>{isFiltered() ? "No cards match your search." : "No cards found."}</p>
           </Show>
         }
       >
