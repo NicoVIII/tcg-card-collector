@@ -7,6 +7,8 @@ Everything needed to set up a working environment, run the service locally, and 
 1. `just dbmate-install` then `just dbmate-migrate` — SQLite migrations via dbmate; the db path comes from `TCG_DB_FILE` (`just server::run` sets it to `server/db/tcg-card-collector.db`). Some migrations request a catalog reset (adding a Scryfall-sourced column); after applying one, the next server start re-downloads the full catalog before the Catalog page shows a last-refresh entry again — a few minutes, not instant.
 2. `lefthook install` — one-time, manual; pre-commit then runs the check suite on staged content.
 
+This repo has only `AGENTS.md` files, no `CLAUDE.md`. Claude Code reads `AGENTS.md` natively from version 2.1.277 onward; on an older version, root and per-directory agent instructions won't load.
+
 ## Repository Layout
 
 - `server` — Gleam backend (Erlang target)
