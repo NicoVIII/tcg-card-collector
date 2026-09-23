@@ -22,6 +22,12 @@ Each release section uses only the subheadings it needs:
 - Search the Collection page the same way, and list the collection over REST
   (`GET /api/collection/cards`).
 
+### Changed
+
+- The Inventory page's projection now collapses to a list of locations (name +
+  card count); opening one shows its cards, paged and scrollable, instead of every
+  location's full table rendering on one page.
+
 ## v0.1.0 — unreleased
 
 First tagged release. See [README.md](README.md) § What works today for what the

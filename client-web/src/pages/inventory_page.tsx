@@ -1,5 +1,7 @@
-import { For, Show, createEffect, createSignal } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
+import { useSearchParams } from "@solidjs/router";
 import { ConfirmButton } from "../components/confirm_button";
+import { Pagination } from "../components/pagination";
 import { mapError } from "../data/http/error";
 import {
   useDeleteInventoryRuleMutation,
@@ -10,7 +12,7 @@ import {
 import { SELECTOR_OPTIONS } from "../data/inventory_planning/options";
 import { randomUUID } from "../lib/uuid";
 import { createMutationError } from "../lib/mutation_error";
-import type { InventoryRule, ProjectionLocation } from "../data/inventory_planning/request";
+import type { InventoryRule, ProjectionCard } from "../data/inventory_planning/request";
 import {
   useBulkSpecQuery,
   useInventoryProjectionQuery,
@@ -25,6 +27,14 @@ import {
   nextPosition,
   type RuleDraft,
 } from "./inventory_rules";
+import { focusNameFrom } from "./placement_focus";
+import {
+  PROJECTION_PAGE_SIZE,
+  countLabel,
+  openLocationCards,
+  projectionSummaries,
+  type ProjectionLocationSummary,
+} from "./inventory_projection";
 
 type RuleFieldsProps = {
   draft: RuleDraft;
@@ -206,14 +216,9 @@ function AddRuleForm(props: AddRuleFormProps) {
   );
 }
 
-function ProjectionLocationTable(props: { location: ProjectionLocation }) {
+function ProjectionCardsTable(props: { cards: ProjectionCard[] }) {
   return (
-    <div class="projection-location">
-      <h4>{props.location.location_name}</h4>
-      <p class="hint">
-        {props.location.rule_id === "" ? "Bulk remainder" : "Rule-assigned"} —{" "}
-        {props.location.total_quantity} card(s)
-      </p>
+    <div class="table-scroll">
       <table>
         <thead>
           <tr>
@@ -229,7 +234,7 @@ function ProjectionLocationTable(props: { location: ProjectionLocation }) {
           </tr>
         </thead>
         <tbody>
-          <For each={props.location.cards}>
+          <For each={props.cards}>
             {(card) => (
               <tr>
                 <td>{card.name}</td>
@@ -250,10 +255,107 @@ function ProjectionLocationTable(props: { location: ProjectionLocation }) {
   );
 }
 
+type ProjectionLocationPanelProps = {
+  cards: ProjectionCard[];
+  offset: number;
+  onOffsetChange: (offset: number) => void;
+};
+
+function ProjectionLocationPanel(props: ProjectionLocationPanelProps) {
+  // Clamped to the last full page rather than trusted as-is: a browser
+  // back/forward step can restore an old `?location=` without passing
+  // through `toggle`'s reset, and a new search can shrink the filtered list
+  // out from under a deep offset — this keeps the panel on a real page
+  // instead of a blank or single-row one.
+  const maxOffset = () =>
+    Math.floor(Math.max(0, props.cards.length - 1) / PROJECTION_PAGE_SIZE) * PROJECTION_PAGE_SIZE;
+  const offset = () => Math.min(props.offset, maxOffset());
+  const page = () => props.cards.slice(offset(), offset() + PROJECTION_PAGE_SIZE);
+
+  return (
+    <>
+      <Show when={props.cards.length > PROJECTION_PAGE_SIZE}>
+        <Pagination
+          offset={offset()}
+          limit={PROJECTION_PAGE_SIZE}
+          total={props.cards.length}
+          onOffsetChange={props.onOffsetChange}
+        />
+      </Show>
+      <ProjectionCardsTable cards={page()} />
+    </>
+  );
+}
+
+type ProjectionLocationRowProps = {
+  summary: ProjectionLocationSummary;
+  panelId: string;
+  isOpen: boolean;
+  cards: ProjectionCard[] | null;
+  offset: number;
+  onOffsetChange: (offset: number) => void;
+  onToggle: (location_name: string, headerEl: HTMLElement) => void;
+};
+
+function ProjectionLocationRow(props: ProjectionLocationRowProps) {
+  let headerRef: HTMLButtonElement | undefined;
+
+  return (
+    <div class="placement-location">
+      <h4 class="placement-location-header">
+        <button
+          ref={(element) => {
+            headerRef = element;
+          }}
+          type="button"
+          class="placement-location-toggle"
+          aria-expanded={props.isOpen}
+          aria-controls={props.panelId}
+          onClick={() => headerRef && props.onToggle(props.summary.location_name, headerRef)}
+        >
+          <span aria-hidden="true">{props.isOpen ? "▾" : "▸"}</span>
+          <span>
+            {props.summary.location_name}
+            {props.summary.is_bulk ? " (bulk remainder)" : ""}
+          </span>
+          <span>{countLabel(props.summary)}</span>
+        </button>
+      </h4>
+      <Show when={props.isOpen && props.cards !== null}>
+        <div id={props.panelId}>
+          <ProjectionLocationPanel
+            cards={props.cards as ProjectionCard[]}
+            offset={props.offset}
+            onOffsetChange={props.onOffsetChange}
+          />
+        </div>
+      </Show>
+    </div>
+  );
+}
+
 function ProjectionSection() {
   const projectionQuery = useInventoryProjectionQuery();
+  const [searchParams, setSearchParams] = useSearchParams<{ location?: string }>();
+  const openName = () => focusNameFrom(searchParams.location);
+  // Owned here (not per-panel) so opening a different location can reset it
+  // directly, the same way collection_page.tsx's `search` calls
+  // `setOffset(0)` alongside `setSearchParams` — no effect needed to notice
+  // the change after the fact.
+  const [offset, setOffset] = createSignal(0);
+
   const unknownCount = () => projectionQuery.data?.unknown_count ?? 0;
-  const locations = () => projectionQuery.data?.locations ?? [];
+  const summaries = createMemo(() => projectionSummaries(projectionQuery.data));
+  const openCards = createMemo(() => openLocationCards(projectionQuery.data, openName()));
+
+  // A history entry per open/close (not a replace), mirroring
+  // placement_page.tsx's toggleFocus — back-to-close is the phone affordance
+  // alongside re-tapping the header.
+  const toggle = (location_name: string, headerEl: HTMLElement) => {
+    setOffset(0);
+    setSearchParams({ location: openName() === location_name ? undefined : location_name });
+    headerEl.scrollIntoView({ block: "nearest" });
+  };
 
   return (
     <>
@@ -271,11 +373,21 @@ function ProjectionSection() {
         </p>
       </Show>
       <Show
-        when={!projectionQuery.isError && locations().length > 0}
+        when={!projectionQuery.isError && summaries().length > 0}
         fallback={<p>No projection data.</p>}
       >
-        <For each={locations()}>
-          {(location) => <ProjectionLocationTable location={location} />}
+        <For each={summaries()}>
+          {(summary, index) => (
+            <ProjectionLocationRow
+              summary={summary}
+              panelId={`projection-panel-${index()}`}
+              isOpen={openName() === summary.location_name}
+              cards={openName() === summary.location_name ? openCards() : null}
+              offset={offset()}
+              onOffsetChange={setOffset}
+              onToggle={toggle}
+            />
+          )}
         </For>
       </Show>
     </>
