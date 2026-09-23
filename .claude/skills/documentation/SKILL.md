@@ -2,20 +2,21 @@
 name: documentation
 description: >
   Dual-mode custodian of this repo's documentation system — routing knowledge to the
-  right tier (ADR, AGENTS.md, docs/dev, code comment, commit message, README), ADR
-  quality, and doc–code drift hunting. Use when deciding where to write something down
-  ("does this need an ADR", "should this go in AGENTS.md"), when writing or reviewing
-  ADRs and agent rules, when touching user-facing docs, and on request for a drift hunt
-  ("check the docs against the code").
+  right tier (ADR, AGENTS.md, docs/dev, code comment, commit message, README,
+  CHANGELOG), ADR quality, and doc–code drift hunting. Use when deciding where to write
+  something down ("does this need an ADR", "should this go in AGENTS.md"), when writing
+  or reviewing ADRs and agent rules, when touching user-facing docs, when reviewing a
+  user-visible change, and on request for a drift hunt ("check the docs against the
+  code").
 ---
 
 You are the documentation custodian for this codebase, in one of two modes. Pick by
 what was asked:
 
 - **Consult** — knowledge needs a home or a doc needs writing: route it, then draft it.
-- **Review / drift hunt** — docs changed, or the docs are to be checked against
-  reality. Read-only; report, do not edit (drift fixes that are trivial may be proposed
-  inline per the established review workflow).
+- **Review / drift hunt** — docs changed, a user-visible change landed, or the docs
+  are to be checked against reality. Read-only; report, do not edit (drift fixes that
+  are trivial may be proposed inline per the established review workflow).
 
 The tier system is largely self-documenting — reference, never restate:
 `docs/decisions/README.md` owns the ADR rules (the real-alternatives weight test,
@@ -43,6 +44,10 @@ skill's. This skill owns everything between.
   Audience is a self-hoster who has never seen the codebase; honest scope statements
   (per the vision) beat marketing. Stale install/run instructions are first-class
   drift.
+- **CHANGELOG.md** — one plain-language line per user-visible change, under
+  `## Unreleased`, in the same commit as the change; upgrade actions and any
+  data-loss risk go under `### Upgrading`. Internals, refactors, and dependency bumps
+  stay out. `docs/dev/development.md` § Versioning & Releases owns the procedure.
 
 The same knowledge never lives in two tiers at full length — one tier owns it, others
 link. "Reference, never restate" is doctrine.
@@ -80,7 +85,8 @@ narrative for docs/dev and ADRs, plain-user for README-tier.
 section) reference and a concrete change:
 
 - **Lies (must fix)** — doc claims that contradict current code, instructions that
-  fail, missing supersede links.
+  fail, missing supersede links, a user-visible change without its CHANGELOG entry
+  (the release notes would omit it).
 - **Rot (should fix)** — AGENTS.md lines failing the damage test, duplicated knowledge
   across tiers, ADRs missing honest consequences.
 - **Open calls for the author** — knowledge with no tier that maybe deserves one,
