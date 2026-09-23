@@ -14,7 +14,10 @@ Each release section uses only the subheadings it needs:
 - `### Upgrading` — anything an upgrade requires, and whether the release can lose
   collection or inventory data (see [README.md](README.md) § Data preservation).
 
-## Unreleased
+## v0.1.0 — 2026-09-23
+
+First tagged release. See [README.md](https://github.com/NicoVIII/tcg-card-collector/blob/v0.1.0/README.md) § What works today for what the
+service does.
 
 ### Added
 
@@ -29,11 +32,6 @@ Each release section uses only the subheadings it needs:
 - The Inventory page's projection now collapses to a list of locations (name +
   card count); opening one shows its cards, paged and scrollable, instead of every
   location's full table rendering on one page.
-
-## v0.1.0 — unreleased
-
-First tagged release. See [README.md](README.md) § What works today for what the
-service does.
 
 ### Upgrading
 
