@@ -2,6 +2,8 @@ import gleam/bit_array
 import gleam/bytes_tree
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
+import gleam/list
+import gleam/option.{type Option}
 import mist
 import shared/driver/http/json_codec
 import shared/driver/presented_error.{type PresentedError, BadRequest, Internal}
@@ -40,6 +42,18 @@ pub fn query_response(
   case result {
     Ok(value) -> json_response(200, encode(value))
     Error(reason) -> json_response(500, json_codec.encode_error(reason))
+  }
+}
+
+/// A malformed query string (bad percent-encoding) reads as no params, the
+/// same as an absent one — there's nothing more specific to tell the caller.
+pub fn query_param(
+  req: Request(mist.Connection),
+  key: String,
+) -> Option(String) {
+  case request.get_query(req) {
+    Ok(params) -> list.key_find(params, key) |> option.from_result
+    Error(_) -> option.None
   }
 }
 

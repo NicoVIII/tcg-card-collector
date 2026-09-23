@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { skirClient } from "../http/skir_rpc";
+import { type CardFilter, toWireFilter } from "../../lib/card_filter";
 import { RefreshCatalog, RefreshCatalogRequest } from "../skirout/card_catalog/commands.js";
 import {
   GetCatalogCards,
@@ -92,10 +93,14 @@ function toCatalogCardKeyList(
   };
 }
 
-export async function listCatalogCards(offset: number, limit: number): Promise<CatalogCardKeyList> {
+export async function listCatalogCards(
+  filter: CardFilter,
+  offset: number,
+  limit: number,
+): Promise<CatalogCardKeyList> {
   const response = await skirClient.invokeRemote(
     ListCatalogCards,
-    ListCatalogCardsRequest.create({ offset, limit }),
+    ListCatalogCardsRequest.create({ offset, limit, ...toWireFilter(filter) }),
     "POST",
   );
   return toCatalogCardKeyList(RpcCatalogCardKeyListSchema.parse(response));

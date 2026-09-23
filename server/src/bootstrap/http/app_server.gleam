@@ -79,7 +79,7 @@ fn handle_request(
 
   case req.method, path {
     Get, "/api/catalog/cards" ->
-      catalog_http.handle_list_catalog_cards(deps.catalog)
+      catalog_http.handle_list_catalog_cards(req, deps.catalog)
     Post, "/api/catalog/cards/lookup" ->
       catalog_http.handle_get_catalog_cards(req, deps.catalog)
     Post, "/api/catalog/refresh" ->

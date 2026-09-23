@@ -3,6 +3,8 @@ import card_catalog/application/queries/refresh_status/ports as refresh_status_p
 import card_catalog/driver/refresh_launcher
 import card_catalog/driver/skir/codec as catalog_skir_codec
 import gleam/list
+import gleam/option.{None, Some}
+import shared/domain/set_code
 import shared/driver/skir/skirout/card_catalog/commands as card_catalog_commands
 import shared/driver/skir/skirout/card_catalog/queries as card_catalog_queries
 
@@ -83,4 +85,35 @@ pub fn key_page_treats_negative_offset_and_limit_as_zero_test() {
     catalog_skir_codec.map_catalog_card_key_page(keys(["1", "2", "3"]), -1, -5)
 
   assert collector_numbers(page) == ["1", "2", "3"]
+}
+
+pub fn filter_trims_name_and_parses_set_code_test() {
+  let req =
+    card_catalog_queries.list_catalog_cards_request_new(
+      limit: 0,
+      name: Some(" Bolt "),
+      offset: 0,
+      set_code: Some(" LEA "),
+    )
+
+  let filter = catalog_skir_codec.to_catalog_card_filter(req)
+
+  assert filter.name == Some("Bolt")
+  let assert Ok(lea) = set_code.new("lea")
+  assert filter.set_code == Some(lea)
+}
+
+pub fn filter_treats_blank_fields_as_absent_test() {
+  let req =
+    card_catalog_queries.list_catalog_cards_request_new(
+      limit: 0,
+      name: Some("   "),
+      offset: 0,
+      set_code: None,
+    )
+
+  let filter = catalog_skir_codec.to_catalog_card_filter(req)
+
+  assert filter.name == None
+  assert filter.set_code == None
 }

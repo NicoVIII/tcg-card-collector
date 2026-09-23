@@ -2,6 +2,7 @@ import card_catalog/application/queries/get_cards/handler as get_catalog_cards_h
 import card_catalog/application/queries/list_cards/handler.{
   ListCatalogCardsQuery,
 } as catalog_list_cards_handler
+import card_catalog/application/queries/list_cards/ports as catalog_list_cards_ports
 import card_catalog/application/queries/refresh_status/handler.{
   GetCatalogRefreshStatusQuery,
 } as refresh_status_handler
@@ -13,12 +14,19 @@ import gleam/http/response.{type Response}
 import mist
 import shared/driver/http/helpers
 import shared/driver/http/json_codec
+import shared/driver/search_filter
 
 pub fn handle_list_catalog_cards(
+  req: Request(mist.Connection),
   deps: Dependencies,
 ) -> Response(mist.ResponseData) {
+  let filter =
+    catalog_list_cards_ports.CatalogCardFilter(
+      name: search_filter.parse_name(helpers.query_param(req, "name")),
+      set_code: search_filter.parse_set_code(helpers.query_param(req, "set")),
+    )
   catalog_list_cards_handler.execute(
-    ListCatalogCardsQuery,
+    ListCatalogCardsQuery(filter:),
     deps.list_catalog_cards_port,
   )
   |> helpers.query_response(catalog_codec.encode_catalog_cards)

@@ -39,7 +39,9 @@ fn handle_list_catalog_cards(
 ) {
   fn(req: card_catalog_queries.ListCatalogCardsRequest, _, ctx) {
     catalog_list_cards_handler.execute(
-      ListCatalogCardsQuery,
+      ListCatalogCardsQuery(filter: catalog_skir_codec.to_catalog_card_filter(
+        req,
+      )),
       get_dependencies(ctx).list_catalog_cards_port,
     )
     |> helpers.map_query(catalog_skir_codec.map_catalog_card_key_page(
