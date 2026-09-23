@@ -384,3 +384,20 @@ p[role="alert"] {
 .resort-pull-out {
   margin-left: auto;
 }
+
+/* Inventory projection: a fixed-height scroll box around each open
+   location's table so a phone viewport scrolls the table horizontally
+   instead of the whole page overflowing (#55), and the header row stays
+   visible while scrolling a tall page vertically. `overflow` on the box is
+   what makes it its own scroll container, which `position: sticky` needs. */
+.table-scroll {
+  overflow: auto;
+  max-height: 70vh;
+  margin-top: 8px;
+}
+
+.table-scroll thead th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+}
