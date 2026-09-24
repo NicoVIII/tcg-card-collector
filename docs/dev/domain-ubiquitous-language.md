@@ -82,10 +82,12 @@ Core terms:
   catalog can't attest to (ADR 0017).
 - CardAttributes (module): planning's *policy* over the shared card facts — the rarity total
   order (common < uncommon < special < bonus < rare < mythic, so `rarity >= rare` excludes
-  special/bonus), the land-first CardType reduction of the raw type line, the CR 205.4a `Supertype`
-  prefix walk over the same type line (a card can carry more than one, e.g. "Basic Snow Land"), and
-  the color-identity DSL tokens/labels/sort keys. The representations themselves live in the shared
-  kernel.
+  special/bonus), the land-first CardType reduction of the raw type line's **front face**, the CR
+  205.4a `Supertype` prefix walk over the same front face (a card can carry more than one, e.g.
+  "Basic Snow Land"), and the color-identity DSL tokens/labels/sort keys. Type and supertype read
+  only the part of the line before `" // "` — outside the game a double-faced card has only its
+  front face's characteristics (CR 712.8a, ADR 0018), and a split card's front half is an accepted
+  approximation of the whole. The representations themselves live in the shared kernel.
 - RuleCascade: the ordered waterfall of rules plus a bulk remainder. Rules apply in `position`
   order and each **consumes** copies from what earlier rules left behind, so one copy is placed
   exactly once.
@@ -114,7 +116,8 @@ Core terms:
   cascade-on-unknown behavior — a negated clause on absent enrichment is still false. Unlike every
   other clause, `supertype = x` / `!= x` is membership, not equality: a card can carry more than
   one supertype, so `= basic` matches if *any* of the card's supertypes is Basic, and `!= basic` is
-  true only if *none* of them is.
+  true only if *none* of them is. `type` and `supertype` both come from the type line's front face
+  only (ADR 0018), so a `Sorcery // Land` MDFC matches `type = sorcery`, never `type = land`.
 - Set family: a parent set plus all its Scryfall child sets (tokens, promos, art series, … — anything
   linked by `parent_set_code`), resolved transitively to a single family-root set code. The unit a
   `{set_family}` template gathers into one binder.

@@ -516,6 +516,79 @@ pub fn supertype_basic_rule_routes_basic_land_test() {
   assert gate.name == "Gateway Plaza"
 }
 
+// A `type = land` rule claims a real land but not an MDFC whose land is its
+// *back* face — proves the handler reads card_type_from_type_line's front-face
+// reduction (ADR 0018), not the whole stored type_line (#134).
+pub fn land_rule_ignores_mdfc_back_face_test() {
+  let ports =
+    build_ports(
+      snapshot: [
+        ports.SnapshotRow(
+          set_code: "grn",
+          collector_number: "251",
+          finish: "nonfoil",
+          language: "en",
+          quantity: 2,
+        ),
+        ports.SnapshotRow(
+          set_code: "znr",
+          collector_number: "158",
+          finish: "nonfoil",
+          language: "en",
+          quantity: 3,
+        ),
+      ],
+      catalog: [
+        #(
+          #("grn", "251"),
+          attrs(
+            name: "Gateway Plaza",
+            rarity: "common",
+            oracle: "o-gate",
+            color: "",
+            type_line: "Land — Gate",
+            released: "2018-10-05",
+          ),
+        ),
+        #(
+          #("znr", "158"),
+          attrs(
+            name: "Bala Ged Recovery // Bala Ged Sanctuary",
+            rarity: "uncommon",
+            oracle: "o-bala-ged",
+            color: "g",
+            type_line: "Sorcery // Land",
+            released: "2020-09-25",
+          ),
+        ),
+      ],
+      rules: ports.RulesModel(
+        rules: [
+          ports.RuleRow(
+            id: "r-land",
+            position: 0,
+            selector: "all",
+            expression: "type = land",
+            location_name: "Lands",
+            sort_keys: "",
+          ),
+        ],
+        bulk: ports.BulkSpecRow(location_name: "Bulk", sort_keys: ""),
+      ),
+    )
+
+  let assert Ok(projection) =
+    handler.execute(handler.InventoryProjectionQuery, ports)
+  let assert [lands, bulk] = projection.locations
+  assert lands.location_name == "Lands"
+  let assert [gate] = lands.cards
+  assert gate.name == "Gateway Plaza"
+
+  assert bulk.location_name == "Bulk"
+  let assert [recovery] = bulk.cards
+  assert recovery.name == "Bala Ged Recovery // Bala Ged Sanctuary"
+}
+
 pub fn invalid_stored_rule_sort_keys_propagate_as_error_test() {
   let ports =
     build_ports(

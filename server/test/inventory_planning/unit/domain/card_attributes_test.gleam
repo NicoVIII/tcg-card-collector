@@ -78,6 +78,20 @@ pub fn card_type_priority_test() {
   assert attrs.card_type_from_type_line("Conspiracy") == attrs.Other
 }
 
+// A double-faced card reduces to its front face's type (CR 712.8a, ADR
+// 0018), not whichever face the land-first priority would otherwise match.
+pub fn card_type_reads_front_face_test() {
+  // Bala Ged Recovery // Bala Ged Sanctuary: sorcery front, land back.
+  assert attrs.card_type_from_type_line("Sorcery // Land") == attrs.Sorcery
+  assert attrs.card_type_from_type_line(
+      "Legendary Enchantment // Legendary Land",
+    )
+    == attrs.Enchantment
+  // Split card (Fire // Ice): both halves share a type, so the front-half
+  // approximation gives the same answer either way.
+  assert attrs.card_type_from_type_line("Instant // Instant") == attrs.Instant
+}
+
 // Supertypes are a positional prefix, not a substring test: they stop at the
 // first word that isn't one of CR 205.4a's five, so a subtype after the em
 // dash never gets swept in.
@@ -97,6 +111,16 @@ pub fn supertypes_prefix_walk_test() {
   assert attrs.supertypes_from_type_line("Land — Gate") == []
   assert attrs.supertypes_from_type_line("Creature — Bear") == []
   assert attrs.supertypes_from_type_line("") == []
+}
+
+// Same front-face rule as card_type_from_type_line (ADR 0018): the back
+// face's supertypes never leak in.
+pub fn supertypes_read_front_face_test() {
+  assert attrs.supertypes_from_type_line(
+      "Legendary Enchantment // Legendary Land",
+    )
+    == [attrs.Legendary]
+  assert attrs.supertypes_from_type_line("Sorcery // Land") == []
 }
 
 pub fn supertype_parse_round_trip_test() {

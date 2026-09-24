@@ -111,7 +111,8 @@ pub fn color_identity_rank(identity: ColorIdentity) -> Int {
   }
 }
 
-// Priority list over the type line: the first type present wins.
+// Priority list over the type line's front face: the first type present
+// wins.
 pub type CardType {
   Land
   Creature
@@ -135,8 +136,21 @@ const type_priority = [
   #("sorcery", Sorcery),
 ]
 
+// A double-faced card has only its front face's characteristics outside the
+// stack and battlefield (CR 712.8a); a binder is outside the game, so
+// placement reads the front face only (ADR 0018). Split cards' two halves
+// almost always share a type, so reading the front half is an accepted
+// approximation there too — Scryfall's `layout` isn't synced, so a split
+// card can't be told apart from a double-faced one here.
+fn front_face(type_line: String) -> String {
+  case string.split_once(type_line, " // ") {
+    Ok(#(front, _back)) -> front
+    Error(Nil) -> type_line
+  }
+}
+
 pub fn card_type_from_type_line(type_line: String) -> CardType {
-  let lower = string.lowercase(type_line)
+  let lower = string.lowercase(front_face(type_line))
   type_priority
   |> list.find_map(fn(pair) {
     case string.contains(lower, pair.0) {
@@ -221,13 +235,14 @@ pub fn supertype_to_string(value: Supertype) -> String {
   }
 }
 
-// Supertypes print left of card types, so they're a prefix of the type line's
-// words — a positional walk, not the substring test card_type_from_type_line
-// uses. Stops at the first word that isn't a supertype, so a subtype that
-// happens to share a supertype's spelling (after the em dash) is never
-// reached.
+// Supertypes print left of card types, so they're a prefix of the front
+// face's words (ADR 0018) — a positional walk, not the substring test
+// card_type_from_type_line uses. Stops at the first word that isn't a
+// supertype, so a subtype that happens to share a supertype's spelling
+// (after the em dash) is never reached.
 pub fn supertypes_from_type_line(type_line: String) -> List(Supertype) {
   type_line
+  |> front_face
   |> string.split(" ")
   |> supertype_prefix
 }
