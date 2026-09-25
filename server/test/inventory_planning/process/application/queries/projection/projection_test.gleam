@@ -75,6 +75,28 @@ fn attrs(
   type_line type_line: String,
   released released: String,
 ) -> ports.CatalogAttributes {
+  attrs_with_layout(
+    name:,
+    rarity: rarity_raw,
+    oracle:,
+    color:,
+    type_line:,
+    released:,
+    layout: None,
+  )
+}
+
+// Every field attrs() has, plus layout — kept separate so the token-clause
+// tests can set layout without threading None through every other call site.
+fn attrs_with_layout(
+  name name: String,
+  rarity rarity_raw: String,
+  oracle oracle: String,
+  color color: String,
+  type_line type_line: String,
+  released released: String,
+  layout layout: option.Option(String),
+) -> ports.CatalogAttributes {
   let assert Ok(rarity_value) = rarity.parse(rarity_raw)
   let assert Ok(colors) = color_identity.parse(color)
   ports.CatalogAttributes(
@@ -85,6 +107,7 @@ fn attrs(
     type_line: type_line,
     released_at: date(released),
     cmc: None,
+    layout: layout,
   )
 }
 

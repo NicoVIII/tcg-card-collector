@@ -48,6 +48,7 @@ pub fn catalog_card_details_encode_all_attributes_test() {
       type_line: "Creature — Human Wizard",
       released_at: Some(date),
       cmc: None,
+      layout: None,
     )
   assert json_codec.encode_catalog_card_details([card])
     == "[{\"set_code\":\"grn\",\"collector_number\":\"173\","

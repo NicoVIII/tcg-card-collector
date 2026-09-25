@@ -49,6 +49,7 @@ fn catalog_attributes_adapter() -> ports.CatalogAttributesPort {
           type_line: card.type_line,
           released_at: card.released_at,
           cmc: card.cmc,
+          layout: card.layout,
         ),
       )
     })

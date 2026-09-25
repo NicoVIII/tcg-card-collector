@@ -40,6 +40,7 @@ fn to_read_model(
     type_line:,
     released_at: released_at_raw,
     cmc: cmc_raw,
+    layout:,
   ) = row
   let corrupt = fn(field: String, value: String) {
     "corrupt catalog row "
@@ -78,6 +79,7 @@ fn to_read_model(
     type_line:,
     released_at: date,
     cmc:,
+    layout:,
   )
 }
 

@@ -69,6 +69,7 @@ pub type CatalogAttributes {
     type_line: String,
     released_at: Option(ReleaseDate),
     cmc: Option(ManaValue),
+    layout: Option(String),
   )
 }
 
