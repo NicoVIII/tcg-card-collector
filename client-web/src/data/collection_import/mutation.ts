@@ -1,5 +1,5 @@
 import { createMutation, useQueryClient } from "@tanstack/solid-query";
-import { queryKeys } from "../query-keys/factory";
+import { invalidateCollectionDependents } from "../collection/invalidate";
 import { postImportCollection, type ImportCollectionPayload } from "./request";
 
 export function useImportCollectionMutation() {
@@ -7,13 +7,6 @@ export function useImportCollectionMutation() {
 
   return createMutation(() => ({
     mutationFn: (payload: ImportCollectionPayload) => postImportCollection(payload),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.collection() });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.setCompletion() });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryProjection() });
-      // A replace can also shrink the placed ledger below what's now owned
-      // (ADR 0011's reconciliation), so this invalidates it too.
-      await queryClient.invalidateQueries({ queryKey: queryKeys.placedLedger() });
-    },
+    onSuccess: () => invalidateCollectionDependents(queryClient),
   }));
 }

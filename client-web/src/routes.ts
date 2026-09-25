@@ -34,5 +34,5 @@ export const navRoutes: AppRoute[] = [
 export const routes: AppRoute[] = [
   ...navRoutes,
   { path: "/collection/import", label: "Import collection", component: CollectionImportPage },
-  { path: "/backup", label: "Back up data", component: BackupPage },
+  { path: "/backup", label: "Back up & restore", component: BackupPage },
 ];
