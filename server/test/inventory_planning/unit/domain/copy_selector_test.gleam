@@ -29,6 +29,7 @@ fn card(oracle: option.Option(String)) -> PlannedCard {
     card_type: None,
     supertypes: None,
     cmc: None,
+    is_token: None,
   )
 }
 

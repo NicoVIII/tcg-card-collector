@@ -134,8 +134,9 @@ pub fn import_populates_enrichment_attributes_test() {
       #("sld", "1000"),
       #("mh1", "42"),
       #("mh1", "43"),
+      #("sld", "1001"),
     ])
-  assert list.length(rows) == 4
+  assert list.length(rows) == 5
 
   // Normal card: multicolor identity joined, type_line, released_at and cmc
   // present.
@@ -148,6 +149,7 @@ pub fn import_populates_enrichment_attributes_test() {
   assert guildmage.type_line == "Creature — Human Wizard"
   assert guildmage.released_at == "2018-10-05"
   assert guildmage.cmc == option.Some(2.0)
+  assert guildmage.layout == option.Some("normal")
 
   // Reversible card: no top-level oracle_id/type_line/image_uris/cmc -> falls
   // back to card_faces[0] for all of them, including a fractional cmc.
@@ -161,6 +163,7 @@ pub fn import_populates_enrichment_attributes_test() {
   assert reversible.color_identity == "G"
   assert reversible.type_line == "Legendary Creature — Elf"
   assert reversible.cmc == option.Some(0.5)
+  assert reversible.layout == option.Some("reversible_card")
 
   // Colorless card: empty color_identity array joins to "". cmc: 0 (a real
   // zero-cost card) must survive jq's `//` and the CSV round trip, not read
@@ -174,11 +177,22 @@ pub fn import_populates_enrichment_attributes_test() {
   assert colorless.cmc == option.Some(0.0)
 
   // No top-level cmc and no card_faces at all -> unknown, distinct from 0.
+  // No layout key at all either -> jq's `// ""` fallback -> None, same gap
+  // handling as every other absent enrichment field.
   let assert Ok(no_cmc) =
     list.find(rows, fn(row) {
       row.set_code == "mh1" && row.collector_number == "43"
     })
   assert no_cmc.cmc == option.None
+  assert no_cmc.layout == option.None
+
+  // A token layout round-trips through jq/CSV/bulk_load like any other
+  // layout string.
+  let assert Ok(token) =
+    list.find(rows, fn(row) {
+      row.set_code == "sld" && row.collector_number == "1001"
+    })
+  assert token.layout == option.Some("token")
 }
 
 fn query_set_codes() -> List(String) {

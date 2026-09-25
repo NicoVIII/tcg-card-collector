@@ -194,3 +194,33 @@ pub fn cmc_compare_lowest_first_unknown_last_test() {
   assert attrs.compare_cmc_lowest_first(None, Some(zero)) == order.Gt
   assert attrs.compare_cmc_lowest_first(None, None) == order.Eq
 }
+
+// The two layout values Scryfall uses for actual token cards.
+pub fn is_token_layout_true_for_token_layouts_test() {
+  assert attrs.is_token_layout("token")
+  assert attrs.is_token_layout("double_faced_token")
+}
+
+// Emblems and art-series cards carry a `Token` word in their type line but
+// have their own distinct layout values — not tokens per the issue's scope.
+pub fn is_token_layout_false_for_non_token_layouts_test() {
+  assert !attrs.is_token_layout("normal")
+  assert !attrs.is_token_layout("emblem")
+  assert !attrs.is_token_layout("art_series")
+  assert !attrs.is_token_layout("")
+}
+
+pub fn yes_no_parse_round_trip_test() {
+  assert list.all([True, False], fn(v) {
+    attrs.parse_yes_no(attrs.yes_no_to_string(v)) == Ok(v)
+  })
+}
+
+pub fn yes_no_parse_trims_and_lowercases_test() {
+  assert attrs.parse_yes_no("  YES  ") == Ok(True)
+  assert attrs.parse_yes_no("No") == Ok(False)
+}
+
+pub fn yes_no_parse_rejects_unknown_test() {
+  let assert Error(_) = attrs.parse_yes_no("maybe")
+}

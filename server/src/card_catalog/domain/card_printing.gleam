@@ -15,7 +15,10 @@ pub type CardPrintingId {
 // boundary (ADR 0008). oracle_id, released_at and cmc are Option because
 // reversible/multi-face layouts may expose no top-level value; type_line stays
 // the raw printed line ("" for the same layout gap) — any reduction of it is
-// consumer policy, not a catalog fact.
+// consumer policy, not a catalog fact. layout is Scryfall's own raw string
+// ("token", "double_faced_token", "normal", ...) for the same reason — what a
+// layout value means (e.g. "is this a token") is consumer policy, not
+// something the catalog interprets.
 pub type CardPrinting {
   CardPrinting(
     id: CardPrintingId,
@@ -28,5 +31,6 @@ pub type CardPrinting {
     type_line: String,
     released_at: Option(ReleaseDate),
     cmc: Option(ManaValue),
+    layout: Option(String),
   )
 }

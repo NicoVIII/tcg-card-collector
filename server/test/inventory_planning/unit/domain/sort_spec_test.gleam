@@ -38,6 +38,7 @@ fn card(
     card_type: Some(card_type),
     supertypes: Some([]),
     cmc: Some(cmc),
+    is_token: Some(False),
   )
 }
 
@@ -59,6 +60,7 @@ fn unknown_card(collector_number: String) -> PlannedCard {
     card_type: None,
     supertypes: None,
     cmc: None,
+    is_token: None,
   )
 }
 

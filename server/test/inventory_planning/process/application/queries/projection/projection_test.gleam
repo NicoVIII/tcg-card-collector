@@ -75,6 +75,28 @@ fn attrs(
   type_line type_line: String,
   released released: String,
 ) -> ports.CatalogAttributes {
+  attrs_with_layout(
+    name:,
+    rarity: rarity_raw,
+    oracle:,
+    color:,
+    type_line:,
+    released:,
+    layout: None,
+  )
+}
+
+// Every field attrs() has, plus layout — kept separate so the token-clause
+// tests can set layout without threading None through every other call site.
+fn attrs_with_layout(
+  name name: String,
+  rarity rarity_raw: String,
+  oracle oracle: String,
+  color color: String,
+  type_line type_line: String,
+  released released: String,
+  layout layout: option.Option(String),
+) -> ports.CatalogAttributes {
   let assert Ok(rarity_value) = rarity.parse(rarity_raw)
   let assert Ok(colors) = color_identity.parse(color)
   ports.CatalogAttributes(
@@ -85,6 +107,7 @@ fn attrs(
     type_line: type_line,
     released_at: date(released),
     cmc: None,
+    layout: layout,
   )
 }
 
@@ -514,6 +537,204 @@ pub fn supertype_basic_rule_routes_basic_land_test() {
   assert bulk.total_quantity == 2
   let assert [gate] = bulk.cards
   assert gate.name == "Gateway Plaza"
+}
+
+// A `token = yes` rule claims every layout Scryfall marks as a token —
+// including one in a parentless set like sld — and nothing else: not a
+// normal creature, and not an art_series card whose type line also says
+// "Token" (#135's acceptance case for "Card // Token Creature — Elemental").
+pub fn token_yes_rule_claims_only_token_layouts_test() {
+  let ports =
+    build_ports(
+      snapshot: [
+        ports.SnapshotRow(
+          set_code: "sld",
+          collector_number: "1001",
+          finish: "nonfoil",
+          language: "en",
+          quantity: 2,
+        ),
+        ports.SnapshotRow(
+          set_code: "twar",
+          collector_number: "5",
+          finish: "nonfoil",
+          language: "en",
+          quantity: 1,
+        ),
+        ports.SnapshotRow(
+          set_code: "grn",
+          collector_number: "173",
+          finish: "nonfoil",
+          language: "en",
+          quantity: 1,
+        ),
+        ports.SnapshotRow(
+          set_code: "sta",
+          collector_number: "1",
+          finish: "nonfoil",
+          language: "en",
+          quantity: 1,
+        ),
+      ],
+      catalog: [
+        #(
+          #("sld", "1001"),
+          attrs_with_layout(
+            name: "Elf Warrior",
+            rarity: "common",
+            oracle: "o-elf-token",
+            color: "G",
+            type_line: "Token Creature — Elf Warrior",
+            released: "2020-04-17",
+            layout: Some("token"),
+          ),
+        ),
+        #(
+          #("twar", "5"),
+          attrs_with_layout(
+            name: "Vraska",
+            rarity: "common",
+            oracle: "o-vraska-emblem",
+            color: "B",
+            type_line: "Creature — Zombie // Land",
+            released: "2019-05-03",
+            layout: Some("double_faced_token"),
+          ),
+        ),
+        #(
+          #("grn", "173"),
+          attrs_with_layout(
+            name: "Azorius Guildmage",
+            rarity: "uncommon",
+            oracle: "o-guildmage",
+            color: "WU",
+            type_line: "Creature — Human Wizard",
+            released: "2018-10-05",
+            layout: Some("normal"),
+          ),
+        ),
+        #(
+          #("sta", "1"),
+          attrs_with_layout(
+            name: "Elemental",
+            rarity: "common",
+            oracle: "o-elemental-art",
+            color: "",
+            type_line: "Card // Token Creature — Elemental",
+            released: "2021-04-23",
+            layout: Some("art_series"),
+          ),
+        ),
+      ],
+      rules: ports.RulesModel(
+        rules: [
+          ports.RuleRow(
+            id: "r-token",
+            position: 0,
+            selector: "all",
+            expression: "token = yes",
+            location_name: "Tokens",
+            sort_keys: "",
+          ),
+        ],
+        bulk: ports.BulkSpecRow(location_name: "Bulk", sort_keys: ""),
+      ),
+    )
+
+  let assert Ok(projection) =
+    handler.execute(handler.InventoryProjectionQuery, ports)
+  let assert [tokens, bulk] = projection.locations
+  assert tokens.location_name == "Tokens"
+  assert tokens.total_quantity == 3
+  // Canonical claim order sorts by released_at first (ADR 0013): the twar
+  // token (2019) claims ahead of the sld token (2020), regardless of
+  // snapshot order.
+  assert list.map(tokens.cards, fn(c) { c.name }) == ["Vraska", "Elf Warrior"]
+
+  assert bulk.location_name == "Bulk"
+  assert bulk.total_quantity == 2
+  // Bulk's fold builds assignments by prepending, so an empty bulk sort_keys
+  // (Eq for every pair, stable sort is a no-op) leaves them in reverse
+  // canonical order.
+  assert list.map(bulk.cards, fn(c) { c.name })
+    == ["Elemental", "Azorius Guildmage"]
+}
+
+// The negated form falls through the cascade for a card the catalog can't
+// attest to yet (a missing row, or a row whose layout is still NULL because
+// the catalog hasn't been reloaded since #135) — same gap handling as every
+// other enrichment clause (ADR 0017), not a match for either token = yes or
+// token = no.
+pub fn token_no_rule_excludes_unknown_layout_test() {
+  let ports =
+    build_ports(
+      snapshot: [
+        ports.SnapshotRow(
+          set_code: "grn",
+          collector_number: "173",
+          finish: "nonfoil",
+          language: "en",
+          quantity: 1,
+        ),
+        ports.SnapshotRow(
+          set_code: "xyz",
+          collector_number: "1",
+          finish: "nonfoil",
+          language: "en",
+          quantity: 1,
+        ),
+      ],
+      catalog: [
+        #(
+          #("grn", "173"),
+          attrs_with_layout(
+            name: "Azorius Guildmage",
+            rarity: "uncommon",
+            oracle: "o-guildmage",
+            color: "WU",
+            type_line: "Creature — Human Wizard",
+            released: "2018-10-05",
+            layout: Some("normal"),
+          ),
+        ),
+        #(
+          #("xyz", "1"),
+          attrs_with_layout(
+            name: "Not Yet Reloaded",
+            rarity: "common",
+            oracle: "o-not-reloaded",
+            color: "",
+            type_line: "Creature — Bear",
+            released: "2020-01-01",
+            layout: None,
+          ),
+        ),
+      ],
+      rules: ports.RulesModel(
+        rules: [
+          ports.RuleRow(
+            id: "r-real",
+            position: 0,
+            selector: "all",
+            expression: "token = no",
+            location_name: "RealCards",
+            sort_keys: "",
+          ),
+        ],
+        bulk: ports.BulkSpecRow(location_name: "Bulk", sort_keys: ""),
+      ),
+    )
+
+  let assert Ok(projection) =
+    handler.execute(handler.InventoryProjectionQuery, ports)
+  let assert [real_cards, bulk] = projection.locations
+  assert real_cards.location_name == "RealCards"
+  let assert [guildmage] = real_cards.cards
+  assert guildmage.name == "Azorius Guildmage"
+
+  assert bulk.location_name == "Bulk"
+  let assert [not_reloaded] = bulk.cards
+  assert not_reloaded.name == "Not Yet Reloaded"
 }
 
 // A `type = land` rule claims a real land but not an MDFC whose land is its

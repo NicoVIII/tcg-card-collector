@@ -140,8 +140,9 @@ const type_priority = [
 // stack and battlefield (CR 712.8a); a binder is outside the game, so
 // placement reads the front face only (ADR 0018). Split cards' two halves
 // almost always share a type, so reading the front half is an accepted
-// approximation there too — Scryfall's `layout` isn't synced, so a split
-// card can't be told apart from a double-faced one here.
+// approximation there too. `layout` (see is_token_layout below) could now
+// tell split and double-faced cards apart, but wiring that fix through
+// card_type_from_type_line is a follow-up, not part of #135.
 fn front_face(type_line: String) -> String {
   case string.split_once(type_line, " // ") {
     Ok(#(front, _back)) -> front
@@ -258,6 +259,35 @@ fn supertype_prefix(words: List(String)) -> List(Supertype) {
   }
 }
 
+// Which of Scryfall's `layout` values are tokens (#135): the two layouts
+// Scryfall uses for actual token cards. Emblems, dungeons, and art-series
+// cards ("Card // Token Creature — Elemental" is `art_series`) have their
+// own distinct layout values and are deliberately not tokens — out of scope
+// per the issue.
+pub fn is_token_layout(layout: String) -> Bool {
+  case layout {
+    "token" | "double_faced_token" -> True
+    _ -> False
+  }
+}
+
+// DSL spelling of a boolean clause value (`token = yes` / `token = no`):
+// user input, so trimmed and case-insensitive.
+pub fn parse_yes_no(raw: String) -> Result(Bool, Nil) {
+  case string.lowercase(string.trim(raw)) {
+    "yes" -> Ok(True)
+    "no" -> Ok(False)
+    _ -> Error(Nil)
+  }
+}
+
+pub fn yes_no_to_string(value: Bool) -> String {
+  case value {
+    True -> "yes"
+    False -> "no"
+  }
+}
+
 // Ordering policy for possibly-unknown release dates: unknown sorts first,
 // treated as earliest (the pre-strong-typing '' behaviour).
 pub fn compare_release_earliest_first(
@@ -295,7 +325,10 @@ pub fn compare_cmc_lowest_first(
 // finish/language come from the collection itself (ADR 0010), so they're
 // never absent. supertypes is `Some([])` for a known card with no
 // supertypes — distinct from `None` (catalog doesn't know), since `!=`
-// clauses must not treat the two the same (ADR 0017).
+// clauses must not treat the two the same (ADR 0017). is_token is the same
+// catalog-gap shape: None when the catalog has no row or hasn't been
+// reloaded since #135 added `layout` (NULL), Some(is_token_layout(...))
+// once it has.
 pub type PlannedCard {
   PlannedCard(
     key: CardKey,
@@ -310,6 +343,7 @@ pub type PlannedCard {
     card_type: Option(CardType),
     supertypes: Option(List(Supertype)),
     cmc: Option(ManaValue),
+    is_token: Option(Bool),
   )
 }
 

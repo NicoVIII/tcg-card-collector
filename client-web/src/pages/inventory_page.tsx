@@ -552,7 +552,12 @@ export function InventoryPage() {
         card carrying that supertype (Legendary, Basic, Snow, World, or Ongoing) — unlike{" "}
         <code>type</code>, it matches if the card has <em>any</em> of the listed supertypes, since a
         card can carry more than one (a snow basic land carries both Basic and Snow).{" "}
-        <code>type = land and supertype = basic</code> singles out the 12 basic lands.
+        <code>type = land and supertype = basic</code> singles out the 12 basic lands.{" "}
+        <code>token = yes</code> (or <code>token = no</code>, <code>token != yes</code>) matches a
+        Scryfall token or double-faced-token card, so tokens can be routed to their own box or kept
+        out of a rule entirely — emblems and art-series cards aren't tokens, and <code>type</code>/
+        <code>supertype</code> still sort a token by its own creature or artifact type, e.g.{" "}
+        <code>token = yes and type = creature</code>.
       </p>
       <p class="hint">
         Sort keys are a comma-separated list ordering the cards within each location:{" "}
