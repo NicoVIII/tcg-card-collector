@@ -1,5 +1,10 @@
+import collection/application/commands/import_collection/handler as import_collection_handler
+import collection/application/commands/import_collection/ports as import_collection_ports
 import collection/application/queries/list_cards/handler as list_cards_handler
 import collection/application/queries/list_cards/ports as list_cards_ports
+
+// nolint: depends_only_on -- glinter_arch doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a gleam-libs change
+import collection/infrastructure/adapters/commands/import_collection/adapter as import_collection_adapter
 
 // nolint: depends_only_on -- glinter_arch doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a gleam-libs change
 import collection/infrastructure/adapters/queries/list_cards/adapter as list_cards_adapter
@@ -44,10 +49,54 @@ pub fn list_copies() -> Result(List(OwnedCopy), String) {
   Ok(list.flat_map(page.printings, to_owned_copies))
 }
 
+/// Replaces the whole collection with the given copies, reusing
+/// import_collection's all-or-nothing validation, merging, and persistence —
+/// the same write ImportCollection performs, for a caller (Portability) that
+/// already holds typed, validated copies rather than raw import-row strings.
+/// notify_changed is injected rather than wired here so bootstrap can pass
+/// the one collection_changed_bus publisher every write path shares (ADR
+/// 0011), instead of this facade depending on Collection's own application
+/// layer to build it — that dependency would cross the bounded-context
+/// boundary for a caller in another context (glinter_arch only allows
+/// Infrastructure -> Driver(Gleam) across contexts).
+pub fn replace_copies(
+  copies: List(OwnedCopy),
+  notify_changed: fn(Nil) -> Result(Nil, String),
+) -> Result(Nil, String) {
+  case
+    import_collection_handler.execute(
+      import_collection_handler.ImportCollectionCommand(rows: list.map(
+        copies,
+        to_import_collection_row,
+      )),
+      import_collection_ports.ImportCollectionPorts(
+        replace_collection: import_collection_adapter.new(),
+        notify_changed:,
+      ),
+    )
+  {
+    Ok(Nil) -> Ok(Nil)
+    Error(import_collection_ports.InvalidRows) -> Error("invalid rows")
+    Error(import_collection_ports.PersistenceFailed(reason)) -> Error(reason)
+  }
+}
+
 fn to_owned_card(printing: list_cards_ports.OwnedPrinting) -> OwnedCard {
   let quantity =
     list.fold(printing.copies, 0, fn(sum, copy) { sum + copy.quantity })
   OwnedCard(key: printing.key, quantity:)
+}
+
+fn to_import_collection_row(
+  copy: OwnedCopy,
+) -> import_collection_ports.ImportCollectionRow {
+  import_collection_ports.ImportCollectionRow(
+    set_code: copy_key.set_code_string(copy.key),
+    collector_number: copy_key.collector_number_string(copy.key),
+    finish: copy_key.finish_string(copy.key),
+    language: copy_key.language_string(copy.key),
+    quantity: copy.quantity,
+  )
 }
 
 fn to_owned_copies(

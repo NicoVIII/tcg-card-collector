@@ -46,6 +46,7 @@ import portability/driver/dependencies.{
   type Dependencies as PortabilityDependencies,
   Dependencies as PortabilityDependencies,
 } as _
+import portability/infrastructure/adapters/commands/import_data/adapter as import_data_adapter
 import portability/infrastructure/adapters/queries/export_data/adapter as export_data_adapter
 import shared/application/app_version.{type AppVersion}
 import shared/application/event_bus
@@ -136,6 +137,7 @@ pub fn dependencies() -> Dependencies {
     ),
     portability: PortabilityDependencies(
       export_data_ports: export_data_adapter.new(),
+      import_data_ports: import_data_adapter.new(notify_collection_changed),
     ),
     app_version: runtime_version.read(),
   )

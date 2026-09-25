@@ -1,0 +1,28 @@
+import gleam/int
+import portability/application/commands/import_data/ports as import_data_ports
+import portability/domain/export_document
+import portability/domain/import_document.{type DocumentError}
+import shared/driver/presented_error.{
+  type PresentedError, BadRequest, Internal, PresentedError,
+}
+
+/// A whole-file parse problem — bad JSON, wrong `format`, an unsupported
+/// `format_version`, or a missing `collection` — is always the client's
+/// file, never the server's fault (ADR 0019: import never guesses).
+pub fn document_error(error: DocumentError) -> PresentedError {
+  PresentedError(BadRequest, import_document.describe_error(error))
+}
+
+pub fn import_data(error: import_data_ports.ImportDataError) -> PresentedError {
+  case error {
+    import_data_ports.NothingToImport ->
+      PresentedError(
+        BadRequest,
+        "The file has no valid entries for format_version "
+          <> int.to_string(export_document.format_version)
+          <> " to import.",
+      )
+    import_data_ports.PersistenceFailed(_reason) ->
+      PresentedError(Internal, "failed to import the collection")
+  }
+}

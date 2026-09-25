@@ -41,10 +41,11 @@ graph TD
   (import/add/remove must keep working with an empty or unsynced catalog); see
   [ADR 0016](../decisions/0016-collection-reads-catalog-for-queries.md).
 - **Inventory Planning** and **Insights** are downstream consumers of both.
-- **Portability** reads every context that owns exportable data through its
-  `driver/gleam` facade, so the whole exported document's shape lives in one
-  place ([ADR 0019](../decisions/0019-portability-export-format.md)). Only
-  Collection today; the Inventory Planning and Insights pairs land with #119.
+- **Portability** reads and writes every context that owns exportable data
+  through its `driver/gleam` facade, so the whole exported document's shape
+  lives in one place ([ADR 0019](../decisions/0019-portability-export-format.md)).
+  Only Collection today; the Inventory Planning and Insights pairs land with
+  #119.
 
 A cross-BC dependency is only legal in one shape: the consumer's
 `infrastructure/` importing the provider's `driver/gleam/` facade

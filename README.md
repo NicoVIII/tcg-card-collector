@@ -14,7 +14,7 @@ See [docs/vision.md](docs/vision.md) for why the project exists, where it is hea
 - Adding, removing, or adjusting owned quantities, correcting the placed ledger to match
 - Location rules and inventory projections for physical sorting
 - A re-sort worklist flags placed copies a rule change left behind, and re-points a renamed location's records without treating it as a physical move
-- The collection can be exported to a versioned JSON file
+- The collection can be exported to a versioned JSON file and restored from one, byte-for-byte round-trip
 - All of it available over Skir RPC and REST
 
 ## Status
@@ -75,11 +75,13 @@ docker cp <container>:/data/backup.db ./backup.db
 
 **Restore**: stop the container, copy the backup file into the volume as `tcg-card-collector.db` (remove any leftover `-wal`/`-shm` files alongside it), then start the container.
 
-### Data export
+### Data export & import
 
-Unlike the database backup above, exporting downloads a single JSON file of the collection that this app (or any tool reading its documented format) can read back in — useful for moving a collection between installs, not just for disaster recovery. From the Collection page, "Back up data…" → Export collection; or fetch it directly with `curl http://localhost:8080/api/export -o export.json`.
+Unlike the database backup above, exporting downloads a single JSON file of the collection that this app can read back in — useful for moving a collection between installs, not just for disaster recovery. From the Collection page, "Back up & restore…" → Export collection; or fetch it directly with `curl http://localhost:8080/api/export -o export.json`.
 
-The file's shape is fixed by a `format_version` and documented in [docs/portability/export.schema.json](docs/portability/export.schema.json) — point a JSON-aware editor at it to catch a hand-edit mistake as you type. Location rules, set targets, and the placed ledger aren't included yet (tracked in [#119](https://github.com/NicoVIII/tcg-card-collector/issues/119)); importing the file back in is tracked in [#117](https://github.com/NicoVIII/tcg-card-collector/issues/117).
+The file's shape is fixed by a `format_version` and documented in [docs/portability/export.schema.json](docs/portability/export.schema.json) — point a JSON-aware editor at it to catch a hand-edit mistake as you type. Location rules, set targets, and the placed ledger aren't included yet (tracked in [#119](https://github.com/NicoVIII/tcg-card-collector/issues/119)).
+
+The same page's "Restore from file" reads that file back in, **replacing the entire collection** — a preview shows how many entries will import and names any entry it can't (a bad set code, an unrecognized finish or language), before you confirm. The round trip is exact: every finish and language the app tracks survives, unlike a deckstats CSV import. Scripted restores can `POST` the file's raw content to `/api/import-data` (or `/api/import-data/preview` to check it first without changing anything) — for example `curl --data-binary @export.json http://localhost:8080/api/import-data`.
 
 ### Data preservation
 

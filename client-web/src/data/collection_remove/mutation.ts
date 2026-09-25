@@ -1,5 +1,5 @@
 import { createMutation, useQueryClient } from "@tanstack/solid-query";
-import { queryKeys } from "../query-keys/factory";
+import { invalidateCollectionDependents } from "../collection/invalidate";
 import { postRemoveCards, type RemoveCardsPayload } from "./request";
 
 export function useRemoveCardsMutation() {
@@ -7,13 +7,6 @@ export function useRemoveCardsMutation() {
 
   return createMutation(() => ({
     mutationFn: (payload: RemoveCardsPayload) => postRemoveCards(payload),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.collection() });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.setCompletion() });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.inventoryProjection() });
-      // Unlike AddCards, a removal can shrink the placed ledger too (ADR
-      // 0011's reconciliation), so this invalidates it as well.
-      await queryClient.invalidateQueries({ queryKey: queryKeys.placedLedger() });
-    },
+    onSuccess: () => invalidateCollectionDependents(queryClient),
   }));
 }

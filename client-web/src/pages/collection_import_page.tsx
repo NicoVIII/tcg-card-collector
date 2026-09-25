@@ -1,11 +1,10 @@
-import { For, Show, createSignal } from "solid-js";
+import { Show, createSignal } from "solid-js";
 import { A } from "@solidjs/router";
 import { ConfirmButton } from "../components/confirm_button";
+import { RejectedList } from "../components/rejected_list";
 import { useImportCollectionMutation } from "../data/collection_import/mutation";
 import { mapError } from "../data/http/error";
 import { type DeckstatsParseResult, parseDeckstatsCsv } from "./import_deckstats";
-
-const REJECTED_DISPLAY_LIMIT = 20;
 
 export function CollectionImportPage() {
   const [parsed, setParsed] = createSignal<DeckstatsParseResult | null>(null);
@@ -72,21 +71,12 @@ export function CollectionImportPage() {
       <Show when={parsed() !== null && parseError() === null && rowCount() === 0}>
         <p role="alert">The file contains no importable rows.</p>
       </Show>
-      <Show when={rejected().length > 0}>
-        <p>{rejected().length} line(s) skipped:</p>
-        <ul>
-          <For each={rejected().slice(0, REJECTED_DISPLAY_LIMIT)}>
-            {(line) => (
-              <li>
-                Line {line.lineNumber}: {line.reason}
-              </li>
-            )}
-          </For>
-        </ul>
-        <Show when={rejected().length > REJECTED_DISPLAY_LIMIT}>
-          <p>…and {rejected().length - REJECTED_DISPLAY_LIMIT} more.</p>
-        </Show>
-      </Show>
+      <RejectedList
+        items={rejected().map((line) => ({
+          label: `Line ${line.lineNumber}`,
+          reason: line.reason,
+        }))}
+      />
       <Show when={canImport()}>
         <p>{rowCount()} row(s) parsed and ready to import.</p>
         <ConfirmButton

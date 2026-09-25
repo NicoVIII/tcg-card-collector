@@ -128,6 +128,10 @@ fn handle_request(
       insights_http.handle_unmark_target_set(req, deps.insights)
     Get, "/api/export" ->
       portability_http.handle_export_data(req, deps.portability)
+    Post, "/api/import-data/preview" ->
+      portability_http.handle_preview_import(req, deps.portability)
+    Post, "/api/import-data" ->
+      portability_http.handle_import_data(req, deps.portability)
     Get, "/api/skir" | Post, "/api/skir" ->
       skir_router.handle_request(req, server_name)
     Get, "/api/version" -> app_version_http.handle(deps.app_version)

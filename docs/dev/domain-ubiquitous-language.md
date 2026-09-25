@@ -230,14 +230,26 @@ Core terms:
 - format_version: an integer identifying the document's shape, independent of the app's
   own version — it changes only when a section's shape changes in a way an importer must
   branch on, never merely because a new section was added.
+- ImportDocument: an ExportDocument's inverse — the valid entries decoded from an
+  uploaded file, plus every entry that failed validation, each recorded as a
+  RejectedEntry. An import is all-or-nothing at the whole-file level (bad JSON, wrong
+  `format`, an unsupported `format_version`, no `collection` array) but per-entry at
+  the row level: one bad entry doesn't block the rest, the same posture the deckstats
+  importer already had.
+- RejectedEntry: one entry's position in the document's `collection` array, its raw
+  identity (set_code, collector_number, finish, language as given — not yet validated),
+  and why it failed. Position, not a line number: JSON carries no line numbers, and a
+  position survives a hand edit's reformatting the way a line number wouldn't.
 
 Boundary notes:
-- Reads every contributing context through that context's `driver/gleam` facade, never its
-  internals — the same cross-BC shape Inventory Planning and Insights use for Collection and
-  Card Catalog. Each new exportable section costs one more such read.
+- Reads and writes every contributing context through that context's `driver/gleam`
+  facade, never its internals — the same cross-BC shape Inventory Planning and Insights
+  use for Collection and Card Catalog. Each new exportable section costs one more such
+  read (and, once import covers it, one more such write).
 - Owns the document's own ordering and rendering policy (deterministic entry order, one
   entry per line) — distinct from any consuming context's own display or canonical order
-  over the same data.
-- Query-only, deliberately: nothing about the document's shape or version is part of the
-  Skir contract, so a contract change ADR 0002 allows can never silently break a file
-  already written to disk.
+  over the same data. The same module (`driver/export_file.gleam`) both renders and
+  parses, so the one file format has one encoder and one decoder.
+- Nothing about the document's shape or version is part of the Skir contract — both
+  ExportData and ImportData carry the file as opaque text — so a contract change ADR
+  0002 allows can never silently break a file already written to disk.
