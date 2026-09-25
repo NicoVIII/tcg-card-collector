@@ -1,5 +1,6 @@
 import portability/application/commands/import_data/handler as import_data_handler
 import portability/application/queries/export_data/handler as export_data_handler
+import portability/application/queries/preview_import/handler as preview_import_handler
 import portability/driver/dependencies.{type Dependencies}
 import portability/driver/export_file
 import portability/driver/skir/codec as portability_skir_codec
@@ -26,15 +27,23 @@ fn handle_export_data(
 }
 
 fn handle_preview_import(
-  _get_dependencies: fn(context) -> Dependencies,
+  get_dependencies: fn(context) -> Dependencies,
 ) -> helpers.MethodHandler(
   portability_queries.PreviewImportRequest,
   portability_queries.ImportPreview,
   context,
 ) {
-  fn(req: portability_queries.PreviewImportRequest, _, _ctx) {
+  fn(req: portability_queries.PreviewImportRequest, _, ctx) {
     case export_file.parse(req.content) {
-      Ok(document) -> Ok(portability_skir_codec.map_import_preview(document))
+      Ok(document) ->
+        Ok(
+          portability_skir_codec.map_import_preview(
+            preview_import_handler.execute(
+              preview_import_handler.PreviewImportQuery(document:),
+              get_dependencies(ctx).preview_import_ports,
+            ),
+          ),
+        )
       Error(error) -> Error(portability_skir_codec.map_parse_error(error))
     }
     |> helpers.respond

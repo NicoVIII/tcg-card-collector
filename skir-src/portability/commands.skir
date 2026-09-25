@@ -4,8 +4,17 @@ struct ImportDataRequest {
   content: string = 0;
 }
 
+// Duplicated from queries.skir: skir has no cross-file import usable with
+// this repo's nested skir-gleam-gen outDir (see InventoryPlanning's
+// Finish/Language for precedent).
+struct SectionCount {
+  section: string = 0;
+  count: int32 = 1;
+}
+
 struct ImportedData {
-  entry_count: int32 = 0;
+  removed 0;  // was entry_count: superseded by sections (#119: more than the collection)
+  sections: [SectionCount] = 1;
 }
 
 method ImportData(

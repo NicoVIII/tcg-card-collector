@@ -22,9 +22,94 @@
     "collection": {
       "type": "array",
       "items": { "$ref": "#/$defs/collectionEntry" }
+    },
+    "inventory_planning": {
+      "type": "object",
+      "description": "Optional, and each of the three fields below is independently optional: a field absent from the file leaves that table untouched on import; present (even with an empty array) replaces it.",
+      "additionalProperties": false,
+      "properties": {
+        "rules": {
+          "type": "array",
+          "description": "Cascade order, first match wins — the array's own order is the position, so it round-trips even though nothing here names it.",
+          "items": { "$ref": "#/$defs/rule" }
+        },
+        "bulk": { "$ref": "#/$defs/bulkSpec" },
+        "placed": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/placedEntry" }
+        }
+      }
+    },
+    "insights": {
+      "type": "object",
+      "description": "Optional: absent leaves target sets untouched on import; present replaces them, even with an empty array.",
+      "additionalProperties": false,
+      "properties": {
+        "target_sets": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
     }
   },
   "$defs": {
+    "rule": {
+      "type": "object",
+      "description": "A location rule's DSL text, exactly as Inventory Planning's own parser and printer read and write it (docs/dev/domain-ubiquitous-language.md) — this file never re-interprets it.",
+      "required": ["location", "match"],
+      "additionalProperties": false,
+      "properties": {
+        "location": {
+          "type": "string",
+          "description": "A fixed name, or a template using {set_code}/{set_family}/{color_identity}/{type}."
+        },
+        "match": {
+          "type": "string",
+          "description": "The rule's expression, e.g. \"rarity >= rare and finish = foil\"."
+        },
+        "copies": {
+          "type": "string",
+          "enum": ["all", "first_per_printing", "first_per_oracle"],
+          "default": "all"
+        },
+        "sort": {
+          "type": "string",
+          "description": "Comma-separated sort keys, e.g. \"color_identity,type,name\"; empty keeps incoming order.",
+          "default": ""
+        }
+      }
+    },
+    "bulkSpec": {
+      "type": "object",
+      "required": ["location"],
+      "additionalProperties": false,
+      "properties": {
+        "location": { "type": "string" },
+        "sort": { "type": "string", "default": "" }
+      }
+    },
+    "placedEntry": {
+      "type": "object",
+      "description": "One placed-ledger row: how many copies of a key currently sit in a location.",
+      "required": [
+        "set_code", "collector_number", "quantity", "finish", "language",
+        "location"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "set_code": { "type": "string", "minLength": 1 },
+        "collector_number": { "type": "string", "minLength": 1 },
+        "quantity": { "type": "integer", "minimum": 1 },
+        "finish": { "enum": ["nonfoil", "foil", "etched"] },
+        "language": {
+          "enum": [
+            "en", "es", "fr", "de", "it", "pt", "ja", "ko", "ru", "zhs", "zht",
+            "he", "la", "grc", "ar", "sa", "ph", "qya"
+          ]
+        },
+        "location": { "type": "string", "minLength": 1 }
+      }
+    },
     "collectionEntry": {
       "type": "object",
       "required": ["set_code", "collector_number", "quantity", "finish", "language"],
