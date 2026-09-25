@@ -28,6 +28,7 @@ pub type Predicate {
   FinishIsNot(finish: Finish)
   LanguageIsNot(language: Language)
   SupertypeIsNot(supertype: Supertype)
+  TokenIs(is_token: Bool)
   And(left: Predicate, right: Predicate)
 }
 
@@ -42,6 +43,7 @@ pub type ParseError {
   UnknownFinish(value: String)
   UnknownLanguage(value: String)
   UnknownSupertype(value: String)
+  UnknownYesNo(value: String)
   EmptyList
 }
 
@@ -190,6 +192,10 @@ fn parse_eq(attr: String, value: String) -> Result(Predicate, ParseError) {
       card_attributes.parse_supertype(value)
       |> result.map(fn(s) { SupertypeIn([s]) })
       |> result.replace_error(UnknownSupertype(value))
+    "token" ->
+      card_attributes.parse_yes_no(value)
+      |> result.map(TokenIs)
+      |> result.replace_error(UnknownYesNo(value))
     _ -> Error(UnknownAttribute(attr))
   }
 }
@@ -217,6 +223,10 @@ fn parse_not_eq(attr: String, value: String) -> Result(Predicate, ParseError) {
       card_attributes.parse_supertype(value)
       |> result.map(SupertypeIsNot)
       |> result.replace_error(UnknownSupertype(value))
+    "token" ->
+      card_attributes.parse_yes_no(value)
+      |> result.map(fn(v) { TokenIs(!v) })
+      |> result.replace_error(UnknownYesNo(value))
     _ -> Error(UnknownAttribute(attr))
   }
 }
@@ -335,6 +345,7 @@ pub fn to_string(predicate: Predicate) -> String {
     LanguageIsNot(value) -> "language != " <> language.to_string(value)
     SupertypeIsNot(value) ->
       "supertype != " <> card_attributes.supertype_to_string(value)
+    TokenIs(value) -> "token = " <> card_attributes.yes_no_to_string(value)
     And(left, right) -> to_string(left) <> " and " <> to_string(right)
   }
 }
@@ -360,7 +371,11 @@ fn equals_or_in_body(values: List(String)) -> String {
 // whose enrichment is absent (ADR 0017) — "the catalog doesn't know" is never
 // a match, positive or negated. SupertypeIn/SupertypeIsNot test membership in
 // card.supertypes rather than equality — a card can carry more than one
-// supertype ("Basic Snow Land"), unlike every other attribute here.
+// supertype ("Basic Snow Land"), unlike every other attribute here. TokenIs
+// has the same catalog-gap shape as ColorIdentityIsNot etc: `card.is_token`
+// None (no catalog row, or layout not yet synced) is False for both
+// `token = yes` and `token = no` — there's no separate negated variant to
+// keep symmetric here, since flipping the Bool argument already spells it.
 pub fn matches(predicate: Predicate, card: PlannedCard) -> Bool {
   case predicate {
     SetCodeIn(codes) -> list.contains(codes, card_key.set_code_string(card.key))
@@ -409,6 +424,11 @@ pub fn matches(predicate: Predicate, card: PlannedCard) -> Bool {
     SupertypeIsNot(value) ->
       case card.supertypes {
         option.Some(card_supertypes) -> !list.contains(card_supertypes, value)
+        option.None -> False
+      }
+    TokenIs(expected) ->
+      case card.is_token {
+        option.Some(is_token) -> is_token == expected
         option.None -> False
       }
     And(left, right) -> matches(left, card) && matches(right, card)

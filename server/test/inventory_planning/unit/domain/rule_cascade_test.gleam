@@ -76,6 +76,7 @@ fn card(
     card_type: Some(attrs.Creature),
     supertypes: Some([]),
     cmc: None,
+    is_token: None,
   )
 }
 
@@ -403,6 +404,7 @@ pub fn catalog_unknown_card_falls_to_bulk_test() {
       card_type: None,
       supertypes: None,
       cmc: None,
+      is_token: None,
     )
   let buckets = rule_cascade.project(owner_cascade(), [unknown], dict.new())
   assert list.length(buckets) == 1
@@ -700,6 +702,7 @@ pub fn type_fan_out_rank_order_test() {
       card_type: Some(card_type),
       supertypes: Some([]),
       cmc: None,
+      is_token: None,
     )
   }
   let land = make_typed("aaa", "1", attrs.Land)

@@ -198,6 +198,7 @@ fn plan_card(
         card_type: None,
         supertypes: None,
         cmc: None,
+        is_token: None,
       )
     Ok(attrs) ->
       card_attributes.PlannedCard(
@@ -213,6 +214,7 @@ fn plan_card(
         card_type: reduce_card_type(attrs.type_line),
         supertypes: reduce_supertypes(attrs.type_line),
         cmc: attrs.cmc,
+        is_token: reduce_is_token(attrs.layout),
       )
   })
 }
@@ -237,6 +239,14 @@ fn reduce_supertypes(
     "" -> None
     _ -> Some(card_attributes.supertypes_from_type_line(type_line))
   }
+}
+
+// layout reduction is planning policy over the catalog's raw fact, same
+// shape as the two above: a NULL layout (catalog not yet reloaded since
+// #135) stays None rather than Some(False), so `token = yes`/`token = no`
+// both cascade a card the catalog can't attest to instead of matching it.
+fn reduce_is_token(layout: Option(String)) -> Option(Bool) {
+  option.map(layout, card_attributes.is_token_layout)
 }
 
 // --- Bucket mapping -------------------------------------------------------

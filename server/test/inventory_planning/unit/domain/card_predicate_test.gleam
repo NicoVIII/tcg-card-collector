@@ -4,7 +4,7 @@ import inventory_planning/domain/card_attributes.{type PlannedCard} as attrs
 import inventory_planning/domain/card_predicate.{
   And, CardTypeIs, CardTypeIsNot, ColorIdentityIs, ColorIdentityIsNot, FinishIn,
   FinishIsNot, LanguageIn, LanguageIsNot, RarityAtLeast, RarityIn, SetCodeIn,
-  SetCodeIsNot, SupertypeIn, SupertypeIsNot,
+  SetCodeIsNot, SupertypeIn, SupertypeIsNot, TokenIs,
 }
 import shared/domain/card_key
 import shared/domain/finish
@@ -37,6 +37,7 @@ fn card(
     card_type: Some(card_type),
     supertypes: Some([]),
     cmc: None,
+    is_token: None,
   )
 }
 
@@ -56,6 +57,7 @@ fn bare_card() -> PlannedCard {
     card_type: None,
     supertypes: None,
     cmc: None,
+    is_token: None,
   )
 }
 
@@ -172,6 +174,25 @@ pub fn rejects_unknown_supertype_test() {
     == Error(card_predicate.UnknownSupertype("mythic"))
 }
 
+pub fn parses_token_equals_test() {
+  assert card_predicate.parse("token = YES") == Ok(TokenIs(True))
+  assert card_predicate.parse("token = no") == Ok(TokenIs(False))
+}
+
+// `!=` is accepted and normalizes to the opposite value — there's no
+// separate negated variant, since flipping the Bool already spells it.
+pub fn parses_token_not_eq_test() {
+  assert card_predicate.parse("token != yes") == Ok(TokenIs(False))
+  assert card_predicate.parse("token != no") == Ok(TokenIs(True))
+}
+
+// Unknown words report a token-specific error, not a generic
+// malformed-clause one — mirroring rejects_unknown_supertype_test.
+pub fn rejects_unknown_token_value_test() {
+  assert card_predicate.parse("token = maybe")
+    == Error(card_predicate.UnknownYesNo("maybe"))
+}
+
 pub fn parses_conjunction_left_folded_test() {
   let assert Ok(pred) =
     card_predicate.parse(
@@ -217,6 +238,8 @@ pub fn round_trips_through_parse_test() {
     "supertype = basic",
     "supertype in (basic, legendary)",
     "supertype != basic",
+    "token = yes",
+    "token = no",
     "set_code in (grn) and rarity >= rare and type = creature",
   ]
   assert list.all(sources, fn(src) {
@@ -396,6 +419,48 @@ pub fn matches_supertype_not_eq_excludes_multi_supertype_card_test() {
 pub fn supertype_clauses_match_false_when_unknown_test() {
   let assert Ok(eq_pred) = card_predicate.parse("supertype = basic")
   let assert Ok(not_eq_pred) = card_predicate.parse("supertype != basic")
+  assert !card_predicate.matches(eq_pred, bare_card())
+  assert !card_predicate.matches(not_eq_pred, bare_card())
+}
+
+pub fn matches_token_equals_test() {
+  let assert Ok(pred) = card_predicate.parse("token = yes")
+  let token =
+    attrs.PlannedCard(
+      ..card("x", rarity.Common, "R", attrs.Creature),
+      is_token: Some(True),
+    )
+  let real_card =
+    attrs.PlannedCard(
+      ..card("x", rarity.Common, "R", attrs.Creature),
+      is_token: Some(False),
+    )
+  assert card_predicate.matches(pred, token)
+  assert !card_predicate.matches(pred, real_card)
+}
+
+pub fn matches_token_not_eq_test() {
+  let assert Ok(pred) = card_predicate.parse("token != yes")
+  let token =
+    attrs.PlannedCard(
+      ..card("x", rarity.Common, "R", attrs.Creature),
+      is_token: Some(True),
+    )
+  let real_card =
+    attrs.PlannedCard(
+      ..card("x", rarity.Common, "R", attrs.Creature),
+      is_token: Some(False),
+    )
+  assert !card_predicate.matches(pred, token)
+  assert card_predicate.matches(pred, real_card)
+}
+
+// A card whose layout the catalog doesn't know (no row, or NULL pre-reload)
+// fails both the positive and negated form — same catalog-gap handling as
+// every other enrichment clause.
+pub fn token_clauses_match_false_when_unknown_test() {
+  let assert Ok(eq_pred) = card_predicate.parse("token = yes")
+  let assert Ok(not_eq_pred) = card_predicate.parse("token = no")
   assert !card_predicate.matches(eq_pred, bare_card())
   assert !card_predicate.matches(not_eq_pred, bare_card())
 }

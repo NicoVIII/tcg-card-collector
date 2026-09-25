@@ -80,7 +80,9 @@ Core terms:
   a printing the catalog doesn't (yet) carry, and such a card fails every attribute predicate and
   cascades to bulk. `supertypes` is `Some([])` for a known card with none, distinct from `None`
   (catalog unknown) — a plain empty list would make a negated supertype clause match a card the
-  catalog can't attest to (ADR 0017).
+  catalog can't attest to (ADR 0017). `is_token` is the same catalog-gap shape: `None` when the
+  catalog has no row or its `layout` hasn't been synced yet (#135's migration forces a reload, but
+  the reload itself takes a few minutes), `Some(is_token_layout(layout))` once it has.
 - CardAttributes (module): planning's *policy* over the shared card facts — the rarity total
   order (common < uncommon < special < bonus < rare < mythic, so `rarity >= rare` excludes
   special/bonus), the land-first CardType reduction of the raw type line's **front face**, the CR
@@ -109,16 +111,21 @@ Core terms:
   location, but each rule's dedupe set starts empty, so it cannot express a preference within one
   location.
 - Predicate: a rule's match condition — a conjunction (`and`) of set-code / rarity / color-identity /
-  type / finish / language / supertype clauses over a card's attributes. A clause referencing a
-  catalog-enrichment attribute the card lacks is false, so the card cascades on; finish and
-  language come from the collection itself and are never absent (ADR 0010), so a finish or
-  language clause always has a value to match. `set_code`, `color_identity`, `type`, `finish`,
+  type / finish / language / supertype / token clauses over a card's attributes. A clause
+  referencing a catalog-enrichment attribute the card lacks is false, so the card cascades on;
+  finish and language come from the collection itself and are never absent (ADR 0010), so a finish
+  or language clause always has a value to match. `set_code`, `color_identity`, `type`, `finish`,
   `language`, and `supertype` also take `!=` (ADR 0017); negation doesn't flip the
   cascade-on-unknown behavior — a negated clause on absent enrichment is still false. Unlike every
   other clause, `supertype = x` / `!= x` is membership, not equality: a card can carry more than
   one supertype, so `= basic` matches if *any* of the card's supertypes is Basic, and `!= basic` is
   true only if *none* of them is. `type` and `supertype` both come from the type line's front face
   only (ADR 0018), so a `Sorcery // Land` MDFC matches `type = sorcery`, never `type = land`.
+  `token = yes` / `token = no` (`!=` is accepted and normalizes to the opposite value) matches
+  Scryfall's `token`/`double_faced_token` layouts (#135) — the field is reliable where `type`
+  isn't, since a token's type line reduces to the same `creature`/`artifact` as a real card. An
+  emblem, dungeon, or art-series card (its own distinct layout, e.g. `art_series` for
+  `Card // Token Creature — Elemental`) is not a token.
 - Set family: a parent set plus all its Scryfall child sets (tokens, promos, art series, … — anything
   linked by `parent_set_code`), resolved transitively to a single family-root set code. The unit a
   `{set_family}` template gathers into one binder.
