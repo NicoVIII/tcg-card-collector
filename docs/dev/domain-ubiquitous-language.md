@@ -226,7 +226,8 @@ Purpose:
 Core terms:
 - ExportDocument: the whole exported file as this app models it before rendering — a
   format marker, a format_version, the export date, and one section per contributing
-  context. `collection` and `insights` (target sets) exist today.
+  context: `collection`, `insights` (target sets), and `inventory_planning` (rules,
+  bulk spec, placed ledger) — #119's full scope.
 - format_version: an integer identifying the document's shape, independent of the app's
   own version — it changes only when a section's shape changes in a way an importer must
   branch on, never merely because a new section was added.
@@ -241,12 +242,19 @@ Core terms:
   JSON carries no line numbers, and a position survives a hand edit's reformatting the
   way a line number wouldn't.
 - Section: which part of the document an entry, a rejection, or a written count belongs
-  to (`collection`, `insights.target_sets`, and more as #119 adds them). A section
-  absent from the uploaded file is left untouched on import, not cleared — only
-  `collection` stays mandatory. Every present section replaces its data as a full
-  snapshot, atomically on its own; import writes them in a fixed order so a
-  collection-triggered reconciliation (ADR 0011) always runs against the other sections'
-  final state.
+  to (`collection`, `insights.target_sets`, `inventory_planning.rules`,
+  `inventory_planning.bulk`, `inventory_planning.placed`). A section absent from the
+  uploaded file is left untouched on import, not cleared — only `collection` stays
+  mandatory. Rules, bulk spec, and the placed ledger replace together in one Inventory
+  Planning transaction (one context, ADR 0019's "one place that can check relationships
+  between sections"); import writes insights, then inventory_planning, then collection
+  last, so a collection-triggered reconciliation (ADR 0011) always runs against the
+  other sections' final state.
+- LedgerExcess: a placed-ledger key whose total across locations exceeds what the
+  document's own collection owns — computed from the document alone, before anything is
+  written, so the preview can say what ReconcilePlacedLedger (ADR 0011) will prune right
+  after import. Needs no cross-context call: both sides are already Portability's own
+  validated data by the time it runs.
 
 Boundary notes:
 - Reads and writes every contributing context through that context's `driver/gleam`

@@ -1,8 +1,11 @@
 import gleam/list
 import portability/application/commands/import_data/ports as import_data_ports
+import portability/application/queries/preview_import/handler.{
+  type ImportPreview,
+}
 import portability/domain/export_document.{type ExportDocument}
 import portability/domain/import_document.{
-  type DocumentError, type ImportDocument, type SectionResult,
+  type DocumentError, type LedgerExcess, type SectionResult,
 }
 import portability/driver/error_presentation
 import portability/driver/export_file
@@ -28,18 +31,13 @@ pub fn map_parse_error(error: DocumentError) -> service.ServiceError {
   helpers.service_error(error_presentation.document_error(error))
 }
 
-/// The excess ledger list stays empty until #119 adds the
-/// inventory_planning section — there is no ledger to check yet.
 pub fn map_import_preview(
-  document: ImportDocument,
+  preview: ImportPreview,
 ) -> portability_queries.ImportPreview {
   portability_queries.import_preview_new(
-    sections: list.map(
-      import_document.section_results(document),
-      map_section_result,
-    ),
-    rejected: list.map(document.rejected, map_rejected_entry),
-    excess: [],
+    sections: list.map(preview.sections, map_section_result),
+    rejected: list.map(preview.rejected, map_rejected_entry),
+    excess: list.map(preview.excess, map_ledger_excess),
   )
 }
 
@@ -85,5 +83,13 @@ fn map_rejected_entry(
     identity: rejected.identity,
     position: rejected.position,
     reason: rejected.reason,
+  )
+}
+
+fn map_ledger_excess(excess: LedgerExcess) -> portability_queries.LedgerExcess {
+  portability_queries.ledger_excess_new(
+    identity: excess.identity,
+    owned: excess.owned,
+    placed: excess.placed,
   )
 }

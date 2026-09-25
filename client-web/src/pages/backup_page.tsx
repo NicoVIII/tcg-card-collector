@@ -1,6 +1,7 @@
 import { Show, createSignal } from "solid-js";
 import { A } from "@solidjs/router";
 import { ConfirmButton } from "../components/confirm_button";
+import { LedgerExcessNotice } from "../components/ledger_excess_notice";
 import { RejectedList } from "../components/rejected_list";
 import { mapError } from "../data/http/error";
 import {
@@ -16,6 +17,9 @@ import type { ImportPreview, SectionCount } from "../data/portability/request";
 const SECTION_LABELS: Record<string, string> = {
   collection: "collection",
   "insights.target_sets": "target sets",
+  "inventory_planning.rules": "location rules",
+  "inventory_planning.bulk": "bulk spec",
+  "inventory_planning.placed": "placed ledger",
 };
 
 function sectionLabel(section: string): string {
@@ -30,8 +34,86 @@ function summarize(sections: SectionCount[]): string {
   return sections.map((entry) => `${entry.count} ${sectionLabel(entry.section)}`).join(", ");
 }
 
-export function BackupPage() {
+// Shared try/catch shape for the two mutations on this page — trims each
+// caller down to what's specific to it.
+async function runOrReportError<T>(
+  action: () => Promise<T>,
+  onSuccess: (result: T) => void,
+  setError: (message: string) => void,
+) {
+  try {
+    onSuccess(await action());
+  } catch (error) {
+    setError(mapError(error).message);
+  }
+}
+
+function ExportSection() {
   const exportMutation = useExportDataMutation();
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => exportMutation.mutate()}
+        disabled={exportMutation.isPending}
+        aria-label="Export collection as a JSON file"
+      >
+        {exportMutation.isPending ? "Exporting…" : "Export collection"}
+      </button>
+      <p role="status">{exportMutation.isSuccess ? "Export downloaded." : ""}</p>
+      <Show when={exportMutation.isError}>
+        <p role="alert">{mapError(exportMutation.error).message}</p>
+      </Show>
+    </>
+  );
+}
+
+// Collection stays the one mandatory section (ADR 0019) — every other
+// section is optional, so restoring is only blocked on it being absent or
+// empty.
+function canRestore(preview: ImportPreview | null): boolean {
+  return countFor(preview?.sections ?? [], "collection") > 0;
+}
+
+function RestorePreview(props: {
+  preview: ImportPreview | null;
+  previewPending: boolean;
+  importPending: boolean;
+  onConfirm: () => void;
+}) {
+  const restorable = () => canRestore(props.preview);
+
+  return (
+    <>
+      <Show when={props.previewPending}>
+        <p>Checking file…</p>
+      </Show>
+      <Show when={props.preview !== null}>
+        <RejectedList
+          items={(props.preview?.rejected ?? []).map((entry) => ({
+            label: `${sectionLabel(entry.section)} #${entry.position} (${entry.identity})`,
+            reason: entry.reason,
+          }))}
+        />
+        <Show when={!restorable()}>
+          <p role="alert">The file has no valid entries to import.</p>
+        </Show>
+        <LedgerExcessNotice excess={props.preview?.excess ?? []} />
+      </Show>
+      <Show when={restorable()}>
+        <p>{summarize(props.preview?.sections ?? [])} ready to restore.</p>
+        <ConfirmButton
+          label={`Replace ${summarize(props.preview?.sections ?? [])}`}
+          disabled={props.importPending}
+          onConfirm={props.onConfirm}
+        />
+      </Show>
+    </>
+  );
+}
+
+export function BackupPage() {
   const previewMutation = usePreviewImportMutation();
   const importMutation = useImportDataMutation();
 
@@ -50,33 +132,25 @@ export function BackupPage() {
     }
     const content = await file.text();
     setFileContent(content);
-    try {
-      setPreview(await previewMutation.mutateAsync(content));
-    } catch (error) {
-      setRestoreError(mapError(error).message);
-    }
+    await runOrReportError(() => previewMutation.mutateAsync(content), setPreview, setRestoreError);
   };
-
-  // Collection stays the one mandatory section (ADR 0019) — every other
-  // section is optional, so restoring is only blocked on it being absent
-  // or empty.
-  const canRestore = () => countFor(preview()?.sections ?? [], "collection") > 0;
 
   const submitRestore = async () => {
     const content = fileContent();
-    if (content === null || !canRestore()) {
+    if (content === null || !canRestore(preview())) {
       return;
     }
     setRestoreError(null);
     setRestoreSuccess(null);
-    try {
-      const result = await importMutation.mutateAsync(content);
-      setRestoreSuccess(`Restored ${summarize(result.sections)}.`);
-      setFileContent(null);
-      setPreview(null);
-    } catch (error) {
-      setRestoreError(mapError(error).message);
-    }
+    await runOrReportError(
+      () => importMutation.mutateAsync(content),
+      (result) => {
+        setRestoreSuccess(`Restored ${summarize(result.sections)}.`);
+        setFileContent(null);
+        setPreview(null);
+      },
+      setRestoreError,
+    );
   };
 
   return (
@@ -86,21 +160,10 @@ export function BackupPage() {
         <A href="/collection">← Back to collection</A>
       </p>
       <p>
-        Downloads the collection and target sets as a JSON file this app can read back in. Location
-        rules and the placed ledger aren't included yet.
+        Downloads everything hand-made in this app — the collection, target sets, location rules,
+        bulk spec, and placed ledger — as a single JSON file this app can read back in.
       </p>
-      <button
-        type="button"
-        onClick={() => exportMutation.mutate()}
-        disabled={exportMutation.isPending}
-        aria-label="Export collection as a JSON file"
-      >
-        {exportMutation.isPending ? "Exporting…" : "Export collection"}
-      </button>
-      <p role="status">{exportMutation.isSuccess ? "Export downloaded." : ""}</p>
-      <Show when={exportMutation.isError}>
-        <p role="alert">{mapError(exportMutation.error).message}</p>
-      </Show>
+      <ExportSection />
 
       <h3>Restore from file</h3>
       <p>
@@ -115,28 +178,12 @@ export function BackupPage() {
           onChange={(event) => void onFileSelected(event.currentTarget.files?.[0])}
         />
       </label>
-      <Show when={previewMutation.isPending}>
-        <p>Checking file…</p>
-      </Show>
-      <Show when={preview() !== null}>
-        <RejectedList
-          items={(preview()?.rejected ?? []).map((entry) => ({
-            label: `${sectionLabel(entry.section)} #${entry.position} (${entry.identity})`,
-            reason: entry.reason,
-          }))}
-        />
-        <Show when={!canRestore()}>
-          <p role="alert">The file has no valid entries to import.</p>
-        </Show>
-      </Show>
-      <Show when={canRestore()}>
-        <p>{summarize(preview()?.sections ?? [])} ready to restore.</p>
-        <ConfirmButton
-          label={`Replace ${summarize(preview()?.sections ?? [])}`}
-          disabled={importMutation.isPending}
-          onConfirm={() => void submitRestore()}
-        />
-      </Show>
+      <RestorePreview
+        preview={preview()}
+        previewPending={previewMutation.isPending}
+        importPending={importMutation.isPending}
+        onConfirm={() => void submitRestore()}
+      />
       <Show when={restoreError() !== null}>
         <p role="alert">{restoreError()}</p>
       </Show>

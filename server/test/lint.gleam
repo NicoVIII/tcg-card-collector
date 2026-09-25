@@ -200,10 +200,11 @@ pub fn main() {
         #(Collection, CardCatalog),
         // Portability reads/writes every context that owns exportable data
         // through its driver/gleam facade (ADR 0019) — one pair per section
-        // it can export; #119 added the Insights pair for target sets and
-        // will add InventoryPlanning for rules/bulk/placed.
+        // it can export; #119 added Insights (target sets) and
+        // InventoryPlanning (rules, bulk spec, placed ledger).
         #(Portability, Collection),
         #(Portability, Insights),
+        #(Portability, InventoryPlanning),
       ],
     )
   let config =

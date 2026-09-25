@@ -1,18 +1,16 @@
 import gleam/json
+import portability/application/queries/preview_import/handler.{
+  type ImportPreview,
+}
 import portability/domain/import_document.{
-  type ImportDocument, type RejectedEntry, type SectionResult,
+  type LedgerExcess, type RejectedEntry, type SectionResult,
 }
 
-pub fn encode_import_preview(document: ImportDocument) -> String {
+pub fn encode_import_preview(preview: ImportPreview) -> String {
   json.object([
-    #(
-      "sections",
-      json.array(
-        import_document.section_results(document),
-        of: encode_section_result,
-      ),
-    ),
-    #("rejected", json.array(document.rejected, of: encode_rejected_entry)),
+    #("sections", json.array(preview.sections, of: encode_section_result)),
+    #("rejected", json.array(preview.rejected, of: encode_rejected_entry)),
+    #("excess", json.array(preview.excess, of: encode_ledger_excess)),
   ])
   |> json.to_string
 }
@@ -35,5 +33,13 @@ fn encode_rejected_entry(rejected: RejectedEntry) -> json.Json {
     #("position", json.int(rejected.position)),
     #("identity", json.string(rejected.identity)),
     #("reason", json.string(rejected.reason)),
+  ])
+}
+
+fn encode_ledger_excess(excess: LedgerExcess) -> json.Json {
+  json.object([
+    #("identity", json.string(excess.identity)),
+    #("placed", json.int(excess.placed)),
+    #("owned", json.int(excess.owned)),
   ])
 }

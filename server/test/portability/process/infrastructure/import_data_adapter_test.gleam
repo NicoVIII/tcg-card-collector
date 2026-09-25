@@ -2,6 +2,8 @@ import collection/infrastructure/daos/collection_dao
 import gleam/option.{Some}
 import gleam/time/calendar
 import insights/infrastructure/daos/insights_dao
+import inventory_planning/infrastructure/daos/inventory_rules_dao
+import inventory_planning/infrastructure/daos/placed_cards_dao
 import portability/domain/export_document
 import portability/driver/export_file
 import portability/infrastructure/adapters/commands/import_data/adapter
@@ -16,18 +18,22 @@ fn rendered_export() -> String {
   let export_ports = export_data_adapter.new()
   let assert Ok(entries) = export_ports.list_collection_entries()
   let assert Ok(target_sets) = export_ports.list_target_sets()
+  let assert Ok(rules) = export_ports.list_rules()
+  let assert Ok(bulk) = export_ports.get_bulk_spec()
+  let assert Ok(placed) = export_ports.list_placed()
   export_file.render(export_document.new(
     a_date(),
     entries,
     export_document.InsightsSection(target_sets:),
+    export_document.InventoryPlanningSection(rules:, bulk:, placed:),
   ))
 }
 
 /// The acceptance round trip (#117, widened by #119): export, import that
 /// file back in, export again — the two exports agree byte for byte and
 /// every section is unchanged, for every finish and the zhs/zht split
-/// neither deckstats nor a lossy format could carry, and the target sets
-/// alongside it.
+/// neither deckstats nor a lossy format could carry, alongside the target
+/// sets, rules, bulk spec, and placed ledger.
 pub fn export_import_export_is_byte_identical_and_every_section_is_unchanged_test() {
   use _db <- test_db.with_temp_db()
 
@@ -57,12 +63,34 @@ pub fn export_import_export_is_byte_identical_and_every_section_is_unchanged_tes
     ])
   let assert Ok(Nil) = insights_dao.mark("neo")
   let assert Ok(Nil) = insights_dao.mark("2xm")
+  let assert Ok(Nil) =
+    inventory_rules_dao.upsert(inventory_rules_dao.RuleRow(
+      id: "rule-1",
+      location_name: "Binder A",
+      expression: "rarity >= rare",
+      position: 0,
+      selector: "all",
+      sort_keys: "",
+    ))
+  let assert Ok(Nil) =
+    placed_cards_dao.increment([
+      placed_cards_dao.PlacedCardRow(
+        set_code: "mh2",
+        collector_number: "17",
+        finish: "foil",
+        language: "zht",
+        location: "Binder A",
+        quantity: 2,
+      ),
+    ])
   let before_file = rendered_export()
 
   let assert Ok(document) = export_file.parse(before_file)
   let import_ports = adapter.new(fn(_) { Ok(Nil) })
   let assert Some(target_sets) = document.target_sets
   let assert Ok(Nil) = import_ports.replace_target_sets(target_sets)
+  let assert Ok(Nil) =
+    import_ports.replace_plan(document.rules, document.bulk, document.placed)
   let assert Ok(Nil) = import_ports.replace_collection(document.collection)
 
   let after_file = rendered_export()
