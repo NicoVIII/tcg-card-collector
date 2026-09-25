@@ -1,0 +1,15 @@
+struct ExportDataRequest {
+  unit: bool = 0;
+}
+
+// The exported document as opaque text: the file's shape is Portability's
+// own, versioned separately from this contract (ADR 0019), so the contract
+// only carries it, never parses or re-describes it.
+struct ExportFile {
+  filename: string = 0;
+  content: string = 1;
+}
+
+method ExportData(
+  ExportDataRequest
+): ExportFile = 701;
