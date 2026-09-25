@@ -13,3 +13,27 @@ struct ExportFile {
 method ExportData(
   ExportDataRequest
 ): ExportFile = 701;
+
+// Same opaque-text contract as ExportData, in reverse (ADR 0019): the wire
+// never parses the file, it only carries it to Portability's own decoder.
+struct PreviewImportRequest {
+  content: string = 0;
+}
+
+// One rejected entry, identified by its position in the document's
+// collection array plus its printing/finish/language identity — a line
+// number doesn't survive a hand edit's reformatting the way a position does.
+struct RejectedEntry {
+  position: int32 = 0;
+  identity: string = 1;
+  reason: string = 2;
+}
+
+struct ImportPreview {
+  entry_count: int32 = 0;
+  rejected: [RejectedEntry] = 1;
+}
+
+method PreviewImport(
+  PreviewImportRequest
+): ImportPreview = 702;

@@ -1,9 +1,17 @@
+import gleam/bool
+import gleam/dynamic.{type Dynamic}
+import gleam/dynamic/decode
 import gleam/int
 import gleam/json
 import gleam/list
+import gleam/result
 import gleam/string
 import gleam/time/calendar.{type Date}
 import portability/domain/export_document.{type ExportDocument}
+import portability/domain/import_document.{
+  type DocumentError, type ImportDocument, type RawEntry, MissingCollection,
+  NotJson, NotThisFormat, RawEntry, UnsupportedVersion,
+}
 import shared/domain/copy_key
 
 /// The one encoder both doors call, so REST and Skir agree byte for byte
@@ -31,6 +39,35 @@ pub fn render(document: ExportDocument) -> String {
 
 pub fn filename(document: ExportDocument) -> String {
   "tcg-card-collector-" <> iso_date(document.exported_on) <> ".json"
+}
+
+/// The decoder side of `render`, so the one file format has one encoder and
+/// one decoder. Whole-file problems (bad JSON, wrong `format`, an
+/// unsupported `format_version`, a missing `collection`) are checked in
+/// that order before any entry is parsed (ADR 0019); a bad entry is instead
+/// reported per-entry by `validate_entries`, so the rest of the file still
+/// imports. Unknown top-level and per-entry keys are silently ignored —
+/// ADR 0019 tolerates them by design.
+pub fn parse(content: String) -> Result(ImportDocument, DocumentError) {
+  use root <- result.try(
+    json.parse(from: content, using: decode.dynamic)
+    |> result.replace_error(NotJson),
+  )
+  use <- bool.guard(
+    decode.run(root, decode.at(["format"], decode.string))
+      != Ok("tcg-card-collector"),
+    Error(NotThisFormat),
+  )
+  use _ <- result.try(check_version(root))
+  use items <- result.try(
+    decode.run(root, decode.at(["collection"], decode.list(decode.dynamic)))
+    |> result.replace_error(MissingCollection),
+  )
+  let #(entries, rejected) =
+    items
+    |> list.map(raw_entry)
+    |> import_document.validate_entries
+  Ok(import_document.ImportDocument(collection: entries, rejected: rejected))
 }
 
 fn join_entries(lines: List(String)) -> String {
@@ -66,4 +103,39 @@ fn iso_date(date: Date) -> String {
   )
   <> "-"
   <> string.pad_start(int.to_string(date.day), to: 2, with: "0")
+}
+
+fn check_version(root: Dynamic) -> Result(Nil, DocumentError) {
+  case decode.run(root, decode.at(["format_version"], decode.int)) {
+    Ok(version) if version == export_document.format_version -> Ok(Nil)
+    Ok(other) -> Error(UnsupportedVersion(int.to_string(other)))
+    Error(_) -> Error(UnsupportedVersion("missing"))
+  }
+}
+
+/// Every field defaults rather than fails the whole entry, so a malformed
+/// one is still reported with whatever identity it carried — validation
+/// (and the resulting rejection reason) is `validate_entries`' job.
+fn raw_entry(item: Dynamic) -> RawEntry {
+  RawEntry(
+    set_code: optional_string(item, "set_code"),
+    collector_number: optional_string(item, "collector_number"),
+    quantity: optional_int(item, "quantity"),
+    finish: optional_string(item, "finish"),
+    language: optional_string(item, "language"),
+  )
+}
+
+fn optional_string(item: Dynamic, key: String) -> String {
+  case decode.run(item, decode.at([key], decode.string)) {
+    Ok(value) -> value
+    Error(_) -> ""
+  }
+}
+
+fn optional_int(item: Dynamic, key: String) -> Int {
+  case decode.run(item, decode.at([key], decode.int)) {
+    Ok(value) -> value
+    Error(_) -> 0
+  }
 }

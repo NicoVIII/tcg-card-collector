@@ -1,0 +1,13 @@
+// Same opaque-text contract as ExportData, in reverse (ADR 0019): the wire
+// never parses the file, it only carries it to Portability's own decoder.
+struct ImportDataRequest {
+  content: string = 0;
+}
+
+struct ImportedData {
+  entry_count: int32 = 0;
+}
+
+method ImportData(
+  ImportDataRequest
+): ImportedData = 703;
