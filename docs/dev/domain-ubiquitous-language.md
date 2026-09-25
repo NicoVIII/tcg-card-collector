@@ -8,6 +8,7 @@ This document defines the MVP bounded contexts and the shared language for each 
 - Collection Import (`server/src/collection/`)
 - Inventory Planning (`server/src/inventory_planning/`)
 - Insights (`server/src/insights/`)
+- Portability (`server/src/portability/`)
 
 ## Shared Kernel (`server/src/shared/domain/`)
 
@@ -207,3 +208,29 @@ Boundary notes:
   is also preference-shaped — target sets are about collection insight, not storage rules.
 - Consumes catalog data (distinct collector numbers per set) and collection data (owned cards)
   as inputs through application ports, the same cross-BC pattern Inventory Planning uses.
+
+## Portability
+
+Purpose:
+- Own the single file everything hand-made in the app can leave and re-enter it through —
+  its shape, its version, and reading each contributing context's exportable state through
+  that context's own facade ([ADR 0019](../decisions/0019-portability-export-format.md)).
+
+Core terms:
+- ExportDocument: the whole exported file as this app models it before rendering — a
+  format marker, a format_version, the export date, and one section per contributing
+  context. Only the `collection` section exists today.
+- format_version: an integer identifying the document's shape, independent of the app's
+  own version — it changes only when a section's shape changes in a way an importer must
+  branch on, never merely because a new section was added.
+
+Boundary notes:
+- Reads every contributing context through that context's `driver/gleam` facade, never its
+  internals — the same cross-BC shape Inventory Planning and Insights use for Collection and
+  Card Catalog. Each new exportable section costs one more such read.
+- Owns the document's own ordering and rendering policy (deterministic entry order, one
+  entry per line) — distinct from any consuming context's own display or canonical order
+  over the same data.
+- Query-only, deliberately: nothing about the document's shape or version is part of the
+  Skir contract, so a contract change ADR 0002 allows can never silently break a file
+  already written to disk.

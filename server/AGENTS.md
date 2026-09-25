@@ -10,8 +10,8 @@ read `docs/dev/domain-ubiquitous-language.md` before touching domain code.
 
 Context-first, then layer:
 `src/<bounded_context>/{domain,application/{commands,queries},infrastructure/{adapters,daos},driver/{skir,http}}/`.
-Four contexts: **card_catalog**, **collection**, **inventory_planning**,
-**insights**. `just server::lint-check` enforces:
+Five contexts: **card_catalog**, **collection**, **inventory_planning**,
+**insights**, **portability**. `just server::lint-check` enforces:
 
 - **Layer ordering**: imports only go inward — `driver`/`infrastructure` may
   import `application` and `domain`, never the reverse.

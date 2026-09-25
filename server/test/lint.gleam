@@ -11,6 +11,7 @@ type BoundedContext {
   Collection
   InventoryPlanning
   Insights
+  Portability
 }
 
 type DriverType {
@@ -85,6 +86,15 @@ fn categorize(path: String) -> Category {
           tail,
         ),
       )
+    ["portability", ..tail] ->
+      bounded_context.Bc(
+        Portability,
+        hexagonal.categorize_layer(
+          cqrs.categorize_application,
+          categorize_driver,
+          tail,
+        ),
+      )
     ["shared", ..tail] ->
       bounded_context.Shared(hexagonal.categorize_layer(
         cqrs.categorize_application,
@@ -133,6 +143,7 @@ fn describe_bc(bc: BoundedContext, layer: Layer) -> String {
     Collection -> "Collection"
     InventoryPlanning -> "InventoryPlanning"
     Insights -> "Insights"
+    Portability -> "Portability"
   }
   "BoundedContext("
   <> bc_str
@@ -187,6 +198,10 @@ pub fn main() {
         // Query-only in practice (ADR 0016) — not enforced by this rule,
         // which only checks context pairs, not layers within a pair.
         #(Collection, CardCatalog),
+        // Portability reads every context that owns exportable data through
+        // its driver/gleam facade (ADR 0019) — one pair per section it can
+        // export; #119 adds the InventoryPlanning and Insights pairs.
+        #(Portability, Collection),
       ],
     )
   let config =

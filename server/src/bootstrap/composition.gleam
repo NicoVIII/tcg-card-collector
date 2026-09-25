@@ -42,6 +42,11 @@ import inventory_planning/infrastructure/adapters/queries/get_bulk_spec/adapter 
 import inventory_planning/infrastructure/adapters/queries/list_rules/adapter as list_rules_adapter
 import inventory_planning/infrastructure/adapters/queries/placed_ledger/adapter as placed_ledger_adapter
 import inventory_planning/infrastructure/adapters/queries/projection/adapter as projection_adapter
+import portability/driver/dependencies.{
+  type Dependencies as PortabilityDependencies,
+  Dependencies as PortabilityDependencies,
+} as _
+import portability/infrastructure/adapters/queries/export_data/adapter as export_data_adapter
 import shared/application/app_version.{type AppVersion}
 import shared/application/event_bus
 import shared/infrastructure/runtime_version
@@ -52,6 +57,7 @@ pub type Dependencies {
     collection: CollectionDependencies,
     inventory_planning: InventoryPlanningDependencies,
     insights: InsightsDependencies,
+    portability: PortabilityDependencies,
     app_version: AppVersion,
   )
 }
@@ -127,6 +133,9 @@ pub fn dependencies() -> Dependencies {
       mark_target_set_port: mark_target_set_adapter.new(),
       unmark_target_set_port: unmark_target_set_adapter.new(),
       set_completion_ports: set_completion_adapter.new(),
+    ),
+    portability: PortabilityDependencies(
+      export_data_ports: export_data_adapter.new(),
     ),
     app_version: runtime_version.read(),
   )

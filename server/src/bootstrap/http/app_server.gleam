@@ -14,6 +14,7 @@ import gleam/string
 import insights/driver/http/handler as insights_http
 import inventory_planning/driver/http/handler as inventory_http
 import mist
+import portability/driver/http/handler as portability_http
 import shared/driver/http/app_version as app_version_http
 import shared/driver/http/helpers
 import shared/driver/http/json_codec
@@ -125,6 +126,8 @@ fn handle_request(
       insights_http.handle_mark_target_set(req, deps.insights)
     Delete, "/api/insights/targets" ->
       insights_http.handle_unmark_target_set(req, deps.insights)
+    Get, "/api/export" ->
+      portability_http.handle_export_data(req, deps.portability)
     Get, "/api/skir" | Post, "/api/skir" ->
       skir_router.handle_request(req, server_name)
     Get, "/api/version" -> app_version_http.handle(deps.app_version)

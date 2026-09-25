@@ -26,6 +26,9 @@ Each release section uses only the subheadings it needs:
 - Inventory rules can match a card's supertype (`supertype = basic`, `supertype in (basic,
   legendary)`, `supertype != basic`), so `type = land and supertype = basic` routes the 12 basic
   lands to their own box separately from every other land.
+- The collection can be exported to a versioned JSON file ("Back up data…" on the Collection
+  page, `GET /api/export`, or Skir `ExportData`) — the first slice of v0.2.0's data portability
+  promise. Location rules, set targets, and the placed ledger aren't included yet.
 
 ### Fixed
 
