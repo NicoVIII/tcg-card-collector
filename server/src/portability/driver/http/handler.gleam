@@ -72,10 +72,10 @@ pub fn handle_import_data(
           deps.import_data_ports,
         )
       {
-        Ok(count) ->
+        Ok(sections) ->
           helpers.json_response(
             200,
-            portability_json_codec.encode_imported_data(count),
+            portability_json_codec.encode_imported_data(sections),
           )
         Error(error) ->
           helpers.error_response(error_presentation.import_data(error))

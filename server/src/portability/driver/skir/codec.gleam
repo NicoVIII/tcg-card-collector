@@ -2,7 +2,7 @@ import gleam/list
 import portability/application/commands/import_data/ports as import_data_ports
 import portability/domain/export_document.{type ExportDocument}
 import portability/domain/import_document.{
-  type DocumentError, type ImportDocument,
+  type DocumentError, type ImportDocument, type SectionResult,
 }
 import portability/driver/error_presentation
 import portability/driver/export_file
@@ -28,29 +28,60 @@ pub fn map_parse_error(error: DocumentError) -> service.ServiceError {
   helpers.service_error(error_presentation.document_error(error))
 }
 
+/// The excess ledger list stays empty until #119 adds the
+/// inventory_planning section — there is no ledger to check yet.
 pub fn map_import_preview(
   document: ImportDocument,
 ) -> portability_queries.ImportPreview {
   portability_queries.import_preview_new(
-    entry_count: list.length(document.collection),
+    sections: list.map(
+      import_document.section_results(document),
+      map_section_result,
+    ),
     rejected: list.map(document.rejected, map_rejected_entry),
+    excess: [],
   )
 }
 
 pub fn map_import_data_result(
-  result: Result(Int, import_data_ports.ImportDataError),
+  result: Result(List(SectionResult), import_data_ports.ImportDataError),
 ) -> Result(portability_commands.ImportedData, service.ServiceError) {
   case result {
-    Ok(count) -> Ok(portability_commands.imported_data_new(entry_count: count))
+    Ok(sections) ->
+      Ok(
+        portability_commands.imported_data_new(sections: list.map(
+          sections,
+          map_command_section_result,
+        )),
+      )
     Error(error) ->
       Error(helpers.service_error(error_presentation.import_data(error)))
   }
+}
+
+fn map_section_result(
+  result: SectionResult,
+) -> portability_queries.SectionCount {
+  portability_queries.section_count_new(
+    section: import_document.section_name(result.section),
+    count: result.count,
+  )
+}
+
+fn map_command_section_result(
+  result: SectionResult,
+) -> portability_commands.SectionCount {
+  portability_commands.section_count_new(
+    section: import_document.section_name(result.section),
+    count: result.count,
+  )
 }
 
 fn map_rejected_entry(
   rejected: import_document.RejectedEntry,
 ) -> portability_queries.RejectedEntry {
   portability_queries.rejected_entry_new(
+    section: import_document.section_name(rejected.section),
     identity: rejected.identity,
     position: rejected.position,
     reason: rejected.reason,

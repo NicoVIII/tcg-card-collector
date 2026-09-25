@@ -22,6 +22,17 @@
     "collection": {
       "type": "array",
       "items": { "$ref": "#/$defs/collectionEntry" }
+    },
+    "insights": {
+      "type": "object",
+      "description": "Optional: absent leaves target sets untouched on import; present replaces them, even with an empty array.",
+      "additionalProperties": false,
+      "properties": {
+        "target_sets": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
     }
   },
   "$defs": {

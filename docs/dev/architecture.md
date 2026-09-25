@@ -34,6 +34,7 @@ graph TD
     Insights --> Collection
     Collection --> CardCatalog
     Portability --> Collection
+    Portability --> Insights
 ```
 
 - **Card Catalog** is the only context with no dependencies of its own.
@@ -44,8 +45,8 @@ graph TD
 - **Portability** reads and writes every context that owns exportable data
   through its `driver/gleam` facade, so the whole exported document's shape
   lives in one place ([ADR 0019](../decisions/0019-portability-export-format.md)).
-  Only Collection today; the Inventory Planning and Insights pairs land with
-  #119.
+  Collection and Insights so far; the Inventory Planning pair (rules, bulk
+  spec, placed ledger) lands with #119.
 
 A cross-BC dependency is only legal in one shape: the consumer's
 `infrastructure/` importing the provider's `driver/gleam/` facade

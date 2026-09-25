@@ -226,7 +226,7 @@ Purpose:
 Core terms:
 - ExportDocument: the whole exported file as this app models it before rendering — a
   format marker, a format_version, the export date, and one section per contributing
-  context. Only the `collection` section exists today.
+  context. `collection` and `insights` (target sets) exist today.
 - format_version: an integer identifying the document's shape, independent of the app's
   own version — it changes only when a section's shape changes in a way an importer must
   branch on, never merely because a new section was added.
@@ -236,10 +236,17 @@ Core terms:
   `format`, an unsupported `format_version`, no `collection` array) but per-entry at
   the row level: one bad entry doesn't block the rest, the same posture the deckstats
   importer already had.
-- RejectedEntry: one entry's position in the document's `collection` array, its raw
-  identity (set_code, collector_number, finish, language as given — not yet validated),
-  and why it failed. Position, not a line number: JSON carries no line numbers, and a
-  position survives a hand edit's reformatting the way a line number wouldn't.
+- RejectedEntry: one entry's section, its position within that section's array, its raw
+  identity as given (not yet validated), and why it failed. Position, not a line number:
+  JSON carries no line numbers, and a position survives a hand edit's reformatting the
+  way a line number wouldn't.
+- Section: which part of the document an entry, a rejection, or a written count belongs
+  to (`collection`, `insights.target_sets`, and more as #119 adds them). A section
+  absent from the uploaded file is left untouched on import, not cleared — only
+  `collection` stays mandatory. Every present section replaces its data as a full
+  snapshot, atomically on its own; import writes them in a fixed order so a
+  collection-triggered reconciliation (ADR 0011) always runs against the other sections'
+  final state.
 
 Boundary notes:
 - Reads and writes every contributing context through that context's `driver/gleam`

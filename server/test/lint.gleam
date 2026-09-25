@@ -198,10 +198,12 @@ pub fn main() {
         // Query-only in practice (ADR 0016) — not enforced by this rule,
         // which only checks context pairs, not layers within a pair.
         #(Collection, CardCatalog),
-        // Portability reads every context that owns exportable data through
-        // its driver/gleam facade (ADR 0019) — one pair per section it can
-        // export; #119 adds the InventoryPlanning and Insights pairs.
+        // Portability reads/writes every context that owns exportable data
+        // through its driver/gleam facade (ADR 0019) — one pair per section
+        // it can export; #119 added the Insights pair for target sets and
+        // will add InventoryPlanning for rules/bulk/placed.
         #(Portability, Collection),
+        #(Portability, Insights),
       ],
     )
   let config =

@@ -3,12 +3,14 @@ import gleam/list
 import gleam/result
 import gleam/time/calendar
 import gleam/time/timestamp
+import insights/driver/gleam/insights_api
 import portability/application/queries/export_data/ports
 import portability/domain/export_document
 
 pub fn new() -> ports.ExportDataPorts {
   ports.ExportDataPorts(
     list_collection_entries: list_collection_entries_adapter(),
+    list_target_sets: insights_api.list_target_sets,
     today: today_adapter(),
   )
 }

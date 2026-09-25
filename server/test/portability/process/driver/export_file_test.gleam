@@ -1,7 +1,11 @@
+import gleam/option.{None, Some}
 import gleam/time/calendar
-import portability/domain/export_document.{CollectionEntry, ExportDocument}
+import portability/domain/export_document.{
+  type InsightsSection, CollectionEntry, ExportDocument, InsightsSection,
+}
 import portability/domain/import_document.{
-  MissingCollection, NotJson, NotThisFormat, RejectedEntry, UnsupportedVersion,
+  CollectionSection, MissingCollection, NotJson, NotThisFormat, RejectedEntry,
+  TargetSetsSection, UnsupportedVersion,
 }
 import portability/driver/export_file
 import shared/domain/copy_key
@@ -10,8 +14,17 @@ fn a_date() -> calendar.Date {
   calendar.Date(2026, calendar.September, 25)
 }
 
+fn no_targets() -> InsightsSection {
+  InsightsSection(target_sets: [])
+}
+
 pub fn filename_is_dated_from_the_document_test() {
-  let document = ExportDocument(exported_on: a_date(), collection: [])
+  let document =
+    ExportDocument(
+      exported_on: a_date(),
+      collection: [],
+      insights: no_targets(),
+    )
 
   assert export_file.filename(document) == "tcg-card-collector-2026-09-25.json"
 }
@@ -39,11 +52,15 @@ pub fn renders_every_finish_and_a_non_english_language_by_enum_name_test() {
       language: "zhs",
     )
   let document =
-    ExportDocument(exported_on: a_date(), collection: [
-      CollectionEntry(key: nonfoil_en, quantity: 1),
-      CollectionEntry(key: foil_en, quantity: 2),
-      CollectionEntry(key: etched_zhs, quantity: 3),
-    ])
+    ExportDocument(
+      exported_on: a_date(),
+      collection: [
+        CollectionEntry(key: nonfoil_en, quantity: 1),
+        CollectionEntry(key: foil_en, quantity: 2),
+        CollectionEntry(key: etched_zhs, quantity: 3),
+      ],
+      insights: InsightsSection(target_sets: ["2xm", "neo"]),
+    )
 
   assert export_file.render(document)
     == "{\n"
@@ -54,19 +71,30 @@ pub fn renders_every_finish_and_a_non_english_language_by_enum_name_test() {
     <> "    {\"set_code\":\"dmu\",\"collector_number\":\"2\",\"quantity\":1,\"finish\":\"nonfoil\",\"language\":\"en\"},\n"
     <> "    {\"set_code\":\"dmu\",\"collector_number\":\"101\",\"quantity\":2,\"finish\":\"foil\",\"language\":\"en\"},\n"
     <> "    {\"set_code\":\"dmu\",\"collector_number\":\"101\",\"quantity\":3,\"finish\":\"etched\",\"language\":\"zhs\"}\n"
-    <> "  ]\n"
+    <> "  ],\n"
+    <> "  \"insights\": {\n"
+    <> "    \"target_sets\": [\"2xm\",\"neo\"]\n"
+    <> "  }\n"
     <> "}\n"
 }
 
 pub fn an_empty_collection_renders_as_an_empty_array_test() {
-  let document = ExportDocument(exported_on: a_date(), collection: [])
+  let document =
+    ExportDocument(
+      exported_on: a_date(),
+      collection: [],
+      insights: no_targets(),
+    )
 
   assert export_file.render(document)
     == "{\n"
     <> "  \"format\": \"tcg-card-collector\",\n"
     <> "  \"format_version\": 1,\n"
     <> "  \"exported_on\": \"2026-09-25\",\n"
-    <> "  \"collection\": []\n"
+    <> "  \"collection\": [],\n"
+    <> "  \"insights\": {\n"
+    <> "    \"target_sets\": []\n"
+    <> "  }\n"
     <> "}\n"
 }
 
@@ -93,19 +121,25 @@ pub fn render_then_parse_then_render_is_byte_identical_including_etched_and_the_
       language: "zht",
     )
   let original =
-    ExportDocument(exported_on: a_date(), collection: [
-      CollectionEntry(key: nonfoil_en, quantity: 1),
-      CollectionEntry(key: etched_zhs, quantity: 3),
-      CollectionEntry(key: foil_zht, quantity: 2),
-    ])
+    ExportDocument(
+      exported_on: a_date(),
+      collection: [
+        CollectionEntry(key: nonfoil_en, quantity: 1),
+        CollectionEntry(key: etched_zhs, quantity: 3),
+        CollectionEntry(key: foil_zht, quantity: 2),
+      ],
+      insights: InsightsSection(target_sets: ["neo", "2xm"]),
+    )
   let rendered = export_file.render(original)
 
   let assert Ok(parsed) = export_file.parse(rendered)
   assert parsed.rejected == []
+  let assert Some(target_sets) = parsed.target_sets
   let re_rendered =
     export_file.render(ExportDocument(
       exported_on: a_date(),
       collection: parsed.collection,
+      insights: InsightsSection(target_sets:),
     ))
 
   assert re_rendered == rendered
@@ -148,10 +182,11 @@ pub fn a_missing_collection_section_is_rejected_test() {
 pub fn an_unknown_top_level_key_is_tolerated_test() {
   let assert Ok(document) =
     export_file.parse(
-      "{\"format\": \"tcg-card-collector\", \"format_version\": 1, \"collection\": [], \"insights\": {}}",
+      "{\"format\": \"tcg-card-collector\", \"format_version\": 1, \"collection\": [], \"some_future_key\": {}}",
     )
 
   assert document.collection == []
+  assert document.target_sets == None
 }
 
 pub fn one_bad_entry_is_rejected_at_its_position_while_the_rest_parse_test() {
@@ -174,9 +209,47 @@ pub fn one_bad_entry_is_rejected_at_its_position_while_the_rest_parse_test() {
   assert document.rejected
     == [
       RejectedEntry(
+        section: CollectionSection,
         position: 1,
         identity: "mh2 17 foill en",
         reason: "unknown finish",
+      ),
+    ]
+}
+
+pub fn insights_section_absent_from_the_file_parses_as_none_test() {
+  let assert Ok(document) =
+    export_file.parse(
+      "{\"format\": \"tcg-card-collector\", \"format_version\": 1, \"collection\": []}",
+    )
+
+  assert document.target_sets == None
+}
+
+pub fn insights_target_sets_present_but_empty_parses_as_some_empty_list_test() {
+  let assert Ok(document) =
+    export_file.parse(
+      "{\"format\": \"tcg-card-collector\", \"format_version\": 1, \"collection\": [], \"insights\": {\"target_sets\": []}}",
+    )
+
+  assert document.target_sets == Some([])
+}
+
+pub fn a_blank_target_set_code_is_rejected_at_its_position_while_the_rest_parse_test() {
+  let assert Ok(document) =
+    export_file.parse(
+      "{\"format\": \"tcg-card-collector\", \"format_version\": 1, \"collection\": [], "
+      <> "\"insights\": {\"target_sets\": [\"neo\", \"  \"]}}",
+    )
+
+  assert document.target_sets == Some(["neo"])
+  assert document.rejected
+    == [
+      RejectedEntry(
+        section: TargetSetsSection,
+        position: 2,
+        identity: "  ",
+        reason: "set code is blank",
       ),
     ]
 }

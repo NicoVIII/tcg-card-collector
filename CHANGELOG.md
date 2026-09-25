@@ -29,13 +29,15 @@ Each release section uses only the subheadings it needs:
 - Inventory rules can match token cards (`token = yes`, `token = no`, `token != yes`) by Scryfall's
   `layout`, so tokens can be routed to their own box or binder, or excluded from a rule, while
   staying in the collection — `type` and `supertype` still sort them by creature or artifact.
-- The collection can be exported to a versioned JSON file ("Back up & restore…" on the
-  Collection page, `GET /api/export`, or Skir `ExportData`) — the first slice of v0.2.0's data
-  portability promise. Location rules, set targets, and the placed ledger aren't included yet.
-- The exported file can be read back in, replacing the entire collection, from the same Backup
-  page (a preview shows the entry count and names any entry it can't import before you confirm),
+- The collection and set targets can be exported to a versioned JSON file ("Back up &
+  restore…" on the Collection page, `GET /api/export`, or Skir `ExportData`) — part of
+  v0.2.0's data portability promise. Location rules and the placed ledger aren't included
+  yet.
+- The exported file can be read back in from the same Backup page (a preview shows, per
+  section, how many entries will import and names any entry it can't before you confirm),
   `POST /api/import-data` (or `/api/import-data/preview` to check first), or Skir `ImportData` /
-  `PreviewImport`. The round trip is byte-for-byte exact, including every finish and the zhs/zht
+  `PreviewImport`. The collection always replaces in full; a section the file doesn't have is
+  left untouched. The round trip is byte-for-byte exact, including every finish and the zhs/zht
   split a deckstats CSV import can't carry.
 
 ### Fixed

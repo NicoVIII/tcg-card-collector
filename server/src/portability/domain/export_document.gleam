@@ -4,28 +4,48 @@ import gleam/string
 import gleam/time/calendar.{type Date}
 import shared/domain/copy_key.{type CopyKey}
 
-// v1 covers the collection alone; #119 adds inventory_planning and insights
-// sections under this same version (ADR 0019). Bump only when a section's
-// shape changes in a way an importer must branch on.
+// v1 started with the collection alone (#116/#117); #119 widens it with
+// inventory_planning and insights sections under this same version (ADR
+// 0019). Bump only when a section's shape changes in a way an importer must
+// branch on — a new section key does not by itself bump it.
 pub const format_version = 1
 
 pub type CollectionEntry {
   CollectionEntry(key: CopyKey, quantity: Int)
 }
 
-pub type ExportDocument {
-  ExportDocument(exported_on: Date, collection: List(CollectionEntry))
+/// Every set the collection is tracked toward completion for (Insights'
+/// target sets, #119). Export always fills this — an empty list means "no
+/// targets", same as the app's own empty state.
+pub type InsightsSection {
+  InsightsSection(target_sets: List(String))
 }
 
-/// Sorts the collection into the file's own deterministic order (ADR 0019),
-/// independent of Inventory Planning's canonical claim order — this is
-/// Portability's policy, applied so re-exporting an unchanged collection is
-/// byte-identical, which is what makes #117's round-trip test possible.
+pub type ExportDocument {
+  ExportDocument(
+    exported_on: Date,
+    collection: List(CollectionEntry),
+    insights: InsightsSection,
+  )
+}
+
+/// Sorts each section into the file's own deterministic order (ADR 0019),
+/// independent of each context's own canonical order — this is Portability's
+/// policy, applied so re-exporting unchanged data is byte-identical, which
+/// is what makes the round-trip tests possible.
 pub fn new(
   exported_on: Date,
   collection: List(CollectionEntry),
+  insights: InsightsSection,
 ) -> ExportDocument {
-  ExportDocument(exported_on:, collection: list.sort(collection, compare))
+  ExportDocument(
+    exported_on:,
+    collection: list.sort(collection, compare),
+    insights: InsightsSection(target_sets: list.sort(
+      insights.target_sets,
+      string.compare,
+    )),
+  )
 }
 
 fn compare(left: CollectionEntry, right: CollectionEntry) -> Order {

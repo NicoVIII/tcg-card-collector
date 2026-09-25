@@ -4,6 +4,7 @@ import gleam/dynamic/decode
 import gleam/int
 import gleam/json
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import gleam/time/calendar.{type Date}
@@ -34,7 +35,12 @@ pub fn render(document: ExportDocument) -> String {
   <> "\",\n"
   <> "  \"collection\": "
   <> entries
-  <> "\n}\n"
+  <> ",\n"
+  <> "  \"insights\": {\n"
+  <> "    \"target_sets\": "
+  <> json.to_string(json.array(document.insights.target_sets, of: json.string))
+  <> "\n  }\n"
+  <> "}\n"
 }
 
 pub fn filename(document: ExportDocument) -> String {
@@ -63,11 +69,38 @@ pub fn parse(content: String) -> Result(ImportDocument, DocumentError) {
     decode.run(root, decode.at(["collection"], decode.list(decode.dynamic)))
     |> result.replace_error(MissingCollection),
   )
-  let #(entries, rejected) =
+  let #(entries, collection_rejected) =
     items
     |> list.map(raw_entry)
     |> import_document.validate_entries
-  Ok(import_document.ImportDocument(collection: entries, rejected: rejected))
+  let #(target_sets, target_sets_rejected) = parse_target_sets(root)
+  Ok(import_document.ImportDocument(
+    collection: entries,
+    rejected: list.append(collection_rejected, target_sets_rejected),
+    target_sets:,
+  ))
+}
+
+/// Absent when the file has no "insights.target_sets" array — an older
+/// export, or a malformed section, is treated the same as absent rather
+/// than failing the whole file (ADR 0019: unrecognised or malformed
+/// top-level shape is tolerated, only the checked whole-file problems
+/// reject the document).
+fn parse_target_sets(
+  root: Dynamic,
+) -> #(Option(List(String)), List(import_document.RejectedEntry)) {
+  case
+    decode.run(
+      root,
+      decode.at(["insights", "target_sets"], decode.list(decode.string)),
+    )
+  {
+    Ok(raw) -> {
+      let #(codes, rejected) = import_document.validate_target_sets(raw)
+      #(Some(codes), rejected)
+    }
+    Error(_) -> #(None, [])
+  }
 }
 
 fn join_entries(lines: List(String)) -> String {

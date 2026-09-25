@@ -1,20 +1,22 @@
 import collection/driver/gleam/collection_api
 import gleam/list
+import insights/driver/gleam/insights_api
 import portability/application/commands/import_data/ports
 import portability/domain/export_document.{type CollectionEntry}
 
-/// Wraps Collection's replace_copies (ADR 0019: Portability reads/writes
-/// every context it exports through that context's driver/gleam facade,
-/// never its internals). notify_changed is injected from bootstrap so this
-/// write path publishes to the same collection-changed subscriber
+/// Wraps each context's own driver/gleam facade (ADR 0019: Portability
+/// reads/writes every context it exports through that context's facade,
+/// never its internals). notify_changed is injected from bootstrap so the
+/// collection write publishes to the same collection-changed subscriber
 /// ImportCollection uses (ADR 0011), rather than this adapter wiring a
-/// second one.
+/// second one — target-set replacement has no subscriber to notify.
 pub fn new(
   notify_changed: fn(Nil) -> Result(Nil, String),
 ) -> ports.ImportDataPorts {
-  ports.ImportDataPorts(replace_collection: replace_collection_adapter(
-    notify_changed,
-  ))
+  ports.ImportDataPorts(
+    replace_collection: replace_collection_adapter(notify_changed),
+    replace_target_sets: insights_api.replace_target_sets,
+  )
 }
 
 fn replace_collection_adapter(

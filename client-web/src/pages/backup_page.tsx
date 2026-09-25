@@ -8,7 +8,27 @@ import {
   useImportDataMutation,
   usePreviewImportMutation,
 } from "../data/portability/mutation";
-import type { ImportPreview } from "../data/portability/request";
+import type { ImportPreview, SectionCount } from "../data/portability/request";
+
+// Maps a section's wire name (Portability's own vocabulary, ADR 0019) to
+// what the page shows for it — a section this build doesn't know about
+// falls back to its wire name rather than disappearing.
+const SECTION_LABELS: Record<string, string> = {
+  collection: "collection",
+  "insights.target_sets": "target sets",
+};
+
+function sectionLabel(section: string): string {
+  return SECTION_LABELS[section] ?? section;
+}
+
+function countFor(sections: SectionCount[], section: string): number {
+  return sections.find((entry) => entry.section === section)?.count ?? 0;
+}
+
+function summarize(sections: SectionCount[]): string {
+  return sections.map((entry) => `${entry.count} ${sectionLabel(entry.section)}`).join(", ");
+}
 
 export function BackupPage() {
   const exportMutation = useExportDataMutation();
@@ -37,7 +57,10 @@ export function BackupPage() {
     }
   };
 
-  const canRestore = () => (preview()?.entryCount ?? 0) > 0;
+  // Collection stays the one mandatory section (ADR 0019) — every other
+  // section is optional, so restoring is only blocked on it being absent
+  // or empty.
+  const canRestore = () => countFor(preview()?.sections ?? [], "collection") > 0;
 
   const submitRestore = async () => {
     const content = fileContent();
@@ -48,7 +71,7 @@ export function BackupPage() {
     setRestoreSuccess(null);
     try {
       const result = await importMutation.mutateAsync(content);
-      setRestoreSuccess(`Restored ${result.entryCount} entry(ies).`);
+      setRestoreSuccess(`Restored ${summarize(result.sections)}.`);
       setFileContent(null);
       setPreview(null);
     } catch (error) {
@@ -63,8 +86,8 @@ export function BackupPage() {
         <A href="/collection">← Back to collection</A>
       </p>
       <p>
-        Downloads the collection as a JSON file this app can read back in. Location rules, set
-        targets, and the placed ledger aren't included yet.
+        Downloads the collection and target sets as a JSON file this app can read back in. Location
+        rules and the placed ledger aren't included yet.
       </p>
       <button
         type="button"
@@ -81,7 +104,8 @@ export function BackupPage() {
 
       <h3>Restore from file</h3>
       <p>
-        Restoring replaces the <strong>entire collection</strong> with the file's contents.
+        Restoring replaces the <strong>entire collection</strong>, and any other section the file
+        contains — a section the file doesn't have is left untouched.
       </p>
       <label>
         Export file
@@ -97,7 +121,7 @@ export function BackupPage() {
       <Show when={preview() !== null}>
         <RejectedList
           items={(preview()?.rejected ?? []).map((entry) => ({
-            label: `Entry ${entry.position} (${entry.identity})`,
+            label: `${sectionLabel(entry.section)} #${entry.position} (${entry.identity})`,
             reason: entry.reason,
           }))}
         />
@@ -106,9 +130,9 @@ export function BackupPage() {
         </Show>
       </Show>
       <Show when={canRestore()}>
-        <p>{preview()?.entryCount} entry(ies) ready to restore.</p>
+        <p>{summarize(preview()?.sections ?? [])} ready to restore.</p>
         <ConfirmButton
-          label={`Replace entire collection with ${preview()?.entryCount} entry(ies)`}
+          label={`Replace ${summarize(preview()?.sections ?? [])}`}
           disabled={importMutation.isPending}
           onConfirm={() => void submitRestore()}
         />

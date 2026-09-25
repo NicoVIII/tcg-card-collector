@@ -1,5 +1,7 @@
 import gleam/int
 import gleam/list
+import gleam/option.{type Option, None, Some}
+import gleam/string
 import portability/domain/export_document.{type CollectionEntry, CollectionEntry}
 import shared/domain/copy_key
 
@@ -18,19 +20,61 @@ pub type RawEntry {
   )
 }
 
-/// A rejected entry, identified by its 1-based position in the document's
-/// `collection` array plus its raw identity — JSON carries no line numbers,
-/// and a position survives an editor's reformatting the way a line number
-/// wouldn't.
+/// Which part of the document an entry or a count belongs to — #119 widened
+/// the document beyond the collection alone, so every rejection and every
+/// written count now names the section it came from.
+pub type Section {
+  CollectionSection
+  TargetSetsSection
+}
+
+pub fn section_name(section: Section) -> String {
+  case section {
+    CollectionSection -> "collection"
+    TargetSetsSection -> "insights.target_sets"
+  }
+}
+
+/// A rejected entry, identified by its section plus its 1-based position
+/// within that section's array and its raw identity — JSON carries no line
+/// numbers, and a position survives an editor's reformatting the way a line
+/// number wouldn't.
 pub type RejectedEntry {
-  RejectedEntry(position: Int, identity: String, reason: String)
+  RejectedEntry(
+    section: Section,
+    position: Int,
+    identity: String,
+    reason: String,
+  )
+}
+
+/// How many entries a section will write (preview) or did write (import
+/// result) — the same shape serves both, since by the time either is built
+/// the document's sections already hold only validated entries.
+pub type SectionResult {
+  SectionResult(section: Section, count: Int)
 }
 
 pub type ImportDocument {
   ImportDocument(
     collection: List(CollectionEntry),
     rejected: List(RejectedEntry),
+    /// None when the file has no "insights" section at all, so import
+    /// leaves target sets untouched; Some([]) clears every target set, same
+    /// as any other present-but-empty section (ADR 0019).
+    target_sets: Option(List(String)),
   )
+}
+
+/// One entry per section actually present in the document, valid-entry
+/// counts only — a section absent from the file (an older export, or one
+/// this build doesn't recognise) has no entry here.
+pub fn section_results(document: ImportDocument) -> List(SectionResult) {
+  [SectionResult(CollectionSection, list.length(document.collection))]
+  |> list.append(case document.target_sets {
+    Some(codes) -> [SectionResult(TargetSetsSection, list.length(codes))]
+    None -> []
+  })
 }
 
 /// Whole-file problems, checked before any entry is parsed (ADR 0019: the
@@ -82,6 +126,51 @@ pub fn validate_entries(
   )
 }
 
+/// Validates `insights.target_sets` positionally, same shape as
+/// `validate_entries`. Only a blank code is rejected here — Portability's
+/// own domain can't reach Insights' `target_set.parse` (that would cross
+/// the bounded-context boundary outside the allowed driver/gleam facade
+/// link), so `InsightsApi.replace_target_sets` re-validates at write time
+/// (ADR 0019: defense in depth, not a caller-facing filter).
+pub fn validate_target_sets(
+  raw: List(String),
+) -> #(List(String), List(RejectedEntry)) {
+  let outcomes =
+    list.index_map(raw, fn(set_code, index) {
+      validate_target_set(index + 1, set_code)
+    })
+  #(
+    list.filter_map(outcomes, fn(outcome) {
+      case outcome {
+        Ok(set_code) -> Ok(set_code)
+        Error(_) -> Error(Nil)
+      }
+    }),
+    list.filter_map(outcomes, fn(outcome) {
+      case outcome {
+        Error(rejected) -> Ok(rejected)
+        Ok(_) -> Error(Nil)
+      }
+    }),
+  )
+}
+
+fn validate_target_set(
+  position: Int,
+  raw: String,
+) -> Result(String, RejectedEntry) {
+  case string.trim(raw) {
+    "" ->
+      Error(RejectedEntry(
+        section: TargetSetsSection,
+        position:,
+        identity: raw,
+        reason: "set code is blank",
+      ))
+    trimmed -> Ok(trimmed)
+  }
+}
+
 fn identity(entry: RawEntry) -> String {
   entry.set_code
   <> " "
@@ -106,12 +195,14 @@ fn validate_entry(
   {
     Error(key_error) ->
       Error(RejectedEntry(
+        section: CollectionSection,
         position:,
         identity: identity(entry),
         reason: copy_key.describe_error(key_error),
       ))
     Ok(_) if entry.quantity < 1 ->
       Error(RejectedEntry(
+        section: CollectionSection,
         position:,
         identity: identity(entry),
         reason: "quantity must be at least 1",
