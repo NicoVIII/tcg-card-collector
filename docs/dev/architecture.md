@@ -13,8 +13,8 @@ import itself and layers below it: `domain` → `application` →
 `infrastructure`/`driver` → `composition`. `shared/domain` is available
 everywhere.
 
-Four bounded contexts under `server/src/`: **card_catalog**, **collection**,
-**inventory_planning**, **insights**. There is no separate Settings context:
+Five bounded contexts under `server/src/`: **card_catalog**, **collection**,
+**inventory_planning**, **insights**, **portability**. There is no separate Settings context:
 target-set / completion-tracking preferences live inside insights — see the boundary note in
 [domain-ubiquitous-language.md](domain-ubiquitous-language.md), which also owns
 the domain vocabulary and context ownership rules.
@@ -33,6 +33,7 @@ graph TD
     Insights --> CardCatalog
     Insights --> Collection
     Collection --> CardCatalog
+    Portability --> Collection
 ```
 
 - **Card Catalog** is the only context with no dependencies of its own.
@@ -40,6 +41,10 @@ graph TD
   (import/add/remove must keep working with an empty or unsynced catalog); see
   [ADR 0016](../decisions/0016-collection-reads-catalog-for-queries.md).
 - **Inventory Planning** and **Insights** are downstream consumers of both.
+- **Portability** reads every context that owns exportable data through its
+  `driver/gleam` facade, so the whole exported document's shape lives in one
+  place ([ADR 0019](../decisions/0019-portability-export-format.md)). Only
+  Collection today; the Inventory Planning and Insights pairs land with #119.
 
 A cross-BC dependency is only legal in one shape: the consumer's
 `infrastructure/` importing the provider's `driver/gleam/` facade
@@ -89,7 +94,7 @@ reason. Decision record:
 
 ## Request Flows
 
-All four bounded contexts share the same driver pattern: drivers call use-case
+All five bounded contexts share the same driver pattern: drivers call use-case
 handlers directly — there is no intermediate application facade. Result mapping
 from domain types to RPC types lives in `driver/skir/codec.gleam`; route
 handlers and JSON encoding/decoding live in `driver/http/handler.gleam` and

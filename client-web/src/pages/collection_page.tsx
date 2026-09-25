@@ -34,6 +34,7 @@ export function CollectionPage() {
       <div class="page-heading">
         <h2>Collection</h2>
         <A href="/collection/import">Import / reset collection…</A>
+        <A href="/backup">Back up data…</A>
       </div>
       <AddCardsPanel />
       <RemoveCardsPanel />

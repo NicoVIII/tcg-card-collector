@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/NicoVIII/tcg-card-collector/blob/main/docs/portability/export.schema.json",
+  "title": "tcg-card-collector export (format_version 1)",
+  "description": "Validates a hand edit while it's typed — see ADR 0019. Point your editor at this file with a top-level \"$schema\" comment isn't valid JSON, so most editors match it by filename glob instead; check your editor's JSON-schema-association setting.",
+  "type": "object",
+  "required": ["format", "format_version", "exported_on", "collection"],
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "tcg-card-collector"
+    },
+    "format_version": {
+      "const": 1,
+      "description": "Bumps only when a section's shape changes in a way an importer must branch on (ADR 0019)."
+    },
+    "exported_on": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "The date this file was exported, informational only — not read by import."
+    },
+    "collection": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/collectionEntry" }
+    }
+  },
+  "$defs": {
+    "collectionEntry": {
+      "type": "object",
+      "required": ["set_code", "collector_number", "quantity", "finish", "language"],
+      "additionalProperties": false,
+      "properties": {
+        "set_code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Scryfall set code, lowercase."
+        },
+        "collector_number": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Kept as text: values like \"10a\" or \"★\" are not numbers."
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "finish": {
+          "enum": ["nonfoil", "foil", "etched"]
+        },
+        "language": {
+          "enum": [
+            "en", "es", "fr", "de", "it", "pt", "ja", "ko", "ru", "zhs", "zht",
+            "he", "la", "grc", "ar", "sa", "ph", "qya"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -60,8 +60,9 @@ habit that crept in.
   (`GetAppVersion`), not a bounded context — don't grow it into one.
 - Method IDs are allocated in per-context hundreds blocks (1xx card_catalog,
   2xx collection, 3xx inventory_planning — with 4xx as legacy
-  inside inventory_planning (the bulk spec) — 5xx insights, 6xx system). New contexts
-  take the next free block; don't mint new mid-block ranges.
+  inside inventory_planning (the bulk spec) — 5xx insights, 6xx system,
+  7xx portability). New contexts take the next free block; don't mint new
+  mid-block ranges.
 - Operation-first method names (`RefreshCatalog`, `MarkCardsPlaced`); every method gets
   its own request struct even when empty (the `unit: bool` placeholder pattern);
   response types are nouns, not `*Response`.
