@@ -70,12 +70,14 @@ A `main`-branch or local build is never mistaken for a release: the image is bui
 
 ### Cutting a release
 
-1. `just check` is green on `main` and the working tree is clean.
+1. `main` is ready: `just check` and `just test` are green (`just check` runs no tests), the working tree is clean, and the `vX.Y.Z` milestone has no open issues. Two passes the checks can't do:
+   - Read every migration since the last tag (`git diff --stat vPREV main -- server/db/migrations/`) for anything that can lose collection or inventory data; if one can, `### Upgrading` must say so (README § Data preservation).
+   - Hunt doc–code drift over the release's changes (the `documentation` skill) — a removed feature tends to leave stale mentions behind.
 2. Rename `## Unreleased` in `CHANGELOG.md` to `## vX.Y.Z — <today>`. Read the entries once as a self-hoster would — especially any `### Upgrading` block — and preview them the way CI will read them: `just changelog-section X.Y.Z`.
 3. Confirm `version` in `server/gleam.toml` is already `X.Y.Z` (day-to-day development leaves it at the version being built toward). Commit the changelog rename and any version bump together.
 4. `git tag vX.Y.Z`, then push `main` and the tag. This step stays manual by design — nothing pushes on your behalf.
 5. CI verifies the tag against `server/gleam.toml` and against the `CHANGELOG.md` section, publishes the image tags (`X.Y.Z`, `X.Y`, `X`, `latest`), then creates the GitHub Release from that section.
-6. Verify: the `X.Y.Z` tag is on [GHCR](https://ghcr.io/nicoviii/tcg-card-collector), the release page shows the notes, and `docker run … :X.Y.Z` reports the bare version (no `-dev+…` suffix) at `/api/version`. Then close the `vX.Y.Z` milestone.
+6. Verify: the `X.Y.Z` tag is on [GHCR](https://ghcr.io/nicoviii/tcg-card-collector), the release page shows the notes, and the image reports the bare version (no `-dev+…` suffix): `docker run -d --rm --name release-check -p 18080:8080 ghcr.io/nicoviii/tcg-card-collector:X.Y.Z`, then `curl localhost:18080/api/version` once it's up, then `docker stop release-check`. Then close the `vX.Y.Z` milestone.
 7. In a follow-up commit, bump `server/gleam.toml` to the next minor version and add a fresh empty `## Unreleased` heading to `CHANGELOG.md`. Bumping right away keeps `main` builds from reporting `X.Y.Z-dev+<sha>`, which semver sorts before the release they follow.
 8. When scoping the next milestone, if it promises a major version, re-bump `server/gleam.toml` to match. Dev builds promise nothing, so the provisional minor guess costs nothing.
 
