@@ -24,7 +24,7 @@ This repo has only `AGENTS.md` files, no `CLAUDE.md`. Claude Code reads `AGENTS.
 
 ```sh
 just dev              # run backend + frontend
-just check            # all checks (skir + server + client-web)
+just check            # all checks and tests (skir + server + client-web)
 just server::test     # Gleam unit tests
 just client-web::test # Vitest tests
 just skir-gen         # regenerate code from skir-src/
@@ -37,9 +37,10 @@ just skir-gen         # regenerate code from skir-src/
 
 Run locally:
 
-- `just server::check` — backend checks (format, typecheck, lint)
-- `just client-web::check` — frontend checks
+- `just server::check` — backend static checks (format, typecheck, lint)
+- `just client-web::check` — frontend static checks
 - `just skir-check` — contract format + snapshot alignment
+- `just test` — both test suites
 - `just check` — all of the above
 
 Individual checks:
@@ -70,7 +71,7 @@ A `main`-branch or local build is never mistaken for a release: the image is bui
 
 ### Cutting a release
 
-1. `main` is ready: `just check` and `just test` are green (`just check` runs no tests), the working tree is clean, and the `vX.Y.Z` milestone has no open issues. Two passes the checks can't do:
+1. `main` is ready: `just check` is green, the working tree is clean, and the `vX.Y.Z` milestone has no open issues. Two passes the checks can't do:
    - Read every migration since the last tag (`git diff --stat vPREV main -- server/db/migrations/`) for anything that can lose collection or inventory data; if one can, `### Upgrading` must say so (README § Data preservation).
    - Hunt doc–code drift over the release's changes (the `documentation` skill) — a removed feature tends to leave stale mentions behind.
 2. Rename `## Unreleased` in `CHANGELOG.md` to `## vX.Y.Z — <today>`. Read the entries once as a self-hoster would — especially any `### Upgrading` block — and preview them the way CI will read them: `just changelog-section X.Y.Z`.

@@ -79,7 +79,10 @@ dev:
   just client-web::dev &
   wait
 
-[group('check')]
-check: skir-check portability-schema-check server::check client-web::check
-
 test: server::test client-web::test
+
+# the one command that answers "may this be committed"; the module-level
+# check recipes stay static-only so CI can run checks and tests as separate
+# steps without running the tests twice
+[group('check')]
+check: skir-check portability-schema-check server::check client-web::check test
