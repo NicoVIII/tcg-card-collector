@@ -78,3 +78,14 @@ A `main`-branch or local build is never mistaken for a release: the image is bui
 6. Verify: the `X.Y.Z` tag is on [GHCR](https://ghcr.io/nicoviii/tcg-card-collector), the release page shows the notes, and `docker run … :X.Y.Z` reports the bare version (no `-dev+…` suffix) at `/api/version`. Then close the `vX.Y.Z` milestone.
 7. In a follow-up commit, bump `server/gleam.toml` to the next minor version and add a fresh empty `## Unreleased` heading to `CHANGELOG.md`. Bumping right away keeps `main` builds from reporting `X.Y.Z-dev+<sha>`, which semver sorts before the release they follow.
 8. When scoping the next milestone, if it promises a major version, re-bump `server/gleam.toml` to match. Dev builds promise nothing, so the provisional minor guess costs nothing.
+
+### Export format changes
+
+A release imports every export `format_version` written by any release of its own major version or the previous one ([ADR 0020](../decisions/0020-export-format-compatibility.md)). Bumping `format_version` in `server/src/portability/domain/export_document.gleam`:
+
+1. Add a new `decode_vN` in `server/src/portability/driver/export_file.gleam` alongside the existing per-version decoders — never edit a shipped one.
+2. Add a frozen fixture, `server/test/portability/fixtures/format_v<N>.json` (`server/test/AGENTS.md`), and repoint the "current fixture" constant in `format_fixtures_test.gleam` so the byte-identical round-trip test covers the new version.
+3. Update `docs/portability/export.schema.json` for the new shape; `just portability-schema-check` validates every fixture (old and new) against it.
+4. Add the `CHANGELOG.md` line under `## Unreleased`.
+
+Dropping support for an older `format_version` is a major-release action only, with a `### Upgrading` note telling anyone still on that format to re-export on their current version first.

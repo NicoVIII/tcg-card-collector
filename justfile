@@ -5,6 +5,9 @@ mod client-web
 # spurious drift (see issue #31); bump deliberately + re-snapshot
 skir_version := "1.2.19"
 
+# pinned exactly, same reasoning as skir_version
+ajv_version := "5.0.0"
+
 default:
   just --list
 
@@ -34,6 +37,26 @@ skir-check:
   just skir format --ci
   sh ./scripts/check_skir_snapshot.sh {{skir_version}}
 
+# Closes the gap ADR 0019 flagged: docs/portability/export.schema.json and
+# the Gleam encoder (server/src/portability/driver/export_file.gleam) are two
+# hand-written descriptions of the same shape. Every frozen fixture
+# (server/test/portability/fixtures/) is a real encoder byte string, checked
+# byte-identical by its own Gleam test — so validating each fixture against
+# the schema here is validating the encoder's actual output against it
+# (ADR 0020).
+[group('check')]
+portability-schema-check:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  fixtures=(server/test/portability/fixtures/*.json)
+  if command -v bunx >/dev/null 2>&1; then
+    bunx ajv-cli@{{ajv_version}} validate --spec=draft2020 \
+      -s docs/portability/export.schema.json -d "${fixtures[@]}"
+  else
+    npx ajv-cli@{{ajv_version}} validate --spec=draft2020 \
+      -s docs/portability/export.schema.json -d "${fixtures[@]}"
+  fi
+
 [group('dbmate')]
 dbmate-install:
   sh ./scripts/install_dbmate.sh
@@ -57,6 +80,6 @@ dev:
   wait
 
 [group('check')]
-check: skir-check server::check client-web::check
+check: skir-check portability-schema-check server::check client-web::check
 
 test: server::test client-web::test

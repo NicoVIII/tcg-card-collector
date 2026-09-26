@@ -21,6 +21,17 @@ The two levels are cut on **different axes, intentionally** — `process/` by ar
 
 `test/migrations/` sits beside the per-context trees: seeds in `migrations/seeds/<migration_stem>.sql` (frozen, one per migration, written against the schema one migration earlier), tests as `migrations/migration_<stem>_test.gleam` using `support/test_db.with_seeded_upgrade`. It exists because the migration chain is one flat global sequence, not context-partitioned — see `test/README.md` § "A third area" for the full reasoning. A migration touching a user-authored table (`collection`, `placed_cards`, `inventory_rules`, `inventory_bulk_spec`, `target_sets`) ships a test here, or the release notes say what it loses (the v0.1.0 promise — `.claude/skills/data-migrations/SKILL.md`).
 
+## `test/portability/fixtures/` — frozen export files, one per format version
+
+Same reasoning as `migrations/`: `format_v<N>.json` is a real export, checked
+in once and never edited — a format change adds a new fixture rather than
+touching an old one (ADR 0019, ADR 0020). `process/infrastructure/format_fixtures_test.gleam`
+imports every fixture and asserts the exact resulting state, and re-exports
+the current version's fixture to check it reproduces the file byte for byte.
+The root `just portability-schema-check` validates every fixture here against
+`docs/portability/export.schema.json`, so the schema and the Gleam encoder
+can't silently drift apart.
+
 ## `process/` — mandatory, three tests the architecture owes
 
 - **`application/`**: enter at the driving **port** (the handler signature) — NOT the HTTP adapter, no request construction/routing/serialization here. Fake driven ports with **in-memory implementations**. Assert on the **return value and the fake's resulting state**. NEVER assert "was `save` called" / spy / verify call-order. Fast, in-memory. This is the single "acceptance" test; it appears once.
