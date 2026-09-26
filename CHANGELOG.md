@@ -16,6 +16,12 @@ Each release section uses only the subheadings it needs:
 
 ## Unreleased
 
+### Added
+
+- Placement shows each row's section — the sort-key categories it falls under (e.g. `Color R ·
+  Type Artifact · CMC 1–3`) — as a divider before the row, so a first-pass inventory gives the
+  user something physical to go on even before any neighbouring card is placed.
+
 ## v0.2.0 — 2026-09-26
 
 ### Added

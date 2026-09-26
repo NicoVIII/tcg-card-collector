@@ -10,6 +10,7 @@ import inventory_planning/domain/copy_selector
 import inventory_planning/domain/location_target
 import inventory_planning/domain/rule_cascade
 import inventory_planning/domain/set_index
+import inventory_planning/domain/sort_section
 import inventory_planning/domain/sort_spec
 import shared/domain/card_key
 import shared/domain/copy_key
@@ -259,6 +260,26 @@ fn to_location(
     rule_id: option.unwrap(bucket.rule_id, ""),
     total_quantity: bucket.total_quantity,
     cards: list.map(bucket.cards, to_card),
+    sections: list.map(bucket.sections, to_section),
+  )
+}
+
+fn to_section(
+  section: sort_section.Section,
+) -> projection_ports.ProjectionSection {
+  projection_ports.ProjectionSection(
+    parts: list.map(section.parts, to_section_part),
+    card_count: section.card_count,
+  )
+}
+
+fn to_section_part(
+  part: sort_section.SectionPart,
+) -> projection_ports.ProjectionSectionPart {
+  projection_ports.ProjectionSectionPart(
+    key: sort_spec.sort_key_to_string(part.key),
+    first: part.first,
+    last: part.last,
   )
 }
 

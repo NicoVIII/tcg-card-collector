@@ -250,3 +250,78 @@ pub fn language_ordering_english_first_then_by_code_test() {
     })
   assert list.map(sorted, fn(c) { c.name }) == ["en", "de", "ja"]
 }
+
+// --- category (#138) --------------------------------------------------------
+//
+// Each case doubles as the coarsening/contiguity contract sort_section relies
+// on: a known card's category is its sort value's own display spelling, and
+// an unknown value maps to whichever category shares that key's "unknown
+// sorts last/first" rank (compare_cards above), so equal-category cards never
+// sort apart.
+
+pub fn category_color_identity_known_and_unknown_test() {
+  assert sort_spec.category(ByColorIdentity, card("red", "R", attrs.Creature))
+    == Some("R")
+  // Ranks equal to real colorless (color_rank's fallback) — same label.
+  assert sort_spec.category(ByColorIdentity, unknown_card("x"))
+    == Some("Colorless")
+}
+
+pub fn category_card_type_known_and_unknown_test() {
+  assert sort_spec.category(ByCardType, card("c", "R", attrs.Creature))
+    == Some("creature")
+  assert sort_spec.category(ByCardType, unknown_card("x")) == Some("other")
+}
+
+pub fn category_name_is_first_grapheme_test() {
+  assert sort_spec.category(ByName, card("Zebra", "R", attrs.Creature))
+    == Some("Z")
+  assert sort_spec.category(ByName, card("apple", "R", attrs.Creature))
+    == Some("a")
+}
+
+pub fn category_set_code_test() {
+  assert sort_spec.category(BySetCode, card("x", "R", attrs.Creature))
+    == Some("set")
+}
+
+// collector_number is unique per printing — grouping by it would never
+// merge anything, so it yields no category at all.
+pub fn category_collector_number_has_none_test() {
+  assert sort_spec.category(ByCollectorNumber, card("x", "R", attrs.Creature))
+    == None
+}
+
+pub fn category_rarity_known_and_unknown_test() {
+  assert sort_spec.category(ByRarity, card("c", "R", attrs.Creature))
+    == Some("common")
+  assert sort_spec.category(ByRarity, unknown_card("x")) == Some("unknown")
+}
+
+pub fn category_released_at_is_year_test() {
+  let assert Ok(date) = release_date.parse("1999-08-05")
+  let old =
+    attrs.PlannedCard(..card("c", "R", attrs.Creature), released_at: Some(date))
+  assert sort_spec.category(ByReleasedAt, old) == Some("1999")
+  assert sort_spec.category(ByReleasedAt, unknown_card("x")) == Some("unknown")
+}
+
+pub fn category_cmc_drops_trailing_zero_but_keeps_real_fractions_test() {
+  let assert Ok(three) = mana_value.from_float(3.0)
+  let whole =
+    attrs.PlannedCard(..card("c", "R", attrs.Creature), cmc: Some(three))
+  assert sort_spec.category(ByManaValue, whole) == Some("3")
+
+  let assert Ok(half) = mana_value.from_float(0.5)
+  let fractional =
+    attrs.PlannedCard(..card("c", "R", attrs.Creature), cmc: Some(half))
+  assert sort_spec.category(ByManaValue, fractional) == Some("0.5")
+
+  assert sort_spec.category(ByManaValue, unknown_card("x")) == Some("unknown")
+}
+
+pub fn category_language_test() {
+  let de =
+    attrs.PlannedCard(..card("c", "R", attrs.Creature), language: language.De)
+  assert sort_spec.category(ByLanguage, de) == Some("de")
+}

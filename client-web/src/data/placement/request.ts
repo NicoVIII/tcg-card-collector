@@ -21,6 +21,7 @@ import {
   type Finish,
   type Language,
 } from "../collection/copy_kind";
+import type { ProjectionSection } from "../inventory_planning/request";
 
 // One row of the placed ledger: how many copies of a kind of copy sit in a
 // location. The page folds these against the projection to derive what's
@@ -58,6 +59,12 @@ export type PlacementCard = {
   to_place_quantity: number;
   before: PlacementNeighbor[];
   after: PlacementNeighbor[];
+  // The projected section this card falls in (#138) — the same object
+  // reference for every card in the section, so the page can tell "still in
+  // the same section as the row above" by reference rather than deep-
+  // comparing parts, and a struck card keeps pointing at its section
+  // regardless of ticking.
+  section: ProjectionSection;
 };
 
 export type PlacementLocation = {

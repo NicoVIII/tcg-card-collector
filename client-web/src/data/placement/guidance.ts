@@ -1,4 +1,8 @@
-import type { InventoryProjection, ProjectionCard } from "../inventory_planning/request";
+import type {
+  InventoryProjection,
+  ProjectionCard,
+  ProjectionSection,
+} from "../inventory_planning/request";
 import type {
   PlacedLedgerRow,
   PlacementCard,
@@ -58,11 +62,41 @@ function neighbors(
   }));
 }
 
+// A defensive fallback for a card past every section's copies — shouldn't
+// happen (sort_section's card_counts always sum to the location's cards),
+// but degrading to "no header" beats an out-of-bounds crash.
+const NO_SECTION: ProjectionSection = { parts: [], card_count: 0 };
+
+// Sections partition `location.cards` in cascade order: walking both in
+// lockstep, consuming a section's card_count copies (summed from consecutive
+// cards' quantity, not their row count) before advancing to the next section,
+// lines every card up with the section it falls in.
+function sectionsByCardIndex(
+  location: InventoryProjection["locations"][number],
+): ProjectionSection[] {
+  const sections = location.sections;
+  let sectionIndex = 0;
+  let consumedInSection = 0;
+
+  return location.cards.map((card) => {
+    while (
+      sectionIndex < sections.length - 1 &&
+      consumedInSection >= (sections[sectionIndex]?.card_count ?? 0)
+    ) {
+      sectionIndex += 1;
+      consumedInSection = 0;
+    }
+    consumedInSection += card.quantity;
+    return sections[sectionIndex] ?? NO_SECTION;
+  });
+}
+
 function buildLocation(
   location: InventoryProjection["locations"][number],
   placedAt: Map<string, number>,
 ): PlacementLocation | null {
   const cards = location.cards;
+  const sections = sectionsByCardIndex(location);
   const placementCards: PlacementCard[] = [];
 
   cards.forEach((card, index) => {
@@ -90,6 +124,7 @@ function buildLocation(
         location.location_name,
       ),
       after: neighbors(cards.slice(index + 1, index + 2), placedAt, location.location_name),
+      section: sections[index] ?? NO_SECTION,
     });
   });
 

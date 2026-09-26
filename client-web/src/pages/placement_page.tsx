@@ -27,12 +27,15 @@ import {
   type PlacementSession,
   betweenLabel,
   emptySession,
+  isSectionHeader,
   isTicked,
   restoreTicks,
+  sectionLabel,
   tick,
   tickAll,
   untick,
   untickAll,
+  withSectionHeaders,
 } from "./placement_session";
 import {
   type ResortSession,
@@ -216,6 +219,16 @@ function LocationPanel(props: LocationPanelProps) {
       ? props.undoable
       : null;
   const unplaced = () => unplacedRowCount(props.session, props.location);
+  const items = createMemo(() => withSectionHeaders(props.location.cards));
+  // A card's tick position must stay its index among cards alone — section
+  // headers interleaved by withSectionHeaders don't shift it — so
+  // mergeLocationCards's recorded re-insertion spot stays correct. Memoized
+  // once per location.cards change rather than looked up per row.
+  const cardIndex = createMemo(() => {
+    const map = new Map<PlacementCard, number>();
+    props.location.cards.forEach((card, index) => map.set(card, index));
+    return map;
+  });
 
   return (
     <div class="placement-panel">
@@ -241,17 +254,23 @@ function LocationPanel(props: LocationPanelProps) {
         )}
       </Show>
       <ul class="placement-list">
-        <For each={props.location.cards}>
-          {(card, index) => (
-            <PlacementRow
-              location_name={props.location.location_name}
-              card={card}
-              session={props.session}
-              index={index()}
-              onTick={props.onTick}
-              onUntick={props.onUntick}
-            />
-          )}
+        <For each={items()}>
+          {(item) =>
+            isSectionHeader(item) ? (
+              <li class="placement-section">
+                <h3>{sectionLabel(item)}</h3>
+              </li>
+            ) : (
+              <PlacementRow
+                location_name={props.location.location_name}
+                card={item}
+                session={props.session}
+                index={cardIndex().get(item) ?? 0}
+                onTick={props.onTick}
+                onUntick={props.onUntick}
+              />
+            )
+          }
         </For>
       </ul>
     </div>

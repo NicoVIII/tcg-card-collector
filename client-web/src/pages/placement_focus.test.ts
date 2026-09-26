@@ -20,6 +20,7 @@ function card(collector_number: string, overrides: Partial<PlacementCard> = {}):
     to_place_quantity: 1,
     before: [],
     after: [],
+    section: { parts: [], card_count: 1 },
     ...overrides,
   };
 }

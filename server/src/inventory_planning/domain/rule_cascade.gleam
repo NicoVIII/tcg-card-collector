@@ -12,6 +12,7 @@ import inventory_planning/domain/card_predicate.{type Predicate}
 import inventory_planning/domain/copy_selector.{type CopySelector}
 import inventory_planning/domain/location_target.{type LocationTarget}
 import inventory_planning/domain/set_index.{type SetIndex}
+import inventory_planning/domain/sort_section.{type Section}
 import inventory_planning/domain/sort_spec
 import shared/domain/card_key
 import shared/domain/collector_number
@@ -53,7 +54,19 @@ pub type LocationBucket {
     rule_id: Option(String),
     total_quantity: Int,
     cards: List(Assignment),
+    // Sections group the bucket's own sort keys into divider-worthy ranges
+    // (#138) — the rule's sort_keys for a rule bucket, the bulk spec's for
+    // the bulk remainder. Derived from `cards`, so it always covers exactly
+    // this bucket's rows.
+    sections: List(Section),
   )
+}
+
+// Assignment -> (card, copies) pairs, the shape sort_section works over —
+// it doesn't know about Assignment, a rule_cascade-only type, to keep the
+// domain modules from importing each other in a cycle.
+fn to_rows(assignments: List(Assignment)) -> List(#(PlannedCard, Int)) {
+  list.map(assignments, fn(a) { #(a.card, a.quantity) })
 }
 
 // Runs the waterfall: every remaining copy of every card is placed exactly once,
@@ -104,6 +117,10 @@ pub fn project(
         rule_id: None,
         total_quantity: total_quantity(bulk_assignments),
         cards: bulk_assignments,
+        sections: sort_section.sections(
+          cascade.bulk.sort_keys,
+          to_rows(bulk_assignments),
+        ),
       ),
     ]
   }
@@ -401,6 +418,7 @@ fn buckets_for_rule(
       rule_id: Some(rule.id),
       total_quantity: total_quantity(cards),
       cards:,
+      sections: sort_section.sections(rule.sort_keys, to_rows(cards)),
     )
   })
 }

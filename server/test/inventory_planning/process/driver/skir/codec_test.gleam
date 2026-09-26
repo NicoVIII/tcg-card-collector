@@ -36,6 +36,18 @@ pub fn map_projection_nests_locations_and_cards_test() {
             card_type: "instant",
           ),
         ],
+        sections: [
+          projection_ports.ProjectionSection(
+            parts: [
+              projection_ports.ProjectionSectionPart(
+                key: "color_identity",
+                first: "R",
+                last: "R",
+              ),
+            ],
+            card_count: 1,
+          ),
+        ],
       ),
     ])
 
@@ -58,6 +70,15 @@ pub fn map_projection_nests_locations_and_cards_test() {
           ],
           "Rare binder R",
           "r-rare",
+          [
+            inventory_planning_queries.projection_section_new(1, [
+              inventory_planning_queries.section_part_new(
+                "R",
+                inventory_planning_queries.SortKeyColorIdentity,
+                "R",
+              ),
+            ]),
+          ],
           1,
         ),
       ],
@@ -89,6 +110,7 @@ pub fn map_projection_card_falls_back_to_unknown_for_unrecognized_strings_test()
         rule_id: "",
         total_quantity: 1,
         cards: [card],
+        sections: [],
       ),
     ])
 
@@ -97,6 +119,39 @@ pub fn map_projection_card_falls_back_to_unknown_for_unrecognized_strings_test()
   let assert [mapped_card] = location.cards
   assert mapped_card.finish == inventory_planning_queries.finish_unknown
   assert mapped_card.language == inventory_planning_queries.language_unknown
+}
+
+// Same fallback shape as above, for a section part's key — a token
+// sort_section never actually produces, but the codec degrades gracefully
+// rather than failing the whole projection.
+pub fn map_projection_section_falls_back_to_unknown_for_unrecognized_key_test() {
+  let projection =
+    projection_ports.Projection(unknown_count: 0, total_quantity: 0, locations: [
+      projection_ports.ProjectionLocation(
+        location_name: "Bulk",
+        rule_id: "",
+        total_quantity: 0,
+        cards: [],
+        sections: [
+          projection_ports.ProjectionSection(
+            parts: [
+              projection_ports.ProjectionSectionPart(
+                key: "power",
+                first: "1",
+                last: "1",
+              ),
+            ],
+            card_count: 0,
+          ),
+        ],
+      ),
+    ])
+
+  let mapped = inventory_planning_skir_codec.map_projection(projection)
+  let assert [location] = mapped.locations
+  let assert [section] = location.sections
+  let assert [part] = section.parts
+  assert part.key == inventory_planning_queries.sort_key_unknown
 }
 
 pub fn map_placed_ledger_maps_rows_test() {

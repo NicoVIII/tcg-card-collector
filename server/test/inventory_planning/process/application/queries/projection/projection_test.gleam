@@ -254,6 +254,8 @@ pub fn four_rule_cascade_places_every_copy_test() {
               card_type: "instant",
             ),
           ],
+          // Empty rule sort_keys -> one undivided section (#138).
+          sections: [ports.ProjectionSection(parts: [], card_count: 1)],
         ),
         // Tier 2: next first-per-oracle rare copy — the LEA bolt is spent, so
         // this is the M11 bolt.
@@ -274,6 +276,7 @@ pub fn four_rule_cascade_places_every_copy_test() {
               card_type: "instant",
             ),
           ],
+          sections: [ports.ProjectionSection(parts: [], card_count: 1)],
         ),
         // Tier 3: first-per-oracle common — prefers the older M10 bear.
         ports.ProjectionLocation(
@@ -293,9 +296,12 @@ pub fn four_rule_cascade_places_every_copy_test() {
               card_type: "creature",
             ),
           ],
+          sections: [ports.ProjectionSection(parts: [], card_count: 1)],
         ),
         // Bulk: the 2 leftover M11 bolts (1/1/2 split) and the leftover M11
-        // bear, ordered red-instant before green-creature.
+        // bear, ordered red-instant before green-creature. Only 3 copies —
+        // well under the 18-copy section threshold, so the bulk spec's
+        // sort_keys don't produce a divided label either.
         ports.ProjectionLocation(
           location_name: "Bulk",
           rule_id: "",
@@ -324,6 +330,7 @@ pub fn four_rule_cascade_places_every_copy_test() {
               card_type: "creature",
             ),
           ],
+          sections: [ports.ProjectionSection(parts: [], card_count: 3)],
         ),
       ]),
     )
@@ -392,6 +399,7 @@ pub fn keys_missing_from_catalog_are_counted_and_bulked_test() {
               card_type: "",
             ),
           ],
+          sections: [ports.ProjectionSection(parts: [], card_count: 2)],
         ),
       ]),
     )

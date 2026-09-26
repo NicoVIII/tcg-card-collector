@@ -43,6 +43,27 @@ fn encode_location(location: projection_ports.ProjectionLocation) -> json.Json {
     #("rule_id", json.string(location.rule_id)),
     #("total_quantity", json.int(location.total_quantity)),
     #("cards", json.array(location.cards, of: encode_card)),
+    #("sections", json.array(location.sections, of: encode_section)),
+  ])
+}
+
+fn encode_section(section: projection_ports.ProjectionSection) -> json.Json {
+  json.object([
+    #("parts", json.array(section.parts, of: encode_section_part)),
+    #("card_count", json.int(section.card_count)),
+  ])
+}
+
+// The key stays the DSL token, same as REST's other sort_keys fields — REST
+// has no typed enum, so this is the plain-string twin of the skir codec's
+// query_sort_key_from_string.
+fn encode_section_part(
+  part: projection_ports.ProjectionSectionPart,
+) -> json.Json {
+  json.object([
+    #("key", json.string(part.key)),
+    #("first", json.string(part.first)),
+    #("last", json.string(part.last)),
   ])
 }
 

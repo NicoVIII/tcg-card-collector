@@ -35,8 +35,49 @@ fn map_projection_location(
     list.map(location.cards, map_projection_card),
     location.location_name,
     location.rule_id,
+    list.map(location.sections, map_projection_section),
     location.total_quantity,
   )
+}
+
+fn map_projection_section(
+  section: projection_ports.ProjectionSection,
+) -> inventory_planning_queries.ProjectionSection {
+  inventory_planning_queries.projection_section_new(
+    section.card_count,
+    list.map(section.parts, map_section_part),
+  )
+}
+
+fn map_section_part(
+  part: projection_ports.ProjectionSectionPart,
+) -> inventory_planning_queries.SectionPart {
+  inventory_planning_queries.section_part_new(
+    part.first,
+    query_sort_key_from_string(part.key),
+    part.last,
+  )
+}
+
+// Every wire enum used at this boundary is generated from the same DSL
+// sort_spec owns; an unrecognized token (shouldn't happen — sort_section
+// only ever produces sort_spec's own tokens) maps to the unknown variant
+// rather than failing the whole projection.
+fn query_sort_key_from_string(
+  raw: String,
+) -> inventory_planning_queries.SortKey {
+  case raw {
+    "color_identity" -> inventory_planning_queries.SortKeyColorIdentity
+    "type" -> inventory_planning_queries.SortKeyType
+    "name" -> inventory_planning_queries.SortKeyName
+    "set_code" -> inventory_planning_queries.SortKeySetCode
+    "collector_number" -> inventory_planning_queries.SortKeyCollectorNumber
+    "rarity" -> inventory_planning_queries.SortKeyRarity
+    "released_at" -> inventory_planning_queries.SortKeyReleasedAt
+    "cmc" -> inventory_planning_queries.SortKeyCmc
+    "language" -> inventory_planning_queries.SortKeyLanguage
+    _ -> inventory_planning_queries.sort_key_unknown
+  }
 }
 
 fn map_projection_card(

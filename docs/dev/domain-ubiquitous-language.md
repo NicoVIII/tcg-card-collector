@@ -143,6 +143,19 @@ Core terms:
 - BulkSpec: the single leftover-remainder location plus the sort-key list ordering its pile.
 - InventoryProjection: the computed placement — locations in cascade order, each with its cards and
   total, plus a count of collection keys unknown to the catalog.
+- Section: a contiguous, divider-worthy run of a location's sorted cards, derived from that
+  location's own sort keys (a rule's, or the bulk spec's) next to the sort itself so a label can
+  never drift from the physical order (#138). Keys are tried outermost-first: a key's equal-
+  category runs merge into ranges of at least `sort_section.min_section_copies` physical copies
+  (two 9-pocket binder pages) before the next key subdivides further, so every section clears that
+  floor; a key that never gets to distinguish more than one range within its slice of the location
+  — too few categories, or values too sparse to clear the floor even merged — contributes nothing to
+  that section's label rather than showing a divider that helps no one. `sort_spec.category` is the
+  per-key mapping from a card to its category value (a coarsening of that key's own sort order, so
+  equal-category cards never sort apart); collector_number yields none, since grouping by a value
+  unique per printing would never merge anything, and any key after it in a DSL is equally powerless
+  to distinguish the ties it leaves. `ProjectionLocation.sections` partitions its `cards` in cascade
+  order, one section covering every card exactly once.
 - PlacedCard: a ledger row recording that some copies of a kind of copy were physically placed in a
   location (`(CopyKey, location) → quantity`). A location holding several kinds of copy of one
   printing needs a tick that names which kind. The write side of placement — MarkCardsPlaced

@@ -58,11 +58,45 @@ export type ProjectionCard = {
   card_type: string;
 };
 
+// The sort DSL's vocabulary (server domain/sort_spec.gleam), typed here so a
+// section's parts don't repeat the DSL's own strings for the wire (#138).
+export type SortKey =
+  | "color_identity"
+  | "type"
+  | "name"
+  | "set_code"
+  | "collector_number"
+  | "rarity"
+  | "released_at"
+  | "cmc"
+  | "language";
+
+// One sort key's category value for a section: `first === last` means every
+// card in the section shares that one value; a differing pair means the part
+// is a merged range ("CMC 1-3", "A-E").
+export type SectionPart = {
+  key: SortKey;
+  first: string;
+  last: string;
+};
+
+// A contiguous, divider-worthy run of a location's sorted cards. `parts` is
+// empty when the location has no sort keys, or when nothing in it was worth
+// dividing on; `card_count` is copies, not distinct cards.
+export type ProjectionSection = {
+  parts: SectionPart[];
+  card_count: number;
+};
+
 export type ProjectionLocation = {
   location_name: string;
   rule_id: string;
   total_quantity: number;
   cards: ProjectionCard[];
+  // Sections partition `cards` in order: walking sections and consuming
+  // `card_count` copies (summing consecutive cards' `quantity`, not their
+  // count) at a time lines each card up with its section.
+  sections: ProjectionSection[];
 };
 
 export type InventoryProjection = {
@@ -92,6 +126,46 @@ function toBulkSpec(response: RpcBulkSpec): BulkSpec {
   };
 }
 
+// A stored section's key always parses (the server only ever emits sort_spec's
+// own tokens); an unrecognized kind can only mean version skew between client
+// and server, so it falls back to a harmless token rather than breaking the
+// whole projection — the same posture as fromWireFinishKind/LanguageKind.
+function fromWireSortKeyKind(kind: string): SortKey {
+  switch (kind) {
+    case "COLOR_IDENTITY":
+      return "color_identity";
+    case "TYPE":
+      return "type";
+    case "SET_CODE":
+      return "set_code";
+    case "COLLECTOR_NUMBER":
+      return "collector_number";
+    case "RARITY":
+      return "rarity";
+    case "RELEASED_AT":
+      return "released_at";
+    case "CMC":
+      return "cmc";
+    case "LANGUAGE":
+      return "language";
+    default:
+      return "name";
+  }
+}
+
+function toProjectionSection(
+  section: RpcInventoryProjection["locations"][number]["sections"][number],
+): ProjectionSection {
+  return {
+    parts: section.parts.map((part) => ({
+      key: fromWireSortKeyKind(part.key.union.kind),
+      first: part.first,
+      last: part.last,
+    })),
+    card_count: section.cardCount,
+  };
+}
+
 function toInventoryProjection(response: RpcInventoryProjection): InventoryProjection {
   return {
     locations: response.locations.map((location) => ({
@@ -109,6 +183,7 @@ function toInventoryProjection(response: RpcInventoryProjection): InventoryProje
         rarity: card.rarity,
         card_type: card.cardType,
       })),
+      sections: location.sections.map(toProjectionSection),
     })),
     total_quantity: response.totalQuantity,
     unknown_count: response.unknownCount,
