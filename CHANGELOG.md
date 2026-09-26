@@ -57,6 +57,15 @@ Each release section uses only the subheadings it needs:
   whichever face happens to say "land" (CR 712.8a). Existing modal-DFC and transform-to-land cards
   move out of the Land location the next time a projection runs.
 
+### Upgrading
+
+- **Refresh the catalog after upgrading, and let it finish.** `token` clauses read a catalog
+  field that only a full reload fills in, and the first Refresh after the upgrade does that
+  reload (a few minutes). Until it completes, `token = yes` and `token = no` match no card,
+  and those cards fall through to later rules without an error. The Catalog page loses track
+  of a running refresh if you reload or leave it; the reload is done once the page shows
+  "Last refresh: succeeded" again.
+
 ## v0.1.0 — 2026-09-23
 
 First tagged release. See [README.md](https://github.com/NicoVIII/tcg-card-collector/blob/v0.1.0/README.md) § What works today for what the
