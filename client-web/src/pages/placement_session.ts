@@ -70,9 +70,9 @@ export function untick(
   return { ticked };
 }
 
-// The cards a "Mark all placed" tap struck, remembered so the action can be
-// undone as a single unit rather than one row at a time.
-export type MarkAllBatch = { location_name: string; cards: PlacementCard[] };
+// The cards a "Mark all placed" or "Up to here" tap struck, remembered so the
+// action can be undone as a single unit rather than one row at a time.
+export type MarkBatch = { location_name: string; cards: PlacementCard[] };
 
 // Ticks every not-yet-struck entry in a location at its current index, or
 // returns null when there was nothing left to mark (so the caller can skip
@@ -81,7 +81,7 @@ export function tickAll(
   session: PlacementSession,
   location_name: string,
   cards: PlacementCard[],
-): { session: PlacementSession; batch: MarkAllBatch } | null {
+): { session: PlacementSession; batch: MarkBatch } | null {
   let next = session;
   const batchCards: PlacementCard[] = [];
   cards.forEach((card, index) => {
@@ -95,7 +95,21 @@ export function tickAll(
   return { session: next, batch: { location_name, cards: batchCards } };
 }
 
-export function untickAll(session: PlacementSession, batch: MarkAllBatch): PlacementSession {
+// Ticks the not-yet-struck prefix of `cards` ending at `index` (inclusive) —
+// "mark everything up to here" (#106). Slicing the prefix before calling
+// tickAll keeps each card's recorded index equal to its position in the full
+// list, which is what mergeLocationCards needs to re-insert a struck card at
+// the right spot; a range starting elsewhere would need its own indexing.
+export function tickThrough(
+  session: PlacementSession,
+  location_name: string,
+  cards: PlacementCard[],
+  index: number,
+): { session: PlacementSession; batch: MarkBatch } | null {
+  return tickAll(session, location_name, cards.slice(0, index + 1));
+}
+
+export function untickAll(session: PlacementSession, batch: MarkBatch): PlacementSession {
   return batch.cards.reduce((acc, card) => untick(acc, batch.location_name, card), session);
 }
 

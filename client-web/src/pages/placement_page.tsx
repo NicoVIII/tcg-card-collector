@@ -23,7 +23,7 @@ import {
   unplacedRowCount,
 } from "./placement_focus";
 import {
-  type MarkAllBatch,
+  type MarkBatch,
   type PlacementSession,
   betweenLabel,
   emptySession,
@@ -33,6 +33,7 @@ import {
   sectionLabel,
   tick,
   tickAll,
+  tickThrough,
   untick,
   untickAll,
   withSectionHeaders,
@@ -162,8 +163,10 @@ type PlacementRowProps = {
   card: PlacementCard;
   session: PlacementSession;
   index: number;
+  markThroughPending: boolean;
   onTick: (location_name: string, card: PlacementCard, index: number) => void;
   onUntick: (location_name: string, card: PlacementCard) => void;
+  onMarkThrough: (location_name: string, index: number) => void;
 };
 
 // struck is asked of the session per render rather than carried on the row
@@ -197,6 +200,17 @@ function PlacementRow(props: PlacementRowProps) {
           {betweenLabel(props.session, props.location_name, props.card)}
         </span>
       </span>
+      <Show when={!struck()}>
+        <button
+          type="button"
+          class="placement-mark-through"
+          disabled={props.markThroughPending}
+          aria-label={`Mark placed everything up to ${props.card.name} (${props.card.set_code} ${props.card.collector_number})`}
+          onClick={() => props.onMarkThrough(props.location_name, props.index)}
+        >
+          Up to here
+        </button>
+      </Show>
     </li>
   );
 }
@@ -205,12 +219,13 @@ type LocationPanelProps = {
   location: FocusedLocation;
   session: PlacementSession;
   markAllPending: boolean;
-  undoable: MarkAllBatch | null;
+  undoable: MarkBatch | null;
   undoPending: boolean;
   onTick: (location_name: string, card: PlacementCard, index: number) => void;
   onUntick: (location_name: string, card: PlacementCard) => void;
   onMarkAll: (location: FocusedLocation) => void;
-  onUndoMarkAll: (batch: MarkAllBatch) => void;
+  onMarkThrough: (location_name: string, index: number) => void;
+  onUndoMarkBatch: (batch: MarkBatch) => void;
 };
 
 function LocationPanel(props: LocationPanelProps) {
@@ -241,12 +256,12 @@ function LocationPanel(props: LocationPanelProps) {
       </button>
       <Show when={undoableHere()}>
         {(batch) => (
-          <p class="hint" role="status">
+          <p class="hint placement-undo" role="status">
             {batch().cards.length} card(s) marked placed.{" "}
             <button
               type="button"
               disabled={props.undoPending}
-              onClick={() => props.onUndoMarkAll(batch())}
+              onClick={() => props.onUndoMarkBatch(batch())}
             >
               Undo
             </button>
@@ -266,8 +281,10 @@ function LocationPanel(props: LocationPanelProps) {
                 card={item}
                 session={props.session}
                 index={cardIndex().get(item) ?? 0}
+                markThroughPending={props.markAllPending}
                 onTick={props.onTick}
                 onUntick={props.onUntick}
+                onMarkThrough={props.onMarkThrough}
               />
             )
           }
@@ -301,13 +318,14 @@ type LocationRowProps = {
   focused: FocusedLocation | null;
   session: PlacementSession;
   markAllPending: boolean;
-  undoable: MarkAllBatch | null;
+  undoable: MarkBatch | null;
   undoPending: boolean;
   onToggle: (location_name: string, headerEl: HTMLElement) => void;
   onTick: (location_name: string, card: PlacementCard, index: number) => void;
   onUntick: (location_name: string, card: PlacementCard) => void;
   onMarkAll: (location: FocusedLocation) => void;
-  onUndoMarkAll: (batch: MarkAllBatch) => void;
+  onMarkThrough: (location_name: string, index: number) => void;
+  onUndoMarkBatch: (batch: MarkBatch) => void;
 };
 
 function LocationRow(props: LocationRowProps) {
@@ -343,7 +361,8 @@ function LocationRow(props: LocationRowProps) {
             onTick={props.onTick}
             onUntick={props.onUntick}
             onMarkAll={props.onMarkAll}
-            onUndoMarkAll={props.onUndoMarkAll}
+            onMarkThrough={props.onMarkThrough}
+            onUndoMarkBatch={props.onUndoMarkBatch}
           />
         </div>
       </Show>
@@ -354,7 +373,7 @@ function LocationRow(props: LocationRowProps) {
 type ResortActionsDeps = {
   resortSession: () => ResortSession;
   setResortSession: (session: ResortSession) => void;
-  setLastMarkAll: (batch: MarkAllBatch | null) => void;
+  setLastMarkBatch: (batch: MarkBatch | null) => void;
   setLastResortAction: (action: LastResortAction | null) => void;
   clearMutationError: () => void;
   reportMutationError: (error: unknown) => void;
@@ -370,7 +389,7 @@ type ResortActionsDeps = {
 function createResortActions(deps: ResortActionsDeps) {
   const pullOutEntry = (from_location: string, entry: ResortEntry) => {
     deps.clearMutationError();
-    deps.setLastMarkAll(null);
+    deps.setLastMarkBatch(null);
     deps.setLastResortAction(null);
     deps.setResortSession(resolveEntry(deps.resortSession(), from_location, entry));
     deps.unmarkMutation.mutate([entryPlacement(from_location, entry)], {
@@ -388,7 +407,7 @@ function createResortActions(deps: ResortActionsDeps) {
       return;
     }
     deps.clearMutationError();
-    deps.setLastMarkAll(null);
+    deps.setLastMarkBatch(null);
     deps.setLastResortAction(null);
     deps.setResortSession(resolveGroup(deps.resortSession(), group.from_location));
     deps.relocateMutation.mutate(
@@ -443,9 +462,10 @@ function createResortActions(deps: ResortActionsDeps) {
 
 export function PlacementPage() {
   const [session, setSession] = createSignal<PlacementSession>(emptySession());
-  // The last mark-all batch, offered as a single undo — cleared by any other
-  // placement action so the offer always refers to "the thing you just did".
-  const [lastMarkAll, setLastMarkAll] = createSignal<MarkAllBatch | null>(null);
+  // The last bulk-mark batch (whole-location or up-to-here), offered as a
+  // single undo — cleared by any other placement action so the offer always
+  // refers to "the thing you just did".
+  const [lastMarkBatch, setLastMarkBatch] = createSignal<MarkBatch | null>(null);
   const [resortSession, setResortSession] = createSignal<ResortSession>(emptyResortSession());
   const [lastResortAction, setLastResortAction] = createSignal<LastResortAction | null>(null);
   const mutationError = createMutationError();
@@ -515,7 +535,7 @@ export function PlacementPage() {
   // the affordance alongside re-tapping the header. Scroll the tapped header back
   // into view in case closing a location above it moved the page under it.
   const toggleFocus = (location_name: string, headerEl: HTMLElement) => {
-    setLastMarkAll(null);
+    setLastMarkBatch(null);
     setLastResortAction(null);
     setSearchParams({ location: focusName() === location_name ? undefined : location_name });
     headerEl.scrollIntoView({ block: "nearest" });
@@ -530,7 +550,7 @@ export function PlacementPage() {
 
   const tickCard = (location_name: string, card: PlacementCard, index: number) => {
     mutationError.clear();
-    setLastMarkAll(null);
+    setLastMarkBatch(null);
     setLastResortAction(null);
     const before = session();
     setSession(tick(before, location_name, card, index));
@@ -544,7 +564,7 @@ export function PlacementPage() {
 
   const untickCard = (location_name: string, card: PlacementCard) => {
     mutationError.clear();
-    setLastMarkAll(null);
+    setLastMarkBatch(null);
     setLastResortAction(null);
     const before = session();
     setSession(untick(before, location_name, card));
@@ -556,31 +576,58 @@ export function PlacementPage() {
     });
   };
 
+  // Shared by markAll and markThrough — both compute a prefix or whole-list
+  // batch up front and just need it committed as one mutation with one undo
+  // offer, whichever primitive picked the cards.
+  const markBatch = (
+    location_name: string,
+    before: PlacementSession,
+    result: { session: PlacementSession; batch: MarkBatch },
+  ) => {
+    setSession(result.session);
+    const placements: CardPlacementInput[] = result.batch.cards.map((card) =>
+      placementOf(location_name, card),
+    );
+    markMutation.mutate(placements, {
+      onSuccess: () => setLastMarkBatch(result.batch),
+      onError: (error) => {
+        rollback(before, location_name, result.batch.cards);
+        mutationError.report(error);
+      },
+    });
+  };
+
   const markAll = (location: FocusedLocation) => {
     mutationError.clear();
-    setLastMarkAll(null);
+    setLastMarkBatch(null);
     setLastResortAction(null);
     const before = session();
     const result = tickAll(before, location.location_name, location.cards);
     if (result === null) {
       return;
     }
-    setSession(result.session);
-    const placements: CardPlacementInput[] = result.batch.cards.map((card) =>
-      placementOf(location.location_name, card),
-    );
-    markMutation.mutate(placements, {
-      onSuccess: () => setLastMarkAll(result.batch),
-      onError: (error) => {
-        rollback(before, location.location_name, result.batch.cards);
-        mutationError.report(error);
-      },
-    });
+    markBatch(location.location_name, before, result);
   };
 
-  const undoMarkAll = (batch: MarkAllBatch) => {
+  const markThrough = (location_name: string, index: number) => {
     mutationError.clear();
-    setLastMarkAll(null);
+    setLastMarkBatch(null);
+    setLastResortAction(null);
+    const location = focused();
+    if (location === null || location.location_name !== location_name) {
+      return;
+    }
+    const before = session();
+    const result = tickThrough(before, location_name, location.cards, index);
+    if (result === null) {
+      return;
+    }
+    markBatch(location_name, before, result);
+  };
+
+  const undoMarkBatch = (batch: MarkBatch) => {
+    mutationError.clear();
+    setLastMarkBatch(null);
     setLastResortAction(null);
     const before = session();
     setSession(untickAll(before, batch));
@@ -590,7 +637,7 @@ export function PlacementPage() {
     unmarkMutation.mutate(placements, {
       onError: (error) => {
         rollback(before, batch.location_name, batch.cards);
-        setLastMarkAll(batch);
+        setLastMarkBatch(batch);
         mutationError.report(error);
       },
     });
@@ -599,7 +646,7 @@ export function PlacementPage() {
   const { pullOutEntry, updateRecordOnly, undoResortAction } = createResortActions({
     resortSession,
     setResortSession,
-    setLastMarkAll,
+    setLastMarkBatch,
     setLastResortAction,
     clearMutationError: mutationError.clear,
     reportMutationError: mutationError.report,
@@ -613,7 +660,8 @@ export function PlacementPage() {
       <h2>Place cards</h2>
       <p class="hint">
         Cards you've added but not yet sorted into their storage locations. Open a location to file
-        it; tick each card as you place it, untick a struck-through card to undo.
+        it; tick each card as you place it, untick a struck-through card to undo. Filed a whole
+        stretch in one sitting? Use a row's "Up to here" to mark everything above it at once.
       </p>
       <Show when={isLoading()}>
         <p>Loading placement guidance...</p>
@@ -680,13 +728,14 @@ export function PlacementPage() {
               focused={focused()}
               session={session()}
               markAllPending={markMutation.isPending}
-              undoable={lastMarkAll()}
+              undoable={lastMarkBatch()}
               undoPending={unmarkMutation.isPending}
               onToggle={toggleFocus}
               onTick={tickCard}
               onUntick={untickCard}
               onMarkAll={markAll}
-              onUndoMarkAll={undoMarkAll}
+              onMarkThrough={markThrough}
+              onUndoMarkBatch={undoMarkBatch}
             />
           )}
         </For>

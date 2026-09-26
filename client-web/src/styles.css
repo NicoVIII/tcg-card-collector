@@ -398,6 +398,23 @@ p[role="alert"] {
   margin-left: auto;
 }
 
+/* An unstruck placement row's "Up to here" button, same end-of-row spot as
+   Pull out (#106). */
+.placement-mark-through {
+  margin-left: auto;
+}
+
+/* The bulk-mark undo notice (whole-location or up-to-here) stays reachable
+   after marking deep into a long location list — the panel itself doesn't
+   scroll (the page does), so this sticks to the viewport top rather than
+   .table-scroll's own-scroll-container pattern (#106). */
+.placement-undo {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  z-index: 1;
+}
+
 /* Inventory projection: a fixed-height scroll box around each open
    location's table so a phone viewport scrolls the table horizontally
    instead of the whole page overflowing (#55), and the header row stays

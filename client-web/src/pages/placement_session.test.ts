@@ -11,6 +11,7 @@ import {
   sectionLabel,
   tick,
   tickAll,
+  tickThrough,
   untick,
   untickAll,
   withSectionHeaders,
@@ -122,6 +123,73 @@ describe("tickAll / untickAll", () => {
     for (const c of cards) {
       expect(isTicked(restored, "Bulk", c)).toBe(false);
     }
+  });
+});
+
+describe("tickThrough", () => {
+  function tickThroughOrThrow(
+    session: ReturnType<typeof emptySession>,
+    cards: PlacementCard[],
+    index: number,
+  ) {
+    const result = tickThrough(session, "Bulk", cards, index);
+    if (result === null) {
+      throw new Error("expected tickThrough to return a batch");
+    }
+    return result;
+  }
+
+  it("ticks only the prefix through the given index", () => {
+    const cards = [card("1"), card("2"), card("3"), card("4")];
+
+    const { session, batch } = tickThroughOrThrow(emptySession(), cards, 1);
+
+    expect(batch.cards.map((c) => c.collector_number)).toEqual(["1", "2"]);
+    expect(isTicked(session, "Bulk", cards[2])).toBe(false);
+    expect(isTicked(session, "Bulk", cards[3])).toBe(false);
+  });
+
+  it("records each ticked card's index as its position in the full list", () => {
+    const cards = [card("1"), card("2"), card("3")];
+
+    const { session } = tickThroughOrThrow(emptySession(), cards, 2);
+    // mergeLocationCards re-inserts a struck card at its recorded index when
+    // a fresh fetch no longer lists it — feeding it just the untouched
+    // remainder (as a real re-fetch after marking would) proves the struck
+    // cards were recorded at their full-list positions, not the prefix's.
+    const rebuilt = mergeLocationCards(session, "Bulk", []).map((c) => c.collector_number);
+
+    expect(rebuilt).toEqual(["1", "2", "3"]);
+  });
+
+  it("skips already-struck entries within the prefix", () => {
+    const already = card("1");
+    const fresh = card("2");
+    const cards = [already, fresh, card("3")];
+    const struckSession = tick(emptySession(), "Bulk", already, 0);
+
+    const { batch } = tickThroughOrThrow(struckSession, cards, 1);
+
+    expect(batch.cards.map((c) => c.collector_number)).toEqual(["2"]);
+  });
+
+  it("returns null when the prefix is already fully struck", () => {
+    const cards = [card("1"), card("2")];
+    const struckSession = tickAll(emptySession(), "Bulk", cards);
+    if (struckSession === null) {
+      throw new Error("expected setup tickAll to return a batch");
+    }
+
+    expect(tickThrough(struckSession.session, "Bulk", cards, 1)).toBeNull();
+  });
+
+  it("leaves rows after the given index untouched", () => {
+    const cards = [card("1"), card("2"), card("3")];
+
+    const { session } = tickThroughOrThrow(emptySession(), cards, 0);
+
+    expect(isTicked(session, "Bulk", cards[1])).toBe(false);
+    expect(isTicked(session, "Bulk", cards[2])).toBe(false);
   });
 });
 
