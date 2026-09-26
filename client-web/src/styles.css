@@ -379,6 +379,19 @@ p[role="alert"] {
   font-size: 0.85em;
 }
 
+/* A section divider breaking the flat placement list wherever the location's
+   sort keys change value (#138) — an <li> alongside .placement-row, not a
+   nested list, so #109's future virtualizer still sees one flat row list. */
+.placement-section {
+  padding: 10px 0 4px;
+}
+
+.placement-section h3 {
+  margin: 0;
+  font-size: 0.95em;
+  color: #4a5a63;
+}
+
 /* A re-sort row's Pull out button sits at the row's end instead of a
    checkbox at its start — the same .placement-row flex layout otherwise. */
 .resort-pull-out {

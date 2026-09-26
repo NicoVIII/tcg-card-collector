@@ -1,15 +1,19 @@
 import { describe, expect, it } from "vitest";
+import type { ProjectionSection } from "../data/inventory_planning/request";
 import type { PlacementCard, PlacementNeighbor } from "../data/placement/request";
 import {
   betweenLabel,
   emptySession,
+  isSectionHeader,
   isTicked,
   mergeLocationCards,
   restoreTicks,
+  sectionLabel,
   tick,
   tickAll,
   untick,
   untickAll,
+  withSectionHeaders,
 } from "./placement_session";
 
 function neighbor(
@@ -39,6 +43,7 @@ function card(collector_number: string, overrides: Partial<PlacementCard> = {}):
     to_place_quantity: 1,
     before: [],
     after: [],
+    section: { parts: [], card_count: 1 },
     ...overrides,
   };
 }
@@ -307,5 +312,70 @@ describe("betweenLabel", () => {
     const session = tick(emptySession(), "Bulk", near, 1);
 
     expect(betweenLabel(session, "Bulk", c)).toBe("Goes after Near — also still to place.");
+  });
+});
+
+describe("sectionLabel", () => {
+  it("joins parts with a single value each", () => {
+    const section: ProjectionSection = {
+      parts: [
+        { key: "color_identity", first: "R", last: "R" },
+        { key: "cmc", first: "3", last: "3" },
+      ],
+      card_count: 20,
+    };
+    expect(sectionLabel(section)).toBe("Color R · CMC 3");
+  });
+
+  it("shows a merged range as first–last", () => {
+    const section: ProjectionSection = {
+      parts: [{ key: "cmc", first: "1", last: "3" }],
+      card_count: 18,
+    };
+    expect(sectionLabel(section)).toBe("CMC 1–3");
+  });
+
+  it("is empty for a section with no parts", () => {
+    expect(sectionLabel({ parts: [], card_count: 40 })).toBe("");
+  });
+});
+
+describe("withSectionHeaders", () => {
+  const sectionA: ProjectionSection = {
+    parts: [{ key: "color_identity", first: "R", last: "R" }],
+    card_count: 2,
+  };
+  const sectionB: ProjectionSection = {
+    parts: [{ key: "color_identity", first: "U", last: "U" }],
+    card_count: 1,
+  };
+  const emptySectionPart: ProjectionSection = { parts: [], card_count: 1 };
+
+  it("inserts one header before the first card of each section, by reference", () => {
+    const cards = [
+      card("1", { section: sectionA }),
+      card("2", { section: sectionA }),
+      card("3", { section: sectionB }),
+    ];
+
+    const items = withSectionHeaders(cards);
+
+    expect(items).toEqual([sectionA, cards[0], cards[1], sectionB, cards[2]]);
+    expect(items.filter(isSectionHeader)).toEqual([sectionA, sectionB]);
+  });
+
+  it("adds no header for a section with no parts", () => {
+    const cards = [card("1", { section: emptySectionPart })];
+
+    expect(withSectionHeaders(cards)).toEqual(cards);
+  });
+
+  // A struck card stays in the list at its recorded spot (mergeLocationCards)
+  // but still carries its original section reference, so its header must not
+  // move or duplicate just because the card ahead of it got ticked.
+  it("keeps a section's header in place when an earlier card in it drops out", () => {
+    const remaining = card("2", { section: sectionA });
+
+    expect(withSectionHeaders([remaining])).toEqual([sectionA, remaining]);
   });
 });

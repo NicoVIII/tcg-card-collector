@@ -24,6 +24,18 @@ pub fn encode_inventory_projection_nests_locations_and_cards_test() {
             card_type: "creature",
           ),
         ],
+        sections: [
+          projection_ports.ProjectionSection(
+            parts: [
+              projection_ports.ProjectionSectionPart(
+                key: "color_identity",
+                first: "G",
+                last: "G",
+              ),
+            ],
+            card_count: 2,
+          ),
+        ],
       ),
     ])
 
@@ -32,7 +44,9 @@ pub fn encode_inventory_projection_nests_locations_and_cards_test() {
     <> "\"total_quantity\":2,\"cards\":[{\"name\":\"Grizzly Bears\","
     <> "\"set_code\":\"m11\",\"collector_number\":\"182\",\"finish\":\"nonfoil\","
     <> "\"language\":\"en\",\"quantity\":2,"
-    <> "\"color_identity\":\"G\",\"rarity\":\"common\",\"card_type\":\"creature\"}]}],"
+    <> "\"color_identity\":\"G\",\"rarity\":\"common\",\"card_type\":\"creature\"}],"
+    <> "\"sections\":[{\"parts\":[{\"key\":\"color_identity\","
+    <> "\"first\":\"G\",\"last\":\"G\"}],\"card_count\":2}]}],"
     <> "\"total_quantity\":2,\"unknown_count\":1}"
 }
 

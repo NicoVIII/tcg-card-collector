@@ -23,15 +23,19 @@ function card(
   };
 }
 
+// A section-less location: the tests below aren't exercising #138's section
+// derivation, so every card gets the same empty-parts section (no header).
 function location(
   location_name: string,
   cards: ProjectionCard[],
 ): InventoryProjection["locations"][number] {
+  const total_quantity = cards.reduce((sum, c) => sum + c.quantity, 0);
   return {
     location_name,
     rule_id: "",
-    total_quantity: cards.reduce((sum, c) => sum + c.quantity, 0),
+    total_quantity,
     cards,
+    sections: [{ parts: [], card_count: total_quantity }],
   };
 }
 
@@ -102,6 +106,7 @@ describe("buildGuidance", () => {
                   already_placed: true,
                 },
               ],
+              section: { parts: [], card_count: 5 },
             },
             {
               name: "Card 149",
@@ -130,6 +135,7 @@ describe("buildGuidance", () => {
                   already_placed: false,
                 },
               ],
+              section: { parts: [], card_count: 5 },
             },
             {
               name: "Card 150",
@@ -149,6 +155,7 @@ describe("buildGuidance", () => {
                 },
               ],
               after: [],
+              section: { parts: [], card_count: 5 },
             },
           ],
         },
@@ -179,6 +186,36 @@ describe("buildGuidance", () => {
       guidance.locations.reduce((sum, location) => sum + location.total_quantity, 0),
     );
     expect(guidance.total_unplaced).toBe(2);
+  });
+
+  // Sections partition the location's full card list, not the still-to-place
+  // one — a card's section must stay correct even once an earlier card in
+  // the same section has dropped out for being fully placed.
+  it("attaches each card's section from the whole location, surviving placed cards dropping out", () => {
+    const proj = projection([
+      {
+        location_name: "Bulk",
+        rule_id: "",
+        total_quantity: 3,
+        cards: [card("146", 1), card("147", 1), card("148", 1)],
+        sections: [
+          { parts: [{ key: "color_identity", first: "R", last: "R" }], card_count: 2 },
+          { parts: [{ key: "color_identity", first: "G", last: "G" }], card_count: 1 },
+        ],
+      },
+    ]);
+    const ledger = [placed("146", "Bulk", 1)];
+
+    const guidance = buildGuidance(proj, ledger);
+    const [remaining] = guidance.locations[0]!.cards;
+
+    // 147 is the second card of the first (2-copy) section, even though 146
+    // — the section's first card — already dropped out of the list above.
+    expect(remaining!.collector_number).toBe("147");
+    expect(remaining!.section).toEqual({
+      parts: [{ key: "color_identity", first: "R", last: "R" }],
+      card_count: 2,
+    });
   });
 
   // A tick on one kind of copy must not cancel out another kind's count — the

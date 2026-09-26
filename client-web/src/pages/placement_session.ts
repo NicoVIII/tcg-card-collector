@@ -1,3 +1,4 @@
+import type { ProjectionSection, SortKey } from "../data/inventory_planning/request";
 import type { PlacementCard, PlacementNeighbor } from "../data/placement/request";
 
 // Session state for the placement page. Ticking a card marks it placed, which
@@ -223,4 +224,61 @@ export function betweenLabel(
   return (
     placedAnchorLabel(session, location_name, before, after) ?? unplacedAnchorLabel(before, after)
   );
+}
+
+// A short, physical-box-style label for a key's part of a section: a range
+// ("CMC 1–3", "Name A–E") when the section merged more than one value, else
+// just that one value. collector_number never reaches here (sort_spec.category
+// gives it no category), so it needs no label of its own.
+const SECTION_KEY_LABELS: Record<SortKey, string> = {
+  color_identity: "Color",
+  type: "Type",
+  name: "Name",
+  set_code: "Set",
+  collector_number: "",
+  rarity: "Rarity",
+  released_at: "Year",
+  cmc: "CMC",
+  language: "Language",
+};
+
+function sectionPartLabel(part: { key: SortKey; first: string; last: string }): string {
+  const value = part.first === part.last ? part.first : `${part.first}–${part.last}`;
+  const keyLabel = SECTION_KEY_LABELS[part.key];
+  return keyLabel === "" ? value : `${keyLabel} ${value}`;
+}
+
+// A section's full label, e.g. "Color W · Type Artifact · CMC 1–3" — the
+// divider text a user finds before hunting for the exact neighbour-anchored
+// slot (#138). Empty for a section with no parts (nothing to divide on).
+export function sectionLabel(section: ProjectionSection): string {
+  return section.parts.map(sectionPartLabel).join(" · ");
+}
+
+export function isSectionHeader(
+  item: PlacementCard | ProjectionSection,
+): item is ProjectionSection {
+  return "parts" in item;
+}
+
+// Inserts a section header before the first card of each section that has a
+// non-empty label. Sections are keyed by reference — guidance.ts attaches the
+// very same section object to every card it covers — so a run of cards
+// sharing one section is detected in a single forward pass, and a struck
+// card (still in the list, still pointing at its original section) never
+// causes its header to move or duplicate.
+export function withSectionHeaders(cards: PlacementCard[]): (PlacementCard | ProjectionSection)[] {
+  const items: (PlacementCard | ProjectionSection)[] = [];
+  let currentSection: ProjectionSection | null = null;
+
+  for (const card of cards) {
+    if (card.section !== currentSection) {
+      currentSection = card.section;
+      if (card.section.parts.length > 0) {
+        items.push(card.section);
+      }
+    }
+    items.push(card);
+  }
+  return items;
 }

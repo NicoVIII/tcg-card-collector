@@ -67,11 +67,46 @@ struct ProjectionCard {
   language: Language = 8;
 }
 
+// The sort DSL's vocabulary (domain/sort_spec.gleam), typed here so a
+// section's parts don't repeat the DSL's own strings for the wire.
+enum SortKey {
+  color_identity = 1;
+  type = 2;
+  name = 3;
+  set_code = 4;
+  collector_number = 5;
+  rarity = 6;
+  released_at = 7;
+  cmc = 8;
+  language = 9;
+}
+
+// One sort key's category value for a section (#138): `first == last` means
+// every card in the section shares that one value; a differing pair means
+// the part is a merged range ("CMC 1-3", "A-E").
+struct SectionPart {
+  key: SortKey = 0;
+  first: string = 1;
+  last: string = 2;
+}
+
+// A contiguous, divider-worthy run of a location's sorted cards — parts is
+// empty when the location has no sort keys, or when nothing in it was worth
+// dividing on. `card_count` is copies, not distinct cards.
+struct ProjectionSection {
+  parts: [SectionPart] = 0;
+  card_count: int32 = 1;
+}
+
 struct ProjectionLocation {
   location_name: string = 0;
   rule_id: string = 1;
   total_quantity: int32 = 2;
   cards: [ProjectionCard] = 3;
+  // Sections partition `cards` in order: walking sections and consuming
+  // `card_count` copies (summing consecutive cards' `quantity`, not their
+  // count) at a time lines each card up with its section.
+  sections: [ProjectionSection] = 4;
 }
 
 struct InventoryProjection {

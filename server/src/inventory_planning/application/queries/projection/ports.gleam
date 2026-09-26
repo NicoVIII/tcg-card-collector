@@ -24,14 +24,33 @@ pub type ProjectionCard {
   )
 }
 
+// One sort key's category value for a section (#138), the DSL token
+// (`sort_spec.sort_key_to_string`) rather than the domain type — the same
+// plain-string-until-the-codec convention as ProjectionCard's finish/rarity/
+// card_type above. `first == last` means every card in the section shares
+// that one value; a differing pair means the part is a merged range
+// ("CMC 1-3", "A-E").
+pub type ProjectionSectionPart {
+  ProjectionSectionPart(key: String, first: String, last: String)
+}
+
+// A contiguous, divider-worthy run of a location's sorted cards. `parts` is
+// empty when the location has no sort keys, or when nothing in it was worth
+// dividing on; `card_count` is copies, not distinct cards.
+pub type ProjectionSection {
+  ProjectionSection(parts: List(ProjectionSectionPart), card_count: Int)
+}
+
 // A physical destination in cascade order. `rule_id` is the rule that claimed
-// these cards, or empty for the bulk remainder.
+// these cards, or empty for the bulk remainder. `sections` partitions `cards`
+// exactly once, in order.
 pub type ProjectionLocation {
   ProjectionLocation(
     location_name: String,
     rule_id: String,
     total_quantity: Int,
     cards: List(ProjectionCard),
+    sections: List(ProjectionSection),
   )
 }
 

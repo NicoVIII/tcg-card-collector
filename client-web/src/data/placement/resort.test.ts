@@ -25,15 +25,19 @@ function card(
   };
 }
 
+// A section-less location: none of these tests exercise #138's section
+// derivation, so every card gets the same empty-parts section (no header).
 function location(
   location_name: string,
   cards: ProjectionCard[],
 ): InventoryProjection["locations"][number] {
+  const total_quantity = cards.reduce((sum, c) => sum + c.quantity, 0);
   return {
     location_name,
     rule_id: "",
-    total_quantity: cards.reduce((sum, c) => sum + c.quantity, 0),
+    total_quantity,
     cards,
+    sections: [{ parts: [], card_count: total_quantity }],
   };
 }
 

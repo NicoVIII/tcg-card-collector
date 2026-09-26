@@ -42,7 +42,10 @@ fn parse_sort_key(raw: String) -> Result(SortKey, Nil) {
   }
 }
 
-fn sort_key_to_string(key: SortKey) -> String {
+// The DSL token a key round-trips through parse_sort_key; also the string a
+// section part's key maps to before the codec turns it into the contract's
+// SortKey enum (#138).
+pub fn sort_key_to_string(key: SortKey) -> String {
   case key {
     ByColorIdentity -> "color_identity"
     ByCardType -> "type"
