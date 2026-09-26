@@ -5,14 +5,12 @@ import card_catalog/infrastructure/adapters/commands/refresh/adapter as refresh_
 import card_catalog/infrastructure/adapters/queries/get_cards/adapter as get_cards_adapter
 import card_catalog/infrastructure/adapters/queries/list_cards/adapter as list_cards_adapter
 import card_catalog/infrastructure/adapters/queries/refresh_status/adapter as refresh_status_adapter
-import collection/application/commands/import_collection/ports as import_collection_ports
 import collection/application/commands/remove_cards/ports as remove_cards_ports
 import collection/driver/dependencies.{
   type Dependencies as CollectionDependencies,
   Dependencies as CollectionDependencies,
 } as _
 import collection/infrastructure/adapters/commands/add_cards/adapter as add_cards_adapter
-import collection/infrastructure/adapters/commands/import_collection/adapter as import_collection_adapter
 import collection/infrastructure/adapters/commands/remove_cards/adapter as remove_cards_adapter
 import collection/infrastructure/adapters/queries/list_cards/adapter as list_collection_cards_adapter
 import gleam/erlang/process
@@ -107,10 +105,6 @@ pub fn dependencies() -> Dependencies {
       refresh_worker_name: process.new_name("catalog_refresh_worker"),
     ),
     collection: CollectionDependencies(
-      import_collection_ports: import_collection_ports.ImportCollectionPorts(
-        replace_collection: import_collection_adapter.new(),
-        notify_changed: notify_collection_changed,
-      ),
       add_cards_port: add_cards_adapter.new(),
       remove_cards_ports: remove_cards_ports.RemoveCardsPorts(
         decrement_cards: remove_cards_adapter.new(),

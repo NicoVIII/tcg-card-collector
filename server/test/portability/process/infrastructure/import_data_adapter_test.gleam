@@ -31,9 +31,9 @@ fn rendered_export() -> String {
 
 /// The acceptance round trip (#117, widened by #119): export, import that
 /// file back in, export again — the two exports agree byte for byte and
-/// every section is unchanged, for every finish and the zhs/zht split
-/// neither deckstats nor a lossy format could carry, alongside the target
-/// sets, rules, bulk spec, and placed ledger.
+/// every section is unchanged, for every finish and the zhs/zht split a
+/// lossy format couldn't carry, alongside the target sets, rules, bulk
+/// spec, and placed ledger.
 pub fn export_import_export_is_byte_identical_and_every_section_is_unchanged_test() {
   use _db <- test_db.with_temp_db()
 

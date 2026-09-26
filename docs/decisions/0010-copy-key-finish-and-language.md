@@ -2,6 +2,7 @@
 
 - Status: accepted; canonical claim order and the rule-order escape hatch superseded by [0013](0013-claim-order-prefers-best-copy.md)
 - Date: 2026-09-13
+- Note (2026-09-26, #118): the deckstats importer this decision cites throughout was removed once the own-format import (#119) landed. The decision itself — CopyKey as `(CardKey, Finish, Language)` — is unaffected; the deckstats-specific passages below are historical context for why finish/language handling had to account for a lossy source.
 
 ## Context
 

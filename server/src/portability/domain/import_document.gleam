@@ -200,8 +200,7 @@ pub fn describe_error(error: DocumentError) -> String {
 
 /// Validates a batch of raw entries positionally: a bad one becomes a
 /// RejectedEntry naming its position and identity, while the rest still
-/// import — the same all-valid-rows-except-these-lines shape the deckstats
-/// importer already reports.
+/// import — an all-valid-rows-except-these-lines shape.
 pub fn validate_entries(
   raw: List(RawEntry),
 ) -> #(List(CollectionEntry), List(RejectedEntry)) {

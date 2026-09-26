@@ -4,53 +4,6 @@ import gleam/json
 import gleam/result
 import shared/domain/card_key
 
-pub type ImportCollectionRow {
-  ImportCollectionRow(
-    set_code: String,
-    collector_number: String,
-    finish: String,
-    language: String,
-    quantity: Int,
-  )
-}
-
-pub type ImportCollectionBody {
-  ImportCollectionBody(rows: List(ImportCollectionRow))
-}
-
-fn import_collection_row_decoder() -> decode.Decoder(ImportCollectionRow) {
-  use set_code <- decode.field("set_code", decode.string)
-  use collector_number <- decode.field("collector_number", decode.string)
-  use finish <- decode.field("finish", decode.string)
-  use language <- decode.field("language", decode.string)
-  use quantity <- decode.field("quantity", decode.int)
-  decode.success(ImportCollectionRow(
-    set_code:,
-    collector_number:,
-    finish:,
-    language:,
-    quantity:,
-  ))
-}
-
-pub fn decode_import_collection_body(
-  json_string: String,
-) -> Result(ImportCollectionBody, String) {
-  let decoder = {
-    // Absent rows decode to an empty batch, which the handler rejects —
-    // mirrors the skir door, where an omitted list arrives empty.
-    use rows <- decode.optional_field(
-      "rows",
-      [],
-      decode.list(import_collection_row_decoder()),
-    )
-    decode.success(ImportCollectionBody(rows:))
-  }
-
-  json.parse(from: json_string, using: decoder)
-  |> result.map_error(fn(_) { "invalid request body" })
-}
-
 pub type AddCardsRow {
   AddCardsRow(
     set_code: String,

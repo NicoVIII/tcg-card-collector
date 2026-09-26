@@ -13,10 +13,10 @@ describe("routes", () => {
     ]);
   });
 
-  it("routes the import page without putting it in the nav", () => {
+  it("routes the backup page without putting it in the nav", () => {
     const paths = routes.map((route) => route.path);
-    expect(paths).toContain("/collection/import");
-    expect(navRoutes.map((route) => route.path)).not.toContain("/collection/import");
+    expect(paths).toContain("/backup");
+    expect(navRoutes.map((route) => route.path)).not.toContain("/backup");
   });
 
   it("keeps route labels non-empty", () => {

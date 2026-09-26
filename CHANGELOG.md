@@ -42,7 +42,14 @@ Each release section uses only the subheadings it needs:
   when the file has it, and is left untouched otherwise. A placed copy the restored collection
   doesn't own enough of is pruned from the ledger right after import, the same as any other
   collection-shrinking write. The round trip is byte-for-byte exact, including every finish
-  and the zhs/zht split a deckstats CSV import can't carry.
+  and the zhs/zht split.
+
+### Changed
+
+- The deckstats CSV importer, its "Import / reset collection…" page, and `POST /api/import` /
+  Skir `ImportCollection` are removed — a collection-only import is a lossy, unverified path
+  now that the own-format restore above covers it. Restore a collection from "Back up &
+  restore…" instead.
 
 ### Fixed
 

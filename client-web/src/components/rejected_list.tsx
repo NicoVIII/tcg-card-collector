@@ -7,11 +7,10 @@ export type RejectedItem = {
   reason: string;
 };
 
-// The capped "N skipped" report shared by every import surface that rejects
-// individual rows/entries while the rest still import (collection_import_page's
-// deckstats lines, backup_page's own-format entries) — label is neutral so
-// each caller supplies its own identifier shape ("Line 12", "Entry 12 (mh2 17
-// foill en)").
+// The capped "N skipped" report for import surfaces that reject individual
+// rows/entries while the rest still import (backup_page's own-format
+// entries) — label is neutral so each caller supplies its own identifier
+// shape ("Entry 12 (mh2 17 foill en)").
 export function RejectedList(props: { items: RejectedItem[] }) {
   return (
     <Show when={props.items.length > 0}>
