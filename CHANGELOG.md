@@ -32,7 +32,8 @@ Each release section uses only the subheadings it needs:
 - Everything hand-made in the app — the collection, set targets, location rules, bulk spec,
   and placed ledger — can be exported to a versioned JSON file ("Back up & restore…" on the
   Collection page, `GET /api/export`, or Skir `ExportData`), fulfilling v0.2.0's data
-  portability promise.
+  portability promise. An exported file imports into any release of the same major version
+  or the next one; a release dropping an older format version says so under `### Upgrading`.
 - The exported file can be read back in from the same Backup page (a preview shows, per
   section, how many entries will import and names any entry it can't, and warns if the
   ledger it carries would exceed the collection it carries before you confirm),
