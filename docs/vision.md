@@ -20,7 +20,9 @@ The MVP vertical slice works end-to-end: catalog sync from Scryfall, CSV collect
 
 [v0.1.0](https://github.com/NicoVIII/tcg-card-collector/milestone/1) made it safe for personal use: upgrades don't lose data, the core loop holds up at real collection size, and versioned images ship through a written release procedure.
 
-The next release, [v0.2.0](https://github.com/NicoVIII/tcg-card-collector/milestone/2), targets portability: everything hand-made in the app can be exported to a file and imported into another install without loss.
+[v0.2.0](https://github.com/NicoVIII/tcg-card-collector/milestone/2) made it portable: everything hand-made in the app can be exported to a file and imported into another install without loss.
+
+The next release, [v0.3.0](https://github.com/NicoVIII/tcg-card-collector/milestone/3), targets the first full physical inventory: filing a real collection through Placement one session at a time, with every row saying which section of its location it belongs in.
 
 ## Direction
 
