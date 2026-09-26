@@ -1,7 +1,5 @@
 import collection/application/commands/add_cards/handler as add_cards_handler
 import collection/application/commands/add_cards/ports as add_cards_ports
-import collection/application/commands/import_collection/handler as import_collection_handler
-import collection/application/commands/import_collection/ports as import_collection_ports
 import collection/application/commands/remove_cards/handler as remove_cards_handler
 import collection/application/commands/remove_cards/ports as remove_cards_ports
 import collection/application/queries/list_cards/handler as list_collection_cards_handler
@@ -15,44 +13,6 @@ import mist
 import shared/driver/http/helpers
 import shared/driver/http/json_codec
 import shared/driver/search_filter
-
-fn map_import_collection_row(
-  row: collection_codec.ImportCollectionRow,
-) -> import_collection_ports.ImportCollectionRow {
-  import_collection_ports.ImportCollectionRow(
-    set_code: row.set_code,
-    collector_number: row.collector_number,
-    finish: row.finish,
-    language: row.language,
-    quantity: row.quantity,
-  )
-}
-
-pub fn handle_import_collection(
-  req: Request(mist.Connection),
-  deps: Dependencies,
-) -> Response(mist.ResponseData) {
-  use body <- helpers.with_json_body(req)
-  case collection_codec.decode_import_collection_body(body) {
-    Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
-    Ok(b) ->
-      case
-        import_collection_handler.execute(
-          import_collection_handler.ImportCollectionCommand(rows: list.map(
-            b.rows,
-            map_import_collection_row,
-          )),
-          deps.import_collection_ports,
-        )
-      {
-        Ok(_) -> helpers.json_response(200, json_codec.encode_ok("accepted"))
-        Error(import_collection_ports.InvalidRows) ->
-          helpers.json_response(422, json_codec.encode_error("invalid rows"))
-        Error(import_collection_ports.PersistenceFailed(reason)) ->
-          helpers.json_response(500, json_codec.encode_error(reason))
-      }
-  }
-}
 
 fn map_add_cards_row(
   row: collection_codec.AddCardsRow,

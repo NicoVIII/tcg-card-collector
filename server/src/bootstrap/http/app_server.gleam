@@ -87,8 +87,6 @@ fn handle_request(
       catalog_http.handle_refresh_catalog(deps.catalog)
     Get, "/api/catalog/refresh/latest" ->
       catalog_http.handle_refresh_status(deps.catalog)
-    Post, "/api/import" ->
-      collection_http.handle_import_collection(req, deps.collection)
     Get, "/api/collection/cards" ->
       collection_http.handle_list_collection_cards(req, deps.collection)
     Post, "/api/collection/cards" ->

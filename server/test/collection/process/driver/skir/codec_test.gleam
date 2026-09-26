@@ -1,5 +1,4 @@
 import collection/application/commands/add_cards/ports as add_cards_ports
-import collection/application/commands/import_collection/ports as import_collection_ports
 import collection/application/commands/remove_cards/ports as remove_cards_ports
 import collection/application/queries/list_cards/ports as list_collection_cards_ports
 import collection/driver/skir/codec as collection_skir_codec
@@ -9,28 +8,6 @@ import shared/domain/set_code
 import shared/driver/skir/skirout/collection/commands as collection_commands
 import shared/driver/skir/skirout/collection/queries as collection_queries
 import skir_client/service
-
-pub fn import_ok_maps_to_accepted_test() {
-  assert collection_skir_codec.map_import_collection_result(Ok(Nil))
-    == Ok(collection_commands.ImportCollectionResponseAccepted)
-}
-
-pub fn import_invalid_rows_maps_to_rejected_test() {
-  assert collection_skir_codec.map_import_collection_result(Error(
-      import_collection_ports.InvalidRows,
-    ))
-    == Ok(collection_commands.ImportCollectionResponseRejected)
-}
-
-pub fn import_persistence_failed_maps_to_service_error_test() {
-  assert collection_skir_codec.map_import_collection_result(
-      Error(import_collection_ports.PersistenceFailed("db unavailable")),
-    )
-    == Error(service.ServiceError(
-      service.E500xInternalServerError,
-      "db unavailable",
-    ))
-}
 
 pub fn add_cards_ok_maps_to_added_test() {
   assert collection_skir_codec.map_add_cards_result(Ok(Nil))
@@ -66,8 +43,8 @@ pub fn remove_cards_invalid_rows_maps_to_rejected_test() {
     == Ok(collection_commands.RemoveCardsResponseRejected)
 }
 
-// Unlike Add/ImportCollection, the persistence-failure message is fixed
-// rather than echoing the raw reason — collection/driver/error_presentation.
+// Unlike AddCards, the persistence-failure message is fixed rather than
+// echoing the raw reason — collection/driver/error_presentation.
 pub fn remove_cards_persistence_failed_maps_to_service_error_test() {
   assert collection_skir_codec.map_remove_cards_result(
       Error(remove_cards_ports.PersistenceFailed("db unavailable")),
@@ -78,31 +55,11 @@ pub fn remove_cards_persistence_failed_maps_to_service_error_test() {
     ))
 }
 
-pub fn to_import_collection_row_maps_finish_and_language_test() {
-  let row =
-    collection_commands.import_collection_row_new(
-      collector_number: "161",
-      finish: collection_commands.FinishFoil,
-      language: collection_commands.LanguageDe,
-      quantity: 2,
-      set_code: "lea",
-    )
-
-  assert collection_skir_codec.to_import_collection_row(row)
-    == import_collection_ports.ImportCollectionRow(
-      set_code: "lea",
-      collector_number: "161",
-      finish: "foil",
-      language: "de",
-      quantity: 2,
-    )
-}
-
 // An unrecognized wire variant maps to an empty string, which the domain
 // constructors downstream reject rather than silently defaulting.
-pub fn to_import_collection_row_maps_unknown_finish_to_empty_string_test() {
+pub fn to_add_cards_row_maps_unknown_finish_to_empty_string_test() {
   let row =
-    collection_commands.import_collection_row_new(
+    collection_commands.add_cards_row_new(
       collector_number: "161",
       finish: collection_commands.finish_unknown,
       language: collection_commands.LanguageEn,
@@ -110,7 +67,7 @@ pub fn to_import_collection_row_maps_unknown_finish_to_empty_string_test() {
       set_code: "lea",
     )
 
-  assert collection_skir_codec.to_import_collection_row(row).finish == ""
+  assert collection_skir_codec.to_add_cards_row(row).finish == ""
 }
 
 pub fn to_add_cards_row_maps_finish_and_language_test() {

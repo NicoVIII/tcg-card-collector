@@ -1,5 +1,4 @@
 import collection/application/commands/add_cards/handler as add_cards_handler
-import collection/application/commands/import_collection/handler as import_collection_handler
 import collection/application/commands/remove_cards/handler as remove_cards_handler
 import collection/application/queries/list_cards/handler as list_collection_cards_handler
 import collection/driver/dependencies.{type Dependencies}
@@ -9,26 +8,6 @@ import shared/driver/skir/helpers
 import shared/driver/skir/skirout/collection/commands as collection_commands
 import shared/driver/skir/skirout/collection/queries as collection_queries
 import skir_client/service
-
-fn handle_import_collection(
-  get_dependencies: fn(context) -> Dependencies,
-) -> helpers.MethodHandler(
-  collection_commands.ImportCollectionRequest,
-  collection_commands.ImportCollectionResponse,
-  context,
-) {
-  fn(req: collection_commands.ImportCollectionRequest, _, ctx) {
-    import_collection_handler.execute(
-      import_collection_handler.ImportCollectionCommand(rows: list.map(
-        req.rows,
-        collection_skir_codec.to_import_collection_row,
-      )),
-      get_dependencies(ctx).import_collection_ports,
-    )
-    |> collection_skir_codec.map_import_collection_result
-    |> helpers.respond
-  }
-}
 
 fn handle_add_cards(
   get_dependencies: fn(context) -> Dependencies,
@@ -101,10 +80,6 @@ pub fn register(
   get_dependencies: fn(context) -> Dependencies,
 ) -> service.Service(Nil, context, Nil) {
   svc
-  |> service.add_method(
-    collection_commands.import_collection_method(),
-    handle_import_collection(get_dependencies),
-  )
   |> service.add_method(
     collection_commands.add_cards_method(),
     handle_add_cards(get_dependencies),

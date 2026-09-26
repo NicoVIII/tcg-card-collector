@@ -29,33 +29,6 @@ enum Language {
   qya = 18;
 }
 
-struct ImportCollectionRow {
-  removed;
-  set_code: string;
-  collector_number: string;
-  quantity: int32;
-  finish: Finish;
-  language: Language;
-}
-
-struct ImportCollectionRequest {
-  removed 0;  // was import_run_id: runs no longer exist
-  removed 1;  // was source_name: only consumer was the dropped status line
-  removed 2;  // was source_checksum: unused, never persisted meaningfully
-  removed 3;  // was row_count: server counts the rows it received
-  rows: [ImportCollectionRow] = 4;
-  removed 5;  // was mode: import is always a full snapshot; adds go through AddCards
-}
-
-enum ImportCollectionResponse {
-  accepted = 1;
-  rejected = 2;
-}
-
-method ImportCollection(
-  ImportCollectionRequest
-): ImportCollectionResponse = 201;
-
 struct AddCardsRow {
   set_code: string = 0;
   collector_number: string = 1;
@@ -96,9 +69,11 @@ enum RemoveCardsResponse {
   rejected = 2;
 }
 
-// 202 is a retired, unrelated slot from the dropped import-run-log method
-// (see ImportCollectionRequest's removed fields above) — not reused here,
-// since RemoveCards doesn't replace whatever used to live there.
+// 201 (ImportCollection, deckstats CSV import) and 202 (the dropped
+// import-run-log method it superseded) are both retired slots — the
+// collection-only import path was removed in #118 once the own-format
+// restore (#119) covered it. Not reused here, since RemoveCards doesn't
+// replace whatever used to live there.
 method RemoveCards(
   RemoveCardsRequest
 ): RemoveCardsResponse = 205;
