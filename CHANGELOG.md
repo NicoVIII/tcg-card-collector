@@ -14,7 +14,7 @@ Each release section uses only the subheadings it needs:
 - `### Upgrading` — anything an upgrade requires, and whether the release can lose
   collection or inventory data (see [README.md](README.md) § Data preservation).
 
-## Unreleased
+## v0.2.0 — 2026-09-26
 
 ### Added
 
