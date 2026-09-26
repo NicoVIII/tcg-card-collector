@@ -12,6 +12,8 @@ Gleam backend (Erlang target) + SolidJS/TypeScript frontend, connected by a Skir
 
 Readability rules that hold across the stack; each sub-tree's AGENTS.md adds its own specifics.
 
+**Boundaries are settled; module internals are not yet.** Bounded-context and layer boundaries are lint-enforced and deliberate. Code inside modules largely hasn't had a manual review yet. Where it conflicts with the rules below, follow the rules, not local precedent. Don't refactor unreviewed internals on the side: add the finding to #141, where they're worked off in one deliberate pass.
+
 - **Top-down order**: every definition references only things defined above it — types, then helpers, then the functions that use them, with the entry point (`register`, `main`, the page component) last. Circular references are the only exception.
 - **Small, single-purpose functions** are the unit of decomposition. A `// this block does X` comment is the trigger to extract `x()`; skip extraction only when it would thread many parameters or add pure indirection.
 - **Comments say why, never what.** If types and names already say it, cut it. Prose is warranted for doc comments on public APIs, type-lossy seams the signature can't express, and short orientation labels in long functions.
