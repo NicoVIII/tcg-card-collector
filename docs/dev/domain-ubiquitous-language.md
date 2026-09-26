@@ -235,8 +235,7 @@ Core terms:
   uploaded file, plus every entry that failed validation, each recorded as a
   RejectedEntry. An import is all-or-nothing at the whole-file level (bad JSON, wrong
   `format`, an unsupported `format_version`, no `collection` array) but per-entry at
-  the row level: one bad entry doesn't block the rest, the same posture the deckstats
-  importer already had.
+  the row level: one bad entry doesn't block the rest.
 - RejectedEntry: one entry's section, its position within that section's array, its raw
   identity as given (not yet validated), and why it failed. Position, not a line number:
   JSON carries no line numbers, and a position survives a hand edit's reformatting the
