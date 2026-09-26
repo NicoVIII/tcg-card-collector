@@ -147,15 +147,21 @@ Core terms:
   location's own sort keys (a rule's, or the bulk spec's) next to the sort itself so a label can
   never drift from the physical order (#138). Keys are tried outermost-first: a key's equal-
   category runs merge into ranges of at least `sort_section.min_section_copies` physical copies
-  (two 9-pocket binder pages) before the next key subdivides further, so every section clears that
-  floor; a key that never gets to distinguish more than one range within its slice of the location
-  — too few categories, or values too sparse to clear the floor even merged — contributes nothing to
-  that section's label rather than showing a divider that helps no one. `sort_spec.category` is the
-  per-key mapping from a card to its category value (a coarsening of that key's own sort order, so
-  equal-category cards never sort apart); collector_number yields none, since grouping by a value
-  unique per printing would never merge anything, and any key after it in a DSL is equally powerless
-  to distinguish the ties it leaves. `ProjectionLocation.sections` partitions its `cards` in cascade
-  order, one section covering every card exactly once.
+  (two 9-pocket binder pages), so every labelled range clears that floor. Whether a *further* key
+  gets to subdivide a range is a separate, narrower question than whether the current key showed a
+  label: rows are sorted by the full key tuple, so a nested key is only monotonic *within one value*
+  of the key above it — recursing where that key's rows hold more than one value would let the
+  nested key's own category restart partway through and build a first–last range that reads
+  backwards or repeats (found against real data during #138's own QA pass). Recursion is safe only
+  when the current key's rows were homogeneous (exactly one value, itself unlabelled) or resolved to
+  a genuinely single, unmerged value (labelled, first == last); a key whose values are too sparse or
+  too few to distinguish more than one range — merged into one blob, or merged into a multi-value
+  range — is where a section stops, labelled or not. `sort_spec.category` is the per-key mapping from
+  a card to its category value (a coarsening of that key's own sort order, so equal-category cards
+  never sort apart); collector_number yields none, since grouping by a value unique per printing
+  would never merge anything, and any key after it in a DSL is equally powerless to distinguish the
+  ties it leaves. `ProjectionLocation.sections` partitions its `cards` in cascade order, one section
+  covering every card exactly once.
 - PlacedCard: a ledger row recording that some copies of a kind of copy were physically placed in a
   location (`(CopyKey, location) → quantity`). A location holding several kinds of copy of one
   printing needs a tick that names which kind. The write side of placement — MarkCardsPlaced

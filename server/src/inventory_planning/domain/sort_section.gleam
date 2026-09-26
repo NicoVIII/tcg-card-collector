@@ -26,12 +26,30 @@ const min_section_copies = 18
 // Partitions `rows` (cards already sorted by `keys`, each paired with its
 // physical copy count) into contiguous sections covering every row exactly
 // once — `sum(card_count) == length(rows)` always holds. Keys are applied
-// outermost-first: a key's equal-category runs are merged into ranges of at
-// least `min_section_copies` copies, then each range recurses on the
-// remaining keys. A key whose merge collapses to a single range over its
-// whole input contributes no part — it didn't distinguish anything worth a
-// divider — and a key that yields no category (sort_spec.category returns
-// `None`) stops the recursion outright, per that function's doc.
+// outermost-first, and a key never contributes a part unless it distinguishes
+// at least two ranges' worth of the location — but *whether recursing into
+// the next key is still sound* is a separate question from whether this key
+// showed a label, because rows are sorted by the full key tuple: a nested
+// key is only monotonic *within one value* of the key above it. Once that
+// key's rows hold more than one value, going deeper risks a nested key's own
+// category restarting once per value it passed through (e.g. `type` covering
+// both "artifact" and "enchantment" rows means `cmc` counts up once inside
+// artifact, then again inside enchantment) — a first–last range built from
+// that non-monotonic sequence would read backwards or repeat. So three cases,
+// by how many distinct values `key` actually holds in `rows`:
+// - Exactly one value throughout: no label, but every remaining key stays as
+//   monotonic as it already was — safe to recurse on the same `rows`.
+// - More than one value, but they never clear `min_section_copies` even all
+//   merged together: no label is possible (nothing merge_runs produced was
+//   big enough to stand alone), and the rows are genuinely heterogeneous in
+//   `key` — recursing further is exactly the unsafe case above, so this key
+//   is the last one tried; the section stops here, unlabeled.
+// - Two or more ranges: each becomes its own part. A range that's a single,
+//   unmerged value keeps recursing (still homogeneous for what's left); a
+//   range that merged several values together keeps its own part but, same
+//   as above, stops there.
+// A key that yields no category at all (sort_spec.category returns `None`)
+// stops the recursion outright too, per that function's doc.
 pub fn sections(
   keys: List(SortKey),
   rows: List(#(PlannedCard, Int)),
@@ -59,19 +77,43 @@ fn split_by_key(
   rest: List(SortKey),
   rows: List(#(PlannedCard, Int)),
 ) -> List(Section) {
-  case merge_runs(runs(key, rows)) {
-    // Merging never distinguished more than one range: this key adds nothing
-    // to the label, so it's skipped rather than emitting an empty part.
-    [_single] -> split(rest, rows)
-    ranges ->
-      list.flat_map(ranges, fn(range) {
-        let Range(first, last, range_rows) = range
-        let part = SectionPart(key, first, last)
-        split(rest, range_rows)
-        |> list.map(fn(section) {
-          Section([part, ..section.parts], section.card_count)
-        })
+  case runs(key, rows) {
+    // Exactly one value throughout `rows`: nothing to divide on, and every
+    // remaining key is exactly as monotonic as it already was.
+    [_only_run] -> split(rest, rows)
+    many_runs ->
+      case merge_runs(many_runs) {
+        // More than one value, but none of them (even merged with a
+        // neighbour) clears the threshold: no label is possible, and unlike
+        // the single-value case above, `rows` is genuinely heterogeneous in
+        // `key` — recursing further is the unsafe case this function's doc
+        // describes, so this is where the section stops.
+        [_only_range] -> [Section([], copies_of(rows))]
+        ranges ->
+          list.flat_map(ranges, fn(range) {
+            section_for_range(key, rest, range)
+          })
+      }
+  }
+}
+
+fn section_for_range(
+  key: SortKey,
+  rest: List(SortKey),
+  range: Range,
+) -> List(Section) {
+  let Range(first, last, range_rows) = range
+  let part = SectionPart(key, first, last)
+  case first == last {
+    // A single, unmerged category: still homogeneous for every remaining
+    // key, so recursing into the next one stays sound.
+    True ->
+      split(rest, range_rows)
+      |> list.map(fn(section) {
+        Section([part, ..section.parts], section.card_count)
       })
+    // A merged range: see `sections`'s doc for why recursion stops here.
+    False -> [Section([part], copies_of(range_rows))]
   }
 }
 

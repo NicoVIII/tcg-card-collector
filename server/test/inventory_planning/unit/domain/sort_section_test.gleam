@@ -185,6 +185,65 @@ pub fn sparse_inner_key_drops_out_of_label_test() {
   assert list.map(sections, fn(s) { s.card_count }) == [20, 20, 20]
 }
 
+// Regression: a merged (first != last) outer range must not recurse into
+// the next key, while a single-value range still does. Rows are sorted by
+// the full key tuple, so cmc is only monotonic *within* one color — across
+// the merged W-U range, U's cmc (1) is lower than W's (3), so recursing
+// anyway (the original design) built `SectionPart(ByManaValue, "3", "1")`:
+// a range that reads backwards, because "last" picked up whichever color's
+// run the merge happened to close on, not the true maximum. B never needed
+// merging with a neighbour, so its own cmc split stays sound and shows up.
+pub fn merged_outer_range_stops_recursion_into_next_key_test() {
+  let rows = [
+    row("1", "W", 3.0, 10),
+    row("2", "U", 1.0, 10),
+    row("3", "B", 1.0, 18),
+    row("4", "B", 2.0, 18),
+  ]
+  let sections = sort_section.sections([ByColorIdentity, ByManaValue], rows)
+  assert sections
+    == [
+      Section([SectionPart(ByColorIdentity, "W", "U")], 20),
+      Section(
+        [
+          SectionPart(ByColorIdentity, "B", "B"),
+          SectionPart(ByManaValue, "1", "1"),
+        ],
+        18,
+      ),
+      Section(
+        [
+          SectionPart(ByColorIdentity, "B", "B"),
+          SectionPart(ByManaValue, "2", "2"),
+        ],
+        18,
+      ),
+    ]
+}
+
+// The same hazard one level deeper, and from the *other* unsafe path: a key
+// whose values are heterogeneous but never clear the threshold even all
+// merged together (`split_by_key`'s `[_only_range]` case, distinct from
+// `section_for_range`'s "this range merged several values" case above). Type
+// is homogeneous ("creature" throughout) so it adds no label and safely
+// hands cmc the same rows; cmc then merges its two sparse values into one
+// blob — genuinely heterogeneous, so recursing into name would restart once
+// per cmc value (cmc 1's names, then cmc 2's names again from the top) and
+// could build a backwards range — the exact shape that surfaced against real
+// data (#138's QA pass): `type:creature-creature | name:T-R` on a real
+// "Bulk RG" bucket, with cmc having silently dropped out in between. The fix
+// stops at cmc, unlabeled, rather than let name read the restarted sequence.
+pub fn heterogeneous_unmergeable_key_stops_recursion_into_next_key_test() {
+  let #(card_1, copies_1) = row("1", "R", 1.0, 5)
+  let #(card_2, copies_2) = row("2", "R", 2.0, 5)
+  let rows = [
+    #(attrs.PlannedCard(..card_1, name: "Zebra"), copies_1),
+    #(attrs.PlannedCard(..card_2, name: "Apple"), copies_2),
+  ]
+  let sections = sort_section.sections([ByCardType, ByManaValue, ByName], rows)
+  assert sections == [Section([], 10)]
+}
+
 // collector_number yields no category (sort_spec.category returns None):
 // the label stops there, even with further keys behind it in the DSL.
 pub fn collector_number_stops_the_label_test() {
