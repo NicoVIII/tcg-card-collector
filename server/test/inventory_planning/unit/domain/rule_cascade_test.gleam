@@ -10,6 +10,7 @@ import inventory_planning/domain/rule_cascade.{
   type CascadeRule, type RuleCascade, CascadeRule, RuleCascade,
 }
 import inventory_planning/domain/set_index.{SetMeta}
+import inventory_planning/domain/sort_section
 import inventory_planning/domain/sort_spec
 import shared/domain/card_key
 import shared/domain/finish
@@ -938,4 +939,56 @@ pub fn language_not_eq_claims_every_non_english_copy_test() {
   let bulk = find_bucket(buckets, "Bulk")
   assert bulk.total_quantity == 1
   assert list.all(bulk.cards, fn(a) { a.card.language == language.En })
+}
+
+// A rule bucket's sections come from the rule's own sort_keys, not the
+// bulk spec's (#138).
+pub fn rule_bucket_sections_use_rule_sort_keys_test() {
+  let cards = [
+    card("aaa", "1", "Counterspell", 20, "2000-01-01", "o1", rarity.Common, "U"),
+    card("bbb", "2", "Shock", 20, "2000-01-01", "o2", rarity.Common, "R"),
+  ]
+  let shelf =
+    find_bucket(
+      rule_cascade.project(
+        shelf_cascade([sort_spec.ByColorIdentity]),
+        cards,
+        dict.new(),
+      ),
+      "Shelf",
+    )
+  assert list.map(shelf.sections, fn(s) { s.parts })
+    == [
+      [sort_section.SectionPart(sort_spec.ByColorIdentity, "U", "U")],
+      [sort_section.SectionPart(sort_spec.ByColorIdentity, "R", "R")],
+    ]
+  assert list.map(shelf.sections, fn(s) { s.card_count }) == [20, 20]
+}
+
+// The bulk bucket's sections come from the bulk spec's sort_keys, distinct
+// from any rule's (#138) — here a rule that claims nothing, so every card
+// falls through to bulk.
+pub fn bulk_bucket_sections_use_bulk_sort_keys_test() {
+  let cascade =
+    RuleCascade(
+      rules: [
+        rule("r1", 1, copy_selector.AllCopies, "rarity in (mythic)", "Vault"),
+      ],
+      bulk: bulk_spec.BulkSpec("Bulk", [sort_spec.ByCardType]),
+    )
+  let cards = [
+    card("aaa", "1", "Shock", 20, "2000-01-01", "o1", rarity.Common, "R"),
+    attrs.PlannedCard(
+      ..card("bbb", "2", "Forest", 20, "2000-01-01", "o2", rarity.Common, "G"),
+      card_type: Some(attrs.Land),
+    ),
+  ]
+  let bulk =
+    find_bucket(rule_cascade.project(cascade, cards, dict.new()), "Bulk")
+  assert list.map(bulk.sections, fn(s) { s.parts })
+    == [
+      [sort_section.SectionPart(sort_spec.ByCardType, "land", "land")],
+      [sort_section.SectionPart(sort_spec.ByCardType, "creature", "creature")],
+    ]
+  assert list.map(bulk.sections, fn(s) { s.card_count }) == [20, 20]
 }

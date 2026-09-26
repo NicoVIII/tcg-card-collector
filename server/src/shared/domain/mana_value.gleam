@@ -38,6 +38,13 @@ pub fn to_string(mana_value: ManaValue) -> String {
   float.to_string(mana_value.value)
 }
 
+// The underlying float, for a consumer that needs its own display policy
+// (e.g. planning's cmc_label, which drops the trailing ".0" that to_string
+// always carries) rather than to_string's fixed representation.
+pub fn to_float(mana_value: ManaValue) -> Float {
+  mana_value.value
+}
+
 pub fn compare(left: ManaValue, right: ManaValue) -> Order {
   float.compare(left.value, right.value)
 }

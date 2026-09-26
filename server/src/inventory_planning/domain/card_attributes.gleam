@@ -1,3 +1,5 @@
+import gleam/float
+import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/order.{type Order}
@@ -386,5 +388,16 @@ pub fn compare_language_en_first(a: Language, b: Language) -> Order {
     language.En, _ -> order.Lt
     _, language.En -> order.Gt
     _, _ -> string.compare(language.to_string(a), language.to_string(b))
+  }
+}
+
+// Display policy over a mana value: whole costs read as "3", not the "3.0"
+// mana_value.to_string always carries; a fractional Un-set cost still shows
+// its decimal ("0.5").
+pub fn cmc_label(value: ManaValue) -> String {
+  let raw = mana_value.to_float(value)
+  case raw == float.truncate(raw) |> int.to_float {
+    True -> int.to_string(float.truncate(raw))
+    False -> mana_value.to_string(value)
   }
 }

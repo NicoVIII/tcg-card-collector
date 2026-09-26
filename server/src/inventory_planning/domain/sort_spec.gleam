@@ -1,12 +1,15 @@
 import gleam/int
 import gleam/list
-import gleam/option
+import gleam/option.{type Option, None, Some}
 import gleam/order.{type Order}
+import gleam/result
 import gleam/string
 import inventory_planning/domain/card_attributes.{type PlannedCard}
 import shared/domain/card_key
 import shared/domain/collector_number
+import shared/domain/language
 import shared/domain/rarity
+import shared/domain/release_date
 import shared/domain/set_code
 
 // The vocabulary for ordering cards within a location — shared by the bulk
@@ -132,4 +135,61 @@ fn rarity_rank(card: PlannedCard) -> Int {
   card.rarity
   |> option.map(card_attributes.rarity_rank)
   |> option.unwrap(card_attributes.rarity_rank(rarity.Mythic) + 1)
+}
+
+// The section value a key groups a card under (#138) — always a coarsening of
+// that key's own sort order, so two cards with equal category never sort
+// apart and a key's categories are contiguous under the sort. `None` means
+// the key yields no section at all: collector_number is unique per printing,
+// so grouping by it would never merge anything, and any key placed after it
+// in a DSL never distinguishes surviving ties either — sort_section stops the
+// label there rather than emit a useless one-card-per-value key.
+pub fn category(key: SortKey, card: PlannedCard) -> Option(String) {
+  case key {
+    ByColorIdentity ->
+      Some(
+        card.color_identity
+        |> option.map(card_attributes.color_identity_label)
+        // Ranks equal to real colorless (color_rank's fallback, above) —
+        // the same bucket, so the same label.
+        |> option.unwrap("Colorless"),
+      )
+    ByCardType ->
+      Some(
+        card.card_type
+        |> option.map(card_attributes.card_type_to_string)
+        |> option.unwrap(card_attributes.card_type_to_string(
+          card_attributes.Other,
+        )),
+      )
+    ByName -> Some(string.first(card.name) |> result.unwrap(""))
+    BySetCode -> Some(card_key.set_code_string(card.key))
+    ByCollectorNumber -> None
+    ByRarity ->
+      Some(
+        card.rarity
+        |> option.map(rarity.to_string)
+        |> option.unwrap("unknown"),
+      )
+    ByReleasedAt ->
+      Some(
+        card.released_at
+        |> option.map(release_year)
+        |> option.unwrap("unknown"),
+      )
+    ByManaValue ->
+      Some(
+        card.cmc
+        |> option.map(card_attributes.cmc_label)
+        |> option.unwrap("unknown"),
+      )
+    ByLanguage -> Some(language.to_string(card.language))
+  }
+}
+
+// The calendar year of a release date ("2020-01-01" -> "2020") — coarse
+// enough to merge into a useful section; the exact date never repeats widely
+// enough to group cards.
+fn release_year(date: release_date.ReleaseDate) -> String {
+  string.slice(release_date.to_string(date), at_index: 0, length: 4)
 }
