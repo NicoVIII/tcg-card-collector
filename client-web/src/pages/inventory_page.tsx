@@ -13,6 +13,7 @@ import {
 import { SELECTOR_OPTIONS } from "../data/inventory_planning/options";
 import { randomUUID } from "../lib/uuid";
 import { createMutationError } from "../lib/mutation_error";
+import { createInitialScroll } from "../lib/initial_scroll";
 import {
   filterFromSearchParams,
   searchParamsFromFilter,
@@ -303,6 +304,7 @@ type ProjectionLocationRowProps = {
   offset: number;
   onOffsetChange: (offset: number) => void;
   onToggle: (location_name: string, headerEl: HTMLElement) => void;
+  onPanelShown: (headerEl: HTMLElement) => void;
 };
 
 function ProjectionLocationRow(props: ProjectionLocationRowProps) {
@@ -330,7 +332,7 @@ function ProjectionLocationRow(props: ProjectionLocationRowProps) {
         </button>
       </h4>
       <Show when={props.isOpen && props.cards !== null}>
-        <div id={props.panelId}>
+        <div id={props.panelId} ref={() => headerRef && props.onPanelShown(headerRef)}>
           <ProjectionLocationPanel
             cards={props.cards as ProjectionCard[]}
             offset={props.offset}
@@ -361,6 +363,9 @@ function ProjectionSection() {
   const unknownCount = () => projectionQuery.data?.unknown_count ?? 0;
   const summaries = createMemo(() => projectionSummaries(projectionQuery.data, filter()));
   const openCards = createMemo(() => openLocationCards(projectionQuery.data, openName(), filter()));
+  // Scrolls the location open on page load (reload, Back/Forward, a fresh
+  // `?location=` link) into view exactly once — see initial_scroll.ts (#142).
+  const initialScroll = createInitialScroll();
 
   const search = (next: CardFilter) => {
     setOffset(0);
@@ -371,6 +376,7 @@ function ProjectionSection() {
   // placement_page.tsx's toggleFocus — back-to-close is the phone affordance
   // alongside re-tapping the header.
   const toggle = (location_name: string, headerEl: HTMLElement) => {
+    initialScroll.cancel();
     setOffset(0);
     setSearchParams({ location: openName() === location_name ? undefined : location_name });
     headerEl.scrollIntoView({ block: "nearest" });
@@ -407,6 +413,7 @@ function ProjectionSection() {
               offset={offset()}
               onOffsetChange={setOffset}
               onToggle={toggle}
+              onPanelShown={initialScroll.panelShown}
             />
           )}
         </For>

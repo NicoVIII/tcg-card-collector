@@ -25,6 +25,12 @@ Each release section uses only the subheadings it needs:
   through that row as placed in one action — the middle ground between ticking one card and
   marking a whole location. Undoable as a single batch, like "Mark all placed".
 
+### Fixed
+
+- Placement and Inventory now scroll the open location's header into view once its data has
+  loaded, so a reload, Back/Forward, or a fresh `?location=` link reliably lands on it instead
+  of sometimes staying near the top.
+
 ## v0.2.0 — 2026-09-26
 
 ### Added

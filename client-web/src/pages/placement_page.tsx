@@ -2,6 +2,7 @@ import { For, Show, createMemo, createSignal } from "solid-js";
 import { useSearchParams } from "@solidjs/router";
 import { mapError } from "../data/http/error";
 import { createMutationError } from "../lib/mutation_error";
+import { createInitialScroll } from "../lib/initial_scroll";
 import { useInventoryProjectionQuery } from "../data/inventory_planning/query";
 import {
   useMarkCardsPlacedMutation,
@@ -326,6 +327,7 @@ type LocationRowProps = {
   onMarkAll: (location: FocusedLocation) => void;
   onMarkThrough: (location_name: string, index: number) => void;
   onUndoMarkBatch: (batch: MarkBatch) => void;
+  onPanelShown: (headerEl: HTMLElement) => void;
 };
 
 function LocationRow(props: LocationRowProps) {
@@ -351,7 +353,7 @@ function LocationRow(props: LocationRowProps) {
         </button>
       </h3>
       <Show when={props.isOpen && props.focused !== null}>
-        <div id={props.panelId}>
+        <div id={props.panelId} ref={() => headerRef && props.onPanelShown(headerRef)}>
           <LocationPanel
             location={props.focused as FocusedLocation}
             session={props.session}
@@ -530,11 +532,15 @@ export function PlacementPage() {
   const focused = createMemo<FocusedLocation | null>(() =>
     focusedLocation(guidance(), session(), focusName()),
   );
+  // Scrolls the location open on page load (reload, Back/Forward, a fresh
+  // `?location=` link) into view exactly once — see initial_scroll.ts (#142).
+  const initialScroll = createInitialScroll();
 
   // A history entry per open/close, not a replace: on a phone, back-to-close is
   // the affordance alongside re-tapping the header. Scroll the tapped header back
   // into view in case closing a location above it moved the page under it.
   const toggleFocus = (location_name: string, headerEl: HTMLElement) => {
+    initialScroll.cancel();
     setLastMarkBatch(null);
     setLastResortAction(null);
     setSearchParams({ location: focusName() === location_name ? undefined : location_name });
@@ -736,6 +742,7 @@ export function PlacementPage() {
               onMarkAll={markAll}
               onMarkThrough={markThrough}
               onUndoMarkBatch={undoMarkBatch}
+              onPanelShown={initialScroll.panelShown}
             />
           )}
         </For>
