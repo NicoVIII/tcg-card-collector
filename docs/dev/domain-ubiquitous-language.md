@@ -147,7 +147,10 @@ Core terms:
   location's own sort keys (a rule's, or the bulk spec's) next to the sort itself so a label can
   never drift from the physical order (#138). Keys are tried outermost-first: a key's equal-
   category runs merge into ranges of at least `sort_section.min_section_copies` physical copies
-  (two 9-pocket binder pages), so every labelled range clears that floor. Whether a *further* key
+  (two 9-pocket binder pages) — but only among neighbouring runs that are themselves too small to
+  clear that floor alone, so a tiny run never blocks a large neighbour's own subdivision (#144); an
+  undersized run with no undersized neighbour to merge with stands as its own labelled section below
+  the floor. Whether a *further* key
   gets to subdivide a range is a separate, narrower question than whether the current key showed a
   label: rows are sorted by the full key tuple, so a nested key is only monotonic *within one value*
   of the key above it — recursing where that key's rows hold more than one value would let the

@@ -74,6 +74,23 @@ fn card_type_row(
   )
 }
 
+fn card_type_cmc_row(
+  collector_number: String,
+  colors: String,
+  card_type: attrs.CardType,
+  cmc_value: Float,
+  copies: Int,
+) -> #(PlannedCard, Int) {
+  #(
+    attrs.PlannedCard(
+      ..base_card(collector_number, colors),
+      card_type: Some(card_type),
+      cmc: cmc(cmc_value),
+    ),
+    copies,
+  )
+}
+
 pub fn no_keys_yields_one_undivided_section_test() {
   let rows = [row("1", "W", 1.0, 20)]
   assert sort_section.sections([], rows) == [Section([], 20)]
@@ -257,6 +274,78 @@ pub fn collector_number_stops_the_label_test() {
     == [
       [SectionPart(ByColorIdentity, "U", "U")],
       [SectionPart(ByColorIdentity, "R", "R")],
+    ]
+}
+
+// #144 regression: a run that clears the threshold alone (creature, 40) must
+// never be merged away by a tiny neighbour (land, 4) — land stays its own
+// undersized section, and creature keeps recursing into cmc, unlike before
+// the fix where land's 4 copies would have dragged creature into one
+// "land-creature" range that could no longer subdivide.
+pub fn self_sufficient_run_next_to_tiny_run_still_subdivides_test() {
+  let rows = [
+    card_type_cmc_row("1", "W", attrs.Land, 0.0, 4),
+    card_type_cmc_row("2", "W", attrs.Creature, 1.0, 20),
+    card_type_cmc_row("3", "W", attrs.Creature, 2.0, 20),
+  ]
+  let sections = sort_section.sections([ByCardType, ByManaValue], rows)
+  assert list.map(sections, fn(s) { s.parts })
+    == [
+      [SectionPart(ByCardType, "land", "land")],
+      [
+        SectionPart(ByCardType, "creature", "creature"),
+        SectionPart(ByManaValue, "1", "1"),
+      ],
+      [
+        SectionPart(ByCardType, "creature", "creature"),
+        SectionPart(ByManaValue, "2", "2"),
+      ],
+    ]
+  assert list.map(sections, fn(s) { s.card_count }) == [4, 20, 20]
+}
+
+// Three undersized runs (6 each) next to each other merge into one 18-copy
+// range, same as before the fix. A self-sufficient run (20) right after them
+// is never pulled into that merge. A trailing undersized run (5) with no
+// undersized neighbour left to join stands alone, below the floor — the
+// relaxation #144 accepts.
+pub fn consecutive_undersized_runs_merge_with_each_other_only_test() {
+  let rows = [
+    row("1", "R", 1.0, 6),
+    row("2", "R", 2.0, 6),
+    row("3", "R", 3.0, 6),
+    row("4", "R", 4.0, 20),
+    row("5", "R", 5.0, 5),
+  ]
+  let sections = sort_section.sections([ByManaValue], rows)
+  assert list.map(sections, fn(s) { s.parts })
+    == [
+      [SectionPart(ByManaValue, "1", "3")],
+      [SectionPart(ByManaValue, "4", "4")],
+      [SectionPart(ByManaValue, "5", "5")],
+    ]
+  assert list.map(sections, fn(s) { s.card_count }) == [18, 20, 5]
+}
+
+// An undersized trailing run (5) with an undersized group right before it
+// that already cleared the floor (10+10=20) joins that group rather than
+// standing alone — settles #144's open question by reusing the existing
+// join-the-prior-range behaviour for the whole undersized stretch, not just
+// a single trailing run. A self-sufficient run (20) after the stretch keeps
+// this from collapsing into the single-blob "no label" case, so the merged
+// "1-3" range's label is actually visible.
+pub fn undersized_tail_joins_its_undersized_stretch_test() {
+  let rows = [
+    row("1", "R", 1.0, 10),
+    row("2", "R", 2.0, 10),
+    row("3", "R", 3.0, 5),
+    row("4", "R", 4.0, 20),
+  ]
+  let sections = sort_section.sections([ByManaValue], rows)
+  assert sections
+    == [
+      Section([SectionPart(ByManaValue, "1", "3")], 25),
+      Section([SectionPart(ByManaValue, "4", "4")], 20),
     ]
 }
 
