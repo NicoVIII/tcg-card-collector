@@ -56,6 +56,7 @@ pub fn execute(
     list.map(planned, fn(c) { card_key.set_code_string(c.key) })
     |> list.unique
   use sets <- result.try(fetch_set_index(ports.set_metadata, set_codes))
+  let planned = set_index.stamp_set_release(sets, planned)
 
   let locations =
     rule_cascade.project(cascade, planned, sets)
@@ -193,6 +194,7 @@ fn plan_card(
         finish: copy_key.finish(key),
         language: copy_key.language(key),
         released_at: None,
+        set_released_at: None,
         oracle_id: None,
         rarity: None,
         color_identity: None,
@@ -209,6 +211,7 @@ fn plan_card(
         finish: copy_key.finish(key),
         language: copy_key.language(key),
         released_at: attrs.released_at,
+        set_released_at: None,
         oracle_id: attrs.oracle_id,
         rarity: Some(attrs.rarity),
         color_identity: Some(attrs.color_identity),

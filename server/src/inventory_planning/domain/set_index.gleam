@@ -1,5 +1,9 @@
 import gleam/dict.{type Dict}
+import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/result
+import inventory_planning/domain/card_attributes.{type PlannedCard}
+import shared/domain/card_key
 import shared/domain/release_date.{type ReleaseDate}
 
 // The catalog facts set-family resolution needs about one set: its release date
@@ -21,6 +25,58 @@ pub fn release_date(index: SetIndex, code: String) -> Option(ReleaseDate) {
     Ok(meta) -> meta.released_at
     Error(_) -> None
   }
+}
+
+// A set's effective release date: the catalog entry for `code`, else the
+// earliest of the given card-level dates (card-level released_at can vary
+// within a set — promos, Secret Lair drops, The List — so this is where
+// bucket_set_date and stamp_set_release below share their one fallback
+// policy), else None (sorts first, same posture as released_at's unknowns).
+pub fn release_date_or_earliest(
+  index: SetIndex,
+  code: String,
+  card_dates: List(Option(ReleaseDate)),
+) -> Option(ReleaseDate) {
+  case release_date(index, code) {
+    Some(date) -> Some(date)
+    None ->
+      card_dates
+      |> list.filter_map(option.to_result(_, Nil))
+      |> list.sort(release_date.compare)
+      |> list.first
+      |> option.from_result
+  }
+}
+
+// Stamps every card with its set's effective release date (#145), resolved
+// once per set so a set with card-level date variance never splits under
+// set_released_at. Order of `cards` is preserved.
+pub fn stamp_set_release(
+  index: SetIndex,
+  cards: List(PlannedCard),
+) -> List(PlannedCard) {
+  let dates_by_set = resolved_dates_by_set(index, cards)
+  list.map(cards, fn(card) {
+    let code = card_key.set_code_string(card.key)
+    let date = dict.get(dates_by_set, code) |> result.unwrap(None)
+    card_attributes.PlannedCard(..card, set_released_at: date)
+  })
+}
+
+fn resolved_dates_by_set(
+  index: SetIndex,
+  cards: List(PlannedCard),
+) -> Dict(String, Option(ReleaseDate)) {
+  let card_dates_by_set =
+    list.fold(cards, dict.new(), fn(acc, card) {
+      let code = card_key.set_code_string(card.key)
+      dict.upsert(acc, code, fn(existing) {
+        [card.released_at, ..option.unwrap(existing, [])]
+      })
+    })
+  dict.map_values(card_dates_by_set, fn(code, card_dates) {
+    release_date_or_earliest(index, code, card_dates)
+  })
 }
 
 // Bounds the parent walk; a corrupt parent chain (e.g. a↔b) terminates

@@ -24,6 +24,10 @@ Each release section uses only the subheadings it needs:
 - Placement rows get an "Up to here" button, marking everything from the top of the location
   through that row as placed in one action — the middle ground between ticking one card and
   marking a whole location. Undoable as a single batch, like "Mark all placed".
+- New sort key `set_released_at` orders cards by the set's own release date rather than the
+  card's, so a location sorted by `set_released_at,collector_number` gets sections labelled by
+  set (e.g. "Set DOM") instead of by year, even for a set whose cards carry different card-level
+  dates (Secret Lair drops, promos).
 
 ### Fixed
 

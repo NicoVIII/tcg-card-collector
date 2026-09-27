@@ -570,9 +570,12 @@ export function InventoryPage() {
         Sort keys are a comma-separated list ordering the cards within each location:{" "}
         <code>color_identity</code>, <code>type</code>, <code>name</code>, <code>set_code</code>,{" "}
         <code>collector_number</code>, <code>rarity</code>, <code>released_at</code>,{" "}
-        <code>cmc</code>, <code>language</code> (English first, then by code). Empty keeps the
-        canonical order described above. Sort keys only order what a location shows — which copy a
-        rule claims is the selector's business.
+        <code>set_released_at</code>, <code>cmc</code>, <code>language</code> (English first, then
+        by code). Empty keeps the canonical order described above. Sort keys only order what a
+        location shows — which copy a rule claims is the selector's business.{" "}
+        <code>set_released_at</code> orders by the set's own release date rather than the card's, so
+        a set with card-level date variance (Secret Lair drops, promos) still sorts and sections as
+        one contiguous set instead of splitting by year.
       </p>
       <Show when={mutationError.messageFor("reorder") !== null}>
         <p role="alert">{mutationError.messageFor("reorder")}</p>
@@ -637,7 +640,8 @@ export function InventoryPage() {
       <p class="hint">
         Comma-separated sort keys ordering the leftover pile: <code>color_identity</code>,{" "}
         <code>type</code>, <code>name</code>, <code>set_code</code>, <code>collector_number</code>,{" "}
-        <code>rarity</code>, <code>released_at</code>, <code>cmc</code>, <code>language</code>.
+        <code>rarity</code>, <code>released_at</code>, <code>set_released_at</code>,{" "}
+        <code>cmc</code>, <code>language</code>.
       </p>
       <ProjectionSection />
     </section>

@@ -79,6 +79,7 @@ enum SortKey {
   released_at = 7;
   cmc = 8;
   language = 9;
+  set_released_at = 10;
 }
 
 // One sort key's category value for a section (#138): `first == last` means

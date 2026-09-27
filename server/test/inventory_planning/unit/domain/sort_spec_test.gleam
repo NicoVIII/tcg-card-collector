@@ -4,7 +4,7 @@ import gleam/order
 import inventory_planning/domain/card_attributes.{type PlannedCard} as attrs
 import inventory_planning/domain/sort_spec.{
   ByCardType, ByCollectorNumber, ByColorIdentity, ByLanguage, ByManaValue,
-  ByName, ByRarity, ByReleasedAt, BySetCode,
+  ByName, ByRarity, ByReleasedAt, BySetCode, BySetReleasedAt,
 }
 import shared/domain/card_key
 import shared/domain/finish
@@ -32,6 +32,7 @@ fn card(
     finish: finish.Nonfoil,
     language: language.En,
     released_at: Some(date),
+    set_released_at: None,
     oracle_id: Some(oracle),
     rarity: Some(rarity.Common),
     color_identity: Some(color_identity),
@@ -54,6 +55,7 @@ fn unknown_card(collector_number: String) -> PlannedCard {
     finish: finish.Nonfoil,
     language: language.En,
     released_at: None,
+    set_released_at: None,
     oracle_id: None,
     rarity: None,
     color_identity: None,
@@ -61,6 +63,23 @@ fn unknown_card(collector_number: String) -> PlannedCard {
     supertypes: None,
     cmc: None,
     is_token: None,
+  )
+}
+
+// A card in a given set, carrying a given set_released_at (the value
+// set_index.stamp_set_release would have filled) — the shape BySetReleasedAt's
+// tests need, distinct from `card`/`unknown_card` above which are fixed to one
+// set.
+fn card_in_set(
+  set_code: String,
+  collector_number: String,
+  set_released_at: option.Option(release_date.ReleaseDate),
+) -> PlannedCard {
+  let assert Ok(key) = card_key.from_user_input(set_code:, collector_number:)
+  attrs.PlannedCard(
+    ..card(collector_number, "R", attrs.Creature),
+    key:,
+    set_released_at:,
   )
 }
 
@@ -73,6 +92,10 @@ pub fn parses_sort_keys_test() {
 pub fn parses_new_sort_keys_test() {
   assert sort_spec.parse_sort_keys("collector_number,rarity,released_at,cmc")
     == Ok([ByCollectorNumber, ByRarity, ByReleasedAt, ByManaValue])
+}
+
+pub fn parses_set_released_at_sort_key_test() {
+  assert sort_spec.parse_sort_keys("set_released_at") == Ok([BySetReleasedAt])
 }
 
 pub fn parses_language_sort_key_test() {
@@ -88,6 +111,7 @@ pub fn sort_keys_round_trip_test() {
     ByCollectorNumber,
     ByRarity,
     ByReleasedAt,
+    BySetReleasedAt,
     ByManaValue,
     ByLanguage,
   ]
@@ -208,6 +232,55 @@ pub fn released_at_ascending_unknown_first_test() {
   assert list.map(sorted, fn(c) { c.name }) == ["unknown", "old", "new"]
 }
 
+// set_released_at orders by the *set's* date, not the card's own — sets sort
+// chronologically even when their codes disagree with that order (#145).
+pub fn set_released_at_orders_by_set_date_not_code_test() {
+  let assert Ok(early) = release_date.parse("2000-01-01")
+  let assert Ok(late) = release_date.parse("2010-01-01")
+  let newer_code_older_set = card_in_set("aaa", "1", Some(late))
+  let older_code_newer_set = card_in_set("zzz", "1", Some(early))
+  let cards = [newer_code_older_set, older_code_newer_set]
+  let sorted =
+    list.sort(cards, fn(x, y) {
+      sort_spec.compare_cards([BySetReleasedAt], x, y)
+    })
+  assert list.map(sorted, fn(c) { card_key.set_code_string(c.key) })
+    == ["zzz", "aaa"]
+}
+
+// Two sets released the same day tie-break on set code, so they never
+// interleave card-by-card.
+pub fn set_released_at_same_date_breaks_tie_on_set_code_test() {
+  let assert Ok(date) = release_date.parse("2000-01-01")
+  let cards = [
+    card_in_set("bbb", "1", Some(date)),
+    card_in_set("aaa", "1", Some(date)),
+  ]
+  let sorted =
+    list.sort(cards, fn(x, y) {
+      sort_spec.compare_cards([BySetReleasedAt], x, y)
+    })
+  assert list.map(sorted, fn(c) { card_key.set_code_string(c.key) })
+    == ["aaa", "bbb"]
+}
+
+// Every card of one set shares the same set_released_at (set_index.
+// stamp_set_release resolves it once per set), so BySetReleasedAt alone
+// compares them equal and a later key decides.
+pub fn set_released_at_ties_within_one_set_let_next_key_decide_test() {
+  let assert Ok(date) = release_date.parse("2000-01-01")
+  let cards = [
+    card_in_set("aaa", "2", Some(date)),
+    card_in_set("aaa", "1", Some(date)),
+  ]
+  let sorted =
+    list.sort(cards, fn(x, y) {
+      sort_spec.compare_cards([BySetReleasedAt, ByCollectorNumber], x, y)
+    })
+  assert list.map(sorted, fn(c) { card_key.collector_number_string(c.key) })
+    == ["1", "2"]
+}
+
 // cmc compares ascending; an unknown mana value sorts last (the opposite of
 // released_at above), and a real 0 (a land) sorts before every known cost,
 // never confused with unknown.
@@ -304,6 +377,18 @@ pub fn category_released_at_is_year_test() {
     attrs.PlannedCard(..card("c", "R", attrs.Creature), released_at: Some(date))
   assert sort_spec.category(ByReleasedAt, old) == Some("1999")
   assert sort_spec.category(ByReleasedAt, unknown_card("x")) == Some("unknown")
+}
+
+// Category groups by set code, same as BySetCode — every card of a set shares
+// one set_released_at, so grouping on the set's date and grouping on its code
+// always agree (#145).
+pub fn category_set_released_at_is_set_code_test() {
+  let assert Ok(date) = release_date.parse("2000-01-01")
+  assert sort_spec.category(
+      BySetReleasedAt,
+      card_in_set("dom", "1", Some(date)),
+    )
+    == Some("dom")
 }
 
 pub fn category_cmc_drops_trailing_zero_but_keeps_real_fractions_test() {

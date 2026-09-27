@@ -252,6 +252,7 @@ const SECTION_KEY_LABELS: Record<SortKey, string> = {
   collector_number: "",
   rarity: "Rarity",
   released_at: "Year",
+  set_released_at: "Set",
   cmc: "CMC",
   language: "Language",
 };

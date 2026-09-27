@@ -74,6 +74,7 @@ fn query_sort_key_from_string(
     "collector_number" -> inventory_planning_queries.SortKeyCollectorNumber
     "rarity" -> inventory_planning_queries.SortKeyRarity
     "released_at" -> inventory_planning_queries.SortKeyReleasedAt
+    "set_released_at" -> inventory_planning_queries.SortKeySetReleasedAt
     "cmc" -> inventory_planning_queries.SortKeyCmc
     "language" -> inventory_planning_queries.SortKeyLanguage
     _ -> inventory_planning_queries.sort_key_unknown

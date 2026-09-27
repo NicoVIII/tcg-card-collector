@@ -68,6 +68,7 @@ export type SortKey =
   | "collector_number"
   | "rarity"
   | "released_at"
+  | "set_released_at"
   | "cmc"
   | "language";
 
@@ -144,6 +145,8 @@ function fromWireSortKeyKind(kind: string): SortKey {
       return "rarity";
     case "RELEASED_AT":
       return "released_at";
+    case "SET_RELEASED_AT":
+      return "set_released_at";
     case "CMC":
       return "cmc";
     case "LANGUAGE":

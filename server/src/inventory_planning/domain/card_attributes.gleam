@@ -339,6 +339,11 @@ pub type PlannedCard {
     finish: Finish,
     language: Language,
     released_at: Option(ReleaseDate),
+    // The card's *set's* effective release date (#145) — shared by every
+    // card of the set, filled after catalog lookup by
+    // set_index.stamp_set_release, not by plan_card. Starts None here; never
+    // read before that stamping runs.
+    set_released_at: Option(ReleaseDate),
     oracle_id: Option(OracleId),
     rarity: Option(Rarity),
     color_identity: Option(ColorIdentity),

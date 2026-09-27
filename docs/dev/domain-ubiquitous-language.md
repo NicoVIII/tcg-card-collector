@@ -140,6 +140,12 @@ Core terms:
   alphabetically. Within a `{set_family}` binder, root-set cards come first and child-set cards after
   ("tokens at the back"), children ordered by their own release date then set code, and the rule's
   sort keys break ties within each group.
+- `set_released_at` (sort key): orders and categorises by the *set's* release date rather than
+  the card's own — resolved once per set (`set_index.stamp_set_release`), via the same
+  catalog-date-first-then-earliest-card-date fallback as `{set_code}`'s fan-out ordering above.
+  Every card of a set therefore shares one category value (its set code), so a set with
+  card-level date variance (Secret Lair drops, promos) still forms a single contiguous Section
+  instead of splitting by year the way `released_at` does (#145).
 - BulkSpec: the single leftover-remainder location plus the sort-key list ordering its pile.
 - InventoryProjection: the computed placement — locations in cascade order, each with its cards and
   total, plus a count of collection keys unknown to the catalog.
@@ -163,7 +169,9 @@ Core terms:
   a card to its category value (a coarsening of that key's own sort order, so equal-category cards
   never sort apart); collector_number yields none, since grouping by a value unique per printing
   would never merge anything, and any key after it in a DSL is equally powerless to distinguish the
-  ties it leaves. `ProjectionLocation.sections` partitions its `cards` in cascade order, one section
+  ties it leaves; `set_released_at` categorises by set code (see above), the same as `set_code`, so
+  a set is always one contiguous run regardless of card-level date variance within it.
+  `ProjectionLocation.sections` partitions its `cards` in cascade order, one section
   covering every card exactly once.
 - PlacedCard: a ledger row recording that some copies of a kind of copy were physically placed in a
   location (`(CopyKey, location) → quantity`). A location holding several kinds of copy of one

@@ -5,6 +5,7 @@ import inventory_planning/domain/card_attributes.{type PlannedCard} as attrs
 import inventory_planning/domain/sort_section.{Section, SectionPart}
 import inventory_planning/domain/sort_spec.{
   ByCardType, ByCollectorNumber, ByColorIdentity, ByManaValue, ByName,
+  BySetReleasedAt,
 }
 import shared/domain/card_key
 import shared/domain/finish
@@ -12,6 +13,7 @@ import shared/domain/language
 import shared/domain/mana_value
 import shared/domain/oracle_id
 import shared/domain/rarity
+import shared/domain/release_date
 
 fn base_card(collector_number: String, colors: String) -> PlannedCard {
   let assert Ok(key) =
@@ -25,6 +27,7 @@ fn base_card(collector_number: String, colors: String) -> PlannedCard {
     finish: finish.Nonfoil,
     language: language.En,
     released_at: None,
+    set_released_at: None,
     oracle_id: Some(oracle),
     rarity: Some(rarity.Common),
     color_identity: Some(color_identity),
@@ -54,6 +57,26 @@ fn row(
     attrs.PlannedCard(
       ..base_card(collector_number, colors),
       cmc: cmc(cmc_value),
+    ),
+    copies,
+  )
+}
+
+// A row in a given set, carrying a given set_released_at (what
+// set_index.stamp_set_release would have filled) — collector_number stays
+// distinct within the set so each row is its own printing.
+fn set_row(
+  set_code: String,
+  collector_number: String,
+  set_released_at: option.Option(release_date.ReleaseDate),
+  copies: Int,
+) -> #(PlannedCard, Int) {
+  let assert Ok(key) = card_key.from_user_input(set_code:, collector_number:)
+  #(
+    attrs.PlannedCard(
+      ..base_card(collector_number, "R"),
+      key:,
+      set_released_at:,
     ),
     copies,
   )
@@ -347,6 +370,26 @@ pub fn undersized_tail_joins_its_undersized_stretch_test() {
       Section([SectionPart(ByManaValue, "1", "3")], 25),
       Section([SectionPart(ByManaValue, "4", "4")], 20),
     ]
+}
+
+// A set whose cards carry different card-level dates (promos, Secret Lair
+// drops) still forms one contiguous section under set_released_at, because
+// every card of a set shares one resolved value (set_index.stamp_set_release)
+// — unlike ByReleasedAt, which would split it by year (#145).
+pub fn set_released_at_section_survives_card_level_date_variance_test() {
+  let assert Ok(date) = release_date.parse("2018-10-05")
+  let rows = [
+    set_row("grn", "1", Some(date), 12),
+    set_row("grn", "2", Some(date), 12),
+    set_row("dom", "1", Some(date), 20),
+  ]
+  let sections = sort_section.sections([BySetReleasedAt], rows)
+  assert list.map(sections, fn(s) { s.parts })
+    == [
+      [SectionPart(BySetReleasedAt, "grn", "grn")],
+      [SectionPart(BySetReleasedAt, "dom", "dom")],
+    ]
+  assert list.map(sections, fn(s) { s.card_count }) == [24, 20]
 }
 
 // Every section's card_count sums to the input's total copies, regardless

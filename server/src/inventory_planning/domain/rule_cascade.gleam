@@ -237,23 +237,18 @@ type FannedBucket {
 
 // Bucket set date: prefer the catalog entry for the bucket's sort_code (so a
 // {set_family} bucket dates off its root even when no root-set card is owned);
-// fall back to the minimum known released_at among the bucket's cards
-// (card-level dates can vary within a set, e.g. promos), then to None (sorts
-// first).
+// else set_index's shared fallback (minimum known card-level released_at,
+// then None).
 fn bucket_set_date(
   sort_code: String,
   assignments: List(Assignment),
   sets: SetIndex,
 ) -> Option(ReleaseDate) {
-  case set_index.release_date(sets, sort_code) {
-    None ->
-      assignments
-      |> list.filter_map(fn(a) { option.to_result(a.card.released_at, Nil) })
-      |> list.sort(release_date.compare)
-      |> list.first
-      |> option.from_result
-    Some(date) -> Some(date)
-  }
+  set_index.release_date_or_earliest(
+    sets,
+    sort_code,
+    list.map(assignments, fn(a) { a.card.released_at }),
+  )
 }
 
 // The code a bucket sorts under: a {set_family} template collapses child sets

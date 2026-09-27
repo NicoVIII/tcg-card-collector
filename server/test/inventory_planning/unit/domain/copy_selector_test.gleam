@@ -21,6 +21,7 @@ fn card(oracle: option.Option(String)) -> PlannedCard {
     finish: finish.Nonfoil,
     language: language.En,
     released_at: Some(date),
+    set_released_at: None,
     oracle_id: option.then(oracle, fn(raw) {
       option.from_result(oracle_id.new(raw))
     }),

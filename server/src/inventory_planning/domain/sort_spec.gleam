@@ -23,6 +23,7 @@ pub type SortKey {
   ByCollectorNumber
   ByRarity
   ByReleasedAt
+  BySetReleasedAt
   ByManaValue
   ByLanguage
 }
@@ -36,6 +37,7 @@ fn parse_sort_key(raw: String) -> Result(SortKey, Nil) {
     "collector_number" -> Ok(ByCollectorNumber)
     "rarity" -> Ok(ByRarity)
     "released_at" -> Ok(ByReleasedAt)
+    "set_released_at" -> Ok(BySetReleasedAt)
     "cmc" -> Ok(ByManaValue)
     "language" -> Ok(ByLanguage)
     _ -> Error(Nil)
@@ -54,6 +56,7 @@ pub fn sort_key_to_string(key: SortKey) -> String {
     ByCollectorNumber -> "collector_number"
     ByRarity -> "rarity"
     ByReleasedAt -> "released_at"
+    BySetReleasedAt -> "set_released_at"
     ByManaValue -> "cmc"
     ByLanguage -> "language"
   }
@@ -112,6 +115,17 @@ fn compare_by(key: SortKey, left: PlannedCard, right: PlannedCard) -> Order {
       card_attributes.compare_release_earliest_first(
         left.released_at,
         right.released_at,
+      )
+    BySetReleasedAt ->
+      order.break_tie(
+        card_attributes.compare_release_earliest_first(
+          left.set_released_at,
+          right.set_released_at,
+        ),
+        set_code.compare(
+          card_key.set_code(left.key),
+          card_key.set_code(right.key),
+        ),
       )
     ByManaValue -> card_attributes.compare_cmc_lowest_first(left.cmc, right.cmc)
     ByLanguage ->
@@ -180,6 +194,11 @@ pub fn category(key: SortKey, card: PlannedCard) -> Option(String) {
         |> option.map(release_year)
         |> option.unwrap("unknown"),
       )
+    // Every card of a set shares one set_released_at value (set_index.
+    // stamp_set_release resolves it once per set), so grouping by set code
+    // here — same category as BySetCode — always yields a single contiguous
+    // run per set (#145), unlike ByReleasedAt's per-card date.
+    BySetReleasedAt -> Some(card_key.set_code_string(card.key))
     ByManaValue ->
       Some(
         card.cmc
