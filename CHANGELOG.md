@@ -28,6 +28,10 @@ Each release section uses only the subheadings it needs:
   card's, so a location sorted by `set_released_at,collector_number` gets sections labelled by
   set (e.g. "Set DOM") instead of by year, even for a set whose cards carry different card-level
   dates (Secret Lair drops, promos).
+- Placement rows for a card that already has copies at that location now say so ("Add to the 3
+  copies already here") instead of anchoring the hint on cascade neighbours, and a neighbour
+  hint now names the printing (`Lightning Bolt (m10 146)`), not just the card, so it can't point
+  at the wrong one of several printings in a row.
 
 ### Fixed
 

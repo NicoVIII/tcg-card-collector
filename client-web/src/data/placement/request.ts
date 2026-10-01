@@ -57,6 +57,11 @@ export type PlacementCard = {
   finish: Finish;
   language: Language;
   to_place_quantity: number;
+  // The ledger count for this exact copy identity at this location (ADR
+  // 0010) — what the hint anchors on ahead of the cascade neighbours, since
+  // it's the most specific thing the user can already see. Not reduced by
+  // session ticks; a tick needs no special handling here (#137).
+  placed_quantity: number;
   before: PlacementNeighbor[];
   after: PlacementNeighbor[];
   // The projected section this card falls in (#138) — the same object

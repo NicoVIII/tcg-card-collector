@@ -18,6 +18,7 @@ function card(collector_number: string, overrides: Partial<PlacementCard> = {}):
     finish: "nonfoil",
     language: "en",
     to_place_quantity: 1,
+    placed_quantity: 0,
     before: [],
     after: [],
     section: { parts: [], card_count: 1 },

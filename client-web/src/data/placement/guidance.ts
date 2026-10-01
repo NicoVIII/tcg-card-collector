@@ -100,10 +100,8 @@ function buildLocation(
   const placementCards: PlacementCard[] = [];
 
   cards.forEach((card, index) => {
-    const toPlace = Math.max(
-      0,
-      card.quantity - placedAtQty(placedAt, card, location.location_name),
-    );
+    const placedQty = placedAtQty(placedAt, card, location.location_name);
+    const toPlace = Math.max(0, card.quantity - placedQty);
     if (toPlace <= 0) {
       return;
     }
@@ -114,6 +112,7 @@ function buildLocation(
       finish: card.finish,
       language: card.language,
       to_place_quantity: toPlace,
+      placed_quantity: placedQty,
       // The single card immediately before and after in cascade order: a card's
       // slot sits directly between these, so the anchor must be one of them —
       // reaching past an unplaced neighbour to a farther card points at the

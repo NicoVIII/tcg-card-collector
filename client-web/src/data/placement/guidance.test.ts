@@ -86,6 +86,7 @@ describe("buildGuidance", () => {
               finish: "nonfoil",
               language: "en",
               to_place_quantity: 1,
+              placed_quantity: 0,
               before: [
                 {
                   name: "Card 146",
@@ -115,6 +116,7 @@ describe("buildGuidance", () => {
               finish: "nonfoil",
               language: "en",
               to_place_quantity: 1,
+              placed_quantity: 0,
               before: [
                 {
                   name: "Card 148",
@@ -144,6 +146,7 @@ describe("buildGuidance", () => {
               finish: "nonfoil",
               language: "en",
               to_place_quantity: 1,
+              placed_quantity: 0,
               before: [
                 {
                   name: "Card 149",
@@ -161,6 +164,20 @@ describe("buildGuidance", () => {
         },
       ],
     });
+  });
+
+  // The count the hint anchors on (#137): how many copies of this exact card
+  // the ledger already holds at this location, kept even once it's used to
+  // derive to_place_quantity.
+  it("carries the placed count through onto the row, for a card still partly unplaced", () => {
+    const proj = projection([location("Binder", [card("161", 5)])]);
+    const ledger = [placed("161", "Binder", 3)];
+
+    const guidance = buildGuidance(proj, ledger);
+    const [remaining] = guidance.locations[0]!.cards;
+
+    expect(remaining!.to_place_quantity).toBe(2);
+    expect(remaining!.placed_quantity).toBe(3);
   });
 
   it("drops fully-placed locations and clamps over-placement at zero", () => {
@@ -232,5 +249,6 @@ describe("buildGuidance", () => {
     expect(guidance.locations).toHaveLength(1);
     const [remaining] = guidance.locations[0]!.cards;
     expect(remaining!.finish).toBe("nonfoil");
+    expect(remaining!.placed_quantity).toBe(0);
   });
 });

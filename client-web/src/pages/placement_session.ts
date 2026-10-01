@@ -170,8 +170,24 @@ export function mergeLocationCards(
   return merged;
 }
 
+// Names the printing, not just the card: a bare card name can't tell apart
+// several printings of the same card sitting in a row, and "Goes right after
+// Lightning Bolt" has to point at one of them unambiguously.
 function neighborLabel(neighbor: PlacementNeighbor): string {
-  return neighbor.name === "" ? `${neighbor.set_code} ${neighbor.collector_number}` : neighbor.name;
+  const key = `${neighbor.set_code} ${neighbor.collector_number}`;
+  return neighbor.name === "" ? key : `${neighbor.name} (${key})`;
+}
+
+// A row for a card that already has copies sitting at this location: the
+// strongest anchor available, since it's not a neighbour to infer a slot
+// from but the exact pile the new copies join.
+function placedCopiesLabel(placed_quantity: number): string | null {
+  if (placed_quantity <= 0) {
+    return null;
+  }
+  return placed_quantity === 1
+    ? "Add to the copy already here."
+    : `Add to the ${placed_quantity} copies already here.`;
 }
 
 function placedAnchorLabel(
@@ -222,12 +238,15 @@ function unplacedAnchorLabel(
   return "Only card to place here.";
 }
 
-// A short human hint for where a card goes, anchored on its immediate cascade
-// neighbours. The slot sits directly between the card before and the card after,
-// so we anchor only on those — reaching past an unplaced neighbour to a farther
+// A short human hint for where a card goes. Copies of this exact card already
+// at the location (ADR 0010 identity) are the strongest anchor — they're not
+// inferred from neighbours, they're the pile the user can see and add to —
+// so they win over the cascade-neighbour anchors below. Failing that, the
+// slot sits directly between the card before and the card after, so we
+// anchor only on those — reaching past an unplaced neighbour to a farther
 // placed card would point at the wrong slot and give every card in a run of
-// consecutive unplaced cards the same hint. A placed neighbour is preferred as
-// the anchor when present, since it is physically there to find.
+// consecutive unplaced cards the same hint. A placed neighbour is preferred
+// as the anchor when present, since it is physically there to find.
 export function betweenLabel(
   session: PlacementSession,
   location_name: string,
@@ -236,7 +255,9 @@ export function betweenLabel(
   const before = card.before[0];
   const after = card.after[0];
   return (
-    placedAnchorLabel(session, location_name, before, after) ?? unplacedAnchorLabel(before, after)
+    placedCopiesLabel(card.placed_quantity) ??
+    placedAnchorLabel(session, location_name, before, after) ??
+    unplacedAnchorLabel(before, after)
   );
 }
 

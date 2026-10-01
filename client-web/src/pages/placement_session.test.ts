@@ -42,6 +42,7 @@ function card(collector_number: string, overrides: Partial<PlacementCard> = {}):
     finish: "nonfoil",
     language: "en",
     to_place_quantity: 1,
+    placed_quantity: 0,
     before: [],
     after: [],
     section: { parts: [], card_count: 1 },
@@ -295,7 +296,9 @@ describe("betweenLabel", () => {
       after: [neighbor("Right", "4", true)],
     });
 
-    expect(betweenLabel(emptySession(), "Bulk", c)).toBe("Goes between Near and Right.");
+    expect(betweenLabel(emptySession(), "Bulk", c)).toBe(
+      "Goes between Near (lea 2) and Right (lea 4).",
+    );
   });
 
   it("gives consecutive unplaced cards after a placed card distinct hints", () => {
@@ -310,9 +313,9 @@ describe("betweenLabel", () => {
       after: [],
     });
 
-    expect(betweenLabel(emptySession(), "Bulk", first)).toBe("Goes right after Placed.");
+    expect(betweenLabel(emptySession(), "Bulk", first)).toBe("Goes right after Placed (lea 2).");
     expect(betweenLabel(emptySession(), "Bulk", second)).toBe(
-      "Goes after Card 3 — also still to place.",
+      "Goes after Card 3 (lea 3) — also still to place.",
     );
     expect(betweenLabel(emptySession(), "Bulk", first)).not.toBe(
       betweenLabel(emptySession(), "Bulk", second),
@@ -325,7 +328,7 @@ describe("betweenLabel", () => {
       after: [neighbor("New", "4", false)],
     });
 
-    expect(betweenLabel(emptySession(), "Bulk", c)).toBe("Goes right after Near.");
+    expect(betweenLabel(emptySession(), "Bulk", c)).toBe("Goes right after Near (lea 2).");
   });
 
   it("anchors before the placed successor when nothing before is placed", () => {
@@ -334,7 +337,7 @@ describe("betweenLabel", () => {
       after: [neighbor("Near", "4", true)],
     });
 
-    expect(betweenLabel(emptySession(), "Bulk", c)).toBe("Goes right before Near.");
+    expect(betweenLabel(emptySession(), "Bulk", c)).toBe("Goes right before Near (lea 4).");
   });
 
   it("falls back to still-to-place neighbours when none are placed", () => {
@@ -344,7 +347,7 @@ describe("betweenLabel", () => {
     });
 
     expect(betweenLabel(emptySession(), "Bulk", c)).toBe(
-      "Goes between A and B — both still to place.",
+      "Goes between A (lea 2) and B (lea 4) — both still to place.",
     );
   });
 
@@ -368,7 +371,7 @@ describe("betweenLabel", () => {
     const c = card("3", { before: [neighbor("Near", "2", false)] });
     const session = tick(emptySession(), "Bulk", near, 1);
 
-    expect(betweenLabel(session, "Bulk", c)).toBe("Goes right after Near.");
+    expect(betweenLabel(session, "Bulk", c)).toBe("Goes right after Near (lea 2).");
   });
 
   // A tick on one kind of copy must not anchor a hint for a different kind of
@@ -379,7 +382,32 @@ describe("betweenLabel", () => {
     const c = card("3", { before: [neighbor("Near", "2", false, { finish: "nonfoil" })] });
     const session = tick(emptySession(), "Bulk", near, 1);
 
-    expect(betweenLabel(session, "Bulk", c)).toBe("Goes after Near — also still to place.");
+    expect(betweenLabel(session, "Bulk", c)).toBe("Goes after Near (lea 2) — also still to place.");
+  });
+
+  it("anchors on copies of the same card already at the location, ahead of neighbours", () => {
+    const c = card("3", {
+      placed_quantity: 3,
+      before: [neighbor("Near", "2", true)],
+      after: [neighbor("Right", "4", true)],
+    });
+
+    expect(betweenLabel(emptySession(), "Bulk", c)).toBe("Add to the 3 copies already here.");
+  });
+
+  it("uses the singular for exactly one copy already here", () => {
+    const c = card("3", { placed_quantity: 1 });
+
+    expect(betweenLabel(emptySession(), "Bulk", c)).toBe("Add to the copy already here.");
+  });
+
+  it("falls back to the neighbour anchor when no copies are placed here yet", () => {
+    const c = card("3", {
+      placed_quantity: 0,
+      before: [neighbor("Near", "2", true)],
+    });
+
+    expect(betweenLabel(emptySession(), "Bulk", c)).toBe("Goes right after Near (lea 2).");
   });
 });
 
