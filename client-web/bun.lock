@@ -6,7 +6,7 @@
       "name": "tcg-card-collector-web",
       "dependencies": {
         "@solidjs/router": "^1.0.0",
-        "@tanstack/solid-query": "^5.103.2",
+        "@tanstack/solid-query": "^5.104.0",
         "@yornaath/batshit": "^0.14.0",
         "skir-client": "^1.0.19",
         "solid-js": "^1.9.3",
@@ -226,9 +226,9 @@
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
-    "@tanstack/query-core": ["@tanstack/query-core@5.103.2", "", {}, "sha512-I8DkFXls5jXLqtm8+QpOhEmG07hIblhSZFzafg9wHsMSEvMzULy9hK17wU1T/ahfhMbtITJhbxutwwCoihkR7A=="],
+    "@tanstack/query-core": ["@tanstack/query-core@5.104.0", "", {}, "sha512-JrC2r/JQlXt7khBSdUpsgxNvybzOg+aITa+ARRMlP2AFo93Y8vIqz077rp+e61mJetSZ0T6AJbwW1JHer1vrPQ=="],
 
-    "@tanstack/solid-query": ["@tanstack/solid-query@5.103.2", "", { "dependencies": { "@tanstack/query-core": "5.103.2" }, "peerDependencies": { "solid-js": "^1.6.0" } }, "sha512-CMYKaBb850rD+UZdw4NePxl/Wq/m4ePwV5MPlqhw1cr7TFogNkMU6HaFFSb70FISBuPFdK7einccoN3UDZyhpg=="],
+    "@tanstack/solid-query": ["@tanstack/solid-query@5.104.0", "", { "dependencies": { "@tanstack/query-core": "5.104.0" }, "peerDependencies": { "solid-js": "^1.6.0" } }, "sha512-kQ+SFieGCve1up0Z4wHPXT2q2cu7AKFLtzRzViBoFwUQ8PMFd2DSjE38LnsbV0+3+O4N8RiS3xYkXM2hvJI49Q=="],
 
     "@types/babel__core": ["@types/babel__core@7.20.5", "", { "dependencies": { "@babel/parser": "^7.20.7", "@babel/types": "^7.20.7", "@types/babel__generator": "*", "@types/babel__template": "*", "@types/babel__traverse": "*" } }, "sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA=="],
 
