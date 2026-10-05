@@ -1,6 +1,7 @@
 # Domain Language and Boundaries
 
 This document defines the MVP bounded contexts and the shared language for each context.
+Which collector goal each command and query serves lives in the [domain stories](domain-stories/README.md).
 
 ## Bounded Contexts
 
