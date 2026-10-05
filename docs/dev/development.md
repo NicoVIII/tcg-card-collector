@@ -34,12 +34,14 @@ just skir-gen         # regenerate code from skir-src/
 
 - Backend: format, typecheck, unit tests, architecture lint
 - Frontend: format, lint, typecheck, tests
+- Docs: domain story handler links resolve
 
 Run locally:
 
 - `just server::check` — backend static checks (format, typecheck, lint)
 - `just client-web::check` — frontend static checks
 - `just skir-check` — contract format + snapshot alignment
+- `just domain-stories-check` — every domain story handler link resolves
 - `just test` — both test suites
 - `just check` — all of the above
 

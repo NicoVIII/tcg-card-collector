@@ -29,6 +29,20 @@ jobs:
       - name: Check skir
         run: just skir-check
 
+  domain-stories:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Just
+        uses: extractions/setup-just@v4
+
+      - name: Check domain story links
+        run: just domain-stories-check
+
   backend-quality:
     needs: [skir-validate]
     runs-on: ubuntu-latest
@@ -108,7 +122,7 @@ jobs:
         run: just client-web::test
 
   build-and-push:
-    needs: [skir-validate, backend-quality, frontend-quality]
+    needs: [skir-validate, domain-stories, backend-quality, frontend-quality]
     if: >
       github.event_name == 'push' &&
       (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))

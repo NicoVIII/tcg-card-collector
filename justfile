@@ -57,6 +57,13 @@ portability-schema-check:
       -s docs/portability/export.schema.json -d "${fixtures[@]}"
   fi
 
+# Domain stories link each step to the handler that carries it
+# (docs/dev/domain-stories/README.md); a renamed or removed handler must
+# break the build, not leave the story silently pointing at nothing.
+[group('check')]
+domain-stories-check:
+  sh ./scripts/check_story_links.sh docs/dev/domain-stories docs/dev/domain-stories/links.conf
+
 [group('dbmate')]
 dbmate-install:
   sh ./scripts/install_dbmate.sh
@@ -85,4 +92,4 @@ test: server::test client-web::test
 # check recipes stay static-only so CI can run checks and tests as separate
 # steps without running the tests twice
 [group('check')]
-check: skir-check portability-schema-check server::check client-web::check test
+check: skir-check portability-schema-check domain-stories-check server::check client-web::check test

@@ -4,6 +4,9 @@ pre-commit:
     skir-check:
       glob: "{lefthook.yml,justfile,skir-src/**}"
       run: just skir-check
+    domain-stories-check:
+      glob: "{lefthook.yml,justfile,scripts/check_story_links.sh,docs/dev/domain-stories/**,server/src/**,client-web/src/**}"
+      run: just domain-stories-check
     server-format-check:
       glob: "{lefthook.yml,justfile,skir-src/**,server/**}"
       run: just server::format-check

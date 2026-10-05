@@ -21,6 +21,9 @@ are used, never redefined, here.
   - `[query: <context>/<query>]` — `server/src/<context>/application/queries/<query>/`
   - `[derived: <path>]` — client-side derivation over query results (ADR 0006 and
     successors), path relative to the repo root
+
+  Link kinds and their paths are defined in [links.conf](links.conf);
+  `just domain-stories-check` fails on any link that doesn't resolve.
 - **Diagram** (optional for a linear story): a Mermaid `sequenceDiagram` above the
   sentences, participants Collector, Location (physical), App, so the physical/digital
   split is visible. `autonumber` must match the sentence numbers, which means one
