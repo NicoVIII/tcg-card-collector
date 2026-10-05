@@ -52,6 +52,13 @@ two doors stay behaviourally identical. The packaging milestone is the named tri
 for adopting a REST compatibility discipline; when that day comes it is an ADR, not a
 habit that crept in.
 
+**Failures are explicit, on the right channel** (ADR 0021). A domain outcome the client
+branches on is a typed response variant; a user-input error the client should have
+prevented is a 400 with a message — Skir `ServiceError` `E400xBadRequest` via
+`PresentedError`, REST `400` — not a new variant. The client prevents the request from
+its own data or handles the rejection actionably. Flag a silent clamp, a no-op that
+reports success, or a new `rejected`-style variant standing in for a user-input error.
+
 ## Conventions (derived from the existing surface — keep them)
 
 - Contract files mirror bounded contexts: `skir-src/<context>/{commands,queries}.skir`.

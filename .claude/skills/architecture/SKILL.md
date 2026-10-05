@@ -56,7 +56,9 @@ once in `data/http/error.ts`; pure client modules (`data/placement/guidance.ts`)
 values and never throw. Flag thrown exceptions used as control flow in pure code, and flag
 a `Result` that gets unwrapped-and-rethrown instead of propagated. There is no Result
 library on the client; adding one is a dependency decision for the author, never a review
-finding.
+finding. Expected failures are `Result` errors too, never a clamp, default, or no-op that
+hides them (ADR 0021): flag a handler or DAO that silently floors, skips an absent key, or
+reports success for work it didn't do, and check the caller can tell what was applied.
 
 **Dependencies are liabilities.** Bias toward the standard library and small self-written
 pieces. A dependency's own type-safety is a gating criterion. Untyped/poorly-typed deps must

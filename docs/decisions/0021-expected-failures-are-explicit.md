@@ -51,6 +51,6 @@ rejects the batch with `ExceedsOwned` → 400. This supersedes the glossary's
   fine for a single-user service, a concurrent writer could still slip between
   them. The DAO's `decrement_cards` itself still clamps; the handler guards it.
 - Other write paths that clamp or no-op silently (e.g. placement unmark) are
-  not migrated by this ADR; each gets its own issue when it bites.
+  not migrated by this ADR; #157 audits them and works them off.
 - AddCards/RemoveCards' `rejected` variant for malformed rows is untouched;
   #45 owns that shape.
