@@ -272,6 +272,10 @@ p[role="alert"] {
   flex: 1;
 }
 
+.staging-over {
+  color: var(--danger);
+}
+
 .staging-name-unknown {
   font-style: italic;
 }
