@@ -14,6 +14,10 @@ pub type CollectionRowWriteModel {
   CollectionRowWriteModel(key: CopyKey, quantity: Int)
 }
 
+/// How many copies of one key the collection holds; 0 when none.
+pub type OwnedQuantityPort =
+  fn(CopyKey) -> Result(Int, String)
+
 pub type DecrementCardsPort =
   fn(List(CollectionRowWriteModel)) -> Result(Nil, String)
 
@@ -25,6 +29,7 @@ pub type NotifyCollectionChangedPort =
 
 pub type RemoveCardsPorts {
   RemoveCardsPorts(
+    owned_quantity: OwnedQuantityPort,
     decrement_cards: DecrementCardsPort,
     notify_changed: NotifyCollectionChangedPort,
   )
@@ -32,5 +37,8 @@ pub type RemoveCardsPorts {
 
 pub type RemoveCardsError {
   InvalidRows
+  /// A staged key isn't owned, or not in the staged quantity — the client
+  /// prevents this at staging time, so it only arises from a stale page.
+  ExceedsOwned
   PersistenceFailed(reason: String)
 }

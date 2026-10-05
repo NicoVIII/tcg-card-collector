@@ -1,5 +1,5 @@
 import shared/driver/presented_error.{
-  type PresentedError, Internal, PresentedError,
+  type PresentedError, BadRequest, Internal, PresentedError,
 }
 
 /// A persistence failure's fixed client-facing message. AddCards builds this
@@ -13,4 +13,13 @@ import shared/driver/presented_error.{
 /// function.
 pub fn remove_cards(_reason: String) -> PresentedError {
   PresentedError(Internal, "failed to remove cards from the collection")
+}
+
+/// A user-input error, not a failure: the staged removal no longer matches
+/// what the collection holds (ADR 0021).
+pub fn remove_cards_exceeds_owned() -> PresentedError {
+  PresentedError(
+    BadRequest,
+    "the collection holds fewer copies than staged for removal",
+  )
 }

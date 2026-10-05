@@ -58,6 +58,10 @@ struct ListCollectionCardsRequest {
   name: string? = 2;
   // Exact set code; absent or blank means no set filter.
   set_code: string? = 3;
+  // Exact collector number; absent or blank means no number filter. With
+  // set_code it pins one printing — the owned-copies lookup behind staging
+  // removals.
+  collector_number: string? = 4;
 }
 
 method ListCollectionCards(

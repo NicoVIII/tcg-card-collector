@@ -23,7 +23,13 @@ fn query(
   offset offset: Int,
   limit limit: Int,
 ) -> handler.ListCollectionCardsQuery {
-  handler.ListCollectionCardsQuery(offset:, limit:, name: None, set_code: None)
+  handler.ListCollectionCardsQuery(
+    offset:,
+    limit:,
+    name: None,
+    set_code: None,
+    collector_number: None,
+  )
 }
 
 fn copy_row(
@@ -217,6 +223,7 @@ pub fn set_code_filter_matches_regardless_of_catalog_knowledge_test() {
         limit: 0,
         name: None,
         set_code: Some(lea),
+        collector_number: None,
       ),
       port,
     )
@@ -249,6 +256,7 @@ pub fn name_filter_keeps_only_the_catalogs_matching_keys_test() {
         limit: 0,
         name: Some("bolt"),
         set_code: None,
+        collector_number: None,
       ),
       port,
     )
@@ -274,6 +282,7 @@ pub fn name_filter_excludes_printings_the_catalog_does_not_know_test() {
         limit: 0,
         name: Some("bolt"),
         set_code: None,
+        collector_number: None,
       ),
       port,
     )
@@ -296,6 +305,7 @@ pub fn name_filter_error_propagates_test() {
         limit: 0,
         name: Some("bolt"),
         set_code: None,
+        collector_number: None,
       ),
       port,
     )
@@ -323,6 +333,7 @@ pub fn both_filters_combine_with_and_test() {
         limit: 0,
         name: Some("bolt"),
         set_code: Some(lea),
+        collector_number: None,
       ),
       port,
     )
@@ -330,4 +341,29 @@ pub fn both_filters_combine_with_and_test() {
   assert page.printings
     == [printing("lea", "1", [owned_copy("nonfoil", "en", 1)])]
   assert page.total == 1
+}
+
+pub fn collector_number_filter_with_set_pins_one_printing_test() {
+  let port =
+    build_port([
+      nonfoil_en("lea", "1", 1),
+      nonfoil_en("lea", "10", 2),
+      nonfoil_en("grn", "1", 1),
+    ])
+  let assert Ok(lea) = set_code.new("lea")
+
+  let assert Ok(page) =
+    handler.execute(
+      handler.ListCollectionCardsQuery(
+        offset: 0,
+        limit: 0,
+        name: None,
+        set_code: Some(lea),
+        collector_number: Some("1"),
+      ),
+      port,
+    )
+
+  assert page.printings
+    == [printing("lea", "1", [owned_copy("nonfoil", "en", 1)])]
 }

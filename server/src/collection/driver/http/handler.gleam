@@ -84,6 +84,10 @@ pub fn handle_remove_cards(
         Ok(_) -> helpers.json_response(200, json_codec.encode_ok("decremented"))
         Error(remove_cards_ports.InvalidRows) ->
           helpers.json_response(422, json_codec.encode_error("invalid rows"))
+        Error(remove_cards_ports.ExceedsOwned) ->
+          helpers.error_response(
+            error_presentation.remove_cards_exceeds_owned(),
+          )
         Error(remove_cards_ports.PersistenceFailed(reason)) ->
           helpers.error_response(error_presentation.remove_cards(reason))
       }
@@ -100,8 +104,15 @@ fn respond_with_collection_page(
     list_collection_cards_handler.ListCollectionCardsQuery(
       offset:,
       limit:,
-      name: search_filter.parse_name(helpers.query_param(req, "name")),
+      name: search_filter.parse_collector_number(helpers.query_param(
+        req,
+        "name",
+      )),
       set_code: search_filter.parse_set_code(helpers.query_param(req, "set")),
+      collector_number: search_filter.parse_name(helpers.query_param(
+        req,
+        "number",
+      )),
     ),
     deps.list_collection_cards_ports,
   )

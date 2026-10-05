@@ -40,6 +40,19 @@ pub fn list_cards() -> Result(List(CardRow), String) {
   )
 }
 
+/// Every kind of copy owned of one printing; empty when none is owned.
+pub fn copies_of(
+  set_code: String,
+  collector_number: String,
+) -> Result(List(CardRow), String) {
+  sqlite_store.query(
+    "SELECT set_code, collector_number, finish, language, quantity FROM collection"
+      <> " WHERE set_code = ? AND collector_number = ?;",
+    [sqlight.text(set_code), sqlight.text(collector_number)],
+    card_row_decoder(),
+  )
+}
+
 fn batch_values(batch: List(CardRow)) -> #(String, List(sqlight.Value)) {
   let placeholders =
     sqlite_store.placeholders(list.length(batch), "(?, ?, ?, ?, ?)")
@@ -146,7 +159,9 @@ pub fn upsert_cards(rows: List(CardRow)) -> Result(Nil, String) {
 
 /// A remove shrinks the collection, subtracting each row's quantity from the
 /// matching key, pruning any row driven to zero or below, all in one
-/// transaction. Decrementing an absent key is a no-op. Whether the shrink
+/// transaction. Decrementing an absent key is a no-op, and over-removal
+/// clamps: callers that treat either as an error (RemoveCards) check owned
+/// quantities first. Whether the shrink
 /// leaves the placed ledger claiming more copies than are owned is Inventory
 /// Planning's concern, reconciled via ADR 0011's event bus rather than here.
 pub fn decrement_cards(rows: List(CardRow)) -> Result(Nil, String) {

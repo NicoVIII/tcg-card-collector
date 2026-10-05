@@ -13,6 +13,11 @@ pub fn parse_name(raw: Option(String)) -> Option(String) {
   }
 }
 
+/// Same blank-is-absent rule as a name; the match itself is exact.
+pub fn parse_collector_number(raw: Option(String)) -> Option(String) {
+  parse_name(raw)
+}
+
 pub fn parse_set_code(raw: Option(String)) -> Option(SetCode) {
   case raw {
     None -> None

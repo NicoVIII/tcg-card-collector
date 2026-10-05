@@ -1,12 +1,19 @@
 import { FINISHES, LANGUAGES, type Finish, type Language } from "../data/collection/copy_kind";
+import type { CollectionCopy } from "../data/collection/request";
 
-export type StagedEntry = {
+export type EntryInput = {
   setCode: string;
   collectorNumber: string;
   finish: Finish;
   language: Language;
   quantity: number;
 };
+
+// `owned` is the collection's quantity of this copy when it was staged — what
+// the row shows and what its quantity is capped by. The server re-checks at
+// commit (ADR 0021), so a stale value costs a rejected removal, never a
+// silent over-removal.
+export type StagedEntry = EntryInput & { owned: number };
 
 export type RawStagedEntry = {
   setCode: string;
@@ -19,7 +26,7 @@ export type RawStagedEntry = {
 // Normalizes raw form input into a stageable entry, or null when it can't
 // make a valid one. Mirrors add_cards_staging's normalizeEntry — the same
 // row shape, just meaning "how many to remove" instead of "how many to add".
-export function normalizeEntry(raw: RawStagedEntry): StagedEntry | null {
+export function normalizeEntry(raw: RawStagedEntry): EntryInput | null {
   const setCode = raw.setCode.trim().toLowerCase();
   const collectorNumber = raw.collectorNumber.trim();
   if (setCode.length === 0 || collectorNumber.length === 0) {
@@ -40,7 +47,7 @@ export function normalizeEntry(raw: RawStagedEntry): StagedEntry | null {
   };
 }
 
-function sameKey(a: StagedEntry, b: StagedEntry): boolean {
+function sameKey(a: EntryInput, b: EntryInput): boolean {
   return (
     a.setCode === b.setCode &&
     a.collectorNumber === b.collectorNumber &&
@@ -49,16 +56,55 @@ function sameKey(a: StagedEntry, b: StagedEntry): boolean {
   );
 }
 
-// Appends an entry, summing quantities when its card is already staged in the
-// same kind of copy so the list always holds one line per (card, finish,
-// language).
-export function addEntry(list: StagedEntry[], entry: StagedEntry): StagedEntry[] {
-  if (list.some((staged) => sameKey(staged, entry))) {
-    return list.map((staged) =>
-      sameKey(staged, entry) ? { ...staged, quantity: staged.quantity + entry.quantity } : staged,
-    );
+export type StageResult = { ok: true; list: StagedEntry[] } | { ok: false; message: string };
+
+function describeCopy(copy: { finish: Finish; language: Language }): string {
+  return `${copy.finish}·${copy.language}`;
+}
+
+function ownedQuantity(owned: CollectionCopy[], entry: EntryInput): number {
+  return (
+    owned.find((copy) => copy.finish === entry.finish && copy.language === entry.language)
+      ?.quantity ?? 0
+  );
+}
+
+function notOwnedMessage(owned: CollectionCopy[], entry: EntryInput): string {
+  const key = `${entry.setCode} ${entry.collectorNumber} (${describeCopy(entry)})`;
+  if (owned.length === 0) {
+    return `You don't own ${key}.`;
   }
-  return [...list, entry];
+  return `You don't own ${key}; you own it as ${owned.map(describeCopy).join(", ")}.`;
+}
+
+function capMessage(ownedQty: number, alreadyStaged: number): string {
+  const staged = alreadyStaged > 0 ? ` (${alreadyStaged} already staged)` : "";
+  return `Only ${ownedQty} owned${staged}.`;
+}
+
+// Stages an entry against the card's owned copies (every kind the collection
+// holds of this printing), refusing an unowned copy or a quantity above what's
+// owned — counting what's already staged for the same copy, so the list holds
+// one line per (card, finish, language).
+export function stageEntry(
+  list: StagedEntry[],
+  entry: EntryInput,
+  owned: CollectionCopy[],
+): StageResult {
+  const ownedQty = ownedQuantity(owned, entry);
+  if (ownedQty === 0) {
+    return { ok: false, message: notOwnedMessage(owned, entry) };
+  }
+  const existing = list.find((staged) => sameKey(staged, entry));
+  const alreadyStaged = existing?.quantity ?? 0;
+  if (alreadyStaged + entry.quantity > ownedQty) {
+    return { ok: false, message: capMessage(ownedQty, alreadyStaged) };
+  }
+  const staged = { ...entry, quantity: alreadyStaged + entry.quantity, owned: ownedQty };
+  return {
+    ok: true,
+    list: existing ? list.map((item) => (item === existing ? staged : item)) : [...list, staged],
+  };
 }
 
 export function removeEntry(list: StagedEntry[], entry: StagedEntry): StagedEntry[] {

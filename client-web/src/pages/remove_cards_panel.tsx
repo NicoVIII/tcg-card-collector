@@ -1,5 +1,6 @@
 import { For, Show, createSignal } from "solid-js";
 import { useCardQuery } from "../data/card_catalog/query";
+import { useFetchOwnedCopies } from "../data/collection/query";
 import { useRemoveCardsMutation } from "../data/collection_remove/mutation";
 import {
   DEFAULT_FINISH,
@@ -13,9 +14,9 @@ import { mapError } from "../data/http/error";
 import { ConfirmButton } from "../components/confirm_button";
 import {
   type StagedEntry,
-  addEntry,
   normalizeEntry,
   removeEntry,
+  stageEntry,
   toRemoveCardsRows,
   totalCards,
 } from "./remove_cards_staging";
@@ -40,7 +41,7 @@ function StagedRow(props: { entry: StagedEntry; onRemove: () => void }) {
       </Show>
       <span class="staging-key">
         {props.entry.quantity}x {props.entry.setCode} {props.entry.collectorNumber} (
-        {props.entry.finish}·{props.entry.language})
+        {props.entry.finish}·{props.entry.language}) of {props.entry.owned} owned
       </span>
       <span class="staging-name" classList={{ "staging-name-unknown": cardQuery.data === null }}>
         {cardName()}
@@ -72,9 +73,10 @@ export function RemoveCardsPanel() {
   const [submitError, setSubmitError] = createSignal<string | null>(null);
   const [successNote, setSuccessNote] = createSignal<string | null>(null);
   const mutation = useRemoveCardsMutation();
+  const fetchOwnedCopies = useFetchOwnedCopies();
   let collectorNumberInput: HTMLInputElement | undefined;
 
-  const stageEntry = (event: Event) => {
+  const stageFromForm = async (event: Event) => {
     event.preventDefault();
     const entry = normalizeEntry({
       setCode: setCode(),
@@ -87,9 +89,24 @@ export function RemoveCardsPanel() {
       setFormError("Enter a set code, a collector number, and a quantity of at least 1.");
       return;
     }
-    setFormError(null);
     setSuccessNote(null);
-    setStaged((list) => addEntry(list, entry));
+    let result;
+    try {
+      result = stageEntry(
+        staged(),
+        entry,
+        await fetchOwnedCopies(entry.setCode, entry.collectorNumber),
+      );
+    } catch (error) {
+      setFormError(mapError(error).message);
+      return;
+    }
+    if (!result.ok) {
+      setFormError(result.message);
+      return;
+    }
+    setFormError(null);
+    setStaged(result.list);
     setCollectorNumber("");
     setQuantity("1");
     collectorNumberInput?.focus();
@@ -117,7 +134,7 @@ export function RemoveCardsPanel() {
   return (
     <div class="remove-cards-panel">
       <h3>Remove cards</h3>
-      <form class="form-row" onSubmit={stageEntry}>
+      <form class="form-row" onSubmit={(event) => void stageFromForm(event)}>
         <label>
           Set
           <input

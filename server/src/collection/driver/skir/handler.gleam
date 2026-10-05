@@ -63,6 +63,7 @@ fn handle_list_collection_cards(
         limit: req.limit,
         name: collection_skir_codec.to_name_filter(req),
         set_code: collection_skir_codec.to_set_code_filter(req),
+        collector_number: collection_skir_codec.to_collector_number_filter(req),
       ),
       get_dependencies(ctx).list_collection_cards_ports,
     )

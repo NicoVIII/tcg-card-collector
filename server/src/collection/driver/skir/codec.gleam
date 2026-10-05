@@ -31,6 +31,10 @@ pub fn map_remove_cards_result(
     Ok(_) -> Ok(collection_commands.RemoveCardsResponseDecremented)
     Error(remove_cards_ports.InvalidRows) ->
       Ok(collection_commands.RemoveCardsResponseRejected)
+    Error(remove_cards_ports.ExceedsOwned) ->
+      Error(
+        helpers.service_error(error_presentation.remove_cards_exceeds_owned()),
+      )
     Error(remove_cards_ports.PersistenceFailed(reason)) ->
       Error(helpers.service_error(error_presentation.remove_cards(reason)))
   }
@@ -159,6 +163,12 @@ pub fn to_set_code_filter(
   req: collection_queries.ListCollectionCardsRequest,
 ) -> Option(SetCode) {
   search_filter.parse_set_code(req.set_code)
+}
+
+pub fn to_collector_number_filter(
+  req: collection_queries.ListCollectionCardsRequest,
+) -> Option(String) {
+  search_filter.parse_collector_number(req.collector_number)
 }
 
 pub fn map_collection_card_page(

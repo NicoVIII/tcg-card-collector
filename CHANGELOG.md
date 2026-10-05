@@ -38,6 +38,9 @@ Each release section uses only the subheadings it needs:
 - Placement and Inventory now scroll the open location's header into view once its data has
   loaded, so a reload, Back/Forward, or a fresh `?location=` link reliably lands on it instead
   of sometimes staying near the top.
+- The Remove cards panel only stages copies you own, capped at the owned quantity (counting
+  what is already staged), and shows the owned quantity on each row. The API now rejects a
+  removal of copies the collection doesn't hold with a 400 instead of silently clamping it.
 
 ## v0.2.0 — 2026-09-26
 

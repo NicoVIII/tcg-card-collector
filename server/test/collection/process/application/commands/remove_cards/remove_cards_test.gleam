@@ -9,8 +9,10 @@ fn build_ports(
   written written: ref.Ref(Option(List(ports.CollectionRowWriteModel))),
   notified notified: ref.Ref(Bool),
   result result: Result(Nil, String),
+  owned owned: Int,
 ) -> ports.RemoveCardsPorts {
   ports.RemoveCardsPorts(
+    owned_quantity: fn(_) { Ok(owned) },
     decrement_cards: fn(rows) {
       case result {
         Ok(Nil) -> {
@@ -67,7 +69,8 @@ fn quantity_for(
 pub fn valid_batch_is_decremented_and_notifies_test() {
   let written = ref.new(None)
   let notified = ref.new(False)
-  let command_ports = build_ports(written:, notified:, result: Ok(Nil))
+  let command_ports =
+    build_ports(written:, notified:, result: Ok(Nil), owned: 10)
 
   let result =
     handler.execute(
@@ -87,7 +90,8 @@ pub fn valid_batch_is_decremented_and_notifies_test() {
 pub fn duplicate_keys_within_one_batch_are_summed_test() {
   let written = ref.new(None)
   let notified = ref.new(False)
-  let command_ports = build_ports(written:, notified:, result: Ok(Nil))
+  let command_ports =
+    build_ports(written:, notified:, result: Ok(Nil), owned: 10)
 
   let result =
     handler.execute(
@@ -108,7 +112,8 @@ pub fn duplicate_keys_within_one_batch_are_summed_test() {
 pub fn one_invalid_row_rejects_the_whole_batch_test() {
   let written = ref.new(None)
   let notified = ref.new(False)
-  let command_ports = build_ports(written:, notified:, result: Ok(Nil))
+  let command_ports =
+    build_ports(written:, notified:, result: Ok(Nil), owned: 10)
 
   let result =
     handler.execute(
@@ -127,7 +132,8 @@ pub fn one_invalid_row_rejects_the_whole_batch_test() {
 pub fn empty_batch_is_rejected_test() {
   let written = ref.new(None)
   let notified = ref.new(False)
-  let command_ports = build_ports(written:, notified:, result: Ok(Nil))
+  let command_ports =
+    build_ports(written:, notified:, result: Ok(Nil), owned: 10)
 
   let result =
     handler.execute(handler.RemoveCardsCommand(rows: []), command_ports)
@@ -141,7 +147,7 @@ pub fn persistence_failure_reports_error_and_does_not_notify_test() {
   let written = ref.new(None)
   let notified = ref.new(False)
   let command_ports =
-    build_ports(written:, notified:, result: Error("disk full"))
+    build_ports(written:, notified:, result: Error("disk full"), owned: 10)
 
   let result =
     handler.execute(
@@ -153,4 +159,77 @@ pub fn persistence_failure_reports_error_and_does_not_notify_test() {
 
   assert result == Error(ports.PersistenceFailed("disk full"))
   assert ref.get(notified) == False
+}
+
+pub fn removal_exceeding_the_owned_quantity_rejects_the_batch_test() {
+  let written = ref.new(None)
+  let notified = ref.new(False)
+  let command_ports =
+    build_ports(written:, notified:, result: Ok(Nil), owned: 1)
+
+  let result =
+    handler.execute(
+      handler.RemoveCardsCommand(rows: [
+        row(set_code: "lea", collector_number: "1", quantity: 2),
+      ]),
+      command_ports,
+    )
+
+  assert result == Error(ports.ExceedsOwned)
+  assert ref.get(written) == None
+  assert ref.get(notified) == False
+}
+
+pub fn removing_an_unowned_key_is_rejected_test() {
+  let written = ref.new(None)
+  let notified = ref.new(False)
+  let command_ports =
+    build_ports(written:, notified:, result: Ok(Nil), owned: 0)
+
+  let result =
+    handler.execute(
+      handler.RemoveCardsCommand(rows: [
+        row(set_code: "lea", collector_number: "999", quantity: 1),
+      ]),
+      command_ports,
+    )
+
+  assert result == Error(ports.ExceedsOwned)
+  assert ref.get(written) == None
+}
+
+pub fn removing_exactly_the_owned_quantity_is_allowed_test() {
+  let written = ref.new(None)
+  let notified = ref.new(False)
+  let command_ports =
+    build_ports(written:, notified:, result: Ok(Nil), owned: 3)
+
+  let result =
+    handler.execute(
+      handler.RemoveCardsCommand(rows: [
+        row(set_code: "lea", collector_number: "1", quantity: 3),
+      ]),
+      command_ports,
+    )
+
+  assert result == Ok(Nil)
+}
+
+// The cap applies to the merged quantity, not each row on its own.
+pub fn duplicate_rows_are_checked_against_their_sum_test() {
+  let written = ref.new(None)
+  let notified = ref.new(False)
+  let command_ports =
+    build_ports(written:, notified:, result: Ok(Nil), owned: 4)
+
+  let result =
+    handler.execute(
+      handler.RemoveCardsCommand(rows: [
+        row(set_code: "lea", collector_number: "1", quantity: 2),
+        row(set_code: "lea", collector_number: "1", quantity: 3),
+      ]),
+      command_ports,
+    )
+
+  assert result == Error(ports.ExceedsOwned)
 }
