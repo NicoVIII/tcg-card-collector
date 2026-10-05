@@ -104,15 +104,11 @@ fn respond_with_collection_page(
     list_collection_cards_handler.ListCollectionCardsQuery(
       offset:,
       limit:,
-      name: search_filter.parse_collector_number(helpers.query_param(
-        req,
-        "name",
-      )),
+      name: search_filter.parse_name(helpers.query_param(req, "name")),
       set_code: search_filter.parse_set_code(helpers.query_param(req, "set")),
-      collector_number: search_filter.parse_name(helpers.query_param(
-        req,
-        "number",
-      )),
+      collector_number: search_filter.parse_collector_number(
+        helpers.query_param(req, "number"),
+      ),
     ),
     deps.list_collection_cards_ports,
   )
