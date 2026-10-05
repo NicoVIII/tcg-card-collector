@@ -19,6 +19,7 @@ pub type ListCollectionCardsQuery {
     limit: Int,
     name: Option(String),
     set_code: Option(SetCode),
+    collector_number: Option(String),
   )
 }
 
@@ -32,6 +33,7 @@ pub fn execute(
     |> group_by_printing
     |> list.sort(by: compare_printings)
     |> filter_by_set_code(query.set_code)
+    |> filter_by_collector_number(query.collector_number)
   use filtered <- result.try(filter_by_name(
     printings,
     query.name,
@@ -129,6 +131,19 @@ fn filter_by_set_code(
     Some(code) ->
       list.filter(printings, fn(printing) {
         card_key.set_code(printing.key) == code
+      })
+  }
+}
+
+fn filter_by_collector_number(
+  printings: List(ports.OwnedPrinting),
+  target: Option(String),
+) -> List(ports.OwnedPrinting) {
+  case target {
+    None -> printings
+    Some(number) ->
+      list.filter(printings, fn(printing) {
+        card_key.collector_number_string(printing.key) == number
       })
   }
 }

@@ -59,7 +59,7 @@ Purpose:
 Core terms:
 - Collection: the current owned cards (CopyKey → quantity). The single source of truth other contexts read from. Consumers that care only about the printing (Insights' set completion, Inventory Planning's projection today) add up across CopyKeys and keep working on CardKey (ADR 0010).
 - ManualAddition: an incremental, synchronous addition of staged cards (AddCards command). Upserts the collection, summing quantities per CopyKey. A finish or language outside the closed sets rejects the whole batch.
-- ManualRemoval: an incremental, synchronous subtraction of staged cards (RemoveCards command) — AddCards' inverse. Decrements the collection per CopyKey, flooring at zero and pruning the row rather than erroring on an over-removal, so correcting a mistyped add doesn't require knowing the exact current count.
+- ManualRemoval: an incremental, synchronous subtraction of staged cards (RemoveCards command) — AddCards' inverse. Decrements the collection per CopyKey, pruning a row driven to zero. A key not owned in the staged quantity rejects the whole batch (ADR 0021) — the client checks owned quantities at staging time, so a rejection means a stale page.
 - Import: a full statement of the collection. Replaces the collection outright, per CopyKey. Reached only through Portability's ImportData, via the `replace_copies` facade — Collection has no import entry point of its own.
 
 Boundary notes:

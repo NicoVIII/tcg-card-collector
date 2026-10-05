@@ -181,3 +181,13 @@ pub fn decrement_on_an_absent_key_is_a_no_op_test() {
 
   assert collection_dao.list_cards() == Ok([])
 }
+
+pub fn copies_of_returns_only_the_requested_printing_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(Nil) =
+    collection_dao.upsert_cards([card("lea", "1", 2), card("lea", "2", 1)])
+
+  assert collection_dao.copies_of("lea", "1") == Ok([card("lea", "1", 2)])
+  assert collection_dao.copies_of("lea", "9") == Ok([])
+}

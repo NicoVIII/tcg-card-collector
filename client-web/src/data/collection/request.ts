@@ -48,6 +48,26 @@ function toCollectionCardList(response: RpcCollectionCardList): CollectionCardLi
   };
 }
 
+// A printing's owned copies, via the list's set + number filters; empty when
+// the printing isn't owned at all.
+export async function getOwnedCopies(
+  setCode: string,
+  collectorNumber: string,
+): Promise<CollectionCopy[]> {
+  const response = await skirClient.invokeRemote(
+    ListCollectionCards,
+    ListCollectionCardsRequest.create({
+      offset: 0,
+      limit: 1,
+      name: null,
+      setCode,
+      collectorNumber,
+    }),
+    "POST",
+  );
+  return toCollectionCardList(response).data[0]?.copies ?? [];
+}
+
 export async function listCollectionCards(
   filter: CardFilter,
   offset: number,
@@ -55,7 +75,12 @@ export async function listCollectionCards(
 ): Promise<CollectionCardList> {
   const response = await skirClient.invokeRemote(
     ListCollectionCards,
-    ListCollectionCardsRequest.create({ offset, limit, ...toWireFilter(filter) }),
+    ListCollectionCardsRequest.create({
+      offset,
+      limit,
+      collectorNumber: null,
+      ...toWireFilter(filter),
+    }),
     "POST",
   );
 

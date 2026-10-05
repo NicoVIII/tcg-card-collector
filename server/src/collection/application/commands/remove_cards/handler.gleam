@@ -46,10 +46,26 @@ fn write_model_from_card(
   )
 }
 
-/// Removes staged cards from the collection. The decrement floors each key
-/// at zero and prunes the row entirely rather than erroring on an
-/// over-removal — mirrors AddCards' upsert, whose merge-on-write is the
-/// store's job too. A successful decrement notifies any subscriber that
+fn within_owned(
+  cards: List(ports.CollectionRowWriteModel),
+  owned_quantity: ports.OwnedQuantityPort,
+) -> Result(Nil, ports.RemoveCardsError) {
+  list.try_each(cards, fn(card) {
+    use owned <- result.try(
+      owned_quantity(card.key) |> result.map_error(ports.PersistenceFailed),
+    )
+    case card.quantity <= owned {
+      True -> Ok(Nil)
+      False -> Error(ports.ExceedsOwned)
+    }
+  })
+}
+
+/// Removes staged cards from the collection, all-or-nothing: a key that is
+/// not owned in the staged quantity rejects the whole batch with
+/// ExceedsOwned (ADR 0021) instead of clamping, so a stale page cannot
+/// silently over-remove. The check and the decrement are separate steps, not
+/// one transaction — acceptable for a single-user service. A successful decrement notifies any subscriber that
 /// owned quantities may have shrunk; the notification's own result is
 /// ignored on purpose (ADR 0011: a reconciliation failure must not fail a
 /// removal that already committed its own write).
@@ -67,6 +83,7 @@ pub fn execute(
         |> collection.to_cards
         |> list.map(write_model_from_card)
 
+      use _ <- result.try(within_owned(write_models, ports.owned_quantity))
       use _ <- result.try(
         ports.decrement_cards(write_models)
         |> result.map_error(ports.PersistenceFailed),

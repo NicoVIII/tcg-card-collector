@@ -107,7 +107,8 @@ pub fn dependencies() -> Dependencies {
     collection: CollectionDependencies(
       add_cards_port: add_cards_adapter.new(),
       remove_cards_ports: remove_cards_ports.RemoveCardsPorts(
-        decrement_cards: remove_cards_adapter.new(),
+        owned_quantity: remove_cards_adapter.owned_quantity(),
+        decrement_cards: remove_cards_adapter.decrement_cards(),
         notify_changed: notify_collection_changed,
       ),
       list_collection_cards_ports: list_collection_cards_adapter.new(),

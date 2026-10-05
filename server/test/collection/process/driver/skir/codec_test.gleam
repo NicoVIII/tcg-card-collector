@@ -55,6 +55,17 @@ pub fn remove_cards_persistence_failed_maps_to_service_error_test() {
     ))
 }
 
+// A user-input error: a 400 with a message, not a response variant (ADR 0021).
+pub fn remove_cards_exceeds_owned_maps_to_bad_request_test() {
+  assert collection_skir_codec.map_remove_cards_result(Error(
+      remove_cards_ports.ExceedsOwned,
+    ))
+    == Error(service.ServiceError(
+      service.E400xBadRequest,
+      "the collection holds fewer copies than staged for removal",
+    ))
+}
+
 // An unrecognized wire variant maps to an empty string, which the domain
 // constructors downstream reject rather than silently defaulting.
 pub fn to_add_cards_row_maps_unknown_finish_to_empty_string_test() {
@@ -157,6 +168,7 @@ pub fn map_collection_card_page_maps_printings_and_echoes_paging_test() {
 pub fn to_name_filter_trims_and_treats_blank_as_absent_test() {
   let with_name =
     collection_queries.list_collection_cards_request_new(
+      collector_number: None,
       limit: 0,
       name: Some(" Bolt "),
       offset: 0,
@@ -166,6 +178,7 @@ pub fn to_name_filter_trims_and_treats_blank_as_absent_test() {
 
   let blank =
     collection_queries.list_collection_cards_request_new(
+      collector_number: None,
       limit: 0,
       name: Some("   "),
       offset: 0,
@@ -177,6 +190,7 @@ pub fn to_name_filter_trims_and_treats_blank_as_absent_test() {
 pub fn to_set_code_filter_parses_a_present_value_test() {
   let req =
     collection_queries.list_collection_cards_request_new(
+      collector_number: None,
       limit: 0,
       name: None,
       offset: 0,
@@ -185,4 +199,22 @@ pub fn to_set_code_filter_parses_a_present_value_test() {
 
   let assert Ok(lea) = set_code.new("lea")
   assert collection_skir_codec.to_set_code_filter(req) == Some(lea)
+}
+
+pub fn to_collector_number_filter_trims_and_treats_blank_as_absent_test() {
+  let request = fn(number) {
+    collection_queries.list_collection_cards_request_new(
+      collector_number: number,
+      limit: 0,
+      name: None,
+      offset: 0,
+      set_code: None,
+    )
+  }
+
+  assert collection_skir_codec.to_collector_number_filter(request(Some(" 12 ")))
+    == Some("12")
+  assert collection_skir_codec.to_collector_number_filter(request(Some("  ")))
+    == None
+  assert collection_skir_codec.to_collector_number_filter(request(None)) == None
 }

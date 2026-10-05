@@ -34,6 +34,7 @@ fn fetch_page() -> Result(list_cards_ports.CollectionCardPage, String) {
       limit: 0,
       name: None,
       set_code: None,
+      collector_number: None,
     ),
     list_cards_adapter.new(),
   )

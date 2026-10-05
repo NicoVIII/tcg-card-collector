@@ -215,3 +215,9 @@ broken query surfaces as an error instead of defaulting to "empty"/"not
 found". A read port may only collapse its error to a default when the call
 site can prove the two are truly indistinguishable to every consumer; when in
 doubt, propagate.
+
+Expected failures are explicit too, never a silent clamp or no-op: a `Result`
+error variant in the application layer, and on the wire either a typed response
+variant (domain outcomes the client branches on) or a 400 with a message
+(user-input errors the client should have prevented) —
+[ADR 0021](../decisions/0021-expected-failures-are-explicit.md).

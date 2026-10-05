@@ -11,6 +11,8 @@ export const queryKeys = {
   collection: () => ["collection"] as const,
   collectionList: (filter: CardFilter, offset: number, limit: number) =>
     ["collection", "list", filter.name, filter.set_code, offset, limit] as const,
+  collectionOwned: (set_code: string, collector_number: string) =>
+    ["collection", "owned", set_code, collector_number] as const,
   inventoryRules: () => ["inventory_planning", "rules"] as const,
   inventoryBulkSpec: () => ["inventory_planning", "bulk_spec"] as const,
   inventoryProjection: () => ["inventory_planning", "projection"] as const,
