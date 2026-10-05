@@ -65,10 +65,11 @@ fn within_owned(
 /// not owned in the staged quantity rejects the whole batch with
 /// ExceedsOwned (ADR 0021) instead of clamping, so a stale page cannot
 /// silently over-remove. The check and the decrement are separate steps, not
-/// one transaction — acceptable for a single-user service. A successful decrement notifies any subscriber that
-/// owned quantities may have shrunk; the notification's own result is
-/// ignored on purpose (ADR 0011: a reconciliation failure must not fail a
-/// removal that already committed its own write).
+/// one transaction — acceptable for a single-user service. A successful
+/// decrement notifies any subscriber that owned quantities may have shrunk;
+/// the notification's own result is ignored on purpose (ADR 0011: a
+/// reconciliation failure must not fail a removal that already committed its
+/// own write).
 pub fn execute(
   command: RemoveCardsCommand,
   ports: ports.RemoveCardsPorts,

@@ -14,9 +14,13 @@ import { mapError } from "../data/http/error";
 import { ConfirmButton } from "../components/confirm_button";
 import {
   type StagedEntry,
+  exceedsOwned,
   normalizeEntry,
+  printingKey,
+  refreshOwned,
   removeEntry,
   stageEntry,
+  staleMessage,
   toRemoveCardsRows,
   totalCards,
 } from "./remove_cards_staging";
@@ -39,7 +43,7 @@ function StagedRow(props: { entry: StagedEntry; onRemove: () => void }) {
       <Show when={cardQuery.data?.image_uri} fallback={<span class="staging-thumb" />}>
         <img class="staging-thumb" src={cardQuery.data?.image_uri} alt="" />
       </Show>
-      <span class="staging-key">
+      <span class="staging-key" classList={{ "staging-over": exceedsOwned(props.entry) }}>
         {props.entry.quantity}x {props.entry.setCode} {props.entry.collectorNumber} (
         {props.entry.finish}·{props.entry.language}) of {props.entry.owned} owned
       </span>
@@ -92,11 +96,9 @@ export function RemoveCardsPanel() {
     setSuccessNote(null);
     let result;
     try {
-      result = stageEntry(
-        staged(),
-        entry,
-        await fetchOwnedCopies(entry.setCode, entry.collectorNumber),
-      );
+      const owned = await fetchOwnedCopies(entry.setCode, entry.collectorNumber);
+      // Read after the await: another staging may have landed meanwhile.
+      result = stageEntry(staged(), entry, owned);
     } catch (error) {
       setFormError(mapError(error).message);
       return;
@@ -110,6 +112,28 @@ export function RemoveCardsPanel() {
     setCollectorNumber("");
     setQuantity("1");
     collectorNumberInput?.focus();
+  };
+
+  const fetchCopiesByPrinting = async (list: StagedEntry[]) => {
+    const printings = [...new Map(list.map((entry) => [printingKey(entry), entry])).values()];
+    const copies = await Promise.all(
+      printings.map((entry) => fetchOwnedCopies(entry.setCode, entry.collectorNumber)),
+    );
+    return new Map(printings.map((entry, index) => [printingKey(entry), copies[index]]));
+  };
+
+  // A 400 here means the collection moved since staging (ADR 0021): re-read
+  // what's owned so the offending rows are marked, rather than echoing the
+  // server's message.
+  const handleStaleRejection = async () => {
+    try {
+      const copiesByPrinting = await fetchCopiesByPrinting(staged());
+      const refreshed = refreshOwned(staged(), copiesByPrinting);
+      setStaged(refreshed);
+      setSubmitError(staleMessage(refreshed));
+    } catch (error) {
+      setSubmitError(mapError(error).message);
+    }
   };
 
   const commit = async () => {
@@ -127,7 +151,12 @@ export function RemoveCardsPanel() {
       setStaged([]);
       setSuccessNote(`Removed ${count} card(s) from the collection.`);
     } catch (error) {
-      setSubmitError(mapError(error).message);
+      const appError = mapError(error);
+      if (appError.status === 400) {
+        await handleStaleRejection();
+        return;
+      }
+      setSubmitError(appError.message);
     }
   };
 
@@ -201,7 +230,7 @@ export function RemoveCardsPanel() {
         </ul>
         <ConfirmButton
           label={`Remove ${totalCards(staged())} card(s) from collection`}
-          disabled={mutation.isPending}
+          disabled={mutation.isPending || staged().some(exceedsOwned)}
           onConfirm={() => void commit()}
         />
       </Show>

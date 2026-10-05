@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  exceedsOwned,
+  refreshOwned,
   stageEntry,
+  staleMessage,
   normalizeEntry,
   removeEntry,
   toRemoveCardsRows,
@@ -190,5 +193,37 @@ describe("toRemoveCardsRows", () => {
         { setCode: "blb", collectorNumber: "1", ...NONFOIL_EN, quantity: 2, owned: 5 },
       ]),
     ).toEqual([{ setCode: "blb", collectorNumber: "1", ...NONFOIL_EN, quantity: 2 }]);
+  });
+});
+
+describe("refreshOwned", () => {
+  it("updates owned per staged copy from its printing's copies, marking rows that no longer fit", () => {
+    const list = [
+      { ...ENTRY, quantity: 2, owned: 3 },
+      { ...ENTRY, finish: "foil" as const, quantity: 1, owned: 1 },
+      { ...ENTRY, collectorNumber: "2", quantity: 1, owned: 1 },
+    ];
+    const refreshed = refreshOwned(list, new Map([["blb 1", [OWNED_NONFOIL(1)]]]));
+
+    expect(refreshed).toEqual([
+      { ...ENTRY, quantity: 2, owned: 1 },
+      { ...ENTRY, finish: "foil", quantity: 1, owned: 0 },
+      { ...ENTRY, collectorNumber: "2", quantity: 1, owned: 1 },
+    ]);
+    expect(refreshed.map(exceedsOwned)).toEqual([true, true, false]);
+  });
+});
+
+describe("staleMessage", () => {
+  it("counts the rows that now exceed what's owned", () => {
+    expect(staleMessage([{ ...ENTRY, quantity: 2, owned: 1 }])).toBe(
+      "The collection changed since staging: 1 row(s) now exceed what's owned. Adjust or remove them.",
+    );
+  });
+
+  it("says to retry when nothing exceeds anymore", () => {
+    expect(staleMessage([{ ...ENTRY, quantity: 1, owned: 1 }])).toBe(
+      "The collection changed since staging; nothing staged exceeds it now — try again.",
+    );
   });
 });

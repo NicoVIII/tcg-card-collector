@@ -107,6 +107,35 @@ export function stageEntry(
   };
 }
 
+export function printingKey(entry: EntryInput): string {
+  return `${entry.setCode} ${entry.collectorNumber}`;
+}
+
+export function exceedsOwned(entry: StagedEntry): boolean {
+  return entry.quantity > entry.owned;
+}
+
+// Re-reads each staged row's owned quantity after the server rejected the
+// removal as stale, so the rows that no longer fit are the ones marked.
+// Printings missing from the map keep their previous value.
+export function refreshOwned(
+  list: StagedEntry[],
+  copiesByPrinting: Map<string, CollectionCopy[]>,
+): StagedEntry[] {
+  return list.map((entry) => {
+    const owned = copiesByPrinting.get(printingKey(entry));
+    return owned === undefined ? entry : { ...entry, owned: ownedQuantity(owned, entry) };
+  });
+}
+
+export function staleMessage(list: StagedEntry[]): string {
+  const over = list.filter(exceedsOwned).length;
+  if (over === 0) {
+    return "The collection changed since staging; nothing staged exceeds it now — try again.";
+  }
+  return `The collection changed since staging: ${over} row(s) now exceed what's owned. Adjust or remove them.`;
+}
+
 export function removeEntry(list: StagedEntry[], entry: StagedEntry): StagedEntry[] {
   return list.filter((staged) => !sameKey(staged, entry));
 }
