@@ -76,6 +76,10 @@ dbmate-migrate:
 changelog-section version:
   sh ./scripts/changelog_section.sh {{version}}
 
+# after CI published a release: run its image and check it reports the bare version
+release-verify version:
+  sh ./scripts/verify_release_image.sh {{version}}
+
 devcontainer-shellcheck:
   find .devcontainer container -type f -name '*.sh' -print0 | xargs -0r shellcheck
 
