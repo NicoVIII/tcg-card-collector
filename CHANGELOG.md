@@ -16,6 +16,8 @@ Each release section uses only the subheadings it needs:
 
 ## Unreleased
 
+## v0.3.0 — 2026-10-06
+
 ### Added
 
 - Placement shows each row's section — the sort-key categories it falls under (e.g. `Color R ·
