@@ -39,6 +39,7 @@ fn build_ports(
     list_target_sets:,
     list_rules: fn() { Ok([]) },
     get_bulk_spec: fn() { Ok(empty_bulk_spec()) },
+    list_managed_locations: fn() { Ok(#([], [])) },
     list_placed: fn() { Ok([]) },
     today: fn() { a_date() },
   )

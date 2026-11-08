@@ -1,9 +1,11 @@
 import gleam/list
 import gleam/option.{None, Some}
 import portability/application/commands/import_data/ports
+import portability/domain/export_document
 import portability/domain/import_document.{
   type ImportDocument, type Section, type SectionResult, BulkSection,
-  CollectionSection, PlacedSection, RulesSection, TargetSetsSection,
+  CollectionSection, DeepCheckers, ManagedLocationsSection, MembersSection,
+  PlacedSection, RulesSection, TargetSetsSection,
 }
 
 pub type ImportDataCommand {
@@ -35,7 +37,12 @@ fn write_steps(
     [] -> []
     sections -> [
       WriteStep(sections, fn() {
-        ports.replace_plan(document.rules, document.bulk, document.placed)
+        ports.replace_plan(
+          document.rules,
+          document.bulk,
+          managed_with_members(document),
+          document.placed,
+        )
       }),
     ]
   }
@@ -46,10 +53,29 @@ fn write_steps(
   list.flatten([target_sets_step, plan_step, [collection_step]])
 }
 
+// Members without their managed locations never reach here (every one is
+// rejected for naming an unknown location), so the managed section alone
+// decides whether this part is written.
+fn managed_with_members(
+  document: ImportDocument,
+) -> option.Option(
+  #(
+    List(export_document.ManagedLocationEntry),
+    List(export_document.MemberEntry),
+  ),
+) {
+  option.map(document.managed_locations, fn(locations) {
+    #(locations, option.unwrap(document.members, []))
+  })
+}
+
 fn plan_sections(document: ImportDocument) -> List(Section) {
   list.flatten([
     option.map(document.rules, fn(_) { RulesSection }) |> option_to_list,
     option.map(document.bulk, fn(_) { BulkSection }) |> option_to_list,
+    option.map(document.managed_locations, fn(_) { ManagedLocationsSection })
+      |> option_to_list,
+    option.map(document.members, fn(_) { MembersSection }) |> option_to_list,
     option.map(document.placed, fn(_) { PlacedSection }) |> option_to_list,
   ])
 }
@@ -104,8 +130,11 @@ pub fn execute(
   let resolved =
     import_document.resolve_deep_sections(
       document,
-      ports.check_rule,
-      ports.check_sort_keys,
+      DeepCheckers(
+        check_rule: ports.check_rule,
+        check_sort_keys: ports.check_sort_keys,
+        check_managed_kind: ports.check_managed_kind,
+      ),
     )
 
   case resolved.collection {

@@ -38,6 +38,7 @@ pub fn map_import_preview(
     sections: list.map(preview.sections, map_section_result),
     rejected: list.map(preview.rejected, map_rejected_entry),
     excess: list.map(preview.excess, map_ledger_excess),
+    shortfall: list.map(preview.shortfall, map_managed_shortfall),
   )
 }
 
@@ -83,6 +84,16 @@ fn map_rejected_entry(
     identity: rejected.identity,
     position: rejected.position,
     reason: rejected.reason,
+  )
+}
+
+fn map_managed_shortfall(
+  shortfall: import_document.ManagedShortfall,
+) -> portability_queries.ManagedShortfall {
+  portability_queries.managed_shortfall_new(
+    identity: shortfall.identity,
+    location_name: shortfall.location_name,
+    missing: shortfall.missing,
   )
 }
 

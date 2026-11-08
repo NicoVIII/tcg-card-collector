@@ -1,5 +1,5 @@
 import collection/infrastructure/daos/collection_dao
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import gleam/time/calendar
 import insights/infrastructure/daos/insights_dao
 import inventory_planning/infrastructure/daos/inventory_rules_dao
@@ -25,7 +25,13 @@ fn rendered_export() -> String {
     a_date(),
     entries,
     export_document.InsightsSection(target_sets:),
-    export_document.InventoryPlanningSection(rules:, bulk:, placed:),
+    export_document.InventoryPlanningSection(
+      rules:,
+      bulk:,
+      managed_locations: [],
+      members: [],
+      placed:,
+    ),
   ))
 }
 
@@ -91,7 +97,12 @@ pub fn export_import_export_is_byte_identical_and_every_section_is_unchanged_tes
   let assert Some(target_sets) = document.target_sets
   let assert Ok(Nil) = import_ports.replace_target_sets(target_sets)
   let assert Ok(Nil) =
-    import_ports.replace_plan(document.rules, document.bulk, document.placed)
+    import_ports.replace_plan(
+      document.rules,
+      document.bulk,
+      None,
+      document.placed,
+    )
   let assert Ok(Nil) = import_ports.replace_collection(document.collection)
 
   let after_file = rendered_export()

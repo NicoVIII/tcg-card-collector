@@ -16,6 +16,12 @@ Each release section uses only the subheadings it needs:
 
 ## Unreleased
 
+### Changed
+
+- Exports are now `format_version` 2, which adds decks (their names and cards) and placed copies
+  recorded in a deck. Files exported by earlier releases (`format_version` 1) still import
+  unchanged; a release before this one can't read a version 2 file.
+
 ## v0.3.0 — 2026-10-06
 
 ### Added

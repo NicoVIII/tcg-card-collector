@@ -1,6 +1,7 @@
 import { Show, createSignal } from "solid-js";
 import { A } from "@solidjs/router";
 import { ConfirmButton } from "../components/confirm_button";
+import { DeckShortfallNotice } from "../components/deck_shortfall_notice";
 import { LedgerExcessNotice } from "../components/ledger_excess_notice";
 import { RejectedList } from "../components/rejected_list";
 import { mapError } from "../data/http/error";
@@ -19,6 +20,8 @@ const SECTION_LABELS: Record<string, string> = {
   "insights.target_sets": "target sets",
   "inventory_planning.rules": "location rules",
   "inventory_planning.bulk": "bulk spec",
+  "inventory_planning.managed_locations": "decks",
+  "inventory_planning.managed_location_members": "deck cards",
   "inventory_planning.placed": "placed ledger",
 };
 
@@ -76,6 +79,17 @@ function canRestore(preview: ImportPreview | null): boolean {
   return countFor(preview?.sections ?? [], "collection") > 0;
 }
 
+// What a restore will change beyond writing its entries: ledger rows pruned
+// right after, and decks left short of cards.
+function RestoreWarnings(props: { preview: ImportPreview }) {
+  return (
+    <>
+      <LedgerExcessNotice excess={props.preview.excess} />
+      <DeckShortfallNotice shortfall={props.preview.shortfall} />
+    </>
+  );
+}
+
 function RestorePreview(props: {
   preview: ImportPreview | null;
   previewPending: boolean;
@@ -99,8 +113,8 @@ function RestorePreview(props: {
         <Show when={!restorable()}>
           <p role="alert">The file has no valid entries to import.</p>
         </Show>
-        <LedgerExcessNotice excess={props.preview?.excess ?? []} />
       </Show>
+      <Show when={props.preview}>{(preview) => <RestoreWarnings preview={preview()} />}</Show>
       <Show when={restorable()}>
         <p>{summarize(props.preview?.sections ?? [])} ready to restore.</p>
         <ConfirmButton

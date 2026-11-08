@@ -14,6 +14,7 @@ fn happy_ports() -> ports.PreviewImportPorts {
   ports.PreviewImportPorts(
     check_rule: fn(_rule) { Ok(Nil) },
     check_sort_keys: fn(_raw) { Ok(Nil) },
+    check_managed_kind: fn(_kind) { Ok(Nil) },
   )
 }
 
@@ -24,6 +25,8 @@ fn empty_document() -> ImportDocument {
     target_sets: None,
     rules: None,
     bulk: None,
+    managed_locations: None,
+    members: None,
     placed: None,
   )
 }
@@ -109,7 +112,15 @@ pub fn placed_copies_beyond_what_is_owned_are_reported_as_excess_test() {
     ImportDocument(
       ..empty_document(),
       collection: [CollectionEntry(key:, quantity: 1)],
-      placed: Some([PlacedEntry(key:, location: "Box A", quantity: 3)]),
+      managed_locations: None,
+      members: None,
+      placed: Some([
+        PlacedEntry(
+          key:,
+          location: export_document.InLocation("Box A"),
+          quantity: 3,
+        ),
+      ]),
     )
 
   let preview =

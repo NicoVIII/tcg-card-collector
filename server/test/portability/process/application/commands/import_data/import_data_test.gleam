@@ -5,7 +5,8 @@ import portability/application/commands/import_data/ports
 import portability/domain/export_document.{Rule}
 import portability/domain/import_document.{
   type ImportDocument, BulkSection, CollectionSection, ImportDocument,
-  PlacedSection, RulesSection, SectionResult, TargetSetsSection,
+  ManagedLocationsSection, PlacedSection, RulesSection, SectionResult,
+  TargetSetsSection,
 }
 import shared/domain/copy_key
 import support/ref
@@ -28,6 +29,8 @@ fn empty_document() -> ImportDocument {
     target_sets: None,
     rules: None,
     bulk: None,
+    managed_locations: None,
+    members: None,
     placed: None,
   )
 }
@@ -53,14 +56,16 @@ fn build_ports(
   ports.ImportDataPorts(
     check_rule: fn(_rule) { check_rule_result },
     check_sort_keys: fn(_raw) { Ok(Nil) },
+    check_managed_kind: fn(_kind) { Ok(Nil) },
     replace_target_sets: fn(_codes) {
       record_if_ok(written, [TargetSetsSection], replace_target_sets_result)
     },
-    replace_plan: fn(rules, bulk, placed) {
+    replace_plan: fn(rules, bulk, managed, placed) {
       let sections =
         [
           option.map(rules, fn(_) { RulesSection }),
           option.map(bulk, fn(_) { BulkSection }),
+          option.map(managed, fn(_) { ManagedLocationsSection }),
           option.map(placed, fn(_) { PlacedSection }),
         ]
         |> option.values
@@ -138,6 +143,8 @@ pub fn target_sets_and_the_plan_write_before_the_collection_test() {
       target_sets: Some(["neo"]),
       rules: Some([a_rule()]),
       bulk: None,
+      managed_locations: None,
+      members: None,
       placed: Some([]),
     )
   let import_ports =

@@ -48,13 +48,17 @@ skir-check:
 portability-schema-check:
   #!/usr/bin/env bash
   set -euo pipefail
-  fixtures=(server/test/portability/fixtures/*.json)
+  # ajv takes one -d per data file; a bare list after one -d is rejected.
+  data_args=()
+  for fixture in server/test/portability/fixtures/*.json; do
+    data_args+=(-d "$fixture")
+  done
   if command -v bunx >/dev/null 2>&1; then
     bunx ajv-cli@{{ajv_version}} validate --spec=draft2020 \
-      -s docs/portability/export.schema.json -d "${fixtures[@]}"
+      -s docs/portability/export.schema.json "${data_args[@]}"
   else
     npx ajv-cli@{{ajv_version}} validate --spec=draft2020 \
-      -s docs/portability/export.schema.json -d "${fixtures[@]}"
+      -s docs/portability/export.schema.json "${data_args[@]}"
   fi
 
 # Domain stories link each step to the handler that carries it

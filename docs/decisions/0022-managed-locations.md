@@ -79,6 +79,11 @@ a storage destination only.
   app's connections don't enable foreign keys anyway.
 - A second managed-location kind is a new enum value plus whatever is
   specific to it; precedence, shortfall, and the namespace come for free.
+- The export format went to `format_version` 2 even though the change is
+  additive. ADR 0019 alone wouldn't bump for a new section, but ADR 0020's
+  frozen current-version fixture must re-export byte-identically, and the
+  encoder now writes sections v1's fixture doesn't have — so any change to
+  what export writes is a bump from now on.
 - Shortfall tie-breaking by name is arbitrary. It's acceptable only because a
   shortfall is always visible; if users hit it often, a deck-level priority
   is the natural next step.

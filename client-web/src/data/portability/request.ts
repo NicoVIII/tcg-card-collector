@@ -46,10 +46,19 @@ export type LedgerExcess = {
   owned: number;
 };
 
+// A deck member the imported collection can't supply — the shortfall the
+// deck will show right after import (ADR 0022).
+export type DeckShortfall = {
+  location_name: string;
+  identity: string;
+  missing: number;
+};
+
 export type ImportPreview = {
   sections: SectionCount[];
   rejected: RejectedEntry[];
   excess: LedgerExcess[];
+  shortfall: DeckShortfall[];
 };
 
 export async function previewImport(content: string): Promise<ImportPreview> {
@@ -74,6 +83,11 @@ export async function previewImport(content: string): Promise<ImportPreview> {
       identity: entry.identity,
       placed: entry.placed,
       owned: entry.owned,
+    })),
+    shortfall: response.shortfall.map((entry) => ({
+      location_name: entry.locationName,
+      identity: entry.identity,
+      missing: entry.missing,
     })),
   };
 }

@@ -24,6 +24,8 @@ fn no_plan() -> InventoryPlanningSection {
   InventoryPlanningSection(
     rules: [],
     bulk: BulkSpec(location: "Bulk", sort_keys: ""),
+    managed_locations: [],
+    members: [],
     placed: [],
   )
 }
@@ -108,8 +110,16 @@ pub fn rules_keep_their_given_order_while_placed_is_sorted_test() {
     ),
   ]
   let unsorted_placed = [
-    PlacedEntry(key: mh2_key, location: "Box", quantity: 1),
-    PlacedEntry(key: dmu_key, location: "Box", quantity: 2),
+    PlacedEntry(
+      key: mh2_key,
+      location: export_document.InLocation("Box"),
+      quantity: 1,
+    ),
+    PlacedEntry(
+      key: dmu_key,
+      location: export_document.InLocation("Box"),
+      quantity: 2,
+    ),
   ]
 
   let document =
@@ -120,6 +130,8 @@ pub fn rules_keep_their_given_order_while_placed_is_sorted_test() {
       InventoryPlanningSection(
         rules:,
         bulk: BulkSpec(location: "Bulk", sort_keys: ""),
+        managed_locations: [],
+        members: [],
         placed: unsorted_placed,
       ),
     )
@@ -128,7 +140,15 @@ pub fn rules_keep_their_given_order_while_placed_is_sorted_test() {
   assert document.inventory_planning.rules == rules
   assert document.inventory_planning.placed
     == [
-      PlacedEntry(key: dmu_key, location: "Box", quantity: 2),
-      PlacedEntry(key: mh2_key, location: "Box", quantity: 1),
+      PlacedEntry(
+        key: dmu_key,
+        location: export_document.InLocation("Box"),
+        quantity: 2,
+      ),
+      PlacedEntry(
+        key: mh2_key,
+        location: export_document.InLocation("Box"),
+        quantity: 1,
+      ),
     ]
 }

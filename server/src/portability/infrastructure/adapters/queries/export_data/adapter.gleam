@@ -14,6 +14,7 @@ pub fn new() -> ports.ExportDataPorts {
     list_target_sets: insights_api.list_target_sets,
     list_rules: list_rules_adapter(),
     get_bulk_spec: get_bulk_spec_adapter(),
+    list_managed_locations: list_managed_locations_adapter(),
     list_placed: list_placed_adapter(),
     today: today_adapter(),
   )
@@ -53,6 +54,26 @@ fn get_bulk_spec_adapter() -> ports.GetBulkSpecPort {
   }
 }
 
+fn list_managed_locations_adapter() -> ports.ListManagedLocationsPort {
+  fn() {
+    use specs <- result.map(inventory_planning_api.list_managed_locations())
+    #(
+      list.map(specs, fn(spec) {
+        export_document.ManagedLocationEntry(name: spec.name, kind: spec.kind)
+      }),
+      list.flat_map(specs, fn(spec) {
+        list.map(spec.members, fn(member) {
+          export_document.MemberEntry(
+            managed_location: spec.name,
+            key: member.0,
+            quantity: member.1,
+          )
+        })
+      }),
+    )
+  }
+}
+
 fn list_placed_adapter() -> ports.ListPlacedPort {
   fn() {
     use copies <- result.try(inventory_planning_api.list_placed())
@@ -60,7 +81,12 @@ fn list_placed_adapter() -> ports.ListPlacedPort {
       list.map(copies, fn(copy) {
         export_document.PlacedEntry(
           key: copy.key,
-          location: copy.location,
+          location: case copy.location {
+            inventory_planning_api.AtCascadeLocation(name) ->
+              export_document.InLocation(name)
+            inventory_planning_api.AtManagedLocation(name) ->
+              export_document.InManagedLocation(name)
+          },
           quantity: copy.quantity,
         )
       }),

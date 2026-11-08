@@ -50,11 +50,22 @@ struct LedgerExcess {
   owned: int32 = 2;
 }
 
+// A managed location's member the imported collection can't supply —
+// computed up front so the preview can say which decks will come up short
+// right after import (ADR 0022). `identity` names the copy the same way
+// LedgerExcess does.
+struct ManagedShortfall {
+  location_name: string = 0;
+  identity: string = 1;
+  missing: int32 = 2;
+}
+
 struct ImportPreview {
   removed 0;  // was entry_count: superseded by sections (#119: more than the collection)
   rejected: [RejectedEntry] = 1;
   sections: [SectionCount] = 2;
   excess: [LedgerExcess] = 3;
+  shortfall: [ManagedShortfall] = 4;
 }
 
 method PreviewImport(

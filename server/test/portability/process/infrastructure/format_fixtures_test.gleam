@@ -1,13 +1,15 @@
 import collection/infrastructure/daos/collection_dao
 import gleam/list
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import gleam/string
 import gleam/time/calendar
 import insights/infrastructure/daos/insights_dao
 import inventory_planning/infrastructure/daos/bulk_spec_dao
 import inventory_planning/infrastructure/daos/inventory_rules_dao
+import inventory_planning/infrastructure/daos/managed_locations_dao
 import inventory_planning/infrastructure/daos/placed_cards_dao
 import portability/domain/export_document
+import portability/domain/import_document
 import portability/driver/export_file
 import portability/infrastructure/adapters/commands/import_data/adapter
 import portability/infrastructure/adapters/queries/export_data/adapter as export_data_adapter
@@ -17,7 +19,7 @@ import support/test_db
 /// The date baked into `current_fixture` — fixed and frozen along with it,
 /// same reasoning as its rows.
 fn fixture_exported_on() -> calendar.Date {
-  calendar.Date(2026, calendar.September, 25)
+  calendar.Date(2026, calendar.November, 8)
 }
 
 /// One frozen fixture per format version (`test/portability/fixtures/`,
@@ -25,11 +27,33 @@ fn fixture_exported_on() -> calendar.Date {
 /// constant names the one the byte-identical round-trip test below checks;
 /// a format bump repoints it and leaves the old fixture's own import test
 /// in place, unchanged (ADR 0020).
-const current_fixture = "test/portability/fixtures/format_v1.json"
+const current_fixture = "test/portability/fixtures/format_v2.json"
+
+const format_v1_fixture = "test/portability/fixtures/format_v1.json"
 
 fn read_fixture(path: String) -> String {
   let assert Ok(content) = simplifile.read(path)
   content
+}
+
+// Writes every section the document carries through the real import
+// adapter, in ImportData's own order — minus the collection-changed
+// notification, which no fixture test needs.
+fn restore(document: import_document.ImportDocument) -> Nil {
+  let import_ports = adapter.new(fn(_) { Ok(Nil) })
+  let assert Some(target_sets) = document.target_sets
+  let assert Ok(Nil) = import_ports.replace_target_sets(target_sets)
+  let assert Ok(Nil) =
+    import_ports.replace_plan(
+      document.rules,
+      document.bulk,
+      option.map(document.managed_locations, fn(locations) {
+        #(locations, option.unwrap(document.members, []))
+      }),
+      document.placed,
+    )
+  let assert Ok(Nil) = import_ports.replace_collection(document.collection)
+  Nil
 }
 
 fn sorted_collection(rows: List(collection_dao.CardRow)) -> String {
@@ -56,15 +80,10 @@ fn sorted_collection(rows: List(collection_dao.CardRow)) -> String {
 pub fn format_v1_fixture_imports_every_section_exactly_test() {
   use _db <- test_db.with_temp_db()
 
-  let assert Ok(document) = export_file.parse(read_fixture(current_fixture))
+  let assert Ok(document) = export_file.parse(read_fixture(format_v1_fixture))
   assert document.rejected == []
-
-  let import_ports = adapter.new(fn(_) { Ok(Nil) })
-  let assert Some(target_sets) = document.target_sets
-  let assert Ok(Nil) = import_ports.replace_target_sets(target_sets)
-  let assert Ok(Nil) =
-    import_ports.replace_plan(document.rules, document.bulk, document.placed)
-  let assert Ok(Nil) = import_ports.replace_collection(document.collection)
+  assert document.managed_locations == None
+  restore(document)
 
   let assert Ok(collection) = collection_dao.list_cards()
   assert sorted_collection(collection)
@@ -134,19 +153,15 @@ pub fn current_format_fixture_re_exports_byte_identically_test() {
 
   let fixture = read_fixture(current_fixture)
   let assert Ok(document) = export_file.parse(fixture)
-
-  let import_ports = adapter.new(fn(_) { Ok(Nil) })
-  let assert Some(target_sets) = document.target_sets
-  let assert Ok(Nil) = import_ports.replace_target_sets(target_sets)
-  let assert Ok(Nil) =
-    import_ports.replace_plan(document.rules, document.bulk, document.placed)
-  let assert Ok(Nil) = import_ports.replace_collection(document.collection)
+  restore(document)
 
   let export_ports = export_data_adapter.new()
   let assert Ok(entries) = export_ports.list_collection_entries()
   let assert Ok(exported_target_sets) = export_ports.list_target_sets()
   let assert Ok(rules) = export_ports.list_rules()
   let assert Ok(bulk) = export_ports.get_bulk_spec()
+  let assert Ok(#(managed_locations, members)) =
+    export_ports.list_managed_locations()
   let assert Ok(placed) = export_ports.list_placed()
 
   let rendered =
@@ -154,8 +169,91 @@ pub fn current_format_fixture_re_exports_byte_identically_test() {
       fixture_exported_on(),
       entries,
       export_document.InsightsSection(target_sets: exported_target_sets),
-      export_document.InventoryPlanningSection(rules:, bulk:, placed:),
+      export_document.InventoryPlanningSection(
+        rules:,
+        bulk:,
+        managed_locations:,
+        members:,
+        placed:,
+      ),
     ))
 
   assert rendered == fixture
+}
+
+/// v2's own sections land exactly: decks get fresh ids in file order, their
+/// members keep the copies they name — including one the collection doesn't
+/// own enough of (Mono-Red's mh2, a shortfall, not an import error) — and a
+/// placed entry naming a deck lands on that deck's new id. "Binder A" is a
+/// deck sharing a rule target's name, which the two namespaces allow.
+pub fn format_v2_fixture_imports_managed_locations_exactly_test() {
+  use _db <- test_db.with_temp_db()
+
+  let assert Ok(document) = export_file.parse(read_fixture(current_fixture))
+  assert document.rejected == []
+  restore(document)
+
+  let assert Ok(locations) = managed_locations_dao.load_all()
+  assert list.map(locations, fn(location) { #(location.id, location.name) })
+    == [
+      #("imported-managed-0", "Binder A"),
+      #("imported-managed-1", "Mono-Red"),
+    ]
+  assert managed_locations_dao.list_members()
+    == Ok([
+      managed_locations_dao.MemberRow(
+        "imported-managed-0",
+        "dmu",
+        "2",
+        "nonfoil",
+        "en",
+        1,
+      ),
+      managed_locations_dao.MemberRow(
+        "imported-managed-1",
+        "dsk",
+        "104a",
+        "foil",
+        "en",
+        2,
+      ),
+      managed_locations_dao.MemberRow(
+        "imported-managed-1",
+        "mh2",
+        "17",
+        "foil",
+        "zht",
+        4,
+      ),
+    ])
+  assert placed_cards_dao.list()
+    == Ok([
+      placed_cards_dao.PlacedCardRow(
+        "dsk",
+        "104a",
+        "foil",
+        "en",
+        "cascade",
+        "Box B / Row 1",
+        3,
+      ),
+      placed_cards_dao.PlacedCardRow(
+        "dsk",
+        "104a",
+        "foil",
+        "en",
+        "cascade",
+        "Box B / Row 2",
+        1,
+      ),
+      placed_cards_dao.PlacedCardRow(
+        "dsk",
+        "104a",
+        "foil",
+        "en",
+        "managed",
+        "imported-managed-1",
+        2,
+      ),
+    ])
 }

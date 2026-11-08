@@ -282,7 +282,9 @@ Core terms:
 - ExportDocument: the whole exported file as this app models it before rendering — a
   format marker, a format_version, the export date, and one section per contributing
   context: `collection`, `insights` (target sets), and `inventory_planning` (rules,
-  bulk spec, placed ledger) — #119's full scope.
+  bulk spec, managed locations with their members, placed ledger). Managed locations
+  and the placed entries recorded at them are named, never identified by id — a
+  restore assigns fresh ids (format_version 2, #122).
 - format_version: an integer identifying the document's shape, independent of the app's
   own version — it changes only when a section's shape changes in a way an importer must
   branch on, never merely because a new section was added.
@@ -297,18 +299,23 @@ Core terms:
   way a line number wouldn't.
 - Section: which part of the document an entry, a rejection, or a written count belongs
   to (`collection`, `insights.target_sets`, `inventory_planning.rules`,
-  `inventory_planning.bulk`, `inventory_planning.placed`). A section absent from the
+  `inventory_planning.bulk`, `inventory_planning.managed_locations`,
+  `inventory_planning.managed_location_members`, `inventory_planning.placed`). A section absent from the
   uploaded file is left untouched on import, not cleared — only `collection` stays
   mandatory. Rules, bulk spec, and the placed ledger replace together in one Inventory
   Planning transaction (one context, ADR 0019's "one place that can check relationships
-  between sections"); import writes insights, then inventory_planning, then collection
-  last, so a collection-triggered reconciliation (ADR 0011) always runs against the
-  other sections' final state.
+  between sections"), managed locations and their members with them; import writes
+  insights, then inventory_planning, then collection last, so a collection-triggered
+  reconciliation (ADR 0011) always runs against the other sections' final state.
 - LedgerExcess: a placed-ledger key whose total across locations exceeds what the
   document's own collection owns — computed from the document alone, before anything is
   written, so the preview can say what ReconcilePlacedLedger (ADR 0011) will prune right
   after import. Needs no cross-context call: both sides are already Portability's own
   validated data by the time it runs.
+- ManagedShortfall: LedgerExcess's counterpart for managed locations — a member the
+  document's own collection can't supply, predicted with the projection's own precedence
+  (by name) so the preview can say which deck will come up short after import. Nothing is
+  pruned for it; it's a warning, not a loss.
 
 Boundary notes:
 - Reads and writes every contributing context through that context's `driver/gleam`
