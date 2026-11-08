@@ -7,6 +7,7 @@ describe("routes", () => {
     expect(navRoutes.map((route) => route.path)).toEqual([
       "/collection",
       "/catalog",
+      "/decks",
       "/inventory",
       "/placement",
       "/insights",

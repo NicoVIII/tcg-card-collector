@@ -6,6 +6,7 @@ import {
   cardMatches,
   countLabel,
   filterIsActive,
+  locationLabel,
   openLocationCards,
   projectionSummaries,
 } from "./inventory_projection";
@@ -98,16 +99,18 @@ describe("projectionSummaries", () => {
       {
         location_key: "cascade:binder A",
         location_name: "binder A",
-        is_bulk: false,
+        kind: "rule",
         total_quantity: 2,
         match_quantity: 2,
+        missing_quantity: 0,
       },
       {
         location_key: "cascade:Bulk",
         location_name: "Bulk",
-        is_bulk: true,
+        kind: "bulk",
         total_quantity: 1,
         match_quantity: 1,
+        missing_quantity: 0,
       },
     ]);
   });
@@ -117,9 +120,10 @@ describe("projectionSummaries", () => {
       {
         location_key: "cascade:binder A",
         location_name: "binder A",
-        is_bulk: false,
+        kind: "rule",
         total_quantity: 2,
         match_quantity: 1,
+        missing_quantity: 0,
       },
     ]);
   });
@@ -161,9 +165,10 @@ describe("countLabel", () => {
         {
           location_key: "cascade:binder A",
           location_name: "binder A",
-          is_bulk: false,
+          kind: "rule",
           total_quantity: 2,
           match_quantity: 2,
+          missing_quantity: 0,
         },
         false,
       ),
@@ -176,9 +181,10 @@ describe("countLabel", () => {
         {
           location_key: "cascade:binder A",
           location_name: "binder A",
-          is_bulk: false,
+          kind: "rule",
           total_quantity: 2,
           match_quantity: 1,
+          missing_quantity: 0,
         },
         true,
       ),
@@ -189,5 +195,29 @@ describe("countLabel", () => {
 describe("PROJECTION_PAGE_SIZE", () => {
   it("is a positive page size", () => {
     expect(PROJECTION_PAGE_SIZE).toBeGreaterThan(0);
+  });
+});
+
+// A deck has no rule id either; it must not read as the bulk remainder (#122).
+describe("a deck in the projection", () => {
+  const deck = {
+    location: { kind: "managed" as const, key: "d1" },
+    location_name: "Mono-Red",
+    rule_id: "",
+    total_quantity: 1,
+    cards: [card()],
+    sections: [],
+    shortfall: [card({ name: "Shock", quantity: 2 })],
+  };
+
+  it("is labelled a deck and counts what it's missing", () => {
+    const [summary] = projectionSummaries(
+      { locations: [deck], total_quantity: 1, unknown_count: 0 },
+      EMPTY_CARD_FILTER,
+    );
+
+    expect(summary!.kind).toBe("deck");
+    expect(locationLabel(summary!)).toBe("Mono-Red (deck)");
+    expect(countLabel(summary!, false)).toBe("1 card(s), 2 missing");
   });
 });

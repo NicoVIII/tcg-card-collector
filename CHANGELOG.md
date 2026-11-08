@@ -16,6 +16,16 @@ Each release section uses only the subheadings it needs:
 
 ## Unreleased
 
+### Added
+
+- Decks (#122): a new Decks page creates, renames, and deletes decks and adds or removes their
+  cards by set, number, finish, and language. A deck's cards are taken before any location rule,
+  so they no longer show up in a binder or bulk — no need to delete them from the collection.
+  Place cards files them into the deck box like any other location. If the collection owns fewer
+  copies than a deck lists, the deck keeps its list and shows what's missing; removing cards from
+  the collection refuses to cut into a deck's copies, and the restore preview warns when a file
+  would leave a deck short. Deleting a deck sends its cards back to wherever the rules put them.
+
 ### Changed
 
 - Exports are now `format_version` 2, which adds decks (their names and cards) and placed copies

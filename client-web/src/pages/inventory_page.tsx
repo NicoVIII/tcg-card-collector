@@ -38,6 +38,7 @@ import { focusKeyFrom } from "./placement_focus";
 import {
   PROJECTION_PAGE_SIZE,
   countLabel,
+  locationLabel,
   filterIsActive,
   openLocationCards,
   projectionSummaries,
@@ -324,10 +325,7 @@ function ProjectionLocationRow(props: ProjectionLocationRowProps) {
           onClick={() => headerRef && props.onToggle(props.summary.location_key, headerRef)}
         >
           <span aria-hidden="true">{props.isOpen ? "▾" : "▸"}</span>
-          <span>
-            {props.summary.location_name}
-            {props.summary.is_bulk ? " (bulk remainder)" : ""}
-          </span>
+          <span>{locationLabel(props.summary)}</span>
           <span>{countLabel(props.summary, props.filterActive)}</span>
         </button>
       </h4>

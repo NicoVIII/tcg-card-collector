@@ -2,15 +2,8 @@ import { For, Show, createSignal } from "solid-js";
 import { A } from "@solidjs/router";
 import { useCardQuery } from "../data/card_catalog/query";
 import { useAddCardsMutation } from "../data/collection_add/mutation";
-import {
-  DEFAULT_FINISH,
-  DEFAULT_LANGUAGE,
-  FINISHES,
-  LANGUAGES,
-  type Finish,
-  type Language,
-} from "../data/collection/copy_kind";
 import { mapError } from "../data/http/error";
+import { CopyEntryForm, type RawCopyEntry } from "../components/copy_entry_form";
 import {
   type StagedEntry,
   addEntry,
@@ -61,38 +54,23 @@ function StagedRow(props: { entry: StagedEntry; onRemove: () => void }) {
 // collector number field is cleared and refocused after each one, and the
 // staged list is committed as a single AddCards batch.
 export function AddCardsPanel() {
-  const [setCode, setSetCode] = createSignal("");
-  const [collectorNumber, setCollectorNumber] = createSignal("");
-  const [finish, setFinish] = createSignal<Finish>(DEFAULT_FINISH);
-  const [language, setLanguage] = createSignal<Language>(DEFAULT_LANGUAGE);
-  const [quantity, setQuantity] = createSignal("1");
   const [staged, setStaged] = createSignal<StagedEntry[]>([]);
   const [formError, setFormError] = createSignal<string | null>(null);
   const [submitError, setSubmitError] = createSignal<string | null>(null);
   const [successNote, setSuccessNote] = createSignal<string | null>(null);
   const [placedCount, setPlacedCount] = createSignal(0);
   const mutation = useAddCardsMutation();
-  let collectorNumberInput: HTMLInputElement | undefined;
 
-  const stageEntry = (event: Event) => {
-    event.preventDefault();
-    const entry = normalizeEntry({
-      setCode: setCode(),
-      collectorNumber: collectorNumber(),
-      finish: finish(),
-      language: language(),
-      quantity: Number.parseInt(quantity(), 10),
-    });
+  const stageEntry = (raw: RawCopyEntry): boolean => {
+    const entry = normalizeEntry(raw);
     if (entry === null) {
       setFormError("Enter a set code, a collector number, and a quantity of at least 1.");
-      return;
+      return false;
     }
     setFormError(null);
     setSuccessNote(null);
     setStaged((list) => addEntry(list, entry));
-    setCollectorNumber("");
-    setQuantity("1");
-    collectorNumberInput?.focus();
+    return true;
   };
 
   const commit = async () => {
@@ -118,57 +96,7 @@ export function AddCardsPanel() {
   return (
     <div class="add-cards-panel">
       <h3>Add cards</h3>
-      <form class="form-row" onSubmit={stageEntry}>
-        <label>
-          Set
-          <input
-            value={setCode()}
-            onInput={(event) => setSetCode(event.currentTarget.value)}
-            placeholder="blb"
-            size={6}
-          />
-        </label>
-        <label>
-          Number
-          <input
-            ref={(element) => {
-              collectorNumberInput = element;
-            }}
-            value={collectorNumber()}
-            onInput={(event) => setCollectorNumber(event.currentTarget.value)}
-            placeholder="123"
-            size={6}
-          />
-        </label>
-        <label>
-          Finish
-          <select
-            value={finish()}
-            onChange={(event) => setFinish(event.currentTarget.value as Finish)}
-          >
-            <For each={FINISHES}>{(option) => <option value={option}>{option}</option>}</For>
-          </select>
-        </label>
-        <label>
-          Language
-          <select
-            value={language()}
-            onChange={(event) => setLanguage(event.currentTarget.value as Language)}
-          >
-            <For each={LANGUAGES}>{(option) => <option value={option}>{option}</option>}</For>
-          </select>
-        </label>
-        <label>
-          Quantity
-          <input
-            type="number"
-            min="1"
-            value={quantity()}
-            onInput={(event) => setQuantity(event.currentTarget.value)}
-          />
-        </label>
-        <button type="submit">Add to list</button>
-      </form>
+      <CopyEntryForm submitLabel="Add to list" onSubmit={stageEntry} />
       <Show when={formError() !== null}>
         <p role="alert">{formError()}</p>
       </Show>

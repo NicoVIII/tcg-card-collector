@@ -1,6 +1,10 @@
 import type { CardFilter } from "../lib/card_filter";
 import { locationKey } from "../data/inventory_planning/location_ref";
-import type { InventoryProjection, ProjectionCard } from "../data/inventory_planning/request";
+import type {
+  InventoryProjection,
+  ProjectionCard,
+  ProjectionLocation,
+} from "../data/inventory_planning/request";
 
 // Collapse/page/filter derivations for the Inventory page's projection
 // section (#55). Pure so they're node-testable — the page (inventory_page.tsx)
@@ -8,13 +12,25 @@ import type { InventoryProjection, ProjectionCard } from "../data/inventory_plan
 
 export const PROJECTION_PAGE_SIZE = 100;
 
+// A deck has no rule either, so "no rule id" alone doesn't mean bulk.
+export type LocationKind = "rule" | "bulk" | "deck";
+
 export type ProjectionLocationSummary = {
   location_key: string;
   location_name: string;
-  is_bulk: boolean;
+  kind: LocationKind;
   total_quantity: number;
   match_quantity: number;
+  // A deck's copies the collection can't supply (ADR 0022); 0 otherwise.
+  missing_quantity: number;
 };
+
+function locationKind(location: ProjectionLocation): LocationKind {
+  if (location.location.kind === "managed") {
+    return "deck";
+  }
+  return location.rule_id === "" ? "bulk" : "rule";
+}
 
 // Same semantics as the #54 server-side filter (name: case-insensitive
 // substring; set: case-insensitive exact) so a filtered projection agrees
@@ -50,9 +66,10 @@ export function projectionSummaries(
   const summaries = (projection?.locations ?? []).map((location) => ({
     location_key: locationKey(location.location),
     location_name: location.location_name,
-    is_bulk: location.rule_id === "",
+    kind: locationKind(location),
     total_quantity: location.total_quantity,
     match_quantity: matchCount(location.cards, filter),
+    missing_quantity: location.shortfall.reduce((sum, card) => sum + card.quantity, 0),
   }));
   return summaries.filter((summary) => !active || summary.match_quantity > 0);
 }
@@ -77,8 +94,19 @@ export function openLocationCards(
   return cards.length === 0 ? null : cards;
 }
 
+const KIND_SUFFIX: Record<LocationKind, string> = {
+  rule: "",
+  bulk: " (bulk remainder)",
+  deck: " (deck)",
+};
+
+export function locationLabel(summary: ProjectionLocationSummary): string {
+  return summary.location_name + KIND_SUFFIX[summary.kind];
+}
+
 export function countLabel(summary: ProjectionLocationSummary, filterActive: boolean): string {
-  return filterActive
+  const count = filterActive
     ? `${summary.match_quantity} of ${summary.total_quantity} card(s)`
     : `${summary.total_quantity} card(s)`;
+  return summary.missing_quantity > 0 ? `${count}, ${summary.missing_quantity} missing` : count;
 }
