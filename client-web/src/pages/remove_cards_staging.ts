@@ -1,5 +1,7 @@
 import { FINISHES, LANGUAGES, type Finish, type Language } from "../data/collection/copy_kind";
 import type { CollectionCopy } from "../data/collection/request";
+import { claimsOn, describeClaims, freeCopies } from "../data/managed_location/claims";
+import type { ManagedLocation } from "../data/managed_location/request";
 
 export type EntryInput = {
   setCode: string;
@@ -82,14 +84,36 @@ function capMessage(ownedQty: number, alreadyStaged: number): string {
   return `Only ${ownedQty} owned${staged}.`;
 }
 
+function asCopy(entry: EntryInput) {
+  return {
+    set_code: entry.setCode,
+    collector_number: entry.collectorNumber,
+    finish: entry.finish,
+    language: entry.language,
+  };
+}
+
+// A removal may only take copies no deck claims: cutting into a deck would
+// leave it short without the user deciding that (ADR 0022). The server
+// doesn't enforce this — Collection can't ask Inventory Planning — so this
+// guard is the one place it's prevented.
+function deckGuardMessage(entry: EntryInput, ownedQty: number, decks: ManagedLocation[]): string {
+  const key = `${entry.setCode} ${entry.collectorNumber} (${describeCopy(entry)})`;
+  const free = freeCopies(ownedQty, decks, asCopy(entry));
+  const claims = describeClaims(claimsOn(decks, asCopy(entry)));
+  return `Only ${free} of ${key} can be removed: the rest are in deck(s) ${claims}. Remove them from the deck first.`;
+}
+
 // Stages an entry against the card's owned copies (every kind the collection
-// holds of this printing), refusing an unowned copy or a quantity above what's
-// owned — counting what's already staged for the same copy, so the list holds
-// one line per (card, finish, language).
+// holds of this printing), refusing an unowned copy, a quantity above what's
+// owned, or one that would cut into copies a deck holds — counting what's
+// already staged for the same copy, so the list holds one line per (card,
+// finish, language).
 export function stageEntry(
   list: StagedEntry[],
   entry: EntryInput,
   owned: CollectionCopy[],
+  decks: ManagedLocation[],
 ): StageResult {
   const ownedQty = ownedQuantity(owned, entry);
   if (ownedQty === 0) {
@@ -99,6 +123,9 @@ export function stageEntry(
   const alreadyStaged = existing?.quantity ?? 0;
   if (alreadyStaged + entry.quantity > ownedQty) {
     return { ok: false, message: capMessage(ownedQty, alreadyStaged) };
+  }
+  if (alreadyStaged + entry.quantity > freeCopies(ownedQty, decks, asCopy(entry))) {
+    return { ok: false, message: deckGuardMessage(entry, ownedQty, decks) };
   }
   const staged = { ...entry, quantity: alreadyStaged + entry.quantity, owned: ownedQty };
   return {

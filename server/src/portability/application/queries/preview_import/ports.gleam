@@ -6,9 +6,13 @@ pub type CheckRulePort =
 pub type CheckSortKeysPort =
   fn(String) -> Result(Nil, String)
 
+pub type CheckManagedKindPort =
+  fn(String) -> Result(Nil, String)
+
 pub type PreviewImportPorts {
   PreviewImportPorts(
     check_rule: CheckRulePort,
     check_sort_keys: CheckSortKeysPort,
+    check_managed_kind: CheckManagedKindPort,
   )
 }

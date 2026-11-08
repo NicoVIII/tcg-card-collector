@@ -44,6 +44,8 @@ function_complexity = "error"
 
 [tools.glinter.ignore]
 # Generated contract code: the architecture rule still applies, readability rules don't.
-"src/shared/driver/skir/skirout/**/*.gleam" = ["unused_exports", "function_complexity"]
+# assert_ok_pattern: a value-carrying enum variant's generated `unwrap` asserts on
+# the variant the serializer already dispatched on, so it can't mismatch (#122).
+"src/shared/driver/skir/skirout/**/*.gleam" = ["unused_exports", "function_complexity", "assert_ok_pattern"]
 # Boot code crashes on purpose when the server cannot start.
 "src/bootstrap/**/*.gleam" = ["assert_ok_pattern"]

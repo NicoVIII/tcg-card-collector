@@ -16,11 +16,20 @@ pub fn execute(
   use target_sets <- result.try(ports.list_target_sets())
   use rules <- result.try(ports.list_rules())
   use bulk <- result.try(ports.get_bulk_spec())
+  use #(managed_locations, members) <- result.try(
+    ports.list_managed_locations(),
+  )
   use placed <- result.try(ports.list_placed())
   Ok(export_document.new(
     ports.today(),
     collection,
     InsightsSection(target_sets:),
-    InventoryPlanningSection(rules:, bulk:, placed:),
+    InventoryPlanningSection(
+      rules:,
+      bulk:,
+      managed_locations:,
+      members:,
+      placed:,
+    ),
   ))
 }

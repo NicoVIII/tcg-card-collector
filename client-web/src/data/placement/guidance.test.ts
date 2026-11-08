@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { InventoryProjection, ProjectionCard } from "../inventory_planning/request";
 import type { Finish, Language } from "../collection/copy_kind";
+import {
+  cascadeLocation,
+  managedLocation,
+  type LocationRef,
+} from "../inventory_planning/location_ref";
 import type { PlacedLedgerRow } from "./request";
 import { buildGuidance } from "./guidance";
 
@@ -28,14 +33,17 @@ function card(
 function location(
   location_name: string,
   cards: ProjectionCard[],
+  ref: LocationRef = cascadeLocation(location_name),
 ): InventoryProjection["locations"][number] {
   const total_quantity = cards.reduce((sum, c) => sum + c.quantity, 0);
   return {
+    location: ref,
     location_name,
     rule_id: "",
     total_quantity,
     cards,
     sections: [{ parts: [], card_count: total_quantity }],
+    shortfall: [],
   };
 }
 
@@ -49,12 +57,13 @@ function projection(locations: InventoryProjection["locations"]): InventoryProje
 
 function placed(
   collector_number: string,
-  location: string,
+  location: string | LocationRef,
   quantity: number,
   finish: Finish = "nonfoil",
   language: Language = "en",
 ): PlacedLedgerRow {
-  return { set_code: "m11", collector_number, finish, language, location, quantity };
+  const ref = typeof location === "string" ? cascadeLocation(location) : location;
+  return { set_code: "m11", collector_number, finish, language, location: ref, quantity };
 }
 
 describe("buildGuidance", () => {
@@ -76,6 +85,8 @@ describe("buildGuidance", () => {
       total_unplaced: 3,
       locations: [
         {
+          location: cascadeLocation("Bulk"),
+          location_key: "cascade:Bulk",
           location_name: "Bulk",
           total_quantity: 3,
           cards: [
@@ -211,6 +222,7 @@ describe("buildGuidance", () => {
   it("attaches each card's section from the whole location, surviving placed cards dropping out", () => {
     const proj = projection([
       {
+        location: cascadeLocation("Bulk"),
         location_name: "Bulk",
         rule_id: "",
         total_quantity: 3,
@@ -219,6 +231,7 @@ describe("buildGuidance", () => {
           { parts: [{ key: "color_identity", first: "R", last: "R" }], card_count: 2 },
           { parts: [{ key: "color_identity", first: "G", last: "G" }], card_count: 1 },
         ],
+        shortfall: [],
       },
     ]);
     const ledger = [placed("146", "Bulk", 1)];
@@ -250,5 +263,19 @@ describe("buildGuidance", () => {
     const [remaining] = guidance.locations[0]!.cards;
     expect(remaining!.finish).toBe("nonfoil");
     expect(remaining!.placed_quantity).toBe(0);
+  });
+
+  // A deck and a binder may share a display name (#122): a tick in one must
+  // never count against the other.
+  it("keeps a managed and a cascade location of the same name apart", () => {
+    const proj = projection([
+      location("Red", [card("161", 1)]),
+      location("Red", [card("161", 1)], managedLocation("deck-1")),
+    ]);
+    const ledger = [placed("161", managedLocation("deck-1"), 1)];
+
+    const guidance = buildGuidance(proj, ledger);
+
+    expect(guidance.locations.map((l) => l.location_key)).toEqual(["cascade:Red"]);
   });
 });

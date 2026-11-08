@@ -5,7 +5,9 @@ import inventory_planning/domain/bulk_spec
 import inventory_planning/domain/card_attributes.{type PlannedCard} as attrs
 import inventory_planning/domain/card_predicate
 import inventory_planning/domain/copy_selector
+import inventory_planning/domain/location_ref
 import inventory_planning/domain/location_target
+import inventory_planning/domain/managed_location
 import inventory_planning/domain/rule_cascade.{
   type CascadeRule, type RuleCascade, CascadeRule, RuleCascade,
 }
@@ -13,6 +15,7 @@ import inventory_planning/domain/set_index.{SetMeta}
 import inventory_planning/domain/sort_section
 import inventory_planning/domain/sort_spec
 import shared/domain/card_key
+import shared/domain/copy_key
 import shared/domain/finish
 import shared/domain/language
 import shared/domain/oracle_id
@@ -115,6 +118,7 @@ fn sorted_rule(
 // common/uncommon color boxes, then bulk.
 fn owner_cascade() -> RuleCascade {
   RuleCascade(
+    managed: [],
     rules: [
       rule(
         "r1",
@@ -253,6 +257,7 @@ pub fn first_per_printing_prefers_nonfoil_en_among_kinds_of_copy_test() {
     )
   let cascade =
     RuleCascade(
+      managed: [],
       rules: [
         rule(
           "r1",
@@ -300,6 +305,7 @@ fn claimed_copy(
 ) -> PlannedCard {
   let cascade =
     RuleCascade(
+      managed: [],
       rules: [rule("r1", 0, selector, "rarity >= rare", "Binder")],
       bulk: bulk_spec.BulkSpec(location_name: "Bulk", sort_keys: []),
     )
@@ -453,6 +459,7 @@ pub fn duplicate_printing_keys_conserve_quantity_test() {
 // out by the rule's sort keys.
 fn shelf_cascade(sort_keys: List(sort_spec.SortKey)) -> RuleCascade {
   RuleCascade(
+    managed: [],
     rules: [
       sorted_rule(
         "shelf",
@@ -500,6 +507,7 @@ pub fn rule_bucket_empty_sort_keys_keep_canonical_order_test() {
 pub fn template_fan_out_buckets_sorted_independently_test() {
   let cascade =
     RuleCascade(
+      managed: [],
       rules: [
         sorted_rule(
           "binders",
@@ -529,6 +537,7 @@ pub fn template_fan_out_buckets_sorted_independently_test() {
 
 fn set_binder_cascade() -> RuleCascade {
   RuleCascade(
+    managed: [],
     rules: [
       sorted_rule(
         "binders",
@@ -545,6 +554,7 @@ fn set_binder_cascade() -> RuleCascade {
 
 fn color_binder_cascade() -> RuleCascade {
   RuleCascade(
+    managed: [],
     rules: [
       sorted_rule(
         "binders",
@@ -561,6 +571,7 @@ fn color_binder_cascade() -> RuleCascade {
 
 fn type_binder_cascade() -> RuleCascade {
   RuleCascade(
+    managed: [],
     rules: [
       sorted_rule(
         "binders",
@@ -734,6 +745,7 @@ pub fn no_negative_totals_test() {
 
 fn family_binder_cascade(sort_keys: List(sort_spec.SortKey)) -> RuleCascade {
   RuleCascade(
+    managed: [],
     rules: [
       sorted_rule(
         "binders",
@@ -853,6 +865,7 @@ pub fn family_unknown_set_is_own_bucket_test() {
 pub fn supertype_basic_and_nonbasic_partition_lands_test() {
   let cascade =
     RuleCascade(
+      managed: [],
       rules: [
         rule(
           "r1",
@@ -915,6 +928,7 @@ pub fn supertype_basic_and_nonbasic_partition_lands_test() {
 pub fn language_not_eq_claims_every_non_english_copy_test() {
   let cascade =
     RuleCascade(
+      managed: [],
       rules: [
         rule(
           "r1",
@@ -974,6 +988,7 @@ pub fn rule_bucket_sections_use_rule_sort_keys_test() {
 pub fn bulk_bucket_sections_use_bulk_sort_keys_test() {
   let cascade =
     RuleCascade(
+      managed: [],
       rules: [
         rule("r1", 1, copy_selector.AllCopies, "rarity in (mythic)", "Vault"),
       ],
@@ -994,4 +1009,133 @@ pub fn bulk_bucket_sections_use_bulk_sort_keys_test() {
       [sort_section.SectionPart(sort_spec.ByCardType, "creature", "creature")],
     ]
   assert list.map(bulk.sections, fn(s) { s.card_count }) == [20, 20]
+}
+
+// --- Managed locations (#122, ADR 0022) -----------------------------------
+
+fn copy_key_of(card: PlannedCard) -> copy_key.CopyKey {
+  copy_key.from_parts(
+    card_key: card.key,
+    finish: card.finish,
+    language: card.language,
+  )
+}
+
+fn deck_of(
+  id: String,
+  name: String,
+  members: List(#(copy_key.CopyKey, Int)),
+) -> managed_location.ManagedLocation {
+  managed_location.ManagedLocation(
+    id:,
+    name:,
+    kind: managed_location.Deck,
+    members: dict.from_list(members),
+  )
+}
+
+fn lea_binder_cascade(
+  managed: List(managed_location.ManagedLocation),
+) -> RuleCascade {
+  RuleCascade(
+    managed:,
+    rules: [rule("r1", 0, copy_selector.AllCopies, "set_code = lea", "Binder")],
+    bulk: bulk_spec.BulkSpec(location_name: "Bulk", sort_keys: []),
+  )
+}
+
+fn red_card(quantity: Int) -> PlannedCard {
+  card(
+    "lea",
+    "161",
+    "Lightning Bolt",
+    quantity,
+    "1993-08-05",
+    "",
+    rarity.Common,
+    "R",
+  )
+}
+
+fn summary(
+  buckets: List(rule_cascade.LocationBucket),
+) -> List(#(String, Int, List(#(copy_key.CopyKey, Int)))) {
+  list.map(buckets, fn(bucket) {
+    #(bucket.location_name, bucket.total_quantity, bucket.shortfall)
+  })
+}
+
+pub fn a_deck_takes_its_copies_before_any_rule_test() {
+  let cards = [red_card(3)]
+  let cascade =
+    lea_binder_cascade([
+      deck_of("d1", "Mono-Red", [#(copy_key_of(red_card(0)), 2)]),
+    ])
+
+  let buckets = rule_cascade.project(cascade, cards, set_dates([]))
+
+  assert summary(buckets) == [#("Mono-Red", 2, []), #("Binder", 1, [])]
+  let assert [deck_bucket, ..] = buckets
+  assert deck_bucket.location == location_ref.Managed("d1")
+  assert deck_bucket.rule_id == None
+}
+
+// Quantity conservation holds with a deck in play: every owned copy lands in
+// exactly one location, and a shortfall is never counted as a placed copy.
+pub fn quantity_is_conserved_with_a_deck_in_play_test() {
+  let cards = [
+    red_card(3),
+    card("m11", "1", "Other", 2, "", "", rarity.Common, "W"),
+  ]
+  let cascade =
+    lea_binder_cascade([
+      deck_of("d1", "Mono-Red", [#(copy_key_of(red_card(0)), 5)]),
+    ])
+
+  let buckets = rule_cascade.project(cascade, cards, set_dates([]))
+  let placed = list.fold(buckets, 0, fn(sum, b) { sum + b.total_quantity })
+
+  assert placed == 5
+}
+
+pub fn a_deck_owning_fewer_than_its_membership_reports_a_shortfall_test() {
+  let cards = [red_card(1)]
+  let key = copy_key_of(red_card(0))
+  let cascade = lea_binder_cascade([deck_of("d1", "Mono-Red", [#(key, 3)])])
+
+  let buckets = rule_cascade.project(cascade, cards, set_dates([]))
+
+  assert summary(buckets) == [#("Mono-Red", 1, [#(key, 2)])]
+}
+
+pub fn a_member_the_collection_doesnt_own_at_all_is_all_shortfall_test() {
+  let key = copy_key_of(red_card(0))
+  let cascade = lea_binder_cascade([deck_of("d1", "Mono-Red", [#(key, 1)])])
+
+  let buckets = rule_cascade.project(cascade, [], set_dates([]))
+
+  assert summary(buckets) == [#("Mono-Red", 0, [#(key, 1)])]
+}
+
+// ADR 0022's tie-break: the deck whose name sorts first gets a scarce copy,
+// regardless of the order the locations arrive in.
+pub fn a_scarce_copy_goes_to_the_deck_whose_name_sorts_first_test() {
+  let key = copy_key_of(red_card(0))
+  let cascade =
+    lea_binder_cascade([
+      deck_of("d2", "Burn", [#(key, 1)]),
+      deck_of("d1", "Aggro", [#(key, 1)]),
+    ])
+
+  let buckets = rule_cascade.project(cascade, [red_card(1)], set_dates([]))
+
+  assert summary(buckets) == [#("Aggro", 1, []), #("Burn", 0, [#(key, 1)])]
+}
+
+pub fn an_empty_deck_still_gets_a_bucket_test() {
+  let cascade = lea_binder_cascade([deck_of("d1", "Mono-Red", [])])
+
+  let buckets = rule_cascade.project(cascade, [red_card(2)], set_dates([]))
+
+  assert summary(buckets) == [#("Mono-Red", 0, []), #("Binder", 2, [])]
 }

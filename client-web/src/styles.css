@@ -226,7 +226,8 @@ p[role="alert"] {
 }
 
 .add-cards-panel,
-.remove-cards-panel {
+.remove-cards-panel,
+.deck-panel {
   border: 1px solid #dce4ea;
   border-radius: 8px;
   padding: 12px 16px;
@@ -234,7 +235,8 @@ p[role="alert"] {
 }
 
 .add-cards-panel h3,
-.remove-cards-panel h3 {
+.remove-cards-panel h3,
+.deck-panel h3 {
   margin-top: 0;
 }
 
@@ -371,6 +373,10 @@ p[role="alert"] {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 10px;
+}
+
+.deck-missing {
+  color: var(--danger);
 }
 
 .placement-card-key {

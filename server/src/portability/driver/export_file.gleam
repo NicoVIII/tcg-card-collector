@@ -6,15 +6,17 @@ import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import gleam/set
 import gleam/string
 import gleam/time/calendar.{type Date}
 import portability/domain/export_document.{
-  type BulkSpec, type ExportDocument, type PlacedEntry, type Rule,
+  type BulkSpec, type ExportDocument, type ManagedLocationEntry,
+  type MemberEntry, type PlacedEntry, type Rule, InLocation, InManagedLocation,
 }
 import portability/domain/import_document.{
   type DocumentError, type ImportDocument, type RawEntry, type RawPlaced,
-  MissingCollection, NotJson, NotThisFormat, RawEntry, RawPlaced,
-  UnsupportedVersion,
+  MissingCollection, NotJson, NotThisFormat, RawEntry, RawManagedLocation,
+  RawMember, RawPlaced, UnsupportedVersion,
 }
 import shared/domain/copy_key
 
@@ -33,6 +35,14 @@ pub fn render(document: ExportDocument) -> String {
   let rules =
     document.inventory_planning.rules
     |> list.map(fn(rule) { encode_rule_line("      ", rule) })
+    |> join_entries("    ")
+  let managed_locations =
+    document.inventory_planning.managed_locations
+    |> list.map(fn(entry) { encode_managed_location_line("      ", entry) })
+    |> join_entries("    ")
+  let members =
+    document.inventory_planning.members
+    |> list.map(fn(entry) { encode_member_line("      ", entry) })
     |> join_entries("    ")
   let placed =
     document.inventory_planning.placed
@@ -56,6 +66,12 @@ pub fn render(document: ExportDocument) -> String {
   <> ",\n"
   <> "    \"bulk\": "
   <> encode_bulk(document.inventory_planning.bulk)
+  <> ",\n"
+  <> "    \"managed_locations\": "
+  <> managed_locations
+  <> ",\n"
+  <> "    \"managed_location_members\": "
+  <> members
   <> ",\n"
   <> "    \"placed\": "
   <> placed
@@ -96,18 +112,28 @@ pub fn parse(content: String) -> Result(ImportDocument, DocumentError) {
       != Ok("tcg-card-collector"),
     Error(NotThisFormat),
   )
-  use _ <- result.try(check_version(root))
+  use version <- result.try(check_version(root))
   use items <- result.try(
     decode.run(root, decode.at(["collection"], decode.list(decode.dynamic)))
     |> result.replace_error(MissingCollection),
   )
+  Ok(case version {
+    1 -> decode_v1(root, items)
+    _ -> decode_v2(root, items)
+  })
+}
+
+/// Frozen with format_version 1 (ADR 0020): no managed locations, and a
+/// placed entry's only location key is `location` — a stray
+/// `managed_location` key in a v1 file is ignored like any unknown key.
+fn decode_v1(root: Dynamic, items: List(Dynamic)) -> ImportDocument {
   let #(entries, collection_rejected) =
     items
     |> list.map(raw_entry)
     |> import_document.validate_entries
   let #(target_sets, target_sets_rejected) = parse_target_sets(root)
-  let #(placed, placed_rejected) = parse_placed(root)
-  Ok(import_document.ImportDocument(
+  let #(placed, placed_rejected) = parse_placed(root, raw_placed_v1, set.new())
+  import_document.ImportDocument(
     collection: entries,
     rejected: list.flatten([
       collection_rejected,
@@ -117,8 +143,41 @@ pub fn parse(content: String) -> Result(ImportDocument, DocumentError) {
     target_sets:,
     rules: parse_rules(root),
     bulk: parse_bulk(root),
+    managed_locations: None,
+    members: None,
     placed:,
-  ))
+  )
+}
+
+/// format_version 2 (#122): v1 plus managed locations, their members, and
+/// placed entries that may name a managed location instead of a location.
+fn decode_v2(root: Dynamic, items: List(Dynamic)) -> ImportDocument {
+  let #(entries, collection_rejected) =
+    items
+    |> list.map(raw_entry)
+    |> import_document.validate_entries
+  let #(target_sets, target_sets_rejected) = parse_target_sets(root)
+  let #(managed_locations, managed_rejected) = parse_managed_locations(root)
+  let names =
+    import_document.managed_names(option.unwrap(managed_locations, []))
+  let #(members, members_rejected) = parse_members(root, names)
+  let #(placed, placed_rejected) = parse_placed(root, raw_placed_v2, names)
+  import_document.ImportDocument(
+    collection: entries,
+    rejected: list.flatten([
+      collection_rejected,
+      target_sets_rejected,
+      managed_rejected,
+      members_rejected,
+      placed_rejected,
+    ]),
+    target_sets:,
+    rules: parse_rules(root),
+    bulk: parse_bulk(root),
+    managed_locations:,
+    members:,
+    placed:,
+  )
 }
 
 /// Absent when the file has no "insights.target_sets" array — an older
@@ -183,38 +242,101 @@ fn parse_bulk(root: Dynamic) -> Option(BulkSpec) {
   }
 }
 
+fn inventory_planning_array(
+  root: Dynamic,
+  key: String,
+) -> Result(List(Dynamic), Nil) {
+  decode.run(
+    root,
+    decode.at(["inventory_planning", key], decode.list(decode.dynamic)),
+  )
+  |> result.replace_error(Nil)
+}
+
 /// Absent when the file has no "inventory_planning.placed" array. Unlike
 /// rules/bulk, a placed entry's identity and location need no other
 /// context's parser, so it is fully validated here, same as `collection`.
 fn parse_placed(
   root: Dynamic,
+  to_raw: fn(Dynamic) -> RawPlaced,
+  managed_names: set.Set(String),
 ) -> #(Option(List(PlacedEntry)), List(import_document.RejectedEntry)) {
-  case
-    decode.run(
-      root,
-      decode.at(["inventory_planning", "placed"], decode.list(decode.dynamic)),
-    )
-  {
+  case inventory_planning_array(root, "placed") {
     Ok(items) -> {
       let #(entries, rejected) =
         items
-        |> list.map(raw_placed)
-        |> import_document.validate_placed
+        |> list.map(to_raw)
+        |> import_document.validate_placed(managed_names)
       #(Some(entries), rejected)
     }
     Error(_) -> #(None, [])
   }
 }
 
-fn raw_placed(item: Dynamic) -> RawPlaced {
+fn raw_placed_v1(item: Dynamic) -> RawPlaced {
   RawPlaced(
     set_code: optional_string(item, "set_code"),
     collector_number: optional_string(item, "collector_number"),
     finish: optional_string(item, "finish"),
     language: optional_string(item, "language"),
     location: optional_string(item, "location"),
+    managed_location: "",
     quantity: optional_int(item, "quantity"),
   )
+}
+
+fn raw_placed_v2(item: Dynamic) -> RawPlaced {
+  RawPlaced(
+    ..raw_placed_v1(item),
+    managed_location: optional_string(item, "managed_location"),
+  )
+}
+
+/// Absent when the file has no "inventory_planning.managed_locations" array.
+/// The kind is only checked later, by Inventory Planning's own parser.
+fn parse_managed_locations(
+  root: Dynamic,
+) -> #(Option(List(ManagedLocationEntry)), List(import_document.RejectedEntry)) {
+  case inventory_planning_array(root, "managed_locations") {
+    Ok(items) -> {
+      let #(entries, rejected) =
+        items
+        |> list.map(fn(item) {
+          RawManagedLocation(
+            name: optional_string(item, "name"),
+            kind: optional_string(item, "kind"),
+          )
+        })
+        |> import_document.validate_managed_locations
+      #(Some(entries), rejected)
+    }
+    Error(_) -> #(None, [])
+  }
+}
+
+fn parse_members(
+  root: Dynamic,
+  managed_names: set.Set(String),
+) -> #(Option(List(MemberEntry)), List(import_document.RejectedEntry)) {
+  case inventory_planning_array(root, "managed_location_members") {
+    Ok(items) -> {
+      let #(entries, rejected) =
+        items
+        |> list.map(fn(item) {
+          RawMember(
+            managed_location: optional_string(item, "managed_location"),
+            set_code: optional_string(item, "set_code"),
+            collector_number: optional_string(item, "collector_number"),
+            finish: optional_string(item, "finish"),
+            language: optional_string(item, "language"),
+            quantity: optional_int(item, "quantity"),
+          )
+        })
+        |> import_document.validate_members(managed_names)
+      #(Some(entries), rejected)
+    }
+    Error(_) -> #(None, [])
+  }
 }
 
 fn join_entries(lines: List(String), close_indent: String) -> String {
@@ -264,7 +386,41 @@ fn encode_bulk(spec: BulkSpec) -> String {
   )
 }
 
+fn encode_managed_location_line(
+  indent: String,
+  entry: ManagedLocationEntry,
+) -> String {
+  indent
+  <> json.to_string(
+    json.object([
+      #("name", json.string(entry.name)),
+      #("kind", json.string(entry.kind)),
+    ]),
+  )
+}
+
+fn encode_member_line(indent: String, entry: MemberEntry) -> String {
+  indent
+  <> json.to_string(
+    json.object([
+      #("managed_location", json.string(entry.managed_location)),
+      #("set_code", json.string(copy_key.set_code_string(entry.key))),
+      #(
+        "collector_number",
+        json.string(copy_key.collector_number_string(entry.key)),
+      ),
+      #("finish", json.string(copy_key.finish_string(entry.key))),
+      #("language", json.string(copy_key.language_string(entry.key))),
+      #("quantity", json.int(entry.quantity)),
+    ]),
+  )
+}
+
 fn encode_placed_line(indent: String, entry: PlacedEntry) -> String {
+  let location = case entry.location {
+    InLocation(name) -> #("location", json.string(name))
+    InManagedLocation(name) -> #("managed_location", json.string(name))
+  }
   indent
   <> json.to_string(
     json.object([
@@ -275,7 +431,7 @@ fn encode_placed_line(indent: String, entry: PlacedEntry) -> String {
       ),
       #("finish", json.string(copy_key.finish_string(entry.key))),
       #("language", json.string(copy_key.language_string(entry.key))),
-      #("location", json.string(entry.location)),
+      location,
       #("quantity", json.int(entry.quantity)),
     ]),
   )
@@ -293,9 +449,12 @@ fn iso_date(date: Date) -> String {
   <> string.pad_start(int.to_string(date.day), to: 2, with: "0")
 }
 
-fn check_version(root: Dynamic) -> Result(Nil, DocumentError) {
+fn check_version(root: Dynamic) -> Result(Int, DocumentError) {
   case decode.run(root, decode.at(["format_version"], decode.int)) {
-    Ok(version) if version == export_document.format_version -> Ok(Nil)
+    Ok(version)
+      if version >= export_document.oldest_format_version
+      && version <= export_document.format_version
+    -> Ok(version)
     Ok(other) -> Error(UnsupportedVersion(int.to_string(other)))
     Error(_) -> Error(UnsupportedVersion("missing"))
   }

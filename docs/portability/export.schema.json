@@ -1,18 +1,32 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/NicoVIII/tcg-card-collector/blob/main/docs/portability/export.schema.json",
-  "title": "tcg-card-collector export (format_version 1)",
+  "title": "tcg-card-collector export (format_version 1–2)",
   "description": "Validates a hand edit while it's typed — see ADR 0019. Point your editor at this file with a top-level \"$schema\" comment isn't valid JSON, so most editors match it by filename glob instead; check your editor's JSON-schema-association setting.",
   "type": "object",
   "required": ["format", "format_version", "exported_on", "collection"],
   "additionalProperties": false,
+  "if": { "properties": { "format_version": { "const": 1 } } },
+  "then": {
+    "description": "A v1 file has no managed locations, and every placed entry names a location.",
+    "properties": {
+      "inventory_planning": {
+        "type": "object",
+        "properties": {
+          "managed_locations": false,
+          "managed_location_members": false,
+          "placed": { "type": "array", "items": { "type": "object", "required": ["location"] } }
+        }
+      }
+    }
+  },
   "properties": {
     "format": {
       "const": "tcg-card-collector"
     },
     "format_version": {
-      "const": 1,
-      "description": "Bumps only when a section's shape changes in a way an importer must branch on (ADR 0019)."
+      "enum": [1, 2],
+      "description": "Bumps when the file's shape changes (ADR 0019, ADR 0020): 2 added managed locations (decks) and placed entries that name one."
     },
     "exported_on": {
       "type": "string",
@@ -25,7 +39,7 @@
     },
     "inventory_planning": {
       "type": "object",
-      "description": "Optional, and each of the three fields below is independently optional: a field absent from the file leaves that table untouched on import; present (even with an empty array) replaces it.",
+      "description": "Optional, and each field below is independently optional: a field absent from the file leaves that table untouched on import; present (even with an empty array) replaces it. Managed-location members only import together with managed_locations.",
       "additionalProperties": false,
       "properties": {
         "rules": {
@@ -34,6 +48,16 @@
           "items": { "$ref": "#/$defs/rule" }
         },
         "bulk": { "$ref": "#/$defs/bulkSpec" },
+        "managed_locations": {
+          "type": "array",
+          "description": "format_version 2 on. A location whose contents are an explicit list of copies, kept out of the rule cascade — a deck (ADR 0022). Names are unique among managed locations; a restore assigns fresh ids.",
+          "items": { "$ref": "#/$defs/managedLocation" }
+        },
+        "managed_location_members": {
+          "type": "array",
+          "description": "format_version 2 on. One kind of copy a managed location holds — even if the collection owns fewer (a shortfall, shown after import, not an error).",
+          "items": { "$ref": "#/$defs/managedLocationMember" }
+        },
         "placed": {
           "type": "array",
           "items": { "$ref": "#/$defs/placedEntry" }
@@ -88,12 +112,47 @@
         "sort": { "type": "string", "default": "" }
       }
     },
+    "managedLocation": {
+      "type": "object",
+      "required": ["name", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["deck"] }
+      }
+    },
+    "managedLocationMember": {
+      "type": "object",
+      "required": [
+        "managed_location", "set_code", "collector_number", "quantity",
+        "finish", "language"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "managed_location": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The name of a managed location listed in managed_locations."
+        },
+        "set_code": { "type": "string", "minLength": 1 },
+        "collector_number": { "type": "string", "minLength": 1 },
+        "quantity": { "type": "integer", "minimum": 1 },
+        "finish": { "enum": ["nonfoil", "foil", "etched"] },
+        "language": {
+          "enum": [
+            "en", "es", "fr", "de", "it", "pt", "ja", "ko", "ru", "zhs", "zht",
+            "he", "la", "grc", "ar", "sa", "ph", "qya"
+          ]
+        }
+      }
+    },
     "placedEntry": {
       "type": "object",
-      "description": "One placed-ledger row: how many copies of a key currently sit in a location.",
-      "required": [
-        "set_code", "collector_number", "quantity", "finish", "language",
-        "location"
+      "description": "One placed-ledger row: how many copies of a key currently sit in a location — a rule target or bulk (`location`), or, from format_version 2, a managed location by name (`managed_location`). Exactly one of the two.",
+      "required": ["set_code", "collector_number", "quantity", "finish", "language"],
+      "oneOf": [
+        { "required": ["location"], "not": { "required": ["managed_location"] } },
+        { "required": ["managed_location"], "not": { "required": ["location"] } }
       ],
       "additionalProperties": false,
       "properties": {
@@ -107,7 +166,12 @@
             "he", "la", "grc", "ar", "sa", "ph", "qya"
           ]
         },
-        "location": { "type": "string", "minLength": 1 }
+        "location": { "type": "string", "minLength": 1 },
+        "managed_location": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The name of a managed location listed in managed_locations."
+        }
       }
     },
     "collectionEntry": {

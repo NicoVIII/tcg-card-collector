@@ -6,6 +6,7 @@ pub fn new() -> ports.PreviewImportPorts {
   ports.PreviewImportPorts(
     check_rule: check_rule_adapter,
     check_sort_keys: inventory_planning_api.check_sort_keys,
+    check_managed_kind: inventory_planning_api.check_managed_location_kind,
   )
 }
 

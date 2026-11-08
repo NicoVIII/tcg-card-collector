@@ -81,6 +81,7 @@ pub fn reads_rules_bulk_and_placed_through_the_inventory_planning_facade_test() 
         collector_number: "17",
         finish: "foil",
         language: "en",
+        location_kind: "cascade",
         location: "Binder A",
         quantity: 2,
       ),
@@ -107,5 +108,11 @@ pub fn reads_rules_bulk_and_placed_through_the_inventory_planning_facade_test() 
   assert ports.get_bulk_spec()
     == Ok(BulkSpec(location: "Bulk", sort_keys: "color_identity,type,name"))
   assert ports.list_placed()
-    == Ok([PlacedEntry(key: mh2_key, location: "Binder A", quantity: 2)])
+    == Ok([
+      PlacedEntry(
+        key: mh2_key,
+        location: export_document.InLocation("Binder A"),
+        quantity: 2,
+      ),
+    ])
 }

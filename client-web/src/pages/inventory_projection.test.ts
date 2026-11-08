@@ -6,6 +6,7 @@ import {
   cardMatches,
   countLabel,
   filterIsActive,
+  locationLabel,
   openLocationCards,
   projectionSummaries,
 } from "./inventory_projection";
@@ -69,18 +70,22 @@ function projection(): InventoryProjection {
   return {
     locations: [
       {
+        location: { kind: "cascade", key: "binder A" },
         location_name: "binder A",
         rule_id: "rule-1",
         total_quantity: 2,
         cards: [card({ name: "Lightning Bolt" }), card({ name: "Shock", set_code: "m19" })],
         sections: [],
+        shortfall: [],
       },
       {
+        location: { kind: "cascade", key: "Bulk" },
         location_name: "Bulk",
         rule_id: "",
         total_quantity: 1,
         cards: [card({ name: "Counterspell", set_code: "leb" })],
         sections: [],
+        shortfall: [],
       },
     ],
     total_quantity: 3,
@@ -91,14 +96,35 @@ function projection(): InventoryProjection {
 describe("projectionSummaries", () => {
   it("lists every location, with match == total, when the filter is empty", () => {
     expect(projectionSummaries(projection(), EMPTY_CARD_FILTER)).toEqual([
-      { location_name: "binder A", is_bulk: false, total_quantity: 2, match_quantity: 2 },
-      { location_name: "Bulk", is_bulk: true, total_quantity: 1, match_quantity: 1 },
+      {
+        location_key: "cascade:binder A",
+        location_name: "binder A",
+        kind: "rule",
+        total_quantity: 2,
+        match_quantity: 2,
+        missing_quantity: 0,
+      },
+      {
+        location_key: "cascade:Bulk",
+        location_name: "Bulk",
+        kind: "bulk",
+        total_quantity: 1,
+        match_quantity: 1,
+        missing_quantity: 0,
+      },
     ]);
   });
 
   it("hides locations with no match and reports the match count for the rest", () => {
     expect(projectionSummaries(projection(), filter({ name: "bolt" }))).toEqual([
-      { location_name: "binder A", is_bulk: false, total_quantity: 2, match_quantity: 1 },
+      {
+        location_key: "cascade:binder A",
+        location_name: "binder A",
+        kind: "rule",
+        total_quantity: 2,
+        match_quantity: 1,
+        missing_quantity: 0,
+      },
     ]);
   });
 
@@ -117,17 +143,17 @@ describe("openLocationCards", () => {
   });
 
   it("returns the location's cards unfiltered", () => {
-    expect(openLocationCards(projection(), "binder A", EMPTY_CARD_FILTER)).toHaveLength(2);
+    expect(openLocationCards(projection(), "cascade:binder A", EMPTY_CARD_FILTER)).toHaveLength(2);
   });
 
   it("filters the open location's cards", () => {
-    const cards = openLocationCards(projection(), "binder A", filter({ name: "bolt" }));
+    const cards = openLocationCards(projection(), "cascade:binder A", filter({ name: "bolt" }));
     expect(cards).toEqual([card({ name: "Lightning Bolt" })]);
   });
 
   it("returns null when the filter leaves the open location empty", () => {
     expect(
-      openLocationCards(projection(), "binder A", filter({ name: "counterspell" })),
+      openLocationCards(projection(), "cascade:binder A", filter({ name: "counterspell" })),
     ).toBeNull();
   });
 });
@@ -136,7 +162,14 @@ describe("countLabel", () => {
   it("shows just the total when the filter is inactive", () => {
     expect(
       countLabel(
-        { location_name: "binder A", is_bulk: false, total_quantity: 2, match_quantity: 2 },
+        {
+          location_key: "cascade:binder A",
+          location_name: "binder A",
+          kind: "rule",
+          total_quantity: 2,
+          match_quantity: 2,
+          missing_quantity: 0,
+        },
         false,
       ),
     ).toBe("2 card(s)");
@@ -145,7 +178,14 @@ describe("countLabel", () => {
   it("shows match of total when the filter is active", () => {
     expect(
       countLabel(
-        { location_name: "binder A", is_bulk: false, total_quantity: 2, match_quantity: 1 },
+        {
+          location_key: "cascade:binder A",
+          location_name: "binder A",
+          kind: "rule",
+          total_quantity: 2,
+          match_quantity: 1,
+          missing_quantity: 0,
+        },
         true,
       ),
     ).toBe("1 of 2 card(s)");
@@ -155,5 +195,29 @@ describe("countLabel", () => {
 describe("PROJECTION_PAGE_SIZE", () => {
   it("is a positive page size", () => {
     expect(PROJECTION_PAGE_SIZE).toBeGreaterThan(0);
+  });
+});
+
+// A deck has no rule id either; it must not read as the bulk remainder (#122).
+describe("a deck in the projection", () => {
+  const deck = {
+    location: { kind: "managed" as const, key: "d1" },
+    location_name: "Mono-Red",
+    rule_id: "",
+    total_quantity: 1,
+    cards: [card()],
+    sections: [],
+    shortfall: [card({ name: "Shock", quantity: 2 })],
+  };
+
+  it("is labelled a deck and counts what it's missing", () => {
+    const [summary] = projectionSummaries(
+      { locations: [deck], total_quantity: 1, unknown_count: 0 },
+      EMPTY_CARD_FILTER,
+    );
+
+    expect(summary!.kind).toBe("deck");
+    expect(locationLabel(summary!)).toBe("Mono-Red (deck)");
+    expect(countLabel(summary!, false)).toBe("1 card(s), 2 missing");
   });
 });

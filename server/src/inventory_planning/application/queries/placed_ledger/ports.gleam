@@ -1,3 +1,5 @@
+import inventory_planning/domain/location_ref.{type LocationRef}
+
 // --- Read model -----------------------------------------------------------
 
 // One row of the placed ledger: how many copies of a key currently sit in a
@@ -10,7 +12,7 @@ pub type PlacedLedgerRow {
     collector_number: String,
     finish: String,
     language: String,
-    location: String,
+    location: LocationRef,
     quantity: Int,
   )
 }

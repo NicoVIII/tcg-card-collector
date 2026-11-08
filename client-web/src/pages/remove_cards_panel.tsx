@@ -1,17 +1,11 @@
 import { For, Show, createSignal } from "solid-js";
 import { useCardQuery } from "../data/card_catalog/query";
 import { useFetchOwnedCopies } from "../data/collection/query";
+import { useFetchManagedLocations } from "../data/managed_location/query";
 import { useRemoveCardsMutation } from "../data/collection_remove/mutation";
-import {
-  DEFAULT_FINISH,
-  DEFAULT_LANGUAGE,
-  FINISHES,
-  LANGUAGES,
-  type Finish,
-  type Language,
-} from "../data/collection/copy_kind";
 import { mapError } from "../data/http/error";
 import { ConfirmButton } from "../components/confirm_button";
+import { CopyEntryForm, type RawCopyEntry } from "../components/copy_entry_form";
 import {
   type StagedEntry,
   exceedsOwned,
@@ -67,51 +61,39 @@ function StagedRow(props: { entry: StagedEntry; onRemove: () => void }) {
 // what's being corrected, not a physical event already in hand), so it goes
 // through the shared two-step ConfirmButton instead of firing on one click.
 export function RemoveCardsPanel() {
-  const [setCode, setSetCode] = createSignal("");
-  const [collectorNumber, setCollectorNumber] = createSignal("");
-  const [finish, setFinish] = createSignal<Finish>(DEFAULT_FINISH);
-  const [language, setLanguage] = createSignal<Language>(DEFAULT_LANGUAGE);
-  const [quantity, setQuantity] = createSignal("1");
   const [staged, setStaged] = createSignal<StagedEntry[]>([]);
   const [formError, setFormError] = createSignal<string | null>(null);
   const [submitError, setSubmitError] = createSignal<string | null>(null);
   const [successNote, setSuccessNote] = createSignal<string | null>(null);
   const mutation = useRemoveCardsMutation();
   const fetchOwnedCopies = useFetchOwnedCopies();
-  let collectorNumberInput: HTMLInputElement | undefined;
-
-  const stageFromForm = async (event: Event) => {
-    event.preventDefault();
-    const entry = normalizeEntry({
-      setCode: setCode(),
-      collectorNumber: collectorNumber(),
-      finish: finish(),
-      language: language(),
-      quantity: Number.parseInt(quantity(), 10),
-    });
+  const fetchManagedLocations = useFetchManagedLocations();
+  const stageFromForm = async (raw: RawCopyEntry): Promise<boolean> => {
+    const entry = normalizeEntry(raw);
     if (entry === null) {
       setFormError("Enter a set code, a collector number, and a quantity of at least 1.");
-      return;
+      return false;
     }
     setSuccessNote(null);
     let result;
     try {
-      const owned = await fetchOwnedCopies(entry.setCode, entry.collectorNumber);
+      const [owned, decks] = await Promise.all([
+        fetchOwnedCopies(entry.setCode, entry.collectorNumber),
+        fetchManagedLocations(),
+      ]);
       // Read after the await: another staging may have landed meanwhile.
-      result = stageEntry(staged(), entry, owned);
+      result = stageEntry(staged(), entry, owned, decks);
     } catch (error) {
       setFormError(mapError(error).message);
-      return;
+      return false;
     }
     if (!result.ok) {
       setFormError(result.message);
-      return;
+      return false;
     }
     setFormError(null);
     setStaged(result.list);
-    setCollectorNumber("");
-    setQuantity("1");
-    collectorNumberInput?.focus();
+    return true;
   };
 
   const fetchCopiesByPrinting = async (list: StagedEntry[]) => {
@@ -163,57 +145,7 @@ export function RemoveCardsPanel() {
   return (
     <div class="remove-cards-panel">
       <h3>Remove cards</h3>
-      <form class="form-row" onSubmit={(event) => void stageFromForm(event)}>
-        <label>
-          Set
-          <input
-            value={setCode()}
-            onInput={(event) => setSetCode(event.currentTarget.value)}
-            placeholder="blb"
-            size={6}
-          />
-        </label>
-        <label>
-          Number
-          <input
-            ref={(element) => {
-              collectorNumberInput = element;
-            }}
-            value={collectorNumber()}
-            onInput={(event) => setCollectorNumber(event.currentTarget.value)}
-            placeholder="123"
-            size={6}
-          />
-        </label>
-        <label>
-          Finish
-          <select
-            value={finish()}
-            onChange={(event) => setFinish(event.currentTarget.value as Finish)}
-          >
-            <For each={FINISHES}>{(option) => <option value={option}>{option}</option>}</For>
-          </select>
-        </label>
-        <label>
-          Language
-          <select
-            value={language()}
-            onChange={(event) => setLanguage(event.currentTarget.value as Language)}
-          >
-            <For each={LANGUAGES}>{(option) => <option value={option}>{option}</option>}</For>
-          </select>
-        </label>
-        <label>
-          Quantity
-          <input
-            type="number"
-            min="1"
-            value={quantity()}
-            onInput={(event) => setQuantity(event.currentTarget.value)}
-          />
-        </label>
-        <button type="submit">Add to list</button>
-      </form>
+      <CopyEntryForm submitLabel="Add to list" onSubmit={stageFromForm} />
       <Show when={formError() !== null}>
         <p role="alert">{formError()}</p>
       </Show>

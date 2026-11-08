@@ -1,13 +1,16 @@
 import gleam/int
 import gleam/option.{None, Some}
+import gleam/set
 import portability/domain/export_document.{
-  BulkSpec, CollectionEntry, PlacedEntry, Rule,
+  BulkSpec, CollectionEntry, InLocation, InManagedLocation, ManagedLocationEntry,
+  MemberEntry, PlacedEntry, Rule,
 }
 import portability/domain/import_document.{
   type ImportDocument, BulkSection, CollectionSection, ImportDocument,
-  LedgerExcess, MissingCollection, NotJson, NotThisFormat, PlacedSection,
-  RawEntry, RawPlaced, RejectedEntry, RulesSection, SectionResult,
-  TargetSetsSection, UnsupportedVersion,
+  LedgerExcess, ManagedLocationsSection, ManagedShortfall, MembersSection,
+  MissingCollection, NotJson, NotThisFormat, PlacedSection, RawEntry,
+  RawManagedLocation, RawMember, RawPlaced, RejectedEntry, RulesSection,
+  SectionResult, TargetSetsSection, UnsupportedVersion,
 }
 import shared/domain/copy_key
 
@@ -28,6 +31,8 @@ fn empty_document() -> ImportDocument {
     target_sets: None,
     rules: None,
     bulk: None,
+    managed_locations: None,
+    members: None,
     placed: None,
   )
 }
@@ -114,8 +119,10 @@ pub fn describes_every_document_error_test() {
     == "The file is not a tcg-card-collector export."
   assert import_document.describe_error(MissingCollection)
     == "The file has no \"collection\" array."
-  assert import_document.describe_error(UnsupportedVersion("2"))
-    == "Unsupported format_version \"2\" — this build reads format_version "
+  assert import_document.describe_error(UnsupportedVersion("9"))
+    == "Unsupported format_version \"9\" — this build reads format_version "
+    <> int.to_string(export_document.oldest_format_version)
+    <> " through "
     <> int.to_string(export_document.format_version)
     <> "."
 }
@@ -149,13 +156,14 @@ fn a_raw_placed(location: String, quantity: Int) -> import_document.RawPlaced {
     finish: "foil",
     language: "en",
     location:,
+    managed_location: "",
     quantity:,
   )
 }
 
 pub fn a_valid_placed_entry_at_its_position_test() {
   let #(entries, rejected) =
-    import_document.validate_placed([a_raw_placed("Box A", 2)])
+    import_document.validate_placed([a_raw_placed("Box A", 2)], set.new())
 
   let assert Ok(key) =
     copy_key.new(
@@ -164,13 +172,20 @@ pub fn a_valid_placed_entry_at_its_position_test() {
       finish: "foil",
       language: "en",
     )
-  assert entries == [PlacedEntry(key:, location: "Box A", quantity: 2)]
+  assert entries
+    == [
+      PlacedEntry(
+        key:,
+        location: export_document.InLocation("Box A"),
+        quantity: 2,
+      ),
+    ]
   assert rejected == []
 }
 
 pub fn a_blank_placed_location_is_rejected_test() {
   let #(entries, rejected) =
-    import_document.validate_placed([a_raw_placed("  ", 1)])
+    import_document.validate_placed([a_raw_placed("  ", 1)], set.new())
 
   assert entries == []
   assert rejected
@@ -260,9 +275,21 @@ pub fn ledger_excess_reports_only_keys_placed_beyond_what_is_owned_test() {
     )
   let collection = [CollectionEntry(key: owned_key, quantity: 2)]
   let placed = [
-    PlacedEntry(key: owned_key, location: "Box A", quantity: 1),
-    PlacedEntry(key: owned_key, location: "Box B", quantity: 2),
-    PlacedEntry(key: unowned_key, location: "Box A", quantity: 1),
+    PlacedEntry(
+      key: owned_key,
+      location: export_document.InLocation("Box A"),
+      quantity: 1,
+    ),
+    PlacedEntry(
+      key: owned_key,
+      location: export_document.InLocation("Box B"),
+      quantity: 2,
+    ),
+    PlacedEntry(
+      key: unowned_key,
+      location: export_document.InLocation("Box A"),
+      quantity: 1,
+    ),
   ]
 
   assert import_document.ledger_excess(collection, placed)
@@ -270,6 +297,17 @@ pub fn ledger_excess_reports_only_keys_placed_beyond_what_is_owned_test() {
       LedgerExcess(identity: "dmu 2 nonfoil en", placed: 1, owned: 0),
       LedgerExcess(identity: "mh2 17 foil en", placed: 3, owned: 2),
     ]
+}
+
+fn checkers(
+  check_rule: fn(export_document.Rule) -> Result(Nil, String),
+  check_sort_keys: fn(String) -> Result(Nil, String),
+) -> import_document.DeepCheckers {
+  import_document.DeepCheckers(
+    check_rule:,
+    check_sort_keys:,
+    check_managed_kind: fn(_) { Ok(Nil) },
+  )
 }
 
 pub fn resolve_deep_sections_validates_rules_and_bulk_and_merges_rejections_test() {
@@ -281,9 +319,10 @@ pub fn resolve_deep_sections_validates_rules_and_bulk_and_merges_rejections_test
     )
 
   let resolved =
-    import_document.resolve_deep_sections(document, fn(_) { Ok(Nil) }, fn(_) {
-      Error("invalid sort keys")
-    })
+    import_document.resolve_deep_sections(
+      document,
+      checkers(fn(_) { Ok(Nil) }, fn(_) { Error("invalid sort keys") }),
+    )
 
   assert resolved.rules == Some([a_rule("Binder A")])
   assert resolved.bulk == None
@@ -305,6 +344,8 @@ pub fn section_results_lists_only_sections_present_in_the_document_test() {
       target_sets: Some(["neo"]),
       rules: Some([a_rule("Binder A")]),
       bulk: Some(BulkSpec(location: "Bulk", sort_keys: "")),
+      managed_locations: None,
+      members: None,
       placed: Some([]),
     )
 
@@ -318,4 +359,171 @@ pub fn section_results_lists_only_sections_present_in_the_document_test() {
     ]
   assert import_document.section_results(empty_document())
     == [SectionResult(CollectionSection, 0)]
+}
+
+// --- Managed locations (#122) ---------------------------------------------
+
+fn mh2_17() -> copy_key.CopyKey {
+  let assert Ok(key) =
+    copy_key.new(
+      set_code: "mh2",
+      collector_number: "17",
+      finish: "foil",
+      language: "en",
+    )
+  key
+}
+
+pub fn a_blank_or_repeated_managed_location_name_is_rejected_test() {
+  let #(valid, rejected) =
+    import_document.validate_managed_locations([
+      RawManagedLocation(name: " Burn ", kind: "deck"),
+      RawManagedLocation(name: "", kind: "deck"),
+      RawManagedLocation(name: "Burn", kind: "deck"),
+    ])
+
+  assert valid == [ManagedLocationEntry(name: "Burn", kind: "deck")]
+  assert rejected
+    == [
+      RejectedEntry(ManagedLocationsSection, 2, "", "name is blank"),
+      RejectedEntry(ManagedLocationsSection, 3, "Burn", "name is used twice"),
+    ]
+}
+
+pub fn a_member_naming_an_unknown_managed_location_is_rejected_test() {
+  let #(valid, rejected) =
+    import_document.validate_members(
+      [
+        RawMember("Burn", "mh2", "17", "foil", "en", 2),
+        RawMember("Elves", "mh2", "17", "foil", "en", 1),
+      ],
+      set.from_list(["Burn"]),
+    )
+
+  assert valid
+    == [MemberEntry(managed_location: "Burn", key: mh2_17(), quantity: 2)]
+  assert rejected
+    == [
+      RejectedEntry(
+        MembersSection,
+        2,
+        "Elves mh2 17 foil en",
+        "no managed location named \"Elves\"",
+      ),
+    ]
+}
+
+pub fn a_placed_entry_names_exactly_one_kind_of_location_test() {
+  let raw = fn(location, managed_location) {
+    RawPlaced("mh2", "17", "foil", "en", location, managed_location, 1)
+  }
+  let #(valid, rejected) =
+    import_document.validate_placed(
+      [
+        raw("Box A", ""),
+        raw("", "Burn"),
+        raw("Box A", "Burn"),
+        raw("", "Elves"),
+      ],
+      set.from_list(["Burn"]),
+    )
+
+  assert list_locations(valid)
+    == [InLocation("Box A"), InManagedLocation("Burn")]
+  assert list_reasons(rejected)
+    == [
+      "names both a location and a managed location",
+      "no managed location named \"Elves\"",
+    ]
+}
+
+fn list_locations(
+  entries: List(export_document.PlacedEntry),
+) -> List(export_document.PlacedIn) {
+  case entries {
+    [] -> []
+    [entry, ..rest] -> [entry.location, ..list_locations(rest)]
+  }
+}
+
+fn list_reasons(rejected: List(import_document.RejectedEntry)) -> List(String) {
+  case rejected {
+    [] -> []
+    [entry, ..rest] -> [entry.reason, ..list_reasons(rest)]
+  }
+}
+
+// A managed location rejected for its kind takes its members and placed
+// entries with it — nothing may be left pointing at a deck that won't exist.
+pub fn a_rejected_managed_location_takes_its_dependents_with_it_test() {
+  let document =
+    ImportDocument(
+      ..empty_document(),
+      managed_locations: Some([
+        ManagedLocationEntry(name: "Burn", kind: "deck"),
+        ManagedLocationEntry(name: "Box", kind: "binder"),
+      ]),
+      members: Some([
+        MemberEntry(managed_location: "Box", key: mh2_17(), quantity: 1),
+        MemberEntry(managed_location: "Burn", key: mh2_17(), quantity: 1),
+      ]),
+      placed: Some([
+        PlacedEntry(
+          key: mh2_17(),
+          location: InManagedLocation("Box"),
+          quantity: 1,
+        ),
+      ]),
+    )
+  let checkers =
+    import_document.DeepCheckers(
+      check_rule: fn(_) { Ok(Nil) },
+      check_sort_keys: fn(_) { Ok(Nil) },
+      check_managed_kind: fn(kind) {
+        case kind {
+          "deck" -> Ok(Nil)
+          _ -> Error("unknown kind")
+        }
+      },
+    )
+
+  let resolved = import_document.resolve_deep_sections(document, checkers)
+
+  assert resolved.managed_locations
+    == Some([ManagedLocationEntry(name: "Burn", kind: "deck")])
+  assert resolved.members
+    == Some([MemberEntry(managed_location: "Burn", key: mh2_17(), quantity: 1)])
+  assert resolved.placed == Some([])
+  assert list_reasons(resolved.rejected)
+    == [
+      "unknown kind",
+      "its managed location \"Box\" was rejected",
+      "its managed location \"Box\" was rejected",
+    ]
+}
+
+// Precedence matches the projection's: the scarce copy goes to the deck
+// whose name sorts first, so the later one is predicted short.
+pub fn managed_shortfall_predicts_which_deck_comes_up_short_test() {
+  let shortfall =
+    import_document.managed_shortfall(
+      [CollectionEntry(key: mh2_17(), quantity: 1)],
+      [
+        ManagedLocationEntry(name: "Burn", kind: "deck"),
+        ManagedLocationEntry(name: "Aggro", kind: "deck"),
+      ],
+      [
+        MemberEntry(managed_location: "Burn", key: mh2_17(), quantity: 1),
+        MemberEntry(managed_location: "Aggro", key: mh2_17(), quantity: 1),
+      ],
+    )
+
+  assert shortfall
+    == [
+      ManagedShortfall(
+        location_name: "Burn",
+        identity: "mh2 17 foil en",
+        missing: 1,
+      ),
+    ]
 }

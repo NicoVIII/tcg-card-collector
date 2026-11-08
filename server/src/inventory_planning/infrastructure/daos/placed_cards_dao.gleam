@@ -9,6 +9,9 @@ pub type PlacedCardRow {
     collector_number: String,
     finish: String,
     language: String,
+    // "cascade" or "managed" (migration 0021): `location` is a cascade
+    // location's name or a managed location's id accordingly.
+    location_kind: String,
     location: String,
     quantity: Int,
   )
@@ -21,13 +24,15 @@ fn placed_card_row_decoder() -> decode.Decoder(PlacedCardRow) {
   use collector_number <- decode.field(1, decode.string)
   use finish <- decode.field(2, decode.string)
   use language <- decode.field(3, decode.string)
-  use location <- decode.field(4, decode.string)
-  use quantity <- decode.field(5, decode.int)
+  use location_kind <- decode.field(4, decode.string)
+  use location <- decode.field(5, decode.string)
+  use quantity <- decode.field(6, decode.int)
   decode.success(PlacedCardRow(
     set_code:,
     collector_number:,
     finish:,
     language:,
+    location_kind:,
     location:,
     quantity:,
   ))
@@ -35,9 +40,9 @@ fn placed_card_row_decoder() -> decode.Decoder(PlacedCardRow) {
 
 pub fn list() -> Result(List(PlacedCardRow), String) {
   sqlite_store.query(
-    "SELECT set_code, collector_number, finish, language, location, quantity "
+    "SELECT set_code, collector_number, finish, language, location_kind, location, quantity "
       <> "FROM placed_cards "
-      <> "ORDER BY set_code, collector_number, finish, language, location;",
+      <> "ORDER BY set_code, collector_number, finish, language, location_kind, location;",
     [],
     placed_card_row_decoder(),
   )
@@ -49,6 +54,7 @@ fn row_params(row: PlacedCardRow) -> List(sqlight.Value) {
     sqlight.text(row.collector_number),
     sqlight.text(row.finish),
     sqlight.text(row.language),
+    sqlight.text(row.location_kind),
     sqlight.text(row.location),
     sqlight.int(row.quantity),
   ]
@@ -56,13 +62,13 @@ fn row_params(row: PlacedCardRow) -> List(sqlight.Value) {
 
 fn increment_batch(batch: List(PlacedCardRow)) -> Result(Nil, String) {
   let placeholders =
-    sqlite_store.placeholders(list.length(batch), "(?, ?, ?, ?, ?, ?)")
+    sqlite_store.placeholders(list.length(batch), "(?, ?, ?, ?, ?, ?, ?)")
   let params = list.flat_map(batch, row_params)
   let sql =
-    "INSERT INTO placed_cards (set_code, collector_number, finish, language, location, quantity) "
+    "INSERT INTO placed_cards (set_code, collector_number, finish, language, location_kind, location, quantity) "
     <> "VALUES "
     <> placeholders
-    <> " ON CONFLICT(set_code, collector_number, finish, language, location) "
+    <> " ON CONFLICT(set_code, collector_number, finish, language, location_kind, location) "
     <> "DO UPDATE SET quantity = quantity + excluded.quantity;"
   sqlite_store.exec(sql, params)
 }
@@ -88,17 +94,19 @@ fn decrement_row_statements(
     collector_number:,
     finish:,
     language:,
+    location_kind:,
     location:,
     quantity:,
   ) = row
   let where_key =
     " WHERE set_code = ? AND collector_number = ? AND finish = ? "
-    <> "AND language = ? AND location = ?"
+    <> "AND language = ? AND location_kind = ? AND location = ?"
   let key_params = [
     sqlight.text(set_code),
     sqlight.text(collector_number),
     sqlight.text(finish),
     sqlight.text(language),
+    sqlight.text(location_kind),
     sqlight.text(location),
   ]
 
@@ -127,19 +135,22 @@ pub fn decrement(rows: List(PlacedCardRow)) -> Result(Nil, String) {
   sqlite_store.exec_all_atomically(list.flat_map(rows, decrement_row_statements))
 }
 
-/// Moves every row at `from` onto `to`, summing into any row already there —
-/// a rule-target rename's ledger fix (#107): no copy of card physically moved,
-/// only the record of where it sits. Caller guarantees `from != to` (domain
-/// `Relocation`), so the INSERT...SELECT always completes before the DELETE
-/// removes its own source rows.
+/// Moves every row at cascade location `from` onto cascade location `to`,
+/// summing into any row already there — a rule-target rename's ledger fix
+/// (#107): no copy of card physically moved, only the record of where it
+/// sits. Managed locations never need this: their rows key on an id a rename
+/// doesn't change. Caller guarantees `from != to` (domain `Relocation`), so
+/// the INSERT...SELECT always completes before the DELETE removes its own
+/// source rows.
 pub fn relocate(from: String, to: String) -> Result(Nil, String) {
   let insert_sql =
-    "INSERT INTO placed_cards (set_code, collector_number, finish, language, location, quantity) "
-    <> "SELECT set_code, collector_number, finish, language, ?, quantity "
-    <> "FROM placed_cards WHERE location = ? "
-    <> "ON CONFLICT(set_code, collector_number, finish, language, location) "
+    "INSERT INTO placed_cards (set_code, collector_number, finish, language, location_kind, location, quantity) "
+    <> "SELECT set_code, collector_number, finish, language, 'cascade', ?, quantity "
+    <> "FROM placed_cards WHERE location_kind = 'cascade' AND location = ? "
+    <> "ON CONFLICT(set_code, collector_number, finish, language, location_kind, location) "
     <> "DO UPDATE SET quantity = quantity + excluded.quantity;"
-  let delete_sql = "DELETE FROM placed_cards WHERE location = ?;"
+  let delete_sql =
+    "DELETE FROM placed_cards WHERE location_kind = 'cascade' AND location = ?;"
 
   sqlite_store.exec_all_atomically([
     #(insert_sql, [sqlight.text(to), sqlight.text(from)]),

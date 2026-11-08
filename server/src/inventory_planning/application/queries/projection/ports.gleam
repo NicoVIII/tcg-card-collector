@@ -1,5 +1,7 @@
 import gleam/dict.{type Dict}
 import gleam/option.{type Option}
+import inventory_planning/domain/location_ref.{type LocationRef}
+import inventory_planning/domain/managed_location.{type ManagedLocation}
 import shared/domain/color_identity.{type ColorIdentity}
 import shared/domain/mana_value.{type ManaValue}
 import shared/domain/oracle_id.{type OracleId}
@@ -41,16 +43,22 @@ pub type ProjectionSection {
   ProjectionSection(parts: List(ProjectionSectionPart), card_count: Int)
 }
 
-// A physical destination in cascade order. `rule_id` is the rule that claimed
-// these cards, or empty for the bulk remainder. `sections` partitions `cards`
-// exactly once, in order.
+// A physical destination in cascade order (managed locations first). `location`
+// is its identity, `location_name` its display name. `rule_id` is the rule
+// that claimed these cards, or empty for a managed location or the bulk
+// remainder. `sections` partitions `cards` exactly once, in order.
+// `shortfall` lists the copies a managed location claims that the collection
+// can't supply, each with the missing quantity (ADR 0022); always empty for a
+// cascade location.
 pub type ProjectionLocation {
   ProjectionLocation(
+    location: LocationRef,
     location_name: String,
     rule_id: String,
     total_quantity: Int,
     cards: List(ProjectionCard),
     sections: List(ProjectionSection),
+    shortfall: List(ProjectionCard),
   )
 }
 
@@ -144,11 +152,15 @@ pub type SetMetadataRow {
 pub type SetMetadataPort =
   fn(List(String)) -> Result(Dict(String, SetMetadataRow), String)
 
+pub type ManagedLocationsPort =
+  fn() -> Result(List(ManagedLocation), String)
+
 pub type InventoryProjectionPorts {
   InventoryProjectionPorts(
     snapshot_rows: SnapshotRowsPort,
     catalog_attributes: CatalogAttributesPort,
     rules: RulesPort,
     set_metadata: SetMetadataPort,
+    managed_locations: ManagedLocationsPort,
   )
 }

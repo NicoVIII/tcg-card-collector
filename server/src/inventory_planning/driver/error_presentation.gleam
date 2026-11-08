@@ -1,10 +1,18 @@
+import gleam/int
+import inventory_planning/application/commands/add_to_managed_location/ports as add_to_managed_location_ports
+import inventory_planning/application/commands/create_managed_location/ports as create_managed_location_ports
+import inventory_planning/application/commands/delete_managed_location/ports as delete_managed_location_ports
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
 import inventory_planning/application/commands/relocate_placed_cards/ports as relocate_placed_cards_ports
+import inventory_planning/application/commands/remove_from_managed_location/ports as remove_from_managed_location_ports
+import inventory_planning/application/commands/rename_managed_location/ports as rename_managed_location_ports
 import inventory_planning/application/commands/reorder_rules/ports as reorder_rules_ports
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
+import inventory_planning/domain/managed_location
+import shared/domain/copy_key.{type CopyKey}
 import shared/driver/presented_error.{
   type PresentedError, BadRequest, Internal, PresentedError,
 }
@@ -86,4 +94,113 @@ pub fn relocate_placed_cards(
     relocate_placed_cards_ports.PersistenceFailed(_) ->
       PresentedError(Internal, "failed to relocate placed cards")
   }
+}
+
+pub fn create_managed_location(
+  error: create_managed_location_ports.CreateManagedLocationError,
+) -> PresentedError {
+  case error {
+    create_managed_location_ports.InvalidId ->
+      PresentedError(BadRequest, "a managed location needs an id")
+    create_managed_location_ports.InvalidName ->
+      PresentedError(BadRequest, "enter a name for the deck")
+    create_managed_location_ports.InvalidKind ->
+      PresentedError(BadRequest, "unknown managed location kind")
+    create_managed_location_ports.DuplicateId ->
+      PresentedError(
+        BadRequest,
+        "a managed location with this id already exists",
+      )
+    create_managed_location_ports.DuplicateName ->
+      PresentedError(BadRequest, "a deck with this name already exists")
+    create_managed_location_ports.PersistenceFailed(_) ->
+      PresentedError(Internal, "failed to create deck")
+  }
+}
+
+pub fn rename_managed_location(
+  error: rename_managed_location_ports.RenameManagedLocationError,
+) -> PresentedError {
+  case error {
+    rename_managed_location_ports.InvalidName ->
+      PresentedError(BadRequest, "enter a name for the deck")
+    rename_managed_location_ports.UnknownLocation ->
+      PresentedError(BadRequest, "this deck no longer exists")
+    rename_managed_location_ports.DuplicateName ->
+      PresentedError(BadRequest, "a deck with this name already exists")
+    rename_managed_location_ports.PersistenceFailed(_) ->
+      PresentedError(Internal, "failed to rename deck")
+  }
+}
+
+pub fn delete_managed_location(
+  error: delete_managed_location_ports.DeleteManagedLocationError,
+) -> PresentedError {
+  case error {
+    delete_managed_location_ports.UnknownLocation ->
+      PresentedError(BadRequest, "this deck no longer exists")
+    delete_managed_location_ports.PersistenceFailed(_) ->
+      PresentedError(Internal, "failed to delete deck")
+  }
+}
+
+pub fn add_to_managed_location(
+  error: add_to_managed_location_ports.AddToManagedLocationError,
+) -> PresentedError {
+  case error {
+    add_to_managed_location_ports.UnknownLocation ->
+      PresentedError(BadRequest, "this deck no longer exists")
+    add_to_managed_location_ports.InvalidCopies ->
+      PresentedError(BadRequest, "invalid cards to add")
+    add_to_managed_location_ports.NotEnoughOwned(overclaim) ->
+      PresentedError(BadRequest, overclaim_message(overclaim))
+    add_to_managed_location_ports.PersistenceFailed(_) ->
+      PresentedError(Internal, "failed to add cards to deck")
+  }
+}
+
+pub fn remove_from_managed_location(
+  error: remove_from_managed_location_ports.RemoveFromManagedLocationError,
+) -> PresentedError {
+  case error {
+    remove_from_managed_location_ports.UnknownLocation ->
+      PresentedError(BadRequest, "this deck no longer exists")
+    remove_from_managed_location_ports.InvalidCopies ->
+      PresentedError(BadRequest, "invalid cards to remove")
+    remove_from_managed_location_ports.NotHeld(underheld) ->
+      PresentedError(BadRequest, underheld_message(underheld))
+    remove_from_managed_location_ports.PersistenceFailed(_) ->
+      PresentedError(Internal, "failed to remove cards from deck")
+  }
+}
+
+fn copy_label(key: CopyKey) -> String {
+  copy_key.set_code_string(key)
+  <> " "
+  <> copy_key.collector_number_string(key)
+  <> " ("
+  <> copy_key.finish_string(key)
+  <> ", "
+  <> copy_key.language_string(key)
+  <> ")"
+}
+
+fn overclaim_message(overclaim: managed_location.Overclaim) -> String {
+  "only "
+  <> int.to_string(overclaim.available)
+  <> " unclaimed cop(ies) of "
+  <> copy_label(overclaim.key)
+  <> " left to add, "
+  <> int.to_string(overclaim.requested)
+  <> " requested"
+}
+
+fn underheld_message(underheld: managed_location.Underheld) -> String {
+  "the deck holds "
+  <> int.to_string(underheld.held)
+  <> " cop(ies) of "
+  <> copy_label(underheld.key)
+  <> ", "
+  <> int.to_string(underheld.requested)
+  <> " requested"
 }

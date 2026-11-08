@@ -3,7 +3,8 @@ import portability/application/queries/preview_import/handler.{
   type ImportPreview,
 }
 import portability/domain/import_document.{
-  type LedgerExcess, type RejectedEntry, type SectionResult,
+  type LedgerExcess, type ManagedShortfall, type RejectedEntry,
+  type SectionResult,
 }
 
 pub fn encode_import_preview(preview: ImportPreview) -> String {
@@ -11,6 +12,7 @@ pub fn encode_import_preview(preview: ImportPreview) -> String {
     #("sections", json.array(preview.sections, of: encode_section_result)),
     #("rejected", json.array(preview.rejected, of: encode_rejected_entry)),
     #("excess", json.array(preview.excess, of: encode_ledger_excess)),
+    #("shortfall", json.array(preview.shortfall, of: encode_managed_shortfall)),
   ])
   |> json.to_string
 }
@@ -33,6 +35,14 @@ fn encode_rejected_entry(rejected: RejectedEntry) -> json.Json {
     #("position", json.int(rejected.position)),
     #("identity", json.string(rejected.identity)),
     #("reason", json.string(rejected.reason)),
+  ])
+}
+
+fn encode_managed_shortfall(shortfall: ManagedShortfall) -> json.Json {
+  json.object([
+    #("location_name", json.string(shortfall.location_name)),
+    #("identity", json.string(shortfall.identity)),
+    #("missing", json.int(shortfall.missing)),
   ])
 }
 

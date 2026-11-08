@@ -11,7 +11,8 @@ pub type RawPlacement {
     collector_number: String,
     finish: String,
     language: String,
-    location_name: String,
+    location_kind: String,
+    location: String,
     quantity: Int,
   )
 }
@@ -57,7 +58,8 @@ fn validate(
     collector_number: raw.collector_number,
     finish: raw.finish,
     language: raw.language,
-    location: raw.location_name,
+    location_kind: raw.location_kind,
+    location: raw.location,
     quantity: raw.quantity,
   )
 }

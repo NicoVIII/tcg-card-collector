@@ -23,6 +23,8 @@ fn no_plan() -> InventoryPlanningSection {
   InventoryPlanningSection(
     rules: [],
     bulk: BulkSpec(location: "Bulk", sort_keys: ""),
+    managed_locations: [],
+    members: [],
     placed: [],
   )
 }
@@ -76,7 +78,7 @@ pub fn renders_every_finish_and_a_non_english_language_by_enum_name_test() {
   assert export_file.render(document)
     == "{\n"
     <> "  \"format\": \"tcg-card-collector\",\n"
-    <> "  \"format_version\": 1,\n"
+    <> "  \"format_version\": 2,\n"
     <> "  \"exported_on\": \"2026-09-25\",\n"
     <> "  \"collection\": [\n"
     <> "    {\"set_code\":\"dmu\",\"collector_number\":\"2\",\"quantity\":1,\"finish\":\"nonfoil\",\"language\":\"en\"},\n"
@@ -86,6 +88,8 @@ pub fn renders_every_finish_and_a_non_english_language_by_enum_name_test() {
     <> "  \"inventory_planning\": {\n"
     <> "    \"rules\": [],\n"
     <> "    \"bulk\": {\"location\":\"Bulk\",\"sort\":\"\"},\n"
+    <> "    \"managed_locations\": [],\n"
+    <> "    \"managed_location_members\": [],\n"
     <> "    \"placed\": []\n"
     <> "  },\n"
     <> "  \"insights\": {\n"
@@ -106,12 +110,14 @@ pub fn an_empty_collection_renders_as_an_empty_array_test() {
   assert export_file.render(document)
     == "{\n"
     <> "  \"format\": \"tcg-card-collector\",\n"
-    <> "  \"format_version\": 1,\n"
+    <> "  \"format_version\": 2,\n"
     <> "  \"exported_on\": \"2026-09-25\",\n"
     <> "  \"collection\": [],\n"
     <> "  \"inventory_planning\": {\n"
     <> "    \"rules\": [],\n"
     <> "    \"bulk\": {\"location\":\"Bulk\",\"sort\":\"\"},\n"
+    <> "    \"managed_locations\": [],\n"
+    <> "    \"managed_location_members\": [],\n"
     <> "    \"placed\": []\n"
     <> "  },\n"
     <> "  \"insights\": {\n"
@@ -143,8 +149,14 @@ pub fn renders_rules_bulk_and_placed_nested_under_inventory_planning_test() {
           ),
         ],
         bulk: BulkSpec(location: "Bulk", sort_keys: "color_identity,type,name"),
+        managed_locations: [],
+        members: [],
         placed: [
-          PlacedEntry(key: mh2_key, location: "Binder mh2", quantity: 1),
+          PlacedEntry(
+            key: mh2_key,
+            location: export_document.InLocation("Binder mh2"),
+            quantity: 1,
+          ),
         ],
       ),
     )
@@ -152,7 +164,7 @@ pub fn renders_rules_bulk_and_placed_nested_under_inventory_planning_test() {
   assert export_file.render(document)
     == "{\n"
     <> "  \"format\": \"tcg-card-collector\",\n"
-    <> "  \"format_version\": 1,\n"
+    <> "  \"format_version\": 2,\n"
     <> "  \"exported_on\": \"2026-09-25\",\n"
     <> "  \"collection\": [],\n"
     <> "  \"inventory_planning\": {\n"
@@ -160,6 +172,8 @@ pub fn renders_rules_bulk_and_placed_nested_under_inventory_planning_test() {
     <> "      {\"location\":\"Binder {set_code}\",\"match\":\"rarity >= rare\",\"copies\":\"all\",\"sort\":\"collector_number\"}\n"
     <> "    ],\n"
     <> "    \"bulk\": {\"location\":\"Bulk\",\"sort\":\"color_identity,type,name\"},\n"
+    <> "    \"managed_locations\": [],\n"
+    <> "    \"managed_location_members\": [],\n"
     <> "    \"placed\": [\n"
     <> "      {\"set_code\":\"mh2\",\"collector_number\":\"17\",\"finish\":\"foil\",\"language\":\"en\",\"location\":\"Binder mh2\",\"quantity\":1}\n"
     <> "    ]\n"
@@ -211,8 +225,14 @@ pub fn render_then_parse_then_render_is_byte_identical_including_etched_and_the_
           ),
         ],
         bulk: BulkSpec(location: "Bulk", sort_keys: "color_identity"),
+        managed_locations: [],
+        members: [],
         placed: [
-          PlacedEntry(key: foil_zht, location: "Binder A", quantity: 2),
+          PlacedEntry(
+            key: foil_zht,
+            location: export_document.InLocation("Binder A"),
+            quantity: 2,
+          ),
         ],
       ),
     )
@@ -229,7 +249,13 @@ pub fn render_then_parse_then_render_is_byte_identical_including_etched_and_the_
       exported_on: a_date(),
       collection: parsed.collection,
       insights: InsightsSection(target_sets:),
-      inventory_planning: InventoryPlanningSection(rules:, bulk:, placed:),
+      inventory_planning: InventoryPlanningSection(
+        rules:,
+        bulk:,
+        managed_locations: [],
+        members: [],
+        placed:,
+      ),
     ))
 
   assert re_rendered == rendered
@@ -250,9 +276,9 @@ pub fn a_missing_or_wrong_format_marker_is_rejected_test() {
 
 pub fn an_unsupported_format_version_is_rejected_before_any_entry_is_parsed_test() {
   assert export_file.parse(
-      "{\"format\": \"tcg-card-collector\", \"format_version\": 2, \"collection\": [{}]}",
+      "{\"format\": \"tcg-card-collector\", \"format_version\": 3, \"collection\": [{}]}",
     )
-    == Error(UnsupportedVersion("2"))
+    == Error(UnsupportedVersion("3"))
 }
 
 pub fn a_missing_format_version_is_rejected_as_unsupported_test() {
@@ -414,7 +440,13 @@ pub fn placed_entries_are_fully_validated_because_they_need_no_other_context_tes
     )
 
   assert document.placed
-    == Some([PlacedEntry(key: mh2_key, location: "Box A", quantity: 2)])
+    == Some([
+      PlacedEntry(
+        key: mh2_key,
+        location: export_document.InLocation("Box A"),
+        quantity: 2,
+      ),
+    ])
   assert document.rejected
     == [
       RejectedEntry(
@@ -433,4 +465,21 @@ pub fn placed_absent_from_the_file_parses_as_none_test() {
     )
 
   assert document.placed == None
+}
+
+// The v1 decoder is frozen (ADR 0020): a `managed_location` key in a v1 file
+// is an unknown key, ignored, so the entry still needs its `location`.
+pub fn a_v1_file_ignores_a_managed_location_key_test() {
+  let assert Ok(document) =
+    export_file.parse(
+      "{\"format\": \"tcg-card-collector\", \"format_version\": 1, \"collection\": [],"
+      <> " \"inventory_planning\": {\"placed\": [{\"set_code\": \"mh2\","
+      <> " \"collector_number\": \"17\", \"finish\": \"foil\", \"language\": \"en\","
+      <> " \"managed_location\": \"Burn\", \"quantity\": 1}]}}",
+    )
+
+  assert document.managed_locations == None
+  assert document.placed == Some([])
+  let assert [rejected] = document.rejected
+  assert rejected.reason == "location is blank"
 }

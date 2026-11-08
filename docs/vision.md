@@ -49,5 +49,5 @@ Acknowledged as possible futures, but no current design bends to accommodate the
 
 ## Non-goals
 
-- **Deck building.** No deck construction, legality checking, or playtesting — Moxfield and friends do this well already. This is a collection and inventory tool.
+- **Deck building.** No deck construction, legality checking, or playtesting — Moxfield and friends do this well already. This is a collection and inventory tool. The one carve-out: a deck can be a *storage location* — a named list of owned copies kept out of the binders (#122) — with no construction help, legality checking, or decklist import attached.
 - **Trading & marketplace.** No trade matching, shared want-lists, buying/selling, or price alerts.

@@ -13,6 +13,7 @@ See [docs/vision.md](docs/vision.md) for why the project exists, where it is hea
 - CSV collection import replacing the live collection
 - Adding, removing, or adjusting owned quantities, correcting the placed ledger to match
 - Location rules and inventory projections for physical sorting
+- Decks: a named list of owned copies kept out of the binders — the projection takes a deck's cards before any rule, shows what a deck is missing when the collection owns fewer than it lists, and won't let a removal quietly eat into a deck
 - A re-sort worklist flags placed copies a rule change left behind, and re-points a renamed location's records without treating it as a physical move
 - The collection can be exported to a versioned JSON file and restored from one, byte-for-byte round-trip
 - All of it available over Skir RPC and REST
@@ -77,11 +78,11 @@ docker cp <container>:/data/backup.db ./backup.db
 
 ### Data export & import
 
-Unlike the database backup above, exporting downloads a single JSON file with everything hand-made in the app — the collection, set targets, location rules, bulk spec, and placed ledger — that this app can read back in. Useful for moving a collection (and how it's organized) between installs, not just for disaster recovery. From the Collection page, "Back up & restore…" → Export collection; or fetch it directly with `curl http://localhost:8080/api/export -o export.json`.
+Unlike the database backup above, exporting downloads a single JSON file with everything hand-made in the app — the collection, set targets, location rules, bulk spec, decks, and placed ledger — that this app can read back in. Useful for moving a collection (and how it's organized) between installs, not just for disaster recovery. From the Collection page, "Back up & restore…" → Export collection; or fetch it directly with `curl http://localhost:8080/api/export -o export.json`.
 
 The file's shape is fixed by a `format_version` and documented in [docs/portability/export.schema.json](docs/portability/export.schema.json) — point a JSON-aware editor at it to catch a hand-edit mistake as you type. A file imports into any release of the same major version or the next one; a release dropping an older format says so in its [release notes](CHANGELOG.md).
 
-The same page's "Restore from file" reads that file back in — a preview shows, per section, how many entries will import and names any entry it can't (a bad set code, an unrecognized finish or language, an invalid rule expression), and warns if the ledger it's about to restore would place more copies than the collection it's about to restore owns (the excess is pruned automatically right after import). **The collection always replaces in full**; every other section replaces only when the file has it — a section the file doesn't have (an older export, or one written by an older build) is left untouched rather than cleared. The round trip is exact: every finish and language the app tracks survives. Scripted restores can `POST` the file's raw content to `/api/import-data` (or `/api/import-data/preview` to check it first without changing anything) — for example `curl --data-binary @export.json http://localhost:8080/api/import-data`.
+The same page's "Restore from file" reads that file back in — a preview shows, per section, how many entries will import and names any entry it can't (a bad set code, an unrecognized finish or language, an invalid rule expression), and warns if the ledger it's about to restore would place more copies than the collection it's about to restore owns (the excess is pruned automatically right after import), or if a deck lists cards that collection doesn't own enough of (the deck keeps its list and shows what's missing). **The collection always replaces in full**; every other section replaces only when the file has it — a section the file doesn't have (an older export, or one written by an older build) is left untouched rather than cleared. The round trip is exact: every finish and language the app tracks survives. Scripted restores can `POST` the file's raw content to `/api/import-data` (or `/api/import-data/preview` to check it first without changing anything) — for example `curl --data-binary @export.json http://localhost:8080/api/import-data`.
 
 ### Data preservation
 

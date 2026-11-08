@@ -1,4 +1,5 @@
 import gleam/list
+import inventory_planning/domain/location_ref
 import inventory_planning/domain/placement
 
 fn new_nonfoil_en(
@@ -12,6 +13,7 @@ fn new_nonfoil_en(
     collector_number:,
     finish: "nonfoil",
     language: "en",
+    location_kind: "cascade",
     location:,
     quantity:,
   )
@@ -24,6 +26,7 @@ pub fn new_canonicalizes_the_key_test() {
       collector_number: " 161 ",
       finish: " FOIL ",
       language: " DE ",
+      location_kind: "cascade",
       location: "Bulk",
       quantity: 2,
     )
@@ -32,7 +35,7 @@ pub fn new_canonicalizes_the_key_test() {
   assert placement.collector_number_string(built) == "161"
   assert placement.finish_string(built) == "foil"
   assert placement.language_string(built) == "de"
-  assert placement.location(built) == "Bulk"
+  assert placement.location(built) == location_ref.Cascade("Bulk")
   assert placement.quantity(built) == 2
 }
 
@@ -52,6 +55,7 @@ pub fn new_rejects_an_unknown_finish_test() {
       collector_number: "1",
       finish: "shiny",
       language: "en",
+      location_kind: "cascade",
       location: "Bulk",
       quantity: 1,
     )
@@ -64,6 +68,7 @@ pub fn new_rejects_an_unknown_language_test() {
       collector_number: "1",
       finish: "nonfoil",
       language: "klingon",
+      location_kind: "cascade",
       location: "Bulk",
       quantity: 1,
     )
@@ -77,7 +82,7 @@ pub fn new_rejects_an_empty_location_test() {
       location: "   ",
       quantity: 1,
     )
-    == Error(placement.EmptyLocation)
+    == Error(placement.InvalidLocation)
 }
 
 pub fn new_rejects_a_non_positive_quantity_test() {
@@ -116,7 +121,9 @@ pub fn merge_sums_duplicate_key_and_location_and_keeps_others_separate_test() {
   let merged = placement.merge([a1, b, a2])
 
   let summary =
-    list.map(merged, fn(p) { #(placement.location(p), placement.quantity(p)) })
+    list.map(merged, fn(p) {
+      #(location_ref.key_string(placement.location(p)), placement.quantity(p))
+    })
 
   // Stable (key, location) order: Binder before Bulk.
   assert summary == [#("Binder", 1), #("Bulk", 5)]
@@ -138,6 +145,7 @@ pub fn merge_keeps_different_finish_as_separate_placements_test() {
       collector_number: "1",
       finish: "foil",
       language: "en",
+      location_kind: "cascade",
       location: "Binder",
       quantity: 1,
     )
@@ -199,7 +207,7 @@ pub fn merge_orders_by_set_code_then_collector_number_then_location_test() {
       #(
         placement.set_code_string(p),
         placement.collector_number_string(p),
-        placement.location(p),
+        location_ref.key_string(placement.location(p)),
       )
     })
     == [

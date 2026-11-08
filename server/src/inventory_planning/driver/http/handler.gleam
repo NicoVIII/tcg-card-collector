@@ -1,14 +1,20 @@
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/list
+import inventory_planning/application/commands/add_to_managed_location/handler as add_to_managed_location_handler
+import inventory_planning/application/commands/create_managed_location/handler as create_managed_location_handler
+import inventory_planning/application/commands/delete_managed_location/handler as delete_managed_location_handler
 import inventory_planning/application/commands/delete_rule/handler as delete_rule_handler
 import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
 import inventory_planning/application/commands/relocate_placed_cards/handler as relocate_placed_cards_handler
+import inventory_planning/application/commands/remove_from_managed_location/handler as remove_from_managed_location_handler
+import inventory_planning/application/commands/rename_managed_location/handler as rename_managed_location_handler
 import inventory_planning/application/commands/reorder_rules/handler as reorder_rules_handler
 import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
 import inventory_planning/application/commands/update_bulk_spec/handler as update_bulk_spec_handler
 import inventory_planning/application/commands/upsert_rule/handler as upsert_rule_handler
 import inventory_planning/application/queries/get_bulk_spec/handler as get_bulk_spec_handler
+import inventory_planning/application/queries/list_managed_locations/handler as list_managed_locations_handler
 import inventory_planning/application/queries/list_rules/handler as list_rules_handler
 import inventory_planning/application/queries/placed_ledger/handler as placed_ledger_handler
 import inventory_planning/application/queries/projection/handler as projection_handler
@@ -229,6 +235,155 @@ pub fn handle_relocate_placed_cards(
   }
 }
 
+pub fn handle_list_managed_locations(
+  deps: Dependencies,
+) -> Response(mist.ResponseData) {
+  list_managed_locations_handler.execute(
+    list_managed_locations_handler.ListManagedLocationsQuery,
+    deps.list_managed_locations_port,
+  )
+  |> helpers.query_response(inventory_codec.encode_managed_locations)
+}
+
+pub fn handle_create_managed_location(
+  req: Request(mist.Connection),
+  deps: Dependencies,
+) -> Response(mist.ResponseData) {
+  use body <- helpers.with_json_body(req)
+  case inventory_codec.decode_create_managed_location_body(body) {
+    Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
+    Ok(b) ->
+      case
+        create_managed_location_handler.execute(
+          create_managed_location_handler.CreateManagedLocationCommand(
+            id: b.id,
+            name: b.name,
+            kind: b.kind,
+          ),
+          deps.create_managed_location_ports,
+        )
+      {
+        Ok(_) ->
+          helpers.json_response(200, json_codec.encode_ok("deck created"))
+        Error(error) ->
+          helpers.error_response(error_presentation.create_managed_location(
+            error,
+          ))
+      }
+  }
+}
+
+pub fn handle_rename_managed_location(
+  req: Request(mist.Connection),
+  deps: Dependencies,
+) -> Response(mist.ResponseData) {
+  use body <- helpers.with_json_body(req)
+  case inventory_codec.decode_rename_managed_location_body(body) {
+    Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
+    Ok(b) ->
+      case
+        rename_managed_location_handler.execute(
+          rename_managed_location_handler.RenameManagedLocationCommand(
+            id: b.id,
+            name: b.name,
+          ),
+          deps.rename_managed_location_ports,
+        )
+      {
+        Ok(_) ->
+          helpers.json_response(200, json_codec.encode_ok("deck renamed"))
+        Error(error) ->
+          helpers.error_response(error_presentation.rename_managed_location(
+            error,
+          ))
+      }
+  }
+}
+
+pub fn handle_delete_managed_location(
+  req: Request(mist.Connection),
+  deps: Dependencies,
+) -> Response(mist.ResponseData) {
+  use body <- helpers.with_json_body(req)
+  case inventory_codec.decode_delete_managed_location_body(body) {
+    Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
+    Ok(b) ->
+      case
+        delete_managed_location_handler.execute(
+          delete_managed_location_handler.DeleteManagedLocationCommand(id: b.id),
+          deps.delete_managed_location_ports,
+        )
+      {
+        Ok(_) ->
+          helpers.json_response(200, json_codec.encode_ok("deck deleted"))
+        Error(error) ->
+          helpers.error_response(error_presentation.delete_managed_location(
+            error,
+          ))
+      }
+  }
+}
+
+pub fn handle_add_to_managed_location(
+  req: Request(mist.Connection),
+  deps: Dependencies,
+) -> Response(mist.ResponseData) {
+  use body <- helpers.with_json_body(req)
+  case inventory_codec.decode_managed_members_body(body) {
+    Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
+    Ok(b) ->
+      case
+        add_to_managed_location_handler.execute(
+          add_to_managed_location_handler.AddToManagedLocationCommand(
+            id: b.id,
+            copies: list.map(b.copies, to_add_raw_copy),
+          ),
+          deps.add_to_managed_location_ports,
+        )
+      {
+        Ok(_) ->
+          helpers.json_response(
+            200,
+            json_codec.encode_ok("cards added to deck"),
+          )
+        Error(error) ->
+          helpers.error_response(error_presentation.add_to_managed_location(
+            error,
+          ))
+      }
+  }
+}
+
+pub fn handle_remove_from_managed_location(
+  req: Request(mist.Connection),
+  deps: Dependencies,
+) -> Response(mist.ResponseData) {
+  use body <- helpers.with_json_body(req)
+  case inventory_codec.decode_managed_members_body(body) {
+    Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
+    Ok(b) ->
+      case
+        remove_from_managed_location_handler.execute(
+          remove_from_managed_location_handler.RemoveFromManagedLocationCommand(
+            id: b.id,
+            copies: list.map(b.copies, to_remove_raw_copy),
+          ),
+          deps.remove_from_managed_location_ports,
+        )
+      {
+        Ok(_) ->
+          helpers.json_response(
+            200,
+            json_codec.encode_ok("cards removed from deck"),
+          )
+        Error(error) ->
+          helpers.error_response(
+            error_presentation.remove_from_managed_location(error),
+          )
+      }
+  }
+}
+
 fn to_mark_raw_placement(
   body: inventory_codec.PlacementBody,
 ) -> mark_cards_placed_handler.RawPlacement {
@@ -237,7 +392,8 @@ fn to_mark_raw_placement(
     collector_number: body.collector_number,
     finish: body.finish,
     language: body.language,
-    location_name: body.location_name,
+    location_kind: body.location_kind,
+    location: body.location,
     quantity: body.quantity,
   )
 }
@@ -250,7 +406,32 @@ fn to_unmark_raw_placement(
     collector_number: body.collector_number,
     finish: body.finish,
     language: body.language,
-    location_name: body.location_name,
+    location_kind: body.location_kind,
+    location: body.location,
+    quantity: body.quantity,
+  )
+}
+
+fn to_add_raw_copy(
+  body: inventory_codec.ManagedCopyBody,
+) -> add_to_managed_location_handler.RawCopy {
+  add_to_managed_location_handler.RawCopy(
+    set_code: body.set_code,
+    collector_number: body.collector_number,
+    finish: body.finish,
+    language: body.language,
+    quantity: body.quantity,
+  )
+}
+
+fn to_remove_raw_copy(
+  body: inventory_codec.ManagedCopyBody,
+) -> remove_from_managed_location_handler.RawCopy {
+  remove_from_managed_location_handler.RawCopy(
+    set_code: body.set_code,
+    collector_number: body.collector_number,
+    finish: body.finish,
+    language: body.language,
     quantity: body.quantity,
   )
 }

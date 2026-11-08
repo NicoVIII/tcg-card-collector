@@ -95,12 +95,17 @@ const OWNED_NONFOIL = (quantity: number) => ({ ...NONFOIL_EN, quantity });
 
 describe("stageEntry", () => {
   it("appends a new card at the end, recording the owned quantity", () => {
-    const first = stageEntry([], { ...ENTRY, quantity: 2 }, [OWNED_NONFOIL(3)]);
+    const first = stageEntry([], { ...ENTRY, quantity: 2 }, [OWNED_NONFOIL(3)], []);
     expect(first).toEqual({ ok: true, list: [{ ...ENTRY, quantity: 2, owned: 3 }] });
     if (!first.ok) throw new Error("unreachable");
 
     expect(
-      stageEntry(first.list, { ...ENTRY, collectorNumber: "2", quantity: 1 }, [OWNED_NONFOIL(1)]),
+      stageEntry(
+        first.list,
+        { ...ENTRY, collectorNumber: "2", quantity: 1 },
+        [OWNED_NONFOIL(1)],
+        [],
+      ),
     ).toEqual({
       ok: true,
       list: [
@@ -112,7 +117,7 @@ describe("stageEntry", () => {
 
   it("sums quantities when the same copy is already staged", () => {
     const staged = [{ ...ENTRY, quantity: 2, owned: 5 }];
-    expect(stageEntry(staged, { ...ENTRY, quantity: 3 }, [OWNED_NONFOIL(5)])).toEqual({
+    expect(stageEntry(staged, { ...ENTRY, quantity: 3 }, [OWNED_NONFOIL(5)], [])).toEqual({
       ok: true,
       list: [{ ...ENTRY, quantity: 5, owned: 5 }],
     });
@@ -120,10 +125,12 @@ describe("stageEntry", () => {
 
   it("keeps a different finish as a separate staged line", () => {
     const staged = [{ ...ENTRY, quantity: 2, owned: 2 }];
-    const result = stageEntry(staged, { ...ENTRY, finish: "foil", quantity: 1 }, [
-      OWNED_NONFOIL(2),
-      { finish: "foil", language: "en", quantity: 1 },
-    ]);
+    const result = stageEntry(
+      staged,
+      { ...ENTRY, finish: "foil", quantity: 1 },
+      [OWNED_NONFOIL(2), { finish: "foil", language: "en", quantity: 1 }],
+      [],
+    );
     expect(result).toEqual({
       ok: true,
       list: [
@@ -134,7 +141,7 @@ describe("stageEntry", () => {
   });
 
   it("refuses a printing that isn't owned at all", () => {
-    expect(stageEntry([], { ...ENTRY, quantity: 1 }, [])).toEqual({
+    expect(stageEntry([], { ...ENTRY, quantity: 1 }, [], [])).toEqual({
       ok: false,
       message: "You don't own blb 1 (nonfoil·en).",
     });
@@ -142,7 +149,12 @@ describe("stageEntry", () => {
 
   it("refuses an owned printing in a finish or language that isn't owned, naming what is", () => {
     expect(
-      stageEntry([], { ...ENTRY, quantity: 1 }, [{ finish: "foil", language: "de", quantity: 1 }]),
+      stageEntry(
+        [],
+        { ...ENTRY, quantity: 1 },
+        [{ finish: "foil", language: "de", quantity: 1 }],
+        [],
+      ),
     ).toEqual({
       ok: false,
       message: "You don't own blb 1 (nonfoil·en); you own it as foil·de.",
@@ -150,7 +162,7 @@ describe("stageEntry", () => {
   });
 
   it("refuses a quantity above the owned one", () => {
-    expect(stageEntry([], { ...ENTRY, quantity: 4 }, [OWNED_NONFOIL(3)])).toEqual({
+    expect(stageEntry([], { ...ENTRY, quantity: 4 }, [OWNED_NONFOIL(3)], [])).toEqual({
       ok: false,
       message: "Only 3 owned.",
     });
@@ -158,7 +170,7 @@ describe("stageEntry", () => {
 
   it("counts what's already staged against the owned quantity", () => {
     const staged = [{ ...ENTRY, quantity: 2, owned: 3 }];
-    expect(stageEntry(staged, { ...ENTRY, quantity: 2 }, [OWNED_NONFOIL(3)])).toEqual({
+    expect(stageEntry(staged, { ...ENTRY, quantity: 2 }, [OWNED_NONFOIL(3)], [])).toEqual({
       ok: false,
       message: "Only 3 owned (2 already staged).",
     });
@@ -225,5 +237,35 @@ describe("staleMessage", () => {
     expect(staleMessage([{ ...ENTRY, quantity: 1, owned: 1 }])).toBe(
       "The collection changed since staging; nothing staged exceeds it now — try again.",
     );
+  });
+});
+
+describe("stageEntry's deck guard", () => {
+  const deck = (quantity: number) => ({
+    id: "d1",
+    name: "Mono-Red",
+    kind: "deck" as const,
+    members: [
+      {
+        set_code: ENTRY.setCode,
+        collector_number: ENTRY.collectorNumber,
+        finish: ENTRY.finish,
+        language: ENTRY.language,
+        quantity,
+      },
+    ],
+  });
+
+  it("stages copies no deck claims", () => {
+    expect(stageEntry([], { ...ENTRY, quantity: 1 }, [OWNED_NONFOIL(3)], [deck(2)]).ok).toBe(true);
+  });
+
+  // Removing a deck's copy would leave the deck short without the user
+  // deciding that (ADR 0022), so it's refused and the deck is named.
+  it("refuses a removal that would cut into a deck and names the deck", () => {
+    const result = stageEntry([], { ...ENTRY, quantity: 2 }, [OWNED_NONFOIL(3)], [deck(2)]);
+
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.message).toContain("Mono-Red (2)");
   });
 });

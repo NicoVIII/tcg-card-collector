@@ -12,12 +12,17 @@ import {
 import { buildGuidance } from "../data/placement/guidance";
 import { type ResortEntry, type ResortGroup, buildResortWorklist } from "../data/placement/resort";
 import { usePlacedLedgerQuery } from "../data/placement/query";
-import type { CardPlacementInput, PlacementCard } from "../data/placement/request";
+import {
+  cascadeLocation,
+  locationKey,
+  type LocationRef,
+} from "../data/inventory_planning/location_ref";
+import type { CardPlacementInput, PlacementCard, PlacementPlace } from "../data/placement/request";
 import {
   type FocusedLocation,
   type LocationSummary,
   countLabel,
-  focusNameFrom,
+  focusKeyFrom,
   focusedLocation,
   locationSummaries,
   totalToPlace,
@@ -30,6 +35,7 @@ import {
   emptySession,
   isSectionHeader,
   isTicked,
+  placeOf,
   restoreTicks,
   sectionLabel,
   tick,
@@ -50,29 +56,30 @@ import {
 } from "./resort_session";
 
 type LastResortAction =
-  | { kind: "pull_out"; from_location: string; entry: ResortEntry }
+  | { kind: "pull_out"; from_location: LocationRef; entry: ResortEntry }
+  // Cascade location names: only a rule-target rename is ever relocated.
   | { kind: "relocate"; from_location: string; to_location: string };
 
 function lastResortActionLabel(action: LastResortAction): string {
   return action.kind === "pull_out" ? "Pulled out." : "Record updated.";
 }
 
-function entryPlacement(from_location: string, entry: ResortEntry): CardPlacementInput {
+function entryPlacement(from_location: LocationRef, entry: ResortEntry): CardPlacementInput {
   return {
     set_code: entry.set_code,
     collector_number: entry.collector_number,
     finish: entry.finish,
     language: entry.language,
-    location_name: from_location,
+    location: from_location,
     quantity: entry.quantity,
   };
 }
 
 type ResortEntryRowProps = {
-  from_location: string;
+  from_location: LocationRef;
   entry: ResortEntry;
   pending: boolean;
-  onPullOut: (from_location: string, entry: ResortEntry) => void;
+  onPullOut: (from_location: LocationRef, entry: ResortEntry) => void;
 };
 
 function ResortEntryRow(props: ResortEntryRowProps) {
@@ -110,14 +117,14 @@ function ResortEntryRow(props: ResortEntryRowProps) {
 type ResortGroupPanelProps = {
   group: ResortGroup;
   pending: boolean;
-  onPullOut: (from_location: string, entry: ResortEntry) => void;
+  onPullOut: (from_location: LocationRef, entry: ResortEntry) => void;
   onUpdateRecordOnly: (group: ResortGroup) => void;
 };
 
 function ResortGroupPanel(props: ResortGroupPanelProps) {
   return (
     <div class="placement-panel">
-      <h4>{props.group.from_location}</h4>
+      <h4>{props.group.from_location_name}</h4>
       <Show when={props.group.looks_like_rename}>
         {(destination) => (
           <p class="hint">
@@ -127,7 +134,7 @@ function ResortGroupPanel(props: ResortGroupPanelProps) {
               disabled={props.pending}
               onClick={() => props.onUpdateRecordOnly(props.group)}
             >
-              Update record only: {props.group.from_location} → {destination()}
+              Update record only: {props.group.from_location_name} → {destination()}
             </button>
           </p>
         )}
@@ -148,26 +155,26 @@ function ResortGroupPanel(props: ResortGroupPanelProps) {
   );
 }
 
-function placementOf(location_name: string, card: PlacementCard): CardPlacementInput {
+function placementOf(place: PlacementPlace, card: PlacementCard): CardPlacementInput {
   return {
     set_code: card.set_code,
     collector_number: card.collector_number,
     finish: card.finish,
     language: card.language,
-    location_name,
+    location: place.location,
     quantity: card.to_place_quantity,
   };
 }
 
 type PlacementRowProps = {
-  location_name: string;
+  place: PlacementPlace;
   card: PlacementCard;
   session: PlacementSession;
   index: number;
   markThroughPending: boolean;
-  onTick: (location_name: string, card: PlacementCard, index: number) => void;
-  onUntick: (location_name: string, card: PlacementCard) => void;
-  onMarkThrough: (location_name: string, index: number) => void;
+  onTick: (place: PlacementPlace, card: PlacementCard, index: number) => void;
+  onUntick: (place: PlacementPlace, card: PlacementCard) => void;
+  onMarkThrough: (place: PlacementPlace, index: number) => void;
 };
 
 // struck is asked of the session per render rather than carried on the row
@@ -175,7 +182,7 @@ type PlacementRowProps = {
 // elsewhere in the list, which is what lets <For> (keyed by reference in
 // LocationPanel below) skip rebuilding every other row (#105).
 function PlacementRow(props: PlacementRowProps) {
-  const struck = () => isTicked(props.session, props.location_name, props.card);
+  const struck = () => isTicked(props.session, props.place.location_key, props.card);
 
   return (
     <li class="placement-row" classList={{ "placement-row-done": struck() }}>
@@ -185,8 +192,8 @@ function PlacementRow(props: PlacementRowProps) {
         aria-label={`Placed ${props.card.name} (${props.card.set_code} ${props.card.collector_number})`}
         onChange={() =>
           struck()
-            ? props.onUntick(props.location_name, props.card)
-            : props.onTick(props.location_name, props.card, props.index)
+            ? props.onUntick(props.place, props.card)
+            : props.onTick(props.place, props.card, props.index)
         }
       />
       <span class="placement-card">
@@ -198,7 +205,7 @@ function PlacementRow(props: PlacementRowProps) {
           {props.card.language})
         </span>
         <span class="placement-card-hint">
-          {betweenLabel(props.session, props.location_name, props.card)}
+          {betweenLabel(props.session, props.place.location_key, props.card)}
         </span>
       </span>
       <Show when={!struck()}>
@@ -207,7 +214,7 @@ function PlacementRow(props: PlacementRowProps) {
           class="placement-mark-through"
           disabled={props.markThroughPending}
           aria-label={`Mark placed everything up to ${props.card.name} (${props.card.set_code} ${props.card.collector_number})`}
-          onClick={() => props.onMarkThrough(props.location_name, props.index)}
+          onClick={() => props.onMarkThrough(props.place, props.index)}
         >
           Up to here
         </button>
@@ -222,16 +229,16 @@ type LocationPanelProps = {
   markAllPending: boolean;
   undoable: MarkBatch | null;
   undoPending: boolean;
-  onTick: (location_name: string, card: PlacementCard, index: number) => void;
-  onUntick: (location_name: string, card: PlacementCard) => void;
+  onTick: (place: PlacementPlace, card: PlacementCard, index: number) => void;
+  onUntick: (place: PlacementPlace, card: PlacementCard) => void;
   onMarkAll: (location: FocusedLocation) => void;
-  onMarkThrough: (location_name: string, index: number) => void;
+  onMarkThrough: (place: PlacementPlace, index: number) => void;
   onUndoMarkBatch: (batch: MarkBatch) => void;
 };
 
 function LocationPanel(props: LocationPanelProps) {
   const undoableHere = () =>
-    props.undoable !== null && props.undoable.location_name === props.location.location_name
+    props.undoable !== null && props.undoable.place.location_key === props.location.location_key
       ? props.undoable
       : null;
   const unplaced = () => unplacedRowCount(props.session, props.location);
@@ -278,7 +285,7 @@ function LocationPanel(props: LocationPanelProps) {
               </li>
             ) : (
               <PlacementRow
-                location_name={props.location.location_name}
+                place={props.location}
                 card={item}
                 session={props.session}
                 index={cardIndex().get(item) ?? 0}
@@ -295,19 +302,10 @@ function LocationPanel(props: LocationPanelProps) {
   );
 }
 
-function summaryFor(summaries: LocationSummary[], location_name: string): LocationSummary {
-  return (
-    summaries.find((summary) => summary.location_name === location_name) ?? {
-      location_name,
-      to_place_quantity: 0,
-    }
-  );
-}
-
 type LocationRowProps = {
-  location_name: string;
+  location_key: string;
   // The whole-page summaries list, not this row's own summary — <For> below
-  // keys the outer list by `location_name` (a stable primitive) precisely so
+  // keys the outer list by `location_key` (a stable primitive) precisely so
   // a tick's fresh `summaries()` array doesn't tear down every LocationRow,
   // including the open one and its whole card list (#105). Passing a fresh
   // LocationSummary object per row instead would undo that: it changes
@@ -321,18 +319,21 @@ type LocationRowProps = {
   markAllPending: boolean;
   undoable: MarkBatch | null;
   undoPending: boolean;
-  onToggle: (location_name: string, headerEl: HTMLElement) => void;
-  onTick: (location_name: string, card: PlacementCard, index: number) => void;
-  onUntick: (location_name: string, card: PlacementCard) => void;
+  onToggle: (location_key: string, headerEl: HTMLElement) => void;
+  onTick: (place: PlacementPlace, card: PlacementCard, index: number) => void;
+  onUntick: (place: PlacementPlace, card: PlacementCard) => void;
   onMarkAll: (location: FocusedLocation) => void;
-  onMarkThrough: (location_name: string, index: number) => void;
+  onMarkThrough: (place: PlacementPlace, index: number) => void;
   onUndoMarkBatch: (batch: MarkBatch) => void;
   onPanelShown: (headerEl: HTMLElement) => void;
 };
 
 function LocationRow(props: LocationRowProps) {
   let headerRef: HTMLButtonElement | undefined;
-  const summary = () => summaryFor(props.summaries(), props.location_name);
+  // Always found: the <For> driving these rows iterates keys derived from
+  // this same summaries list.
+  const summary = () =>
+    props.summaries().find((candidate) => candidate.location_key === props.location_key);
 
   return (
     <div class="placement-location">
@@ -345,11 +346,11 @@ function LocationRow(props: LocationRowProps) {
           class="placement-location-toggle"
           aria-expanded={props.isOpen}
           aria-controls={props.panelId}
-          onClick={() => headerRef && props.onToggle(props.location_name, headerRef)}
+          onClick={() => headerRef && props.onToggle(props.location_key, headerRef)}
         >
           <span aria-hidden="true">{props.isOpen ? "▾" : "▸"}</span>
-          <span>{props.location_name}</span>
-          <span>{countLabel(summary())}</span>
+          <span>{summary()?.location_name}</span>
+          <span>{countLabel(summary()?.to_place_quantity ?? 0)}</span>
         </button>
       </h3>
       <Show when={props.isOpen && props.focused !== null}>
@@ -389,15 +390,16 @@ type ResortActionsDeps = {
 // purpose on its own; wiring them into signals is what made the host function
 // too big.
 function createResortActions(deps: ResortActionsDeps) {
-  const pullOutEntry = (from_location: string, entry: ResortEntry) => {
+  const pullOutEntry = (from_location: LocationRef, entry: ResortEntry) => {
+    const from_key = locationKey(from_location);
     deps.clearMutationError();
     deps.setLastMarkBatch(null);
     deps.setLastResortAction(null);
-    deps.setResortSession(resolveEntry(deps.resortSession(), from_location, entry));
+    deps.setResortSession(resolveEntry(deps.resortSession(), from_key, entry));
     deps.unmarkMutation.mutate([entryPlacement(from_location, entry)], {
       onSuccess: () => deps.setLastResortAction({ kind: "pull_out", from_location, entry }),
       onError: (error) => {
-        deps.setResortSession(unresolveEntry(deps.resortSession(), from_location, entry));
+        deps.setResortSession(unresolveEntry(deps.resortSession(), from_key, entry));
         deps.reportMutationError(error);
       },
     });
@@ -411,18 +413,18 @@ function createResortActions(deps: ResortActionsDeps) {
     deps.clearMutationError();
     deps.setLastMarkBatch(null);
     deps.setLastResortAction(null);
-    deps.setResortSession(resolveGroup(deps.resortSession(), group.from_location));
+    deps.setResortSession(resolveGroup(deps.resortSession(), group.from_location_key));
     deps.relocateMutation.mutate(
-      { from_location: group.from_location, to_location },
+      { from_location: group.from_location.key, to_location },
       {
         onSuccess: () =>
           deps.setLastResortAction({
             kind: "relocate",
-            from_location: group.from_location,
+            from_location: group.from_location.key,
             to_location,
           }),
         onError: (error) => {
-          deps.setResortSession(unresolveGroup(deps.resortSession(), group.from_location));
+          deps.setResortSession(unresolveGroup(deps.resortSession(), group.from_location_key));
           deps.reportMutationError(error);
         },
       },
@@ -436,7 +438,7 @@ function createResortActions(deps: ResortActionsDeps) {
     deps.markMutation.mutate([entryPlacement(action.from_location, action.entry)], {
       onSuccess: () =>
         deps.setResortSession(
-          unresolveEntry(deps.resortSession(), action.from_location, action.entry),
+          unresolveEntry(deps.resortSession(), locationKey(action.from_location), action.entry),
         ),
       onError: (error) => deps.reportMutationError(error),
     });
@@ -447,7 +449,12 @@ function createResortActions(deps: ResortActionsDeps) {
       { from_location: action.to_location, to_location: action.from_location },
       {
         onSuccess: () =>
-          deps.setResortSession(unresolveGroup(deps.resortSession(), action.from_location)),
+          deps.setResortSession(
+            unresolveGroup(
+              deps.resortSession(),
+              locationKey(cascadeLocation(action.from_location)),
+            ),
+          ),
         onError: (error) => deps.reportMutationError(error),
       },
     );
@@ -516,21 +523,21 @@ export function PlacementPage() {
   const loadError = () => projectionQuery.error ?? ledgerQuery.error;
   const nothingToDo = createMemo(() => !isLoading() && !isError() && misplacedCount() === 0);
 
-  const focusName = () => focusNameFrom(searchParams.location);
+  const focusKey = () => focusKeyFrom(searchParams.location);
 
   // Collapsed summaries for every location; only the open one pays the per-card
   // merge, so ticking a card no longer re-derives (or re-renders) the rest.
   const summaries = createMemo<LocationSummary[]>(() => locationSummaries(guidance(), session()));
   // Rendered separately from `summaries()`: a fresh LocationSummary object per
   // location every tick would defeat the point below (<For> keys by
-  // reference), but a location's *name* is a stable string across a tick, so
-  // deriving just the names keeps the open location's row keyed the same way
+  // reference), but a location's key is a stable string across a tick, so
+  // deriving just the keys keeps the open location's row keyed the same way
   // tick over tick.
-  const locationNames = createMemo<string[]>(() =>
-    summaries().map((summary) => summary.location_name),
+  const locationKeys = createMemo<string[]>(() =>
+    summaries().map((summary) => summary.location_key),
   );
   const focused = createMemo<FocusedLocation | null>(() =>
-    focusedLocation(guidance(), session(), focusName()),
+    focusedLocation(guidance(), session(), focusKey()),
   );
   // Scrolls the location open on page load (reload, Back/Forward, a fresh
   // `?location=` link) into view exactly once — see initial_scroll.ts (#142).
@@ -539,44 +546,44 @@ export function PlacementPage() {
   // A history entry per open/close, not a replace: on a phone, back-to-close is
   // the affordance alongside re-tapping the header. Scroll the tapped header back
   // into view in case closing a location above it moved the page under it.
-  const toggleFocus = (location_name: string, headerEl: HTMLElement) => {
+  const toggleFocus = (location_key: string, headerEl: HTMLElement) => {
     initialScroll.cancel();
     setLastMarkBatch(null);
     setLastResortAction(null);
-    setSearchParams({ location: focusName() === location_name ? undefined : location_name });
+    setSearchParams({ location: focusKey() === location_key ? undefined : location_key });
     headerEl.scrollIntoView({ block: "nearest" });
   };
 
   // Failed mutations must not leave the optimistic tick standing — the ledger
   // never got it, so the row must go back to what it looked like before this
   // action, without disturbing any tick made while the request was in flight.
-  const rollback = (before: PlacementSession, location_name: string, cards: PlacementCard[]) => {
-    setSession(restoreTicks(session(), before, location_name, cards));
+  const rollback = (before: PlacementSession, location_key: string, cards: PlacementCard[]) => {
+    setSession(restoreTicks(session(), before, location_key, cards));
   };
 
-  const tickCard = (location_name: string, card: PlacementCard, index: number) => {
+  const tickCard = (place: PlacementPlace, card: PlacementCard, index: number) => {
     mutationError.clear();
     setLastMarkBatch(null);
     setLastResortAction(null);
     const before = session();
-    setSession(tick(before, location_name, card, index));
-    markMutation.mutate([placementOf(location_name, card)], {
+    setSession(tick(before, placeOf(place), card, index));
+    markMutation.mutate([placementOf(place, card)], {
       onError: (error) => {
-        rollback(before, location_name, [card]);
+        rollback(before, place.location_key, [card]);
         mutationError.report(error);
       },
     });
   };
 
-  const untickCard = (location_name: string, card: PlacementCard) => {
+  const untickCard = (place: PlacementPlace, card: PlacementCard) => {
     mutationError.clear();
     setLastMarkBatch(null);
     setLastResortAction(null);
     const before = session();
-    setSession(untick(before, location_name, card));
-    unmarkMutation.mutate([placementOf(location_name, card)], {
+    setSession(untick(before, place.location_key, card));
+    unmarkMutation.mutate([placementOf(place, card)], {
       onError: (error) => {
-        rollback(before, location_name, [card]);
+        rollback(before, place.location_key, [card]);
         mutationError.report(error);
       },
     });
@@ -586,18 +593,18 @@ export function PlacementPage() {
   // batch up front and just need it committed as one mutation with one undo
   // offer, whichever primitive picked the cards.
   const markBatch = (
-    location_name: string,
     before: PlacementSession,
     result: { session: PlacementSession; batch: MarkBatch },
   ) => {
+    const place = result.batch.place;
     setSession(result.session);
     const placements: CardPlacementInput[] = result.batch.cards.map((card) =>
-      placementOf(location_name, card),
+      placementOf(place, card),
     );
     markMutation.mutate(placements, {
       onSuccess: () => setLastMarkBatch(result.batch),
       onError: (error) => {
-        rollback(before, location_name, result.batch.cards);
+        rollback(before, place.location_key, result.batch.cards);
         mutationError.report(error);
       },
     });
@@ -608,27 +615,27 @@ export function PlacementPage() {
     setLastMarkBatch(null);
     setLastResortAction(null);
     const before = session();
-    const result = tickAll(before, location.location_name, location.cards);
+    const result = tickAll(before, placeOf(location), location.cards);
     if (result === null) {
       return;
     }
-    markBatch(location.location_name, before, result);
+    markBatch(before, result);
   };
 
-  const markThrough = (location_name: string, index: number) => {
+  const markThrough = (place: PlacementPlace, index: number) => {
     mutationError.clear();
     setLastMarkBatch(null);
     setLastResortAction(null);
     const location = focused();
-    if (location === null || location.location_name !== location_name) {
+    if (location === null || location.location_key !== place.location_key) {
       return;
     }
     const before = session();
-    const result = tickThrough(before, location_name, location.cards, index);
+    const result = tickThrough(before, placeOf(location), location.cards, index);
     if (result === null) {
       return;
     }
-    markBatch(location_name, before, result);
+    markBatch(before, result);
   };
 
   const undoMarkBatch = (batch: MarkBatch) => {
@@ -638,11 +645,11 @@ export function PlacementPage() {
     const before = session();
     setSession(untickAll(before, batch));
     const placements: CardPlacementInput[] = batch.cards.map((card) =>
-      placementOf(batch.location_name, card),
+      placementOf(batch.place, card),
     );
     unmarkMutation.mutate(placements, {
       onError: (error) => {
-        rollback(before, batch.location_name, batch.cards);
+        rollback(before, batch.place.location_key, batch.cards);
         setLastMarkBatch(batch);
         mutationError.report(error);
       },
@@ -724,13 +731,13 @@ export function PlacementPage() {
           </Show>
         }
       >
-        <For each={locationNames()}>
-          {(location_name, index) => (
+        <For each={locationKeys()}>
+          {(location_key, index) => (
             <LocationRow
-              location_name={location_name}
+              location_key={location_key}
               summaries={summaries}
               panelId={`placement-panel-${index()}`}
-              isOpen={focusName() === location_name}
+              isOpen={focusKey() === location_key}
               focused={focused()}
               session={session()}
               markAllPending={markMutation.isPending}

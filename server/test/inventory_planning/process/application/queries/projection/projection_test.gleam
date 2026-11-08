@@ -3,7 +3,10 @@ import gleam/list
 import gleam/option.{None, Some}
 import inventory_planning/application/queries/projection/handler
 import inventory_planning/application/queries/projection/ports
+import inventory_planning/domain/location_ref
+import inventory_planning/domain/managed_location
 import shared/domain/color_identity
+import shared/domain/copy_key
 import shared/domain/oracle_id
 import shared/domain/rarity
 import shared/domain/release_date
@@ -42,6 +45,7 @@ fn build_ports_with_dates(
       |> dict.from_list
       |> Ok
     },
+    managed_locations: fn() { Ok([]) },
   )
 }
 
@@ -238,6 +242,7 @@ pub fn four_rule_cascade_places_every_copy_test() {
       ports.Projection(unknown_count: 0, total_quantity: 6, locations: [
         // Tier 1: the first LEA copy, oldest printing of the bolt.
         ports.ProjectionLocation(
+          location: location_ref.Cascade("Binder lea"),
           location_name: "Binder lea",
           rule_id: "r-set",
           total_quantity: 1,
@@ -256,10 +261,12 @@ pub fn four_rule_cascade_places_every_copy_test() {
           ],
           // Empty rule sort_keys -> one undivided section (#138).
           sections: [ports.ProjectionSection(parts: [], card_count: 1)],
+          shortfall: [],
         ),
         // Tier 2: next first-per-oracle rare copy — the LEA bolt is spent, so
         // this is the M11 bolt.
         ports.ProjectionLocation(
+          location: location_ref.Cascade("Rare binder R"),
           location_name: "Rare binder R",
           rule_id: "r-rare",
           total_quantity: 1,
@@ -277,9 +284,11 @@ pub fn four_rule_cascade_places_every_copy_test() {
             ),
           ],
           sections: [ports.ProjectionSection(parts: [], card_count: 1)],
+          shortfall: [],
         ),
         // Tier 3: first-per-oracle common — prefers the older M10 bear.
         ports.ProjectionLocation(
+          location: location_ref.Cascade("Box G"),
           location_name: "Box G",
           rule_id: "r-box",
           total_quantity: 1,
@@ -297,12 +306,14 @@ pub fn four_rule_cascade_places_every_copy_test() {
             ),
           ],
           sections: [ports.ProjectionSection(parts: [], card_count: 1)],
+          shortfall: [],
         ),
         // Bulk: the 2 leftover M11 bolts (1/1/2 split) and the leftover M11
         // bear, ordered red-instant before green-creature. Only 3 copies —
         // well under the 18-copy section threshold, so the bulk spec's
         // sort_keys don't produce a divided label either.
         ports.ProjectionLocation(
+          location: location_ref.Cascade("Bulk"),
           location_name: "Bulk",
           rule_id: "",
           total_quantity: 3,
@@ -331,6 +342,7 @@ pub fn four_rule_cascade_places_every_copy_test() {
             ),
           ],
           sections: [ports.ProjectionSection(parts: [], card_count: 3)],
+          shortfall: [],
         ),
       ]),
     )
@@ -383,6 +395,7 @@ pub fn keys_missing_from_catalog_are_counted_and_bulked_test() {
     == Ok(
       ports.Projection(unknown_count: 1, total_quantity: 2, locations: [
         ports.ProjectionLocation(
+          location: location_ref.Cascade("Bulk"),
           location_name: "Bulk",
           rule_id: "",
           total_quantity: 2,
@@ -400,6 +413,7 @@ pub fn keys_missing_from_catalog_are_counted_and_bulked_test() {
             ),
           ],
           sections: [ports.ProjectionSection(parts: [], card_count: 2)],
+          shortfall: [],
         ),
       ]),
     )
@@ -913,6 +927,7 @@ pub fn set_dates_port_wired_to_bucket_ordering_test() {
 pub fn snapshot_rows_failure_propagates_as_error_test() {
   let ports =
     ports.InventoryProjectionPorts(
+      managed_locations: fn() { Ok([]) },
       snapshot_rows: fn() { Error("db unavailable") },
       catalog_attributes: fn(_keys) { Ok(dict.new()) },
       rules: fn() {
@@ -933,6 +948,7 @@ pub fn snapshot_rows_failure_propagates_as_error_test() {
 pub fn rules_failure_propagates_as_error_test() {
   let ports =
     ports.InventoryProjectionPorts(
+      managed_locations: fn() { Ok([]) },
       snapshot_rows: fn() { Ok([]) },
       catalog_attributes: fn(_keys) { Ok(dict.new()) },
       rules: fn() { Error("rules table unreadable") },
@@ -952,6 +968,7 @@ pub fn rules_failure_propagates_as_error_test() {
 pub fn set_metadata_transitive_fetch_reaches_unowned_parent_test() {
   let p =
     ports.InventoryProjectionPorts(
+      managed_locations: fn() { Ok([]) },
       snapshot_rows: fn() {
         Ok([
           ports.SnapshotRow(
@@ -1033,4 +1050,89 @@ pub fn set_metadata_transitive_fetch_reaches_unowned_parent_test() {
     handler.execute(handler.InventoryProjectionQuery, p)
   let names = list.map(projection.locations, fn(l) { l.location_name })
   assert names == ["Binder grn", "Binder war"]
+}
+
+// A deck claims one owned Bolt and one Shock the collection no longer holds:
+// the Bolt is taken before the rule sees it, and the missing Shock still
+// shows with its catalog name, since the handler looks up member printings
+// too, not only owned ones (#122).
+pub fn a_deck_takes_its_cards_first_and_names_its_shortfall_test() {
+  let assert Ok(bolt) =
+    copy_key.new(
+      set_code: "m11",
+      collector_number: "146",
+      finish: "nonfoil",
+      language: "en",
+    )
+  let assert Ok(shock) =
+    copy_key.new(
+      set_code: "m19",
+      collector_number: "156",
+      finish: "nonfoil",
+      language: "en",
+    )
+  let base =
+    build_ports(
+      snapshot: [
+        ports.SnapshotRow(
+          set_code: "m11",
+          collector_number: "146",
+          finish: "nonfoil",
+          language: "en",
+          quantity: 2,
+        ),
+      ],
+      catalog: [
+        #(
+          #("m11", "146"),
+          attrs(
+            name: "Lightning Bolt",
+            rarity: "common",
+            oracle: "",
+            color: "R",
+            type_line: "Instant",
+            released: "",
+          ),
+        ),
+        #(
+          #("m19", "156"),
+          attrs(
+            name: "Shock",
+            rarity: "common",
+            oracle: "",
+            color: "R",
+            type_line: "Instant",
+            released: "",
+          ),
+        ),
+      ],
+      rules: ports.RulesModel(
+        rules: [],
+        bulk: ports.BulkSpecRow(location_name: "Bulk", sort_keys: ""),
+      ),
+    )
+  let ports =
+    ports.InventoryProjectionPorts(..base, managed_locations: fn() {
+      Ok([
+        managed_location.ManagedLocation(
+          id: "d1",
+          name: "Burn",
+          kind: managed_location.Deck,
+          members: dict.from_list([#(bolt, 1), #(shock, 1)]),
+        ),
+      ])
+    })
+
+  let assert Ok(projection) =
+    handler.execute(handler.InventoryProjectionQuery, ports)
+
+  let assert [deck, bulk] = projection.locations
+  assert deck.location == location_ref.Managed("d1")
+  assert deck.location_name == "Burn"
+  assert list.map(deck.cards, fn(card) { #(card.name, card.quantity) })
+    == [#("Lightning Bolt", 1)]
+  assert list.map(deck.shortfall, fn(card) { #(card.name, card.quantity) })
+    == [#("Shock", 1)]
+  assert bulk.total_quantity == 1
+  assert projection.total_quantity == 2
 }

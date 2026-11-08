@@ -59,11 +59,11 @@ export function filterResortWorklist(
   session: ResortSession,
 ): ResortWorklist {
   const groups = worklist.groups
-    .filter((group) => !session.resolved.has(groupKey(group.from_location)))
+    .filter((group) => !session.resolved.has(groupKey(group.from_location_key)))
     .map((group) => ({
       ...group,
       entries: group.entries.filter(
-        (entry) => !session.resolved.has(entryKey(group.from_location, entry)),
+        (entry) => !session.resolved.has(entryKey(group.from_location_key, entry)),
       ),
     }))
     .filter((group) => group.entries.length > 0);

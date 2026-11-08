@@ -5,6 +5,7 @@ import {
   type Finish,
   type Language,
 } from "../collection/copy_kind";
+import { fromWireLocationRef, type LocationRef } from "./location_ref";
 import {
   DeleteInventoryRule,
   DeleteInventoryRuleRequest,
@@ -90,6 +91,8 @@ export type ProjectionSection = {
 };
 
 export type ProjectionLocation = {
+  // The location's identity; `location_name` is only its display name.
+  location: LocationRef;
   location_name: string;
   rule_id: string;
   total_quantity: number;
@@ -98,6 +101,10 @@ export type ProjectionLocation = {
   // `card_count` copies (summing consecutive cards' `quantity`, not their
   // count) at a time lines each card up with its section.
   sections: ProjectionSection[];
+  // Copies a managed location (a deck) claims that the collection can't
+  // supply, each with the missing quantity — ADR 0022. Always empty for a
+  // cascade location.
+  shortfall: ProjectionCard[];
 };
 
 export type InventoryProjection = {
@@ -169,24 +176,32 @@ function toProjectionSection(
   };
 }
 
+type RpcProjectionCard = RpcInventoryProjection["locations"][number]["cards"][number];
+
+function toProjectionCard(card: RpcProjectionCard): ProjectionCard {
+  return {
+    name: card.name,
+    set_code: card.setCode,
+    collector_number: card.collectorNumber,
+    finish: fromWireFinishKind(card.finish.union.kind),
+    language: fromWireLanguageKind(card.language.union.kind),
+    quantity: card.quantity,
+    color_identity: card.colorIdentity,
+    rarity: card.rarity,
+    card_type: card.cardType,
+  };
+}
+
 function toInventoryProjection(response: RpcInventoryProjection): InventoryProjection {
   return {
     locations: response.locations.map((location) => ({
+      location: fromWireLocationRef(location.location.union),
       location_name: location.locationName,
       rule_id: location.ruleId,
       total_quantity: location.totalQuantity,
-      cards: location.cards.map((card) => ({
-        name: card.name,
-        set_code: card.setCode,
-        collector_number: card.collectorNumber,
-        finish: fromWireFinishKind(card.finish.union.kind),
-        language: fromWireLanguageKind(card.language.union.kind),
-        quantity: card.quantity,
-        color_identity: card.colorIdentity,
-        rarity: card.rarity,
-        card_type: card.cardType,
-      })),
+      cards: location.cards.map(toProjectionCard),
       sections: location.sections.map(toProjectionSection),
+      shortfall: location.shortfall.map(toProjectionCard),
     })),
     total_quantity: response.totalQuantity,
     unknown_count: response.unknownCount,

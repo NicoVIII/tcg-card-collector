@@ -5,7 +5,8 @@ import insights/driver/gleam/insights_api
 import inventory_planning/driver/gleam/inventory_planning_api
 import portability/application/commands/import_data/ports
 import portability/domain/export_document.{
-  type BulkSpec, type CollectionEntry, type PlacedEntry, type Rule,
+  type BulkSpec, type CollectionEntry, type ManagedLocationEntry,
+  type MemberEntry, type PlacedEntry, type Rule, InLocation, InManagedLocation,
 }
 
 /// Wraps each context's own driver/gleam facade (ADR 0019: Portability
@@ -21,6 +22,7 @@ pub fn new(
   ports.ImportDataPorts(
     check_rule: check_rule_adapter,
     check_sort_keys: inventory_planning_api.check_sort_keys,
+    check_managed_kind: inventory_planning_api.check_managed_location_kind,
     replace_target_sets: insights_api.replace_target_sets,
     replace_plan: replace_plan_adapter,
     replace_collection: replace_collection_adapter(notify_changed),
@@ -34,13 +36,30 @@ fn check_rule_adapter(rule: Rule) -> Result(Nil, String) {
 fn replace_plan_adapter(
   rules: option.Option(List(Rule)),
   bulk: option.Option(BulkSpec),
+  managed: option.Option(#(List(ManagedLocationEntry), List(MemberEntry))),
   placed: option.Option(List(PlacedEntry)),
 ) -> Result(Nil, String) {
   inventory_planning_api.replace_plan(
     option.map(rules, list.map(_, to_rule_spec)),
     option.map(bulk, to_bulk_spec_spec),
+    option.map(managed, to_managed_location_specs),
     option.map(placed, list.map(_, to_placed_copy)),
   )
+}
+
+fn to_managed_location_specs(
+  managed: #(List(ManagedLocationEntry), List(MemberEntry)),
+) -> List(inventory_planning_api.ManagedLocationSpec) {
+  let #(locations, members) = managed
+  list.map(locations, fn(location) {
+    inventory_planning_api.ManagedLocationSpec(
+      name: location.name,
+      kind: location.kind,
+      members: members
+        |> list.filter(fn(member) { member.managed_location == location.name })
+        |> list.map(fn(member) { #(member.key, member.quantity) }),
+    )
+  })
 }
 
 fn to_rule_spec(rule: Rule) -> inventory_planning_api.RuleSpec {
@@ -62,7 +81,10 @@ fn to_bulk_spec_spec(spec: BulkSpec) -> inventory_planning_api.BulkSpecSpec {
 fn to_placed_copy(entry: PlacedEntry) -> inventory_planning_api.PlacedCopy {
   inventory_planning_api.PlacedCopy(
     key: entry.key,
-    location: entry.location,
+    location: case entry.location {
+      InLocation(name) -> inventory_planning_api.AtCascadeLocation(name)
+      InManagedLocation(name) -> inventory_planning_api.AtManagedLocation(name)
+    },
     quantity: entry.quantity,
   )
 }
