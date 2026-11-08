@@ -3,6 +3,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import inventory_planning/application/queries/projection/handler
 import inventory_planning/application/queries/projection/ports
+import inventory_planning/domain/location_ref
 import shared/domain/color_identity
 import shared/domain/oracle_id
 import shared/domain/rarity
@@ -238,6 +239,7 @@ pub fn four_rule_cascade_places_every_copy_test() {
       ports.Projection(unknown_count: 0, total_quantity: 6, locations: [
         // Tier 1: the first LEA copy, oldest printing of the bolt.
         ports.ProjectionLocation(
+          location: location_ref.Cascade("Binder lea"),
           location_name: "Binder lea",
           rule_id: "r-set",
           total_quantity: 1,
@@ -260,6 +262,7 @@ pub fn four_rule_cascade_places_every_copy_test() {
         // Tier 2: next first-per-oracle rare copy — the LEA bolt is spent, so
         // this is the M11 bolt.
         ports.ProjectionLocation(
+          location: location_ref.Cascade("Rare binder R"),
           location_name: "Rare binder R",
           rule_id: "r-rare",
           total_quantity: 1,
@@ -280,6 +283,7 @@ pub fn four_rule_cascade_places_every_copy_test() {
         ),
         // Tier 3: first-per-oracle common — prefers the older M10 bear.
         ports.ProjectionLocation(
+          location: location_ref.Cascade("Box G"),
           location_name: "Box G",
           rule_id: "r-box",
           total_quantity: 1,
@@ -303,6 +307,7 @@ pub fn four_rule_cascade_places_every_copy_test() {
         // well under the 18-copy section threshold, so the bulk spec's
         // sort_keys don't produce a divided label either.
         ports.ProjectionLocation(
+          location: location_ref.Cascade("Bulk"),
           location_name: "Bulk",
           rule_id: "",
           total_quantity: 3,
@@ -383,6 +388,7 @@ pub fn keys_missing_from_catalog_are_counted_and_bulked_test() {
     == Ok(
       ports.Projection(unknown_count: 1, total_quantity: 2, locations: [
         ports.ProjectionLocation(
+          location: location_ref.Cascade("Bulk"),
           location_name: "Bulk",
           rule_id: "",
           total_quantity: 2,

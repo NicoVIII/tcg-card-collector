@@ -91,13 +91,14 @@ fn placed_insert_statement(
   row: PlacedCardRow,
 ) -> #(String, List(sqlight.Value)) {
   #(
-    "INSERT INTO placed_cards (set_code, collector_number, finish, language, location, quantity) "
-      <> "VALUES (?, ?, ?, ?, ?, ?);",
+    "INSERT INTO placed_cards (set_code, collector_number, finish, language, location_kind, location, quantity) "
+      <> "VALUES (?, ?, ?, ?, ?, ?, ?);",
     [
       sqlight.text(row.set_code),
       sqlight.text(row.collector_number),
       sqlight.text(row.finish),
       sqlight.text(row.language),
+      sqlight.text(row.location_kind),
       sqlight.text(row.location),
       sqlight.int(row.quantity),
     ],

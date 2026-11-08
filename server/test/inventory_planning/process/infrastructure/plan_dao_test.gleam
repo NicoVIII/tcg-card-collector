@@ -22,6 +22,7 @@ fn a_placed_row(location: String) -> placed_cards_dao.PlacedCardRow {
     collector_number: "17",
     finish: "foil",
     language: "en",
+    location_kind: "cascade",
     location:,
     quantity: 1,
   )

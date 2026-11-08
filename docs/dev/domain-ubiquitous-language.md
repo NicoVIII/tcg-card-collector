@@ -174,8 +174,13 @@ Core terms:
   a set is always one contiguous run regardless of card-level date variance within it.
   `ProjectionLocation.sections` partitions its `cards` in cascade order, one section
   covering every card exactly once.
+- LocationRef: a location's identity, in one of two namespaces ([ADR
+  0022](../decisions/0022-managed-locations.md)) — a cascade location (a rule target or the bulk
+  remainder) by its rendered name, ADR 0014's text, or a managed location by its id. A deck and a
+  binder may share a display name; anything that keys on a location keys on the LocationRef, never
+  on the name.
 - PlacedCard: a ledger row recording that some copies of a kind of copy were physically placed in a
-  location (`(CopyKey, location) → quantity`). A location holding several kinds of copy of one
+  location (`(CopyKey, LocationRef) → quantity`). A location holding several kinds of copy of one
   printing needs a tick that names which kind. The write side of placement — MarkCardsPlaced
   adds to it, UnmarkCardsPlaced subtracts, ReconcilePlacedLedger prunes it when Collection
   announces owned quantities may have shrunk (a removal or a re-import), and RelocatePlacedCards

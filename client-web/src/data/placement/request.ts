@@ -21,6 +21,11 @@ import {
   type Finish,
   type Language,
 } from "../collection/copy_kind";
+import {
+  fromWireLocationRef,
+  toWireLocationRef,
+  type LocationRef,
+} from "../inventory_planning/location_ref";
 import type { ProjectionSection } from "../inventory_planning/request";
 
 // One row of the placed ledger: how many copies of a kind of copy sit in a
@@ -31,7 +36,7 @@ export type PlacedLedgerRow = {
   collector_number: string;
   finish: Finish;
   language: Language;
-  location: string;
+  location: LocationRef;
   quantity: number;
 };
 
@@ -72,8 +77,16 @@ export type PlacementCard = {
   section: ProjectionSection;
 };
 
-export type PlacementLocation = {
+// A location as the placement page handles it: its identity, that identity
+// as a string (`locationKey(location)`, precomputed — the session, the
+// accordion, and the `?location=` param all key on it), and its display name.
+export type PlacementPlace = {
+  location: LocationRef;
+  location_key: string;
   location_name: string;
+};
+
+export type PlacementLocation = PlacementPlace & {
   total_quantity: number;
   cards: PlacementCard[];
 };
@@ -92,7 +105,7 @@ export type CardPlacementInput = {
   collector_number: string;
   finish: Finish;
   language: Language;
-  location_name: string;
+  location: LocationRef;
   quantity: number;
 };
 
@@ -102,7 +115,7 @@ function toLedgerRow(row: RpcPlacedLedgerRow): PlacedLedgerRow {
     collector_number: row.collectorNumber,
     finish: fromWireFinishKind(row.finish.union.kind),
     language: fromWireLanguageKind(row.language.union.kind),
-    location: row.location,
+    location: fromWireLocationRef(row.location.union),
     quantity: row.quantity,
   };
 }
@@ -124,7 +137,7 @@ function toRpcPlacements(placements: CardPlacementInput[]) {
       collectorNumber: placement.collector_number,
       finish: toWireFinish(placement.finish),
       language: toWireLanguage(placement.language),
-      locationName: placement.location_name,
+      location: toWireLocationRef(placement.location),
       quantity: placement.quantity,
     }),
   );

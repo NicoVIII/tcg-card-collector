@@ -8,7 +8,6 @@ import inventory_planning/domain/copy_selector
 import inventory_planning/domain/placement
 import inventory_planning/domain/sort_spec
 import shared/application/command_result
-import shared/domain/copy_key
 
 /// A rule as it arrives on the wire, before validation — no id: the cascade
 /// position (its array order) is the only identity a restore carries, so
@@ -33,7 +32,8 @@ pub type RawPlaced {
     collector_number: String,
     finish: String,
     language: String,
-    location_name: String,
+    location_kind: String,
+    location: String,
     quantity: Int,
   )
 }
@@ -131,12 +131,8 @@ fn validate_placed(
       rows
       |> list.try_map(to_placement)
       |> result.replace_error(ports.InvalidPlaced)
-      |> result.try(fn(placements) {
-        placements
-        |> placement.merge
-        |> list.try_map(to_placed_write_model)
-        |> result.replace_error(ports.InvalidPlaced)
-        |> result.map(Some)
+      |> result.map(fn(placements) {
+        Some(list.map(placement.merge(placements), to_placed_write_model))
       })
   }
 }
@@ -149,30 +145,16 @@ fn to_placement(
     collector_number: row.collector_number,
     finish: row.finish,
     language: row.language,
-    location: row.location_name,
+    location_kind: row.location_kind,
+    location: row.location,
     quantity: row.quantity,
   )
 }
 
-// placement.Placement is opaque and exposes no key accessor, only the
-// individual identity strings it validated — this rebuilds the CopyKey from
-// those, which always succeeds since they already round-tripped through
-// copy_key once inside `placement.new`.
-fn to_placed_write_model(
-  p: placement.Placement,
-) -> Result(ports.PlacedWriteModel, Nil) {
-  use key <- result.try(
-    copy_key.new(
-      set_code: placement.set_code_string(p),
-      collector_number: placement.collector_number_string(p),
-      finish: placement.finish_string(p),
-      language: placement.language_string(p),
-    )
-    |> result.replace_error(Nil),
-  )
-  Ok(ports.PlacedWriteModel(
-    key:,
+fn to_placed_write_model(p: placement.Placement) -> ports.PlacedWriteModel {
+  ports.PlacedWriteModel(
+    key: placement.key(p),
     location: placement.location(p),
     quantity: placement.quantity(p),
-  ))
+  )
 }

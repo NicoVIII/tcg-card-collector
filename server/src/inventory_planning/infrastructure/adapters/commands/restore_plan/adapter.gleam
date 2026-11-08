@@ -1,6 +1,7 @@
 import gleam/list
 import gleam/option
 import inventory_planning/application/commands/restore_plan/ports
+import inventory_planning/domain/location_ref
 import inventory_planning/infrastructure/daos/inventory_rules_dao
 import inventory_planning/infrastructure/daos/placed_cards_dao
 import inventory_planning/infrastructure/daos/plan_dao
@@ -39,7 +40,8 @@ fn to_placed_row(
     collector_number: copy_key.collector_number_string(model.key),
     finish: copy_key.finish_string(model.key),
     language: copy_key.language_string(model.key),
-    location: model.location,
+    location_kind: location_ref.kind_string(model.location),
+    location: location_ref.key_string(model.location),
     quantity: model.quantity,
   )
 }

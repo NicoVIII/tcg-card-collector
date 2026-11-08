@@ -1,6 +1,7 @@
 import gleam/string
 import inventory_planning/application/commands/unmark_cards_placed/handler
 import inventory_planning/application/commands/unmark_cards_placed/ports
+import inventory_planning/domain/location_ref
 
 // Echoes the write models it was handed back through the (otherwise unused)
 // error channel, so a test asserts the exact normalized batch that reached the
@@ -26,7 +27,8 @@ fn raw(
     collector_number:,
     finish: "nonfoil",
     language: "en",
-    location_name:,
+    location_kind: "cascade",
+    location: location_name,
     quantity:,
   )
 }
@@ -53,7 +55,7 @@ pub fn normalized_and_merged_batch_reaches_the_port_test() {
       collector_number: "1",
       finish: "nonfoil",
       language: "en",
-      location: "Bulk",
+      location: location_ref.Cascade("Bulk"),
       quantity: 3,
     ),
   ]
@@ -71,7 +73,8 @@ pub fn different_language_stays_a_separate_write_model_test() {
       collector_number: "1",
       finish: "nonfoil",
       language: "en",
-      location_name: "Bulk",
+      location_kind: "cascade",
+      location: "Bulk",
       quantity: 2,
     ),
     handler.RawPlacement(
@@ -79,7 +82,8 @@ pub fn different_language_stays_a_separate_write_model_test() {
       collector_number: "1",
       finish: "nonfoil",
       language: "de",
-      location_name: "Bulk",
+      location_kind: "cascade",
+      location: "Bulk",
       quantity: 1,
     ),
   ]
@@ -90,7 +94,7 @@ pub fn different_language_stays_a_separate_write_model_test() {
       collector_number: "1",
       finish: "nonfoil",
       language: "de",
-      location: "Bulk",
+      location: location_ref.Cascade("Bulk"),
       quantity: 1,
     ),
     ports.PlacementWriteModel(
@@ -98,7 +102,7 @@ pub fn different_language_stays_a_separate_write_model_test() {
       collector_number: "1",
       finish: "nonfoil",
       language: "en",
-      location: "Bulk",
+      location: location_ref.Cascade("Bulk"),
       quantity: 2,
     ),
   ]

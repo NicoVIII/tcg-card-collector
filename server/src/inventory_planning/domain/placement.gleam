@@ -5,20 +5,22 @@ import gleam/option.{None, Some}
 import gleam/order
 import gleam/result
 import gleam/string
+import inventory_planning/domain/location_ref.{type LocationRef}
 import shared/domain/copy_key.{type CopyKey}
 import shared/domain/non_empty_string.{type NonEmptyString}
 
 pub type PlacementError {
   InvalidKey
-  EmptyLocation
+  InvalidLocation
   NonPositiveQuantity
 }
 
 // One physical placement: a copy key, the location it was placed in, and how
 // many copies. Opaque so the only way to hold one is through `new`, which
-// guarantees a canonical key, a non-empty location, and a positive quantity.
+// guarantees a canonical key, a valid location reference, and a positive
+// quantity.
 pub opaque type Placement {
-  Placement(key: CopyKey, location: NonEmptyString, quantity: Int)
+  Placement(key: CopyKey, location: LocationRef, quantity: Int)
 }
 
 pub fn new(
@@ -26,6 +28,7 @@ pub fn new(
   collector_number collector_number: String,
   finish finish: String,
   language language: String,
+  location_kind location_kind: String,
   location location: String,
   quantity quantity: Int,
 ) -> Result(Placement, PlacementError) {
@@ -33,12 +36,12 @@ pub fn new(
     copy_key.from_user_input(set_code:, collector_number:, finish:, language:)
     |> result.replace_error(InvalidKey),
   )
-  use location_nes <- result.try(
-    non_empty_string.new(string.trim(location))
-    |> result.replace_error(EmptyLocation),
+  use location <- result.try(
+    location_ref.new(kind: location_kind, key: location)
+    |> result.replace_error(InvalidLocation),
   )
   use <- bool.guard(quantity < 1, Error(NonPositiveQuantity))
-  Ok(Placement(key:, location: location_nes, quantity:))
+  Ok(Placement(key:, location:, quantity:))
 }
 
 pub fn set_code_string(placement: Placement) -> String {
@@ -57,8 +60,12 @@ pub fn language_string(placement: Placement) -> String {
   copy_key.language_string(placement.key)
 }
 
-pub fn location(placement: Placement) -> String {
-  non_empty_string.to_string(placement.location)
+pub fn key(placement: Placement) -> CopyKey {
+  placement.key
+}
+
+pub fn location(placement: Placement) -> LocationRef {
+  placement.location
 }
 
 pub fn quantity(placement: Placement) -> Int {
@@ -71,7 +78,7 @@ type PlacementIdentity {
     collector_number: String,
     finish: String,
     language: String,
-    location: String,
+    location: LocationRef,
   )
 }
 
@@ -92,7 +99,7 @@ fn compare_identity(a: PlacementIdentity, b: PlacementIdentity) -> order.Order {
   })
   |> order.lazy_break_tie(fn() { string.compare(a.finish, b.finish) })
   |> order.lazy_break_tie(fn() { string.compare(a.language, b.language) })
-  |> order.lazy_break_tie(fn() { string.compare(a.location, b.location) })
+  |> order.lazy_break_tie(fn() { location_ref.compare(a.location, b.location) })
 }
 
 /// Collapses placements sharing a (key, location) into one by summing their

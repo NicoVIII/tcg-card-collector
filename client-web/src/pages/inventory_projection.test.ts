@@ -69,6 +69,7 @@ function projection(): InventoryProjection {
   return {
     locations: [
       {
+        location: { kind: "cascade", key: "binder A" },
         location_name: "binder A",
         rule_id: "rule-1",
         total_quantity: 2,
@@ -76,6 +77,7 @@ function projection(): InventoryProjection {
         sections: [],
       },
       {
+        location: { kind: "cascade", key: "Bulk" },
         location_name: "Bulk",
         rule_id: "",
         total_quantity: 1,
@@ -91,14 +93,32 @@ function projection(): InventoryProjection {
 describe("projectionSummaries", () => {
   it("lists every location, with match == total, when the filter is empty", () => {
     expect(projectionSummaries(projection(), EMPTY_CARD_FILTER)).toEqual([
-      { location_name: "binder A", is_bulk: false, total_quantity: 2, match_quantity: 2 },
-      { location_name: "Bulk", is_bulk: true, total_quantity: 1, match_quantity: 1 },
+      {
+        location_key: "cascade:binder A",
+        location_name: "binder A",
+        is_bulk: false,
+        total_quantity: 2,
+        match_quantity: 2,
+      },
+      {
+        location_key: "cascade:Bulk",
+        location_name: "Bulk",
+        is_bulk: true,
+        total_quantity: 1,
+        match_quantity: 1,
+      },
     ]);
   });
 
   it("hides locations with no match and reports the match count for the rest", () => {
     expect(projectionSummaries(projection(), filter({ name: "bolt" }))).toEqual([
-      { location_name: "binder A", is_bulk: false, total_quantity: 2, match_quantity: 1 },
+      {
+        location_key: "cascade:binder A",
+        location_name: "binder A",
+        is_bulk: false,
+        total_quantity: 2,
+        match_quantity: 1,
+      },
     ]);
   });
 
@@ -117,17 +137,17 @@ describe("openLocationCards", () => {
   });
 
   it("returns the location's cards unfiltered", () => {
-    expect(openLocationCards(projection(), "binder A", EMPTY_CARD_FILTER)).toHaveLength(2);
+    expect(openLocationCards(projection(), "cascade:binder A", EMPTY_CARD_FILTER)).toHaveLength(2);
   });
 
   it("filters the open location's cards", () => {
-    const cards = openLocationCards(projection(), "binder A", filter({ name: "bolt" }));
+    const cards = openLocationCards(projection(), "cascade:binder A", filter({ name: "bolt" }));
     expect(cards).toEqual([card({ name: "Lightning Bolt" })]);
   });
 
   it("returns null when the filter leaves the open location empty", () => {
     expect(
-      openLocationCards(projection(), "binder A", filter({ name: "counterspell" })),
+      openLocationCards(projection(), "cascade:binder A", filter({ name: "counterspell" })),
     ).toBeNull();
   });
 });
@@ -136,7 +156,13 @@ describe("countLabel", () => {
   it("shows just the total when the filter is inactive", () => {
     expect(
       countLabel(
-        { location_name: "binder A", is_bulk: false, total_quantity: 2, match_quantity: 2 },
+        {
+          location_key: "cascade:binder A",
+          location_name: "binder A",
+          is_bulk: false,
+          total_quantity: 2,
+          match_quantity: 2,
+        },
         false,
       ),
     ).toBe("2 card(s)");
@@ -145,7 +171,13 @@ describe("countLabel", () => {
   it("shows match of total when the filter is active", () => {
     expect(
       countLabel(
-        { location_name: "binder A", is_bulk: false, total_quantity: 2, match_quantity: 1 },
+        {
+          location_key: "cascade:binder A",
+          location_name: "binder A",
+          is_bulk: false,
+          total_quantity: 2,
+          match_quantity: 1,
+        },
         true,
       ),
     ).toBe("1 of 2 card(s)");

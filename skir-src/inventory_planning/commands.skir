@@ -87,13 +87,23 @@ enum Language {
   qya = 18;
 }
 
+// Where a copy sits, in one of two namespaces (#122): a cascade location —
+// a rule target or the bulk remainder — by its rendered name (ADR 0014's
+// text), or a managed location by its id. Duplicated in queries.skir for the same
+// reason as Finish/Language.
+enum LocationRef {
+  cascade: string = 1;
+  managed: string = 2;
+}
+
 struct CardPlacement {
   set_code: string = 0;
   collector_number: string = 1;
-  location_name: string = 2;
+  removed 2;  // was location_name: string, superseded by location (#122)
   quantity: int32 = 3;
   finish: Finish = 4;
   language: Language = 5;
+  location: LocationRef = 6;
 }
 
 struct MarkCardsPlacedRequest {
@@ -122,10 +132,11 @@ method UnmarkCardsPlaced(
   UnmarkCardsPlacedRequest
 ): UnmarkCardsPlacedResponse = 308;
 
-// Re-points every placed_cards row at one location onto another in a single
-// atomic write, with no CopyKey involved — the ledger bookkeeping fix for a
-// rule-target rename (#107), as opposed to MarkCardsPlaced/UnmarkCardsPlaced
-// which record a physical move of specific copies.
+// Re-points every placed_cards row at one cascade location onto another in a
+// single atomic write, with no CopyKey involved — the ledger bookkeeping fix
+// for a rule-target rename (#107), as opposed to MarkCardsPlaced/
+// UnmarkCardsPlaced which record a physical move of specific copies. Managed
+// locations never need it: their rows key on an id a rename doesn't change.
 struct RelocatePlacedCardsRequest {
   from_location_name: string = 0;
   to_location_name: string = 1;

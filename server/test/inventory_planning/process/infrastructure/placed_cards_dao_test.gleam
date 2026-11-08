@@ -23,6 +23,7 @@ fn copy(
     collector_number:,
     finish:,
     language:,
+    location_kind: "cascade",
     location:,
     quantity:,
   )

@@ -1,5 +1,6 @@
 import inventory_planning/application/queries/placed_ledger/handler
 import inventory_planning/application/queries/placed_ledger/ports
+import inventory_planning/domain/location_ref
 
 // The handler is a thin read: it returns whatever the ledger port yields, for
 // the client to fold against the projection. The acceptance test pins that the
@@ -12,7 +13,7 @@ pub fn returns_the_ledger_rows_test() {
       collector_number: "146",
       finish: "nonfoil",
       language: "en",
-      location: "Bulk",
+      location: location_ref.Cascade("Bulk"),
       quantity: 2,
     ),
   ]

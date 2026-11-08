@@ -1,5 +1,6 @@
 import gleam/dict.{type Dict}
 import gleam/option.{type Option}
+import inventory_planning/domain/location_ref.{type LocationRef}
 import shared/domain/color_identity.{type ColorIdentity}
 import shared/domain/mana_value.{type ManaValue}
 import shared/domain/oracle_id.{type OracleId}
@@ -41,11 +42,13 @@ pub type ProjectionSection {
   ProjectionSection(parts: List(ProjectionSectionPart), card_count: Int)
 }
 
-// A physical destination in cascade order. `rule_id` is the rule that claimed
-// these cards, or empty for the bulk remainder. `sections` partitions `cards`
+// A physical destination in cascade order. `location` is its identity,
+// `location_name` its display name. `rule_id` is the rule that claimed these
+// cards, or empty for the bulk remainder. `sections` partitions `cards`
 // exactly once, in order.
 pub type ProjectionLocation {
   ProjectionLocation(
+    location: LocationRef,
     location_name: String,
     rule_id: String,
     total_quantity: Int,

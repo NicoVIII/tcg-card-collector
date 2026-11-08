@@ -1,4 +1,5 @@
 import gleam/option.{type Option}
+import inventory_planning/domain/location_ref.{type LocationRef}
 import shared/domain/copy_key.{type CopyKey}
 
 pub type RuleWriteModel {
@@ -17,7 +18,7 @@ pub type BulkSpecWriteModel {
 }
 
 pub type PlacedWriteModel {
-  PlacedWriteModel(key: CopyKey, location: String, quantity: Int)
+  PlacedWriteModel(key: CopyKey, location: LocationRef, quantity: Int)
 }
 
 /// Replaces whichever of rules/bulk/placed are `Some`, atomically together —

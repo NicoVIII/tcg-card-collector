@@ -12,6 +12,7 @@ import inventory_planning/application/queries/get_bulk_spec/ports as get_bulk_sp
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
+import inventory_planning/domain/location_ref
 import inventory_planning/driver/error_presentation
 import shared/driver/skir/helpers
 import shared/driver/skir/skirout/inventory_planning/commands as inventory_planning_commands
@@ -33,11 +34,35 @@ fn map_projection_location(
 ) -> inventory_planning_queries.ProjectionLocation {
   inventory_planning_queries.projection_location_new(
     list.map(location.cards, map_projection_card),
+    query_location_ref(location.location),
     location.location_name,
     location.rule_id,
     list.map(location.sections, map_projection_section),
     location.total_quantity,
   )
+}
+
+fn query_location_ref(
+  ref: location_ref.LocationRef,
+) -> inventory_planning_queries.LocationRef {
+  case ref {
+    location_ref.Cascade(name) ->
+      inventory_planning_queries.LocationRefCascade(name)
+    location_ref.Managed(id) ->
+      inventory_planning_queries.LocationRefManaged(id)
+  }
+}
+
+// The `(kind, key)` pair placement.new parses; an unrecognized variant maps
+// to an empty kind, which fails that parse and rejects the whole batch.
+fn command_location_ref(
+  ref: inventory_planning_commands.LocationRef,
+) -> #(String, String) {
+  case ref {
+    inventory_planning_commands.LocationRefCascade(name) -> #("cascade", name)
+    inventory_planning_commands.LocationRefManaged(id) -> #("managed", id)
+    inventory_planning_commands.LocationRefUnknown(_) -> #("", "")
+  }
 }
 
 fn map_projection_section(
@@ -240,7 +265,7 @@ fn map_placed_ledger_row(
     row.collector_number,
     query_finish_from_string(row.finish),
     query_language_from_string(row.language),
-    row.location,
+    query_location_ref(row.location),
     row.quantity,
     row.set_code,
   )
@@ -288,12 +313,14 @@ pub fn map_relocate_placed_cards_result(
 pub fn to_mark_raw_placement(
   placement: inventory_planning_commands.CardPlacement,
 ) -> mark_cards_placed_handler.RawPlacement {
+  let #(location_kind, location) = command_location_ref(placement.location)
   mark_cards_placed_handler.RawPlacement(
     set_code: placement.set_code,
     collector_number: placement.collector_number,
     finish: command_finish_to_string(placement.finish),
     language: command_language_to_string(placement.language),
-    location_name: placement.location_name,
+    location_kind:,
+    location:,
     quantity: placement.quantity,
   )
 }
@@ -301,12 +328,14 @@ pub fn to_mark_raw_placement(
 pub fn to_unmark_raw_placement(
   placement: inventory_planning_commands.CardPlacement,
 ) -> unmark_cards_placed_handler.RawPlacement {
+  let #(location_kind, location) = command_location_ref(placement.location)
   unmark_cards_placed_handler.RawPlacement(
     set_code: placement.set_code,
     collector_number: placement.collector_number,
     finish: command_finish_to_string(placement.finish),
     language: command_language_to_string(placement.language),
-    location_name: placement.location_name,
+    location_kind:,
+    location:,
     quantity: placement.quantity,
   )
 }

@@ -5,6 +5,7 @@ import inventory_planning/application/queries/get_bulk_spec/ports as bulk_spec_p
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
+import inventory_planning/domain/location_ref.{type LocationRef}
 
 pub fn encode_inventory_rules(
   rules: List(list_rules_ports.InventoryRuleReadModel),
@@ -37,8 +38,24 @@ pub fn encode_inventory_projection(
   |> json.to_string
 }
 
+// REST's twin of the skir LocationRef union: `{"kind": "cascade" |
+// "managed", "key": <name or id>}`.
+fn encode_location_ref(ref: LocationRef) -> json.Json {
+  json.object([
+    #("kind", json.string(location_ref.kind_string(ref))),
+    #("key", json.string(location_ref.key_string(ref))),
+  ])
+}
+
+fn location_ref_decoder() -> decode.Decoder(#(String, String)) {
+  use kind <- decode.field("kind", decode.string)
+  use key <- decode.field("key", decode.string)
+  decode.success(#(kind, key))
+}
+
 fn encode_location(location: projection_ports.ProjectionLocation) -> json.Json {
   json.object([
+    #("location", encode_location_ref(location.location)),
     #("location_name", json.string(location.location_name)),
     #("rule_id", json.string(location.rule_id)),
     #("total_quantity", json.int(location.total_quantity)),
@@ -96,7 +113,7 @@ fn encode_placed_ledger_row(
     #("collector_number", json.string(row.collector_number)),
     #("finish", json.string(row.finish)),
     #("language", json.string(row.language)),
-    #("location", json.string(row.location)),
+    #("location", encode_location_ref(row.location)),
     #("quantity", json.int(row.quantity)),
   ])
 }
@@ -107,7 +124,8 @@ pub type PlacementBody {
     collector_number: String,
     finish: String,
     language: String,
-    location_name: String,
+    location_kind: String,
+    location: String,
     quantity: Int,
   )
 }
@@ -120,14 +138,18 @@ pub fn decode_placements_body(
     use collector_number <- decode.field("collector_number", decode.string)
     use finish <- decode.field("finish", decode.string)
     use language <- decode.field("language", decode.string)
-    use location_name <- decode.field("location_name", decode.string)
+    use #(location_kind, location) <- decode.field(
+      "location",
+      location_ref_decoder(),
+    )
     use quantity <- decode.field("quantity", decode.int)
     decode.success(PlacementBody(
       set_code:,
       collector_number:,
       finish:,
       language:,
-      location_name:,
+      location_kind:,
+      location:,
       quantity:,
     ))
   }

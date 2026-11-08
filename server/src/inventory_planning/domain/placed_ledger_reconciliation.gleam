@@ -2,19 +2,20 @@ import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
-import gleam/string
+import inventory_planning/domain/location_ref.{type LocationRef}
 import shared/domain/copy_key.{type CopyKey}
 
 /// A ledger row about to be pruned: the key, the location losing copies, and
 /// how many — not the row's remaining quantity, matching the DAO decrement
 /// contract's "amount to subtract" shape.
 pub type PlacedRow {
-  PlacedRow(key: CopyKey, location: String, quantity: Int)
+  PlacedRow(key: CopyKey, location: LocationRef, quantity: Int)
 }
 
 /// For any key whose placed total exceeds its owned quantity (0 when the key
 /// is absent from `owned` — fully removed), prunes that key's locations in
-/// alphabetical order until the excess is absorbed. A plain quantity change
+/// `location_ref.compare` order (cascade before managed, then alphabetical)
+/// until the excess is absorbed. A plain quantity change
 /// carries no location to blame for the phantom copies, so this tie-break is
 /// arbitrary but deterministic — ADR 0011. Keys already within bounds never
 /// appear in the result.
@@ -57,7 +58,7 @@ fn group_by_key(rows: List(PlacedRow)) -> Dict(CopyKey, List(PlacedRow)) {
 }
 
 fn sort_by_location(rows: List(PlacedRow)) -> List(PlacedRow) {
-  list.sort(rows, fn(a, b) { string.compare(a.location, b.location) })
+  list.sort(rows, fn(a, b) { location_ref.compare(a.location, b.location) })
 }
 
 // Walks locations in order, taking as much as needed from each until the

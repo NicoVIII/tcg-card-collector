@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { cascadeLocation } from "../data/inventory_planning/location_ref";
 import type { ResortEntry, ResortWorklist } from "../data/placement/resort";
 import {
   emptyResortSession,
@@ -22,11 +23,19 @@ function entry(overrides: Partial<ResortEntry> = {}): ResortEntry {
   };
 }
 
+// Groups are named by their cascade location name; the worklist keys them by
+// locationKey, which is what the session resolves against.
 function worklist(
   groups: { from_location: string; entries: ResortEntry[]; looks_like_rename?: string | null }[],
 ): ResortWorklist {
   return {
-    groups: groups.map((g) => ({ looks_like_rename: null, ...g })),
+    groups: groups.map(({ from_location, ...g }) => ({
+      looks_like_rename: null,
+      ...g,
+      from_location: cascadeLocation(from_location),
+      from_location_key: `cascade:${from_location}`,
+      from_location_name: from_location,
+    })),
     total_misplaced: groups.reduce(
       (sum, g) => sum + g.entries.reduce((s, e) => s + e.quantity, 0),
       0,
@@ -43,7 +52,7 @@ describe("filterResortWorklist", () => {
 
   it("drops a resolved entry and its now-empty group", () => {
     const wl = worklist([{ from_location: "Box 1", entries: [entry()] }]);
-    const session = resolveEntry(emptyResortSession(), "Box 1", entry());
+    const session = resolveEntry(emptyResortSession(), "cascade:Box 1", entry());
 
     expect(filterResortWorklist(wl, session)).toEqual({ groups: [], total_misplaced: 0 });
   });
@@ -51,7 +60,7 @@ describe("filterResortWorklist", () => {
   it("drops one entry but keeps the group when another entry remains", () => {
     const other = entry({ collector_number: "162" });
     const wl = worklist([{ from_location: "Box 1", entries: [entry(), other] }]);
-    const session = resolveEntry(emptyResortSession(), "Box 1", entry());
+    const session = resolveEntry(emptyResortSession(), "cascade:Box 1", entry());
 
     const filtered = filterResortWorklist(wl, session);
 
@@ -64,7 +73,7 @@ describe("filterResortWorklist", () => {
     const wl = worklist([
       { from_location: "Box 1", entries: [entry(), entry({ collector_number: "162" })] },
     ]);
-    const session = resolveGroup(emptyResortSession(), "Box 1");
+    const session = resolveGroup(emptyResortSession(), "cascade:Box 1");
 
     expect(filterResortWorklist(wl, session)).toEqual({ groups: [], total_misplaced: 0 });
   });
@@ -74,22 +83,22 @@ describe("filterResortWorklist", () => {
       { from_location: "Box 1", entries: [entry()] },
       { from_location: "Box 2", entries: [entry({ collector_number: "999" })] },
     ]);
-    const session = resolveGroup(emptyResortSession(), "Box 1");
+    const session = resolveGroup(emptyResortSession(), "cascade:Box 1");
 
     const filtered = filterResortWorklist(wl, session);
 
-    expect(filtered.groups.map((g) => g.from_location)).toEqual(["Box 2"]);
+    expect(filtered.groups.map((g) => g.from_location_name)).toEqual(["Box 2"]);
   });
 
   it("unresolveEntry and unresolveGroup put things back", () => {
     const wl = worklist([{ from_location: "Box 1", entries: [entry()] }]);
-    let session = resolveEntry(emptyResortSession(), "Box 1", entry());
-    session = unresolveEntry(session, "Box 1", entry());
+    let session = resolveEntry(emptyResortSession(), "cascade:Box 1", entry());
+    session = unresolveEntry(session, "cascade:Box 1", entry());
 
     expect(filterResortWorklist(wl, session)).toEqual(wl);
 
-    session = resolveGroup(emptyResortSession(), "Box 1");
-    session = unresolveGroup(session, "Box 1");
+    session = resolveGroup(emptyResortSession(), "cascade:Box 1");
+    session = unresolveGroup(session, "cascade:Box 1");
 
     expect(filterResortWorklist(wl, session)).toEqual(wl);
   });

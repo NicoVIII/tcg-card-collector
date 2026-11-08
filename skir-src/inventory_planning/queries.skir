@@ -55,6 +55,15 @@ enum Language {
   qya = 18;
 }
 
+// Where a copy sits, in one of two namespaces (#122): a cascade location —
+// a rule target or the bulk remainder — by its rendered name (ADR 0014's
+// text), or a managed location by its id. Duplicated in commands.skir for the same
+// reason as Finish/Language.
+enum LocationRef {
+  cascade: string = 1;
+  managed: string = 2;
+}
+
 struct ProjectionCard {
   name: string = 0;
   set_code: string = 1;
@@ -108,6 +117,8 @@ struct ProjectionLocation {
   // `card_count` copies (summing consecutive cards' `quantity`, not their
   // count) at a time lines each card up with its section.
   sections: [ProjectionSection] = 4;
+  // The location's identity; `location_name` is its display name.
+  location: LocationRef = 5;
 }
 
 struct InventoryProjection {
@@ -140,10 +151,11 @@ struct PlacedLedgerRequest {
 struct PlacedLedgerRow {
   set_code: string = 0;
   collector_number: string = 1;
-  location: string = 2;
+  removed 2;  // was location: string, superseded by location = 6 (#122)
   quantity: int32 = 3;
   finish: Finish = 4;
   language: Language = 5;
+  location: LocationRef = 6;
 }
 
 // Reuses method 306's response slot: the placement page no longer fetches

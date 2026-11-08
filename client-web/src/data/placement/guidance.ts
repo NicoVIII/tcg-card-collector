@@ -1,3 +1,4 @@
+import { locationKey } from "../inventory_planning/location_ref";
 import type {
   InventoryProjection,
   ProjectionCard,
@@ -27,13 +28,13 @@ type CopyIdentity = {
   language: string;
 };
 
-const atKey = (copy: CopyIdentity, location: string): string =>
-  `${copy.set_code} ${copy.collector_number} ${copy.finish} ${copy.language} ${location}`;
+const atKey = (copy: CopyIdentity, location_key: string): string =>
+  `${copy.set_code} ${copy.collector_number} ${copy.finish} ${copy.language} ${location_key}`;
 
 function indexPlacedAt(ledger: PlacedLedgerRow[]): Map<string, number> {
   const placed = new Map<string, number>();
   for (const row of ledger) {
-    const key = atKey(row, row.location);
+    const key = atKey(row, locationKey(row.location));
     placed.set(key, (placed.get(key) ?? 0) + row.quantity);
   }
   return placed;
@@ -42,15 +43,15 @@ function indexPlacedAt(ledger: PlacedLedgerRow[]): Map<string, number> {
 function placedAtQty(
   placedAt: Map<string, number>,
   card: CopyIdentity,
-  location_name: string,
+  location_key: string,
 ): number {
-  return placedAt.get(atKey(card, location_name)) ?? 0;
+  return placedAt.get(atKey(card, location_key)) ?? 0;
 }
 
 function neighbors(
   cards: ProjectionCard[],
   placedAt: Map<string, number>,
-  location_name: string,
+  location_key: string,
 ): PlacementNeighbor[] {
   return cards.map((card) => ({
     name: card.name,
@@ -58,7 +59,7 @@ function neighbors(
     collector_number: card.collector_number,
     finish: card.finish,
     language: card.language,
-    already_placed: placedAtQty(placedAt, card, location_name) > 0,
+    already_placed: placedAtQty(placedAt, card, location_key) > 0,
   }));
 }
 
@@ -96,11 +97,12 @@ function buildLocation(
   placedAt: Map<string, number>,
 ): PlacementLocation | null {
   const cards = location.cards;
+  const location_key = locationKey(location.location);
   const sections = sectionsByCardIndex(location);
   const placementCards: PlacementCard[] = [];
 
   cards.forEach((card, index) => {
-    const placedQty = placedAtQty(placedAt, card, location.location_name);
+    const placedQty = placedAtQty(placedAt, card, location_key);
     const toPlace = Math.max(0, card.quantity - placedQty);
     if (toPlace <= 0) {
       return;
@@ -117,12 +119,8 @@ function buildLocation(
       // slot sits directly between these, so the anchor must be one of them —
       // reaching past an unplaced neighbour to a farther card points at the
       // wrong slot.
-      before: neighbors(
-        cards.slice(Math.max(0, index - 1), index),
-        placedAt,
-        location.location_name,
-      ),
-      after: neighbors(cards.slice(index + 1, index + 2), placedAt, location.location_name),
+      before: neighbors(cards.slice(Math.max(0, index - 1), index), placedAt, location_key),
+      after: neighbors(cards.slice(index + 1, index + 2), placedAt, location_key),
       section: sections[index] ?? NO_SECTION,
     });
   });
@@ -131,6 +129,8 @@ function buildLocation(
     return null;
   }
   return {
+    location: location.location,
+    location_key,
     location_name: location.location_name,
     total_quantity: placementCards.reduce((sum, card) => sum + card.to_place_quantity, 0),
     cards: placementCards,

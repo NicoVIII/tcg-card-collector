@@ -34,7 +34,7 @@ import {
   nextPosition,
   type RuleDraft,
 } from "./inventory_rules";
-import { focusNameFrom } from "./placement_focus";
+import { focusKeyFrom } from "./placement_focus";
 import {
   PROJECTION_PAGE_SIZE,
   countLabel,
@@ -303,7 +303,7 @@ type ProjectionLocationRowProps = {
   cards: ProjectionCard[] | null;
   offset: number;
   onOffsetChange: (offset: number) => void;
-  onToggle: (location_name: string, headerEl: HTMLElement) => void;
+  onToggle: (location_key: string, headerEl: HTMLElement) => void;
   onPanelShown: (headerEl: HTMLElement) => void;
 };
 
@@ -321,7 +321,7 @@ function ProjectionLocationRow(props: ProjectionLocationRowProps) {
           class="placement-location-toggle"
           aria-expanded={props.isOpen}
           aria-controls={props.panelId}
-          onClick={() => headerRef && props.onToggle(props.summary.location_name, headerRef)}
+          onClick={() => headerRef && props.onToggle(props.summary.location_key, headerRef)}
         >
           <span aria-hidden="true">{props.isOpen ? "▾" : "▸"}</span>
           <span>
@@ -353,7 +353,7 @@ function ProjectionSection() {
   }>();
   const filter = createMemo<CardFilter>(() => filterFromSearchParams(searchParams));
   const filterActive = createMemo(() => filterIsActive(filter()));
-  const openName = () => focusNameFrom(searchParams.location);
+  const openKey = () => focusKeyFrom(searchParams.location);
   // Owned here (not per-panel) so opening a different location or running a
   // new search can reset it directly, the same way collection_page.tsx's
   // `search` calls `setOffset(0)` alongside `setSearchParams` — no effect
@@ -362,7 +362,7 @@ function ProjectionSection() {
 
   const unknownCount = () => projectionQuery.data?.unknown_count ?? 0;
   const summaries = createMemo(() => projectionSummaries(projectionQuery.data, filter()));
-  const openCards = createMemo(() => openLocationCards(projectionQuery.data, openName(), filter()));
+  const openCards = createMemo(() => openLocationCards(projectionQuery.data, openKey(), filter()));
   // Scrolls the location open on page load (reload, Back/Forward, a fresh
   // `?location=` link) into view exactly once — see initial_scroll.ts (#142).
   const initialScroll = createInitialScroll();
@@ -375,10 +375,10 @@ function ProjectionSection() {
   // A history entry per open/close (not a replace), mirroring
   // placement_page.tsx's toggleFocus — back-to-close is the phone affordance
   // alongside re-tapping the header.
-  const toggle = (location_name: string, headerEl: HTMLElement) => {
+  const toggle = (location_key: string, headerEl: HTMLElement) => {
     initialScroll.cancel();
     setOffset(0);
-    setSearchParams({ location: openName() === location_name ? undefined : location_name });
+    setSearchParams({ location: openKey() === location_key ? undefined : location_key });
     headerEl.scrollIntoView({ block: "nearest" });
   };
 
@@ -408,8 +408,8 @@ function ProjectionSection() {
               summary={summary}
               filterActive={filterActive()}
               panelId={`projection-panel-${index()}`}
-              isOpen={openName() === summary.location_name}
-              cards={openName() === summary.location_name ? openCards() : null}
+              isOpen={openKey() === summary.location_key}
+              cards={openKey() === summary.location_key ? openCards() : null}
               offset={offset()}
               onOffsetChange={setOffset}
               onToggle={toggle}

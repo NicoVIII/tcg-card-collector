@@ -8,6 +8,7 @@ import inventory_planning/application/queries/list_rules/handler as list_rules_h
 import inventory_planning/application/queries/placed_ledger/handler as placed_ledger_handler
 import inventory_planning/domain/card_predicate
 import inventory_planning/domain/copy_selector
+import inventory_planning/domain/location_ref
 import inventory_planning/domain/sort_spec
 
 // nolint: depends_only_on -- glinter_arch doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a gleam-libs change
@@ -83,7 +84,17 @@ pub fn list_placed() -> Result(List(PlacedCopy), String) {
       )
     {
       Ok(key) ->
-        Ok(PlacedCopy(key:, location: row.location, quantity: row.quantity))
+        case row.location {
+          location_ref.Cascade(_) ->
+            Ok(PlacedCopy(
+              key:,
+              location: location_ref.key_string(row.location),
+              quantity: row.quantity,
+            ))
+          // Nothing writes managed-location rows yet; the export format
+          // gains them together with managed locations themselves (#122).
+          location_ref.Managed(_) -> Error(Nil)
+        }
       // The ledger only ever holds rows written through placement.new, which
       // already validated this same identity — unreachable in practice.
       Error(_) -> Error(Nil)
@@ -162,7 +173,8 @@ fn to_raw_placed(copy: PlacedCopy) -> restore_plan_handler.RawPlaced {
     collector_number: copy_key.collector_number_string(copy.key),
     finish: copy_key.finish_string(copy.key),
     language: copy_key.language_string(copy.key),
-    location_name: copy.location,
+    location_kind: "cascade",
+    location: copy.location,
     quantity: copy.quantity,
   )
 }

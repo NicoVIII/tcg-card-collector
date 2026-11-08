@@ -81,6 +81,7 @@ pub fn reads_rules_bulk_and_placed_through_the_inventory_planning_facade_test() 
         collector_number: "17",
         finish: "foil",
         language: "en",
+        location_kind: "cascade",
         location: "Binder A",
         quantity: 2,
       ),

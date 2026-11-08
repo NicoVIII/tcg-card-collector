@@ -3,6 +3,7 @@ import gleam/dict
 import gleam/list
 import gleam/result
 import inventory_planning/application/commands/reconcile_placed_ledger/ports
+import inventory_planning/domain/location_ref
 import inventory_planning/domain/placed_ledger_reconciliation.{PlacedRow}
 import inventory_planning/infrastructure/daos/placed_cards_dao
 import shared/domain/copy_key
@@ -32,15 +33,16 @@ fn list_placed_adapter() -> ports.ListPlacedPort {
           collector_number: row.collector_number,
           finish: row.finish,
           language: row.language,
-        )
+        ),
+        location_ref.new(kind: row.location_kind, key: row.location)
       {
-        Ok(key) ->
-          Ok(PlacedRow(key:, location: row.location, quantity: row.quantity))
+        Ok(key), Ok(location) ->
+          Ok(PlacedRow(key:, location:, quantity: row.quantity))
         // placed_cards rows are already canonical (parsed at the write
         // boundary), so this is unreachable in practice — skipping rather
         // than crashing keeps the read total, same precedent as
         // collection_api.to_owned_copies.
-        Error(_) -> Error(Nil)
+        _, _ -> Error(Nil)
       }
     })
   }
@@ -56,7 +58,8 @@ fn decrement_placed_adapter() -> ports.DecrementPlacedPort {
           collector_number: copy_key.collector_number_string(key),
           finish: copy_key.finish_string(key),
           language: copy_key.language_string(key),
-          location:,
+          location_kind: location_ref.kind_string(location),
+          location: location_ref.key_string(location),
           quantity:,
         )
       }),

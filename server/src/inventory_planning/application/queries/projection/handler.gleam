@@ -7,6 +7,7 @@ import inventory_planning/domain/bulk_spec
 import inventory_planning/domain/card_attributes.{type PlannedCard}
 import inventory_planning/domain/card_predicate
 import inventory_planning/domain/copy_selector
+import inventory_planning/domain/location_ref
 import inventory_planning/domain/location_target
 import inventory_planning/domain/rule_cascade
 import inventory_planning/domain/set_index
@@ -259,6 +260,7 @@ fn to_location(
   bucket: rule_cascade.LocationBucket,
 ) -> projection_ports.ProjectionLocation {
   projection_ports.ProjectionLocation(
+    location: location_ref.Cascade(bucket.location_name),
     location_name: bucket.location_name,
     rule_id: option.unwrap(bucket.rule_id, ""),
     total_quantity: bucket.total_quantity,

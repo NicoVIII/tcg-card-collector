@@ -79,6 +79,7 @@ pub fn export_import_export_is_byte_identical_and_every_section_is_unchanged_tes
         collector_number: "17",
         finish: "foil",
         language: "zht",
+        location_kind: "cascade",
         location: "Binder A",
         quantity: 2,
       ),

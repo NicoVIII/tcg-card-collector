@@ -237,7 +237,8 @@ fn to_mark_raw_placement(
     collector_number: body.collector_number,
     finish: body.finish,
     language: body.language,
-    location_name: body.location_name,
+    location_kind: body.location_kind,
+    location: body.location,
     quantity: body.quantity,
   )
 }
@@ -250,7 +251,8 @@ fn to_unmark_raw_placement(
     collector_number: body.collector_number,
     finish: body.finish,
     language: body.language,
-    location_name: body.location_name,
+    location_kind: body.location_kind,
+    location: body.location,
     quantity: body.quantity,
   )
 }

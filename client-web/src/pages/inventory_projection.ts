@@ -1,4 +1,5 @@
 import type { CardFilter } from "../lib/card_filter";
+import { locationKey } from "../data/inventory_planning/location_ref";
 import type { InventoryProjection, ProjectionCard } from "../data/inventory_planning/request";
 
 // Collapse/page/filter derivations for the Inventory page's projection
@@ -8,6 +9,7 @@ import type { InventoryProjection, ProjectionCard } from "../data/inventory_plan
 export const PROJECTION_PAGE_SIZE = 100;
 
 export type ProjectionLocationSummary = {
+  location_key: string;
   location_name: string;
   is_bulk: boolean;
   total_quantity: number;
@@ -46,6 +48,7 @@ export function projectionSummaries(
 ): ProjectionLocationSummary[] {
   const active = filterIsActive(filter);
   const summaries = (projection?.locations ?? []).map((location) => ({
+    location_key: locationKey(location.location),
     location_name: location.location_name,
     is_bulk: location.rule_id === "",
     total_quantity: location.total_quantity,
@@ -54,17 +57,19 @@ export function projectionSummaries(
   return summaries.filter((summary) => !active || summary.match_quantity > 0);
 }
 
-// The open location's filtered rows, or null when nothing is open, the name
+// The open location's filtered rows, or null when nothing is open, the key
 // no longer names a location (rule renamed), or the filter leaves it empty.
 export function openLocationCards(
   projection: InventoryProjection | undefined,
-  name: string | null,
+  key: string | null,
   filter: CardFilter,
 ): ProjectionCard[] | null {
-  if (name === null) {
+  if (key === null) {
     return null;
   }
-  const location = projection?.locations.find((candidate) => candidate.location_name === name);
+  const location = projection?.locations.find(
+    (candidate) => locationKey(candidate.location) === key,
+  );
   if (location === undefined) {
     return null;
   }

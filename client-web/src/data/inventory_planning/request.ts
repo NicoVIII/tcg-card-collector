@@ -5,6 +5,7 @@ import {
   type Finish,
   type Language,
 } from "../collection/copy_kind";
+import { fromWireLocationRef, type LocationRef } from "./location_ref";
 import {
   DeleteInventoryRule,
   DeleteInventoryRuleRequest,
@@ -90,6 +91,8 @@ export type ProjectionSection = {
 };
 
 export type ProjectionLocation = {
+  // The location's identity; `location_name` is only its display name.
+  location: LocationRef;
   location_name: string;
   rule_id: string;
   total_quantity: number;
@@ -172,6 +175,7 @@ function toProjectionSection(
 function toInventoryProjection(response: RpcInventoryProjection): InventoryProjection {
   return {
     locations: response.locations.map((location) => ({
+      location: fromWireLocationRef(location.location.union),
       location_name: location.locationName,
       rule_id: location.ruleId,
       total_quantity: location.totalQuantity,

@@ -1,3 +1,5 @@
+import inventory_planning/domain/location_ref.{type LocationRef}
+
 // A validated, canonicalized placement to remove. The handler produces these
 // from raw request rows via the placement domain type.
 pub type PlacementWriteModel {
@@ -6,7 +8,7 @@ pub type PlacementWriteModel {
     collector_number: String,
     finish: String,
     language: String,
-    location: String,
+    location: LocationRef,
     quantity: Int,
   )
 }

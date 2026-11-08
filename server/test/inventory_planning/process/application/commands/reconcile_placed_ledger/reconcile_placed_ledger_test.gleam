@@ -2,6 +2,7 @@ import gleam/dict.{type Dict}
 import gleam/option.{type Option, None, Some}
 import inventory_planning/application/commands/reconcile_placed_ledger/handler
 import inventory_planning/application/commands/reconcile_placed_ledger/ports
+import inventory_planning/domain/location_ref.{Cascade}
 import inventory_planning/domain/placed_ledger_reconciliation.{
   type PlacedRow, PlacedRow,
 }
@@ -40,7 +41,7 @@ pub fn a_key_within_bounds_prunes_nothing_test() {
   let command_ports =
     build_ports(
       owned: Ok(dict.from_list([#(lea1, 3)])),
-      placed: Ok([PlacedRow(key: lea1, location: "Bulk", quantity: 3)]),
+      placed: Ok([PlacedRow(key: lea1, location: Cascade("Bulk"), quantity: 3)]),
       pruned:,
     )
 
@@ -57,7 +58,7 @@ pub fn excess_is_pruned_through_to_the_port_test() {
   let command_ports =
     build_ports(
       owned: Ok(dict.from_list([#(lea1, 1)])),
-      placed: Ok([PlacedRow(key: lea1, location: "Bulk", quantity: 3)]),
+      placed: Ok([PlacedRow(key: lea1, location: Cascade("Bulk"), quantity: 3)]),
       pruned:,
     )
 
@@ -66,7 +67,7 @@ pub fn excess_is_pruned_through_to_the_port_test() {
 
   assert result == Ok(Nil)
   assert ref.get(pruned)
-    == Some([PlacedRow(key: lea1, location: "Bulk", quantity: 2)])
+    == Some([PlacedRow(key: lea1, location: Cascade("Bulk"), quantity: 2)])
 }
 
 pub fn owned_quantities_failure_surfaces_and_skips_the_rest_test() {

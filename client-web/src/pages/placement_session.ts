@@ -1,5 +1,5 @@
 import type { ProjectionSection, SortKey } from "../data/inventory_planning/request";
-import type { PlacementCard, PlacementNeighbor } from "../data/placement/request";
+import type { PlacementCard, PlacementNeighbor, PlacementPlace } from "../data/placement/request";
 
 // Session state for the placement page. Ticking a card marks it placed, which
 // drops it from the next guidance refetch — but we keep showing it struck-
@@ -8,7 +8,7 @@ import type { PlacementCard, PlacementNeighbor } from "../data/placement/request
 // re-inserted at that spot.
 
 type TickedEntry = {
-  location_name: string;
+  place: PlacementPlace;
   card: PlacementCard;
   index: number;
 };
@@ -21,6 +21,16 @@ export function emptySession(): PlacementSession {
   return { ticked: {} };
 }
 
+// Just the location part of a summary or focused location, so a tick doesn't
+// hold on to a whole card list it never reads.
+export function placeOf(place: PlacementPlace): PlacementPlace {
+  return {
+    location: place.location,
+    location_key: place.location_key,
+    location_name: place.location_name,
+  };
+}
+
 // A tick names a specific kind of copy (ADR 0010): the finish and language are
 // part of the identity, alongside the printing and the location.
 type CopyIdentity = {
@@ -30,38 +40,38 @@ type CopyIdentity = {
   language: string;
 };
 
-function entryKey(location_name: string, card: CopyIdentity): string {
-  return `${location_name} ${card.set_code} ${card.collector_number} ${card.finish} ${card.language}`;
+function entryKey(location_key: string, card: CopyIdentity): string {
+  return `${location_key} ${card.set_code} ${card.collector_number} ${card.finish} ${card.language}`;
 }
 
 export function isTicked(
   session: PlacementSession,
-  location_name: string,
+  location_key: string,
   card: CopyIdentity,
 ): boolean {
-  return entryKey(location_name, card) in session.ticked;
+  return entryKey(location_key, card) in session.ticked;
 }
 
 export function tick(
   session: PlacementSession,
-  location_name: string,
+  place: PlacementPlace,
   card: PlacementCard,
   index: number,
 ): PlacementSession {
   return {
     ticked: {
       ...session.ticked,
-      [entryKey(location_name, card)]: { location_name, card, index },
+      [entryKey(place.location_key, card)]: { place, card, index },
     },
   };
 }
 
 export function untick(
   session: PlacementSession,
-  location_name: string,
+  location_key: string,
   card: CopyIdentity,
 ): PlacementSession {
-  const key = entryKey(location_name, card);
+  const key = entryKey(location_key, card);
   if (!(key in session.ticked)) {
     return session;
   }
@@ -72,27 +82,27 @@ export function untick(
 
 // The cards a "Mark all placed" or "Up to here" tap struck, remembered so the
 // action can be undone as a single unit rather than one row at a time.
-export type MarkBatch = { location_name: string; cards: PlacementCard[] };
+export type MarkBatch = { place: PlacementPlace; cards: PlacementCard[] };
 
 // Ticks every not-yet-struck entry in a location at its current index, or
 // returns null when there was nothing left to mark (so the caller can skip
 // the mutation and the undo offer both).
 export function tickAll(
   session: PlacementSession,
-  location_name: string,
+  place: PlacementPlace,
   cards: PlacementCard[],
 ): { session: PlacementSession; batch: MarkBatch } | null {
   let next = session;
   const batchCards: PlacementCard[] = [];
   cards.forEach((card, index) => {
-    if (isTicked(session, location_name, card)) return;
-    next = tick(next, location_name, card, index);
+    if (isTicked(session, place.location_key, card)) return;
+    next = tick(next, place, card, index);
     batchCards.push(card);
   });
   if (batchCards.length === 0) {
     return null;
   }
-  return { session: next, batch: { location_name, cards: batchCards } };
+  return { session: next, batch: { place, cards: batchCards } };
 }
 
 // Ticks the not-yet-struck prefix of `cards` ending at `index` (inclusive) —
@@ -102,15 +112,15 @@ export function tickAll(
 // the right spot; a range starting elsewhere would need its own indexing.
 export function tickThrough(
   session: PlacementSession,
-  location_name: string,
+  place: PlacementPlace,
   cards: PlacementCard[],
   index: number,
 ): { session: PlacementSession; batch: MarkBatch } | null {
-  return tickAll(session, location_name, cards.slice(0, index + 1));
+  return tickAll(session, place, cards.slice(0, index + 1));
 }
 
 export function untickAll(session: PlacementSession, batch: MarkBatch): PlacementSession {
-  return batch.cards.reduce((acc, card) => untick(acc, batch.location_name, card), session);
+  return batch.cards.reduce((acc, card) => untick(acc, batch.place.location_key, card), session);
 }
 
 // Puts the tick state of exactly these copies back the way `before` had it,
@@ -120,11 +130,11 @@ export function untickAll(session: PlacementSession, batch: MarkBatch): Placemen
 export function restoreTicks(
   current: PlacementSession,
   before: PlacementSession,
-  location_name: string,
+  location_key: string,
   cards: CopyIdentity[],
 ): PlacementSession {
   return cards.reduce((acc, card) => {
-    const key = entryKey(location_name, card);
+    const key = entryKey(location_key, card);
     const priorEntry = before.ticked[key];
     if (priorEntry === undefined) {
       const ticked = { ...acc.ticked };
@@ -135,12 +145,12 @@ export function restoreTicks(
   }, current);
 }
 
-export function tickedLocationNames(session: PlacementSession): string[] {
-  const names = new Set<string>();
+export function tickedPlaces(session: PlacementSession): PlacementPlace[] {
+  const places = new Map<string, PlacementPlace>();
   for (const entry of Object.values(session.ticked)) {
-    names.add(entry.location_name);
+    places.set(entry.place.location_key, entry.place);
   }
-  return [...names];
+  return [...places.values()];
 }
 
 // Re-inserts the session's struck cards into a location's fresh guidance cards
@@ -151,15 +161,15 @@ export function tickedLocationNames(session: PlacementSession): string[] {
 // `<For>` skip rebuilding rows a tick didn't touch (#105).
 export function mergeLocationCards(
   session: PlacementSession,
-  location_name: string,
+  location_key: string,
   cards: PlacementCard[],
 ): PlacementCard[] {
   const merged = cards.slice();
 
-  const freshKeys = new Set(cards.map((card) => entryKey(location_name, card)));
+  const freshKeys = new Set(cards.map((card) => entryKey(location_key, card)));
   const strayTicks = Object.values(session.ticked)
-    .filter((entry) => entry.location_name === location_name)
-    .filter((entry) => !freshKeys.has(entryKey(location_name, entry.card)))
+    .filter((entry) => entry.place.location_key === location_key)
+    .filter((entry) => !freshKeys.has(entryKey(location_key, entry.card)))
     .sort((a, b) => a.index - b.index);
 
   for (const entry of strayTicks) {
@@ -192,7 +202,7 @@ function placedCopiesLabel(placed_quantity: number): string | null {
 
 function placedAnchorLabel(
   session: PlacementSession,
-  location_name: string,
+  location_key: string,
   before: PlacementNeighbor | undefined,
   after: PlacementNeighbor | undefined,
 ): string | null {
@@ -205,9 +215,9 @@ function placedAnchorLabel(
   // `x !== undefined && ...` rather than a helper so TS's control-flow
   // narrowing carries through to the neighborLabel(before/after) calls below.
   const beforePlaced =
-    before !== undefined && (before.already_placed || isTicked(session, location_name, before));
+    before !== undefined && (before.already_placed || isTicked(session, location_key, before));
   const afterPlaced =
-    after !== undefined && (after.already_placed || isTicked(session, location_name, after));
+    after !== undefined && (after.already_placed || isTicked(session, location_key, after));
 
   if (beforePlaced && afterPlaced) {
     return `Goes between ${neighborLabel(before)} and ${neighborLabel(after)}.`;
@@ -249,14 +259,14 @@ function unplacedAnchorLabel(
 // as the anchor when present, since it is physically there to find.
 export function betweenLabel(
   session: PlacementSession,
-  location_name: string,
+  location_key: string,
   card: PlacementCard,
 ): string {
   const before = card.before[0];
   const after = card.after[0];
   return (
     placedCopiesLabel(card.placed_quantity) ??
-    placedAnchorLabel(session, location_name, before, after) ??
+    placedAnchorLabel(session, location_key, before, after) ??
     unplacedAnchorLabel(before, after)
   );
 }

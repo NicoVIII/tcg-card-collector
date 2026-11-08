@@ -11,6 +11,7 @@ import inventory_planning/application/queries/get_bulk_spec/ports as get_bulk_sp
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
+import inventory_planning/domain/location_ref
 import inventory_planning/driver/skir/codec as inventory_planning_skir_codec
 import shared/driver/skir/skirout/inventory_planning/commands as inventory_planning_commands
 import shared/driver/skir/skirout/inventory_planning/queries as inventory_planning_queries
@@ -20,6 +21,7 @@ pub fn map_projection_nests_locations_and_cards_test() {
   let projection =
     projection_ports.Projection(unknown_count: 2, total_quantity: 1, locations: [
       projection_ports.ProjectionLocation(
+        location: location_ref.Cascade("Rare binder R"),
         location_name: "Rare binder R",
         rule_id: "r-rare",
         total_quantity: 1,
@@ -68,6 +70,7 @@ pub fn map_projection_nests_locations_and_cards_test() {
               "m11",
             ),
           ],
+          inventory_planning_queries.LocationRefCascade("Rare binder R"),
           "Rare binder R",
           "r-rare",
           [
@@ -106,6 +109,7 @@ pub fn map_projection_card_falls_back_to_unknown_for_unrecognized_strings_test()
   let projection =
     projection_ports.Projection(unknown_count: 0, total_quantity: 1, locations: [
       projection_ports.ProjectionLocation(
+        location: location_ref.Cascade("Bulk"),
         location_name: "Bulk",
         rule_id: "",
         total_quantity: 1,
@@ -128,6 +132,7 @@ pub fn map_projection_section_falls_back_to_unknown_for_unrecognized_key_test() 
   let projection =
     projection_ports.Projection(unknown_count: 0, total_quantity: 0, locations: [
       projection_ports.ProjectionLocation(
+        location: location_ref.Cascade("Bulk"),
         location_name: "Bulk",
         rule_id: "",
         total_quantity: 0,
@@ -161,7 +166,7 @@ pub fn map_placed_ledger_maps_rows_test() {
       collector_number: "146",
       finish: "nonfoil",
       language: "en",
-      location: "Bulk",
+      location: location_ref.Managed("deck-1"),
       quantity: 2,
     ),
   ]
@@ -172,7 +177,7 @@ pub fn map_placed_ledger_maps_rows_test() {
         "146",
         inventory_planning_queries.FinishNonfoil,
         inventory_planning_queries.LanguageEn,
-        "Bulk",
+        inventory_planning_queries.LocationRefManaged("deck-1"),
         2,
         "m11",
       ),
@@ -185,7 +190,7 @@ pub fn to_mark_raw_placement_maps_finish_and_language_test() {
       collector_number: "146",
       finish: inventory_planning_commands.FinishFoil,
       language: inventory_planning_commands.LanguageJa,
-      location_name: "Bulk",
+      location: inventory_planning_commands.LocationRefCascade("Bulk"),
       quantity: 2,
       set_code: "m11",
     )
@@ -196,7 +201,8 @@ pub fn to_mark_raw_placement_maps_finish_and_language_test() {
       collector_number: "146",
       finish: "foil",
       language: "ja",
-      location_name: "Bulk",
+      location_kind: "cascade",
+      location: "Bulk",
       quantity: 2,
     )
 }
@@ -207,7 +213,7 @@ pub fn to_unmark_raw_placement_maps_finish_and_language_test() {
       collector_number: "146",
       finish: inventory_planning_commands.FinishEtched,
       language: inventory_planning_commands.LanguageRu,
-      location_name: "Bulk",
+      location: inventory_planning_commands.LocationRefManaged("deck-1"),
       quantity: 1,
       set_code: "m11",
     )
@@ -218,9 +224,28 @@ pub fn to_unmark_raw_placement_maps_finish_and_language_test() {
       collector_number: "146",
       finish: "etched",
       language: "ru",
-      location_name: "Bulk",
+      location_kind: "managed",
+      location: "deck-1",
       quantity: 1,
     )
+}
+
+// An unrecognized location variant maps to an empty kind, which
+// placement.new rejects — the whole batch fails rather than a copy landing in
+// a guessed namespace.
+pub fn to_mark_raw_placement_maps_an_unknown_location_to_an_empty_kind_test() {
+  let placement =
+    inventory_planning_commands.card_placement_new(
+      collector_number: "146",
+      finish: inventory_planning_commands.FinishFoil,
+      language: inventory_planning_commands.LanguageEn,
+      location: inventory_planning_commands.location_ref_unknown,
+      quantity: 1,
+      set_code: "m11",
+    )
+
+  let raw = inventory_planning_skir_codec.to_mark_raw_placement(placement)
+  assert raw.location_kind == ""
 }
 
 pub fn mark_cards_placed_ok_maps_to_success_test() {

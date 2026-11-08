@@ -1,6 +1,7 @@
 import gleam/option.{None, Some}
 import inventory_planning/application/commands/restore_plan/handler
 import inventory_planning/application/commands/restore_plan/ports
+import inventory_planning/domain/location_ref
 import support/ref
 
 type Captured {
@@ -155,7 +156,8 @@ pub fn placed_entries_sharing_a_key_and_location_are_merged_test() {
       collector_number: "17",
       finish: "foil",
       language: "en",
-      location_name: "Box A",
+      location_kind: "cascade",
+      location: "Box A",
       quantity: 1,
     )
 
@@ -166,7 +168,7 @@ pub fn placed_entries_sharing_a_key_and_location_are_merged_test() {
     )
 
   let assert [Captured(placed: Some([only]), ..)] = ref.get(captured)
-  assert only.location == "Box A"
+  assert only.location == location_ref.Cascade("Box A")
   assert only.quantity == 2
 }
 
@@ -184,7 +186,8 @@ pub fn an_invalid_placed_entry_rejects_the_whole_batch_without_writing_test() {
             collector_number: "17",
             finish: "foill",
             language: "en",
-            location_name: "Box A",
+            location_kind: "cascade",
+            location: "Box A",
             quantity: 1,
           ),
         ]),

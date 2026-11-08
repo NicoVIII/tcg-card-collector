@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { InventoryProjection, ProjectionCard } from "../inventory_planning/request";
 import type { Finish, Language } from "../collection/copy_kind";
+import {
+  cascadeLocation,
+  managedLocation,
+  type LocationRef,
+} from "../inventory_planning/location_ref";
 import type { PlacedLedgerRow } from "./request";
 import { buildGuidance } from "./guidance";
 import { buildResortWorklist } from "./resort";
@@ -30,9 +35,11 @@ function card(
 function location(
   location_name: string,
   cards: ProjectionCard[],
+  ref: LocationRef = cascadeLocation(location_name),
 ): InventoryProjection["locations"][number] {
   const total_quantity = cards.reduce((sum, c) => sum + c.quantity, 0);
   return {
+    location: ref,
     location_name,
     rule_id: "",
     total_quantity,
@@ -51,12 +58,13 @@ function projection(locations: InventoryProjection["locations"]): InventoryProje
 
 function placed(
   collector_number: string,
-  location_name: string,
+  location: string | LocationRef,
   quantity: number,
   finish: Finish = "nonfoil",
   language: Language = "en",
 ): PlacedLedgerRow {
-  return { set_code: "m11", collector_number, finish, language, location: location_name, quantity };
+  const ref = typeof location === "string" ? cascadeLocation(location) : location;
+  return { set_code: "m11", collector_number, finish, language, location: ref, quantity };
 }
 
 describe("buildResortWorklist", () => {
@@ -71,7 +79,9 @@ describe("buildResortWorklist", () => {
     expect(worklist.total_misplaced).toBe(1);
     expect(worklist.groups).toEqual([
       {
-        from_location: "Box 1",
+        from_location: cascadeLocation("Box 1"),
+        from_location_key: "cascade:Box 1",
+        from_location_name: "Box 1",
         looks_like_rename: "Binder A",
         entries: [
           {
@@ -81,7 +91,9 @@ describe("buildResortWorklist", () => {
             finish: "nonfoil",
             language: "en",
             quantity: 1,
-            destinations: [{ location_name: "Binder A", quantity: 1 }],
+            destinations: [
+              { location: cascadeLocation("Binder A"), location_name: "Binder A", quantity: 1 },
+            ],
           },
         ],
       },
@@ -134,7 +146,7 @@ describe("buildResortWorklist", () => {
     const worklist = buildResortWorklist(proj, ledger);
 
     expect(
-      worklist.groups.find((g) => g.from_location === "Binder A")!.looks_like_rename,
+      worklist.groups.find((g) => g.from_location_name === "Binder A")!.looks_like_rename,
     ).toBeNull();
   });
 
@@ -188,5 +200,26 @@ describe("buildResortWorklist", () => {
 
     expect(buildResortWorklist(proj, relocatedLedger)).toEqual({ groups: [], total_misplaced: 0 });
     expect(buildGuidance(proj, relocatedLedger)).toEqual({ locations: [], total_unplaced: 0 });
+  });
+
+  // A managed location's rows key on an id, so a deck losing a card shows up
+  // under the deck's display name — and is never offered as a rename, since
+  // renaming a deck never strands its rows (#122).
+  it("names a managed group by its projected name and never flags it as a rename", () => {
+    const deck = managedLocation("deck-1");
+    const proj = projection([
+      location("Mono-Red", [], deck),
+      location("Binder A", [card("161", 1)]),
+    ]);
+    const ledger = [placed("161", deck, 1)];
+
+    const worklist = buildResortWorklist(proj, ledger);
+
+    expect(worklist.groups).toHaveLength(1);
+    expect(worklist.groups[0]).toMatchObject({
+      from_location: deck,
+      from_location_name: "Mono-Red",
+      looks_like_rename: null,
+    });
   });
 });
