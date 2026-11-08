@@ -1,5 +1,5 @@
 import gleam/dict
-import inventory_planning/domain/location_ref.{Cascade}
+import inventory_planning/domain/location_ref.{Cascade, Managed}
 import inventory_planning/domain/placed_ledger_reconciliation.{PlacedRow}
 import shared/domain/copy_key.{type CopyKey}
 
@@ -74,4 +74,18 @@ pub fn no_placed_rows_prunes_nothing_test() {
   let owned = dict.from_list([#(key("lea", "1"), 3)])
 
   assert placed_ledger_reconciliation.excess_to_prune(owned, []) == []
+}
+
+// The tie-break spans both namespaces deterministically: cascade rows before
+// managed ones, so a deck's ledger rows are the last to be pruned.
+pub fn excess_prunes_cascade_locations_before_managed_ones_test() {
+  let lea1 = key("lea", "1")
+  let owned = dict.from_list([#(lea1, 1)])
+  let placed = [
+    PlacedRow(key: lea1, location: Managed("d1"), quantity: 1),
+    PlacedRow(key: lea1, location: Cascade("Zz binder"), quantity: 1),
+  ]
+
+  assert placed_ledger_reconciliation.excess_to_prune(owned, placed)
+    == [PlacedRow(key: lea1, location: Cascade("Zz binder"), quantity: 1)]
 }

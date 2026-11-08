@@ -150,3 +150,92 @@ enum RelocatePlacedCardsResponse {
 method RelocatePlacedCards(
   RelocatePlacedCardsRequest
 ): RelocatePlacedCardsResponse = 310;
+
+// Managed locations (#122, ADR 0022): a named location whose contents are an
+// explicit membership list. Only decks so far. Duplicated in queries.skir for
+// the same reason as Finish/Language.
+enum ManagedLocationKind {
+  deck = 1;
+}
+
+// One kind of copy and how many — a membership change, always positive.
+struct ManagedCopy {
+  set_code: string = 0;
+  collector_number: string = 1;
+  finish: Finish = 2;
+  language: Language = 3;
+  quantity: int32 = 4;
+}
+
+// The id is client-generated (a UUID), the same as an inventory rule's. An
+// empty or duplicate name, or a reused id, is a 400.
+struct CreateManagedLocationRequest {
+  id: string = 0;
+  name: string = 1;
+  kind: ManagedLocationKind = 2;
+}
+
+struct ManagedLocationCreated {
+  unit: bool = 0;
+}
+
+method CreateManagedLocation(
+  CreateManagedLocationRequest
+): ManagedLocationCreated = 311;
+
+// Changes only the display name; placed-ledger rows key on the id.
+struct RenameManagedLocationRequest {
+  id: string = 0;
+  name: string = 1;
+}
+
+struct ManagedLocationRenamed {
+  unit: bool = 0;
+}
+
+method RenameManagedLocation(
+  RenameManagedLocationRequest
+): ManagedLocationRenamed = 312;
+
+// Also removes every placed-ledger row recorded at the location, so its
+// copies re-enter placement guidance at their cascade destination.
+struct DeleteManagedLocationRequest {
+  id: string = 0;
+}
+
+struct ManagedLocationDeleted {
+  unit: bool = 0;
+}
+
+method DeleteManagedLocation(
+  DeleteManagedLocationRequest
+): ManagedLocationDeleted = 313;
+
+// Claiming more copies of a key than are free (owned minus what managed
+// locations already claim) rejects the whole batch with a 400.
+struct AddToManagedLocationRequest {
+  id: string = 0;
+  copies: [ManagedCopy] = 1;
+}
+
+struct ManagedLocationMembersAdded {
+  unit: bool = 0;
+}
+
+method AddToManagedLocation(
+  AddToManagedLocationRequest
+): ManagedLocationMembersAdded = 314;
+
+// Removing more than the location holds rejects the whole batch with a 400.
+struct RemoveFromManagedLocationRequest {
+  id: string = 0;
+  copies: [ManagedCopy] = 1;
+}
+
+struct ManagedLocationMembersRemoved {
+  unit: bool = 0;
+}
+
+method RemoveFromManagedLocation(
+  RemoveFromManagedLocationRequest
+): ManagedLocationMembersRemoved = 315;

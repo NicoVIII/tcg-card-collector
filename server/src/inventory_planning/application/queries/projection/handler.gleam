@@ -7,14 +7,14 @@ import inventory_planning/domain/bulk_spec
 import inventory_planning/domain/card_attributes.{type PlannedCard}
 import inventory_planning/domain/card_predicate
 import inventory_planning/domain/copy_selector
-import inventory_planning/domain/location_ref
 import inventory_planning/domain/location_target
+import inventory_planning/domain/managed_location.{type ManagedLocation}
 import inventory_planning/domain/rule_cascade
 import inventory_planning/domain/set_index
 import inventory_planning/domain/sort_section
 import inventory_planning/domain/sort_spec
 import shared/domain/card_key
-import shared/domain/copy_key
+import shared/domain/copy_key.{type CopyKey}
 import shared/domain/finish
 import shared/domain/language
 import shared/domain/rarity
@@ -31,14 +31,19 @@ pub fn execute(
   // surface it rather than silently omit placements the user expects. A broken
   // rules read is likewise an error, not an empty cascade that bulks everything.
   use rules_model <- result.try(ports.rules())
-  use cascade <- result.try(build_cascade(rules_model))
+  use managed <- result.try(ports.managed_locations())
+  use cascade <- result.try(build_cascade(rules_model, managed))
   use snapshot_rows <- result.try(ports.snapshot_rows())
 
-  use attributes <- result.try(
-    ports.catalog_attributes(
+  // Member printings too, not just owned ones: a shortfall can name a copy
+  // the collection no longer holds at all, and still needs its name.
+  use attributes <- result.try(ports.catalog_attributes(
+    list.append(
       list.map(snapshot_rows, fn(row) { #(row.set_code, row.collector_number) }),
-    ),
-  )
+      member_printings(managed),
+    )
+    |> list.unique,
+  ))
 
   let planned = list.filter_map(snapshot_rows, plan_card(_, attributes))
   // A printing can now have several snapshot rows (one per kind of copy), so
@@ -61,7 +66,7 @@ pub fn execute(
 
   let locations =
     rule_cascade.project(cascade, planned, sets)
-    |> list.map(to_location)
+    |> list.map(to_location(_, attributes))
 
   Ok(projection_ports.Projection(
     locations: locations,
@@ -125,8 +130,19 @@ fn to_set_index(
 
 // --- Cascade assembly -----------------------------------------------------
 
+fn member_printings(managed: List(ManagedLocation)) -> List(#(String, String)) {
+  list.flat_map(managed, fn(location) {
+    location.members
+    |> dict.keys
+    |> list.map(fn(key) {
+      #(copy_key.set_code_string(key), copy_key.collector_number_string(key))
+    })
+  })
+}
+
 fn build_cascade(
   model: projection_ports.RulesModel,
+  managed: List(ManagedLocation),
 ) -> Result(rule_cascade.RuleCascade, String) {
   use rules <- result.try(list.try_map(model.rules, parse_rule))
   use sort_keys <- result.try(
@@ -134,6 +150,7 @@ fn build_cascade(
     |> result.replace_error("invalid bulk sort keys: " <> model.bulk.sort_keys),
   )
   Ok(rule_cascade.RuleCascade(
+    managed:,
     rules: rules,
     bulk: bulk_spec.BulkSpec(
       location_name: model.bulk.location_name,
@@ -258,15 +275,42 @@ fn reduce_is_token(layout: Option(String)) -> Option(Bool) {
 
 fn to_location(
   bucket: rule_cascade.LocationBucket,
+  attributes: Dict(#(String, String), projection_ports.CatalogAttributes),
 ) -> projection_ports.ProjectionLocation {
   projection_ports.ProjectionLocation(
-    location: location_ref.Cascade(bucket.location_name),
+    location: bucket.location,
     location_name: bucket.location_name,
     rule_id: option.unwrap(bucket.rule_id, ""),
     total_quantity: bucket.total_quantity,
     cards: list.map(bucket.cards, to_card),
     sections: list.map(bucket.sections, to_section),
+    shortfall: list.filter_map(bucket.shortfall, shortfall_card(_, attributes)),
   )
+}
+
+// A missing copy shown the way a present one would be: planned from a
+// zero-quantity snapshot row so the catalog join is the same one owned cards
+// get, then carrying the missing quantity instead.
+fn shortfall_card(
+  missing: #(CopyKey, Int),
+  attributes: Dict(#(String, String), projection_ports.CatalogAttributes),
+) -> Result(projection_ports.ProjectionCard, Nil) {
+  let #(key, quantity) = missing
+  let row =
+    projection_ports.SnapshotRow(
+      set_code: copy_key.set_code_string(key),
+      collector_number: copy_key.collector_number_string(key),
+      finish: copy_key.finish_string(key),
+      language: copy_key.language_string(key),
+      quantity: 0,
+    )
+  use card <- result.map(plan_card(row, attributes))
+  to_card(rule_cascade.Assignment(
+    location_name: "",
+    rule_id: None,
+    card:,
+    quantity:,
+  ))
 }
 
 fn to_section(

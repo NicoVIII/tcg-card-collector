@@ -1,14 +1,18 @@
+import gleam/dict
 import inventory_planning/application/queries/get_bulk_spec/ports as bulk_spec_ports
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
 import inventory_planning/domain/location_ref
+import inventory_planning/domain/managed_location
 import inventory_planning/driver/http/json_codec
+import shared/domain/copy_key
 
 pub fn encode_inventory_projection_nests_locations_and_cards_test() {
   let projection =
     projection_ports.Projection(unknown_count: 1, total_quantity: 2, locations: [
       projection_ports.ProjectionLocation(
+        shortfall: [],
         location: location_ref.Cascade("Bulk"),
         location_name: "Bulk",
         rule_id: "",
@@ -49,7 +53,7 @@ pub fn encode_inventory_projection_nests_locations_and_cards_test() {
     <> "\"language\":\"en\",\"quantity\":2,"
     <> "\"color_identity\":\"G\",\"rarity\":\"common\",\"card_type\":\"creature\"}],"
     <> "\"sections\":[{\"parts\":[{\"key\":\"color_identity\","
-    <> "\"first\":\"G\",\"last\":\"G\"}],\"card_count\":2}]}],"
+    <> "\"first\":\"G\",\"last\":\"G\"}],\"card_count\":2}],\"shortfall\":[]}],"
     <> "\"total_quantity\":2,\"unknown_count\":1}"
 }
 
@@ -180,4 +184,52 @@ pub fn decode_relocate_placed_cards_body_rejects_missing_field_test() {
       "{\"from_location_name\":\"Box 1\"}",
     )
     == Error("invalid request body")
+}
+
+pub fn encode_managed_locations_lists_members_in_key_order_test() {
+  let assert Ok(lea2) =
+    copy_key.new(
+      set_code: "lea",
+      collector_number: "2",
+      finish: "foil",
+      language: "en",
+    )
+  let assert Ok(lea1) =
+    copy_key.new(
+      set_code: "lea",
+      collector_number: "1",
+      finish: "nonfoil",
+      language: "en",
+    )
+
+  assert json_codec.encode_managed_locations([
+      managed_location.ManagedLocation(
+        id: "d1",
+        name: "Burn",
+        kind: managed_location.Deck,
+        members: dict.from_list([#(lea2, 1), #(lea1, 4)]),
+      ),
+    ])
+    == "{\"locations\":[{\"id\":\"d1\",\"name\":\"Burn\",\"kind\":\"deck\",\"members\":["
+    <> "{\"set_code\":\"lea\",\"collector_number\":\"1\",\"finish\":\"nonfoil\",\"language\":\"en\",\"quantity\":4},"
+    <> "{\"set_code\":\"lea\",\"collector_number\":\"2\",\"finish\":\"foil\",\"language\":\"en\",\"quantity\":1}]}]}"
+}
+
+pub fn decode_managed_members_body_reads_id_and_copies_test() {
+  let body =
+    "{\"id\":\"d1\",\"copies\":[{\"set_code\":\"lea\",\"collector_number\":\"1\","
+    <> "\"finish\":\"nonfoil\",\"language\":\"en\",\"quantity\":2}]}"
+
+  assert json_codec.decode_managed_members_body(body)
+    == Ok(
+      json_codec.ManagedMembersBody(id: "d1", copies: [
+        json_codec.ManagedCopyBody(
+          set_code: "lea",
+          collector_number: "1",
+          finish: "nonfoil",
+          language: "en",
+          quantity: 2,
+        ),
+      ]),
+    )
 }

@@ -118,6 +118,33 @@ fn handle_request(
       inventory_http.handle_unmark_cards_placed(req, deps.inventory_planning)
     Post, "/api/inventory/placements/relocate" ->
       inventory_http.handle_relocate_placed_cards(req, deps.inventory_planning)
+    Get, "/api/inventory/managed-locations" ->
+      inventory_http.handle_list_managed_locations(deps.inventory_planning)
+    Post, "/api/inventory/managed-locations" ->
+      inventory_http.handle_create_managed_location(
+        req,
+        deps.inventory_planning,
+      )
+    Put, "/api/inventory/managed-locations" ->
+      inventory_http.handle_rename_managed_location(
+        req,
+        deps.inventory_planning,
+      )
+    Delete, "/api/inventory/managed-locations" ->
+      inventory_http.handle_delete_managed_location(
+        req,
+        deps.inventory_planning,
+      )
+    Post, "/api/inventory/managed-locations/members" ->
+      inventory_http.handle_add_to_managed_location(
+        req,
+        deps.inventory_planning,
+      )
+    Delete, "/api/inventory/managed-locations/members" ->
+      inventory_http.handle_remove_from_managed_location(
+        req,
+        deps.inventory_planning,
+      )
     Get, "/api/insights/completion" ->
       insights_http.handle_get_set_completion(deps.insights)
     Put, "/api/insights/targets" ->

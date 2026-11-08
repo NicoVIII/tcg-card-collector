@@ -1,8 +1,16 @@
+import gleam/dict
 import gleam/list
+import inventory_planning/application/commands/add_to_managed_location/handler as add_to_managed_location_handler
+import inventory_planning/application/commands/add_to_managed_location/ports as add_to_managed_location_ports
+import inventory_planning/application/commands/create_managed_location/ports as create_managed_location_ports
+import inventory_planning/application/commands/delete_managed_location/ports as delete_managed_location_ports
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
 import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
 import inventory_planning/application/commands/relocate_placed_cards/ports as relocate_placed_cards_ports
+import inventory_planning/application/commands/remove_from_managed_location/handler as remove_from_managed_location_handler
+import inventory_planning/application/commands/remove_from_managed_location/ports as remove_from_managed_location_ports
+import inventory_planning/application/commands/rename_managed_location/ports as rename_managed_location_ports
 import inventory_planning/application/commands/reorder_rules/ports as reorder_rules_ports
 import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
@@ -13,7 +21,9 @@ import inventory_planning/application/queries/list_rules/ports as list_rules_por
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
 import inventory_planning/domain/location_ref
+import inventory_planning/domain/managed_location
 import inventory_planning/driver/error_presentation
+import shared/domain/copy_key
 import shared/driver/skir/helpers
 import shared/driver/skir/skirout/inventory_planning/commands as inventory_planning_commands
 import shared/driver/skir/skirout/inventory_planning/queries as inventory_planning_queries
@@ -38,6 +48,7 @@ fn map_projection_location(
     location.location_name,
     location.rule_id,
     list.map(location.sections, map_projection_section),
+    list.map(location.shortfall, map_projection_card),
     location.total_quantity,
   )
 }
@@ -366,4 +377,145 @@ pub fn map_bulk_spec(
   spec: get_bulk_spec_ports.BulkSpecReadModel,
 ) -> inventory_planning_queries.BulkSpec {
   inventory_planning_queries.bulk_spec_new(spec.location_name, spec.sort_keys)
+}
+
+pub fn map_create_managed_location_result(
+  result: Result(Nil, create_managed_location_ports.CreateManagedLocationError),
+) -> Result(
+  inventory_planning_commands.ManagedLocationCreated,
+  service.ServiceError,
+) {
+  helpers.map_command(
+    result,
+    inventory_planning_commands.managed_location_created_new(True),
+    error_presentation.create_managed_location,
+  )
+}
+
+pub fn map_rename_managed_location_result(
+  result: Result(Nil, rename_managed_location_ports.RenameManagedLocationError),
+) -> Result(
+  inventory_planning_commands.ManagedLocationRenamed,
+  service.ServiceError,
+) {
+  helpers.map_command(
+    result,
+    inventory_planning_commands.managed_location_renamed_new(True),
+    error_presentation.rename_managed_location,
+  )
+}
+
+pub fn map_delete_managed_location_result(
+  result: Result(Nil, delete_managed_location_ports.DeleteManagedLocationError),
+) -> Result(
+  inventory_planning_commands.ManagedLocationDeleted,
+  service.ServiceError,
+) {
+  helpers.map_command(
+    result,
+    inventory_planning_commands.managed_location_deleted_new(True),
+    error_presentation.delete_managed_location,
+  )
+}
+
+pub fn map_add_to_managed_location_result(
+  result: Result(Nil, add_to_managed_location_ports.AddToManagedLocationError),
+) -> Result(
+  inventory_planning_commands.ManagedLocationMembersAdded,
+  service.ServiceError,
+) {
+  helpers.map_command(
+    result,
+    inventory_planning_commands.managed_location_members_added_new(True),
+    error_presentation.add_to_managed_location,
+  )
+}
+
+pub fn map_remove_from_managed_location_result(
+  result: Result(
+    Nil,
+    remove_from_managed_location_ports.RemoveFromManagedLocationError,
+  ),
+) -> Result(
+  inventory_planning_commands.ManagedLocationMembersRemoved,
+  service.ServiceError,
+) {
+  helpers.map_command(
+    result,
+    inventory_planning_commands.managed_location_members_removed_new(True),
+    error_presentation.remove_from_managed_location,
+  )
+}
+
+// An unrecognized kind maps to an empty string, which the handler's
+// kind parse rejects.
+pub fn command_managed_location_kind_to_string(
+  kind: inventory_planning_commands.ManagedLocationKind,
+) -> String {
+  case kind {
+    inventory_planning_commands.ManagedLocationKindDeck -> "deck"
+    inventory_planning_commands.ManagedLocationKindUnknown(_) -> ""
+  }
+}
+
+pub fn to_add_raw_copy(
+  copy: inventory_planning_commands.ManagedCopy,
+) -> add_to_managed_location_handler.RawCopy {
+  add_to_managed_location_handler.RawCopy(
+    set_code: copy.set_code,
+    collector_number: copy.collector_number,
+    finish: command_finish_to_string(copy.finish),
+    language: command_language_to_string(copy.language),
+    quantity: copy.quantity,
+  )
+}
+
+pub fn to_remove_raw_copy(
+  copy: inventory_planning_commands.ManagedCopy,
+) -> remove_from_managed_location_handler.RawCopy {
+  remove_from_managed_location_handler.RawCopy(
+    set_code: copy.set_code,
+    collector_number: copy.collector_number,
+    finish: command_finish_to_string(copy.finish),
+    language: command_language_to_string(copy.language),
+    quantity: copy.quantity,
+  )
+}
+
+pub fn map_managed_location_list(
+  locations: List(managed_location.ManagedLocation),
+) -> inventory_planning_queries.ManagedLocationList {
+  inventory_planning_queries.managed_location_list_new(list.map(
+    locations,
+    map_managed_location,
+  ))
+}
+
+fn map_managed_location(
+  location: managed_location.ManagedLocation,
+) -> inventory_planning_queries.ManagedLocation {
+  // Irrefutable while Deck is the only kind (see managed_location.kind_to_string).
+  let managed_location.Deck = location.kind
+  inventory_planning_queries.managed_location_new(
+    id: location.id,
+    kind: inventory_planning_queries.ManagedLocationKindDeck,
+    members: location.members
+      |> dict.to_list
+      |> managed_location.sorted_by_key
+      |> list.map(map_managed_location_member),
+    name: location.name,
+  )
+}
+
+fn map_managed_location_member(
+  member: #(copy_key.CopyKey, Int),
+) -> inventory_planning_queries.ManagedLocationMember {
+  let #(key, quantity) = member
+  inventory_planning_queries.managed_location_member_new(
+    collector_number: copy_key.collector_number_string(key),
+    finish: query_finish_from_string(copy_key.finish_string(key)),
+    language: query_language_from_string(copy_key.language_string(key)),
+    quantity:,
+    set_code: copy_key.set_code_string(key),
+  )
 }

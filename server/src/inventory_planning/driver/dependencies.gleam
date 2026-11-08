@@ -1,11 +1,17 @@
+import inventory_planning/application/commands/add_to_managed_location/ports as add_to_managed_location_ports
+import inventory_planning/application/commands/create_managed_location/ports as create_managed_location_ports
+import inventory_planning/application/commands/delete_managed_location/ports as delete_managed_location_ports
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
 import inventory_planning/application/commands/relocate_placed_cards/ports as relocate_placed_cards_ports
+import inventory_planning/application/commands/remove_from_managed_location/ports as remove_from_managed_location_ports
+import inventory_planning/application/commands/rename_managed_location/ports as rename_managed_location_ports
 import inventory_planning/application/commands/reorder_rules/ports as reorder_rules_ports
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
 import inventory_planning/application/queries/get_bulk_spec/ports as get_bulk_spec_ports
+import inventory_planning/application/queries/list_managed_locations/ports as list_managed_locations_ports
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
@@ -23,5 +29,11 @@ pub type Dependencies {
     mark_cards_placed_port: mark_cards_placed_ports.MarkCardsPlacedPort,
     unmark_cards_placed_port: unmark_cards_placed_ports.UnmarkCardsPlacedPort,
     relocate_placed_cards_port: relocate_placed_cards_ports.RelocatePlacedCardsPort,
+    list_managed_locations_port: list_managed_locations_ports.ListManagedLocationsPort,
+    create_managed_location_ports: create_managed_location_ports.CreateManagedLocationPorts,
+    rename_managed_location_ports: rename_managed_location_ports.RenameManagedLocationPorts,
+    delete_managed_location_ports: delete_managed_location_ports.DeleteManagedLocationPorts,
+    add_to_managed_location_ports: add_to_managed_location_ports.AddToManagedLocationPorts,
+    remove_from_managed_location_ports: remove_from_managed_location_ports.RemoveFromManagedLocationPorts,
   )
 }

@@ -10,12 +10,15 @@ import inventory_planning/domain/bulk_spec.{type BulkSpec}
 import inventory_planning/domain/card_attributes.{type PlannedCard}
 import inventory_planning/domain/card_predicate.{type Predicate}
 import inventory_planning/domain/copy_selector.{type CopySelector}
+import inventory_planning/domain/location_ref.{type LocationRef}
 import inventory_planning/domain/location_target.{type LocationTarget}
+import inventory_planning/domain/managed_location.{type ManagedLocation}
 import inventory_planning/domain/set_index.{type SetIndex}
 import inventory_planning/domain/sort_section.{type Section}
 import inventory_planning/domain/sort_spec
 import shared/domain/card_key
 import shared/domain/collector_number
+import shared/domain/copy_key.{type CopyKey}
 import shared/domain/finish.{type Finish}
 import shared/domain/release_date.{type ReleaseDate}
 import shared/domain/set_code
@@ -33,12 +36,18 @@ pub type CascadeRule {
   )
 }
 
+/// Managed locations take their copies before any rule runs (ADR 0022), then
+/// the rules in position order, then bulk.
 pub type RuleCascade {
-  RuleCascade(rules: List(CascadeRule), bulk: BulkSpec)
+  RuleCascade(
+    managed: List(ManagedLocation),
+    rules: List(CascadeRule),
+    bulk: BulkSpec,
+  )
 }
 
 // A single placement decision: `quantity` copies of `card` go to `location_name`
-// on account of `rule_id` (None for the bulk remainder).
+// on account of `rule_id` (None for a managed location or the bulk remainder).
 pub type Assignment {
   Assignment(
     location_name: String,
@@ -50,6 +59,7 @@ pub type Assignment {
 
 pub type LocationBucket {
   LocationBucket(
+    location: LocationRef,
     location_name: String,
     rule_id: Option(String),
     total_quantity: Int,
@@ -59,6 +69,10 @@ pub type LocationBucket {
     // the bulk remainder. Derived from `cards`, so it always covers exactly
     // this bucket's rows.
     sections: List(Section),
+    // Copies a managed location claims but the pool couldn't supply — the
+    // collection owns fewer than its membership says (ADR 0022). Always
+    // empty for a cascade location.
+    shortfall: List(#(CopyKey, Int)),
   )
 }
 
@@ -69,8 +83,9 @@ fn to_rows(assignments: List(Assignment)) -> List(#(PlannedCard, Int)) {
   list.map(assignments, fn(a) { #(a.card, a.quantity) })
 }
 
-// Runs the waterfall: every remaining copy of every card is placed exactly once,
-// into the earliest rule that claims it, else into bulk. O(rules x cards).
+// Runs the waterfall: every copy of every card is placed exactly once — into
+// the managed location that holds it, else the earliest rule that claims it,
+// else bulk. O((managed + rules) x cards).
 pub fn project(
   cascade: RuleCascade,
   cards: List(PlannedCard),
@@ -88,11 +103,15 @@ pub fn project(
       })
     })
 
-  // 3. Apply each rule in position order, threading the remaining pool.
+  // 3. Managed locations take their members first.
+  let #(remaining_after_managed, managed_buckets) =
+    consume_managed(cascade.managed, ordered, remaining0)
+
+  // 4. Apply each rule in position order, threading the remaining pool.
   let sorted_rules =
     list.sort(cascade.rules, fn(a, b) { int.compare(a.position, b.position) })
   let #(remaining_final, rule_assignments_rev) =
-    list.fold(sorted_rules, #(remaining0, []), fn(state, rule) {
+    list.fold(sorted_rules, #(remaining_after_managed, []), fn(state, rule) {
       let #(remaining, acc) = state
       let #(remaining_next, assignments) =
         apply_rule(rule, ordered, remaining, sets)
@@ -100,10 +119,11 @@ pub fn project(
     })
   let rule_assignments = list.reverse(rule_assignments_rev)
 
-  // 4. Remainder -> bulk, sorted per the bulk spec.
+  // 5. Remainder -> bulk, sorted per the bulk spec.
   let bulk_assignments = build_bulk(cascade.bulk, ordered, remaining_final)
 
-  // 5. Buckets: per-rule (fanned out by rendered name), then bulk last.
+  // 6. Buckets: managed first, per-rule (fanned out by rendered name), then
+  // bulk last.
   let rule_buckets =
     list.flat_map(rule_assignments, fn(pair) {
       let #(rule, assignments) = pair
@@ -113,6 +133,7 @@ pub fn project(
     [] -> []
     _ -> [
       LocationBucket(
+        location: location_ref.Cascade(cascade.bulk.location_name),
         location_name: cascade.bulk.location_name,
         rule_id: None,
         total_quantity: total_quantity(bulk_assignments),
@@ -121,10 +142,85 @@ pub fn project(
           cascade.bulk.sort_keys,
           to_rows(bulk_assignments),
         ),
+        shortfall: [],
       ),
     ]
   }
-  list.append(rule_buckets, bulk_buckets)
+  list.flatten([managed_buckets, rule_buckets, bulk_buckets])
+}
+
+// Each managed location, in precedence order, takes up to its membership of
+// every key from the pool; what it can't get is its shortfall. Every managed
+// location gets a bucket, empty or not — a deck box exists even when empty,
+// and the placement page needs its name to show copies still ledgered there.
+fn consume_managed(
+  locations: List(ManagedLocation),
+  ordered: List(PlannedCard),
+  remaining: Dict(String, Int),
+) -> #(Dict(String, Int), List(LocationBucket)) {
+  let #(remaining_next, buckets_rev) =
+    locations
+    |> list.sort(managed_location.compare_precedence)
+    |> list.fold(#(remaining, []), fn(state, location) {
+      let #(remaining, acc) = state
+      let #(remaining_next, bucket) =
+        managed_bucket(location, ordered, remaining)
+      #(remaining_next, [bucket, ..acc])
+    })
+  #(remaining_next, list.reverse(buckets_rev))
+}
+
+// Walks the pool in claim order, so the deck's cards list in canonical order
+// and a duplicated input key is drained once, the same as a rule.
+fn managed_bucket(
+  location: ManagedLocation,
+  ordered: List(PlannedCard),
+  remaining: Dict(String, Int),
+) -> #(Dict(String, Int), LocationBucket) {
+  let #(remaining_next, wanted_left, assignments_rev) =
+    list.fold(ordered, #(remaining, location.members, []), fn(state, card) {
+      let #(remaining, wanted, acc) = state
+      let key = planned_copy_key(card)
+      let pool_key = card_attributes.copy_key_string(card)
+      let want = dict.get(wanted, key) |> result.unwrap(0)
+      let available = dict.get(remaining, pool_key) |> result.unwrap(0)
+      let take = int.min(want, available)
+      case take > 0 {
+        False -> state
+        True -> #(
+          dict.insert(remaining, pool_key, available - take),
+          dict.insert(wanted, key, want - take),
+          [Assignment(location.name, None, card, take), ..acc],
+        )
+      }
+    })
+  let cards = list.reverse(assignments_rev)
+  let bucket =
+    LocationBucket(
+      location: location_ref.Managed(location.id),
+      location_name: location.name,
+      rule_id: None,
+      total_quantity: total_quantity(cards),
+      cards:,
+      sections: sort_section.sections([], to_rows(cards)),
+      shortfall: shortfall_of(wanted_left),
+    )
+  #(remaining_next, bucket)
+}
+
+fn shortfall_of(wanted_left: Dict(CopyKey, Int)) -> List(#(CopyKey, Int)) {
+  wanted_left
+  |> dict.to_list
+  |> list.filter(fn(pair) { pair.1 > 0 })
+  |> managed_location.sorted_by_key
+}
+
+fn planned_copy_key(card: PlannedCard) -> CopyKey {
+  copy_key.from_parts(
+    card_key: card.key,
+    finish: card.finish,
+    language: card.language,
+  )
 }
 
 fn apply_rule(
@@ -409,11 +505,13 @@ fn buckets_for_rule(
   |> list.map(fn(bucket) {
     let cards = list.sort(bucket.assignments, compare_cards)
     LocationBucket(
+      location: location_ref.Cascade(bucket.name),
       location_name: bucket.name,
       rule_id: Some(rule.id),
       total_quantity: total_quantity(cards),
       cards:,
       sections: sort_section.sections(rule.sort_keys, to_rows(cards)),
+      shortfall: [],
     )
   })
 }

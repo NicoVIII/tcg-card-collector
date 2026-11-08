@@ -1,3 +1,4 @@
+import gleam/dict
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
 import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
@@ -12,7 +13,9 @@ import inventory_planning/application/queries/list_rules/ports as list_rules_por
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
 import inventory_planning/domain/location_ref
+import inventory_planning/domain/managed_location
 import inventory_planning/driver/skir/codec as inventory_planning_skir_codec
+import shared/domain/copy_key
 import shared/driver/skir/skirout/inventory_planning/commands as inventory_planning_commands
 import shared/driver/skir/skirout/inventory_planning/queries as inventory_planning_queries
 import skir_client/service
@@ -21,6 +24,7 @@ pub fn map_projection_nests_locations_and_cards_test() {
   let projection =
     projection_ports.Projection(unknown_count: 2, total_quantity: 1, locations: [
       projection_ports.ProjectionLocation(
+        shortfall: [],
         location: location_ref.Cascade("Rare binder R"),
         location_name: "Rare binder R",
         rule_id: "r-rare",
@@ -82,6 +86,7 @@ pub fn map_projection_nests_locations_and_cards_test() {
               ),
             ]),
           ],
+          [],
           1,
         ),
       ],
@@ -109,6 +114,7 @@ pub fn map_projection_card_falls_back_to_unknown_for_unrecognized_strings_test()
   let projection =
     projection_ports.Projection(unknown_count: 0, total_quantity: 1, locations: [
       projection_ports.ProjectionLocation(
+        shortfall: [],
         location: location_ref.Cascade("Bulk"),
         location_name: "Bulk",
         rule_id: "",
@@ -132,6 +138,7 @@ pub fn map_projection_section_falls_back_to_unknown_for_unrecognized_key_test() 
   let projection =
     projection_ports.Projection(unknown_count: 0, total_quantity: 0, locations: [
       projection_ports.ProjectionLocation(
+        shortfall: [],
         location: location_ref.Cascade("Bulk"),
         location_name: "Bulk",
         rule_id: "",
@@ -460,4 +467,47 @@ pub fn map_bulk_spec_keeps_location_and_sort_keys_apart_test() {
 
   assert mapped.location_name == "Bulk box"
   assert mapped.sort_keys == "set_code"
+}
+
+pub fn map_managed_location_list_carries_kind_and_members_test() {
+  let assert Ok(lea1) =
+    copy_key.new(
+      set_code: "lea",
+      collector_number: "1",
+      finish: "foil",
+      language: "ja",
+    )
+
+  assert inventory_planning_skir_codec.map_managed_location_list([
+      managed_location.ManagedLocation(
+        id: "d1",
+        name: "Burn",
+        kind: managed_location.Deck,
+        members: dict.from_list([#(lea1, 2)]),
+      ),
+    ])
+    == inventory_planning_queries.managed_location_list_new([
+      inventory_planning_queries.managed_location_new(
+        id: "d1",
+        kind: inventory_planning_queries.ManagedLocationKindDeck,
+        members: [
+          inventory_planning_queries.managed_location_member_new(
+            collector_number: "1",
+            finish: inventory_planning_queries.FinishFoil,
+            language: inventory_planning_queries.LanguageJa,
+            quantity: 2,
+            set_code: "lea",
+          ),
+        ],
+        name: "Burn",
+      ),
+    ])
+}
+
+// An unrecognized kind maps to "", which the create handler's parse rejects.
+pub fn an_unknown_managed_location_kind_maps_to_an_empty_string_test() {
+  assert inventory_planning_skir_codec.command_managed_location_kind_to_string(
+      inventory_planning_commands.managed_location_kind_unknown,
+    )
+    == ""
 }

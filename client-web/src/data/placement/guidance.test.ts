@@ -43,6 +43,7 @@ function location(
     total_quantity,
     cards,
     sections: [{ parts: [], card_count: total_quantity }],
+    shortfall: [],
   };
 }
 
@@ -230,6 +231,7 @@ describe("buildGuidance", () => {
           { parts: [{ key: "color_identity", first: "R", last: "R" }], card_count: 2 },
           { parts: [{ key: "color_identity", first: "G", last: "G" }], card_count: 1 },
         ],
+        shortfall: [],
       },
     ]);
     const ledger = [placed("146", "Bulk", 1)];

@@ -1,12 +1,18 @@
 import gleam/list
+import inventory_planning/application/commands/add_to_managed_location/handler as add_to_managed_location_handler
+import inventory_planning/application/commands/create_managed_location/handler as create_managed_location_handler
+import inventory_planning/application/commands/delete_managed_location/handler as delete_managed_location_handler
 import inventory_planning/application/commands/delete_rule/handler as delete_rule_handler
 import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
 import inventory_planning/application/commands/relocate_placed_cards/handler as relocate_placed_cards_handler
+import inventory_planning/application/commands/remove_from_managed_location/handler as remove_from_managed_location_handler
+import inventory_planning/application/commands/rename_managed_location/handler as rename_managed_location_handler
 import inventory_planning/application/commands/reorder_rules/handler as reorder_rules_handler
 import inventory_planning/application/commands/unmark_cards_placed/handler as unmark_cards_placed_handler
 import inventory_planning/application/commands/update_bulk_spec/handler as update_bulk_spec_handler
 import inventory_planning/application/commands/upsert_rule/handler as upsert_rule_handler
 import inventory_planning/application/queries/get_bulk_spec/handler as get_bulk_spec_handler
+import inventory_planning/application/queries/list_managed_locations/handler as list_managed_locations_handler
 import inventory_planning/application/queries/list_rules/handler as list_rules_handler
 import inventory_planning/application/queries/placed_ledger/handler as placed_ledger_handler
 import inventory_planning/application/queries/projection/handler as projection_handler
@@ -225,6 +231,131 @@ fn handle_relocate_placed_cards(
   }
 }
 
+fn handle_list_managed_locations(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_queries.ListManagedLocationsRequest,
+  inventory_planning_queries.ManagedLocationList,
+  context,
+) {
+  fn(_: inventory_planning_queries.ListManagedLocationsRequest, _, ctx) {
+    list_managed_locations_handler.execute(
+      list_managed_locations_handler.ListManagedLocationsQuery,
+      get_dependencies(ctx).list_managed_locations_port,
+    )
+    |> helpers.map_query(
+      inventory_planning_skir_codec.map_managed_location_list,
+    )
+    |> helpers.respond
+  }
+}
+
+fn handle_create_managed_location(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_commands.CreateManagedLocationRequest,
+  inventory_planning_commands.ManagedLocationCreated,
+  context,
+) {
+  fn(req: inventory_planning_commands.CreateManagedLocationRequest, _, ctx) {
+    create_managed_location_handler.execute(
+      create_managed_location_handler.CreateManagedLocationCommand(
+        id: req.id,
+        name: req.name,
+        kind: inventory_planning_skir_codec.command_managed_location_kind_to_string(
+          req.kind,
+        ),
+      ),
+      get_dependencies(ctx).create_managed_location_ports,
+    )
+    |> inventory_planning_skir_codec.map_create_managed_location_result
+    |> helpers.respond
+  }
+}
+
+fn handle_rename_managed_location(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_commands.RenameManagedLocationRequest,
+  inventory_planning_commands.ManagedLocationRenamed,
+  context,
+) {
+  fn(req: inventory_planning_commands.RenameManagedLocationRequest, _, ctx) {
+    rename_managed_location_handler.execute(
+      rename_managed_location_handler.RenameManagedLocationCommand(
+        id: req.id,
+        name: req.name,
+      ),
+      get_dependencies(ctx).rename_managed_location_ports,
+    )
+    |> inventory_planning_skir_codec.map_rename_managed_location_result
+    |> helpers.respond
+  }
+}
+
+fn handle_delete_managed_location(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_commands.DeleteManagedLocationRequest,
+  inventory_planning_commands.ManagedLocationDeleted,
+  context,
+) {
+  fn(req: inventory_planning_commands.DeleteManagedLocationRequest, _, ctx) {
+    delete_managed_location_handler.execute(
+      delete_managed_location_handler.DeleteManagedLocationCommand(id: req.id),
+      get_dependencies(ctx).delete_managed_location_ports,
+    )
+    |> inventory_planning_skir_codec.map_delete_managed_location_result
+    |> helpers.respond
+  }
+}
+
+fn handle_add_to_managed_location(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_commands.AddToManagedLocationRequest,
+  inventory_planning_commands.ManagedLocationMembersAdded,
+  context,
+) {
+  fn(req: inventory_planning_commands.AddToManagedLocationRequest, _, ctx) {
+    add_to_managed_location_handler.execute(
+      add_to_managed_location_handler.AddToManagedLocationCommand(
+        id: req.id,
+        copies: list.map(
+          req.copies,
+          inventory_planning_skir_codec.to_add_raw_copy,
+        ),
+      ),
+      get_dependencies(ctx).add_to_managed_location_ports,
+    )
+    |> inventory_planning_skir_codec.map_add_to_managed_location_result
+    |> helpers.respond
+  }
+}
+
+fn handle_remove_from_managed_location(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_commands.RemoveFromManagedLocationRequest,
+  inventory_planning_commands.ManagedLocationMembersRemoved,
+  context,
+) {
+  fn(req: inventory_planning_commands.RemoveFromManagedLocationRequest, _, ctx) {
+    remove_from_managed_location_handler.execute(
+      remove_from_managed_location_handler.RemoveFromManagedLocationCommand(
+        id: req.id,
+        copies: list.map(
+          req.copies,
+          inventory_planning_skir_codec.to_remove_raw_copy,
+        ),
+      ),
+      get_dependencies(ctx).remove_from_managed_location_ports,
+    )
+    |> inventory_planning_skir_codec.map_remove_from_managed_location_result
+    |> helpers.respond
+  }
+}
+
 pub fn register(
   svc: service.Service(Nil, context, Nil),
   get_dependencies: fn(context) -> Dependencies,
@@ -273,5 +404,29 @@ pub fn register(
   |> service.add_method(
     inventory_planning_commands.relocate_placed_cards_method(),
     handle_relocate_placed_cards(get_dependencies),
+  )
+  |> service.add_method(
+    inventory_planning_queries.list_managed_locations_method(),
+    handle_list_managed_locations(get_dependencies),
+  )
+  |> service.add_method(
+    inventory_planning_commands.create_managed_location_method(),
+    handle_create_managed_location(get_dependencies),
+  )
+  |> service.add_method(
+    inventory_planning_commands.rename_managed_location_method(),
+    handle_rename_managed_location(get_dependencies),
+  )
+  |> service.add_method(
+    inventory_planning_commands.delete_managed_location_method(),
+    handle_delete_managed_location(get_dependencies),
+  )
+  |> service.add_method(
+    inventory_planning_commands.add_to_managed_location_method(),
+    handle_add_to_managed_location(get_dependencies),
+  )
+  |> service.add_method(
+    inventory_planning_commands.remove_from_managed_location_method(),
+    handle_remove_from_managed_location(get_dependencies),
   )
 }

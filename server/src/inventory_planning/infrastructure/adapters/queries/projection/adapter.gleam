@@ -6,6 +6,7 @@ import gleam/result
 import inventory_planning/application/queries/projection/ports
 import inventory_planning/infrastructure/daos/bulk_spec_dao
 import inventory_planning/infrastructure/daos/inventory_rules_dao
+import inventory_planning/infrastructure/daos/managed_locations_dao
 import shared/domain/copy_key
 
 pub fn new() -> ports.InventoryProjectionPorts {
@@ -14,6 +15,7 @@ pub fn new() -> ports.InventoryProjectionPorts {
     catalog_attributes: catalog_attributes_adapter(),
     rules: rules_adapter(),
     set_metadata: set_metadata_adapter(),
+    managed_locations: managed_locations_dao.load_all,
   )
 }
 

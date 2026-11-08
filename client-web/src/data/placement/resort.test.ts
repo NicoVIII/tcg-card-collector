@@ -45,6 +45,7 @@ function location(
     total_quantity,
     cards,
     sections: [{ parts: [], card_count: total_quantity }],
+    shortfall: [],
   };
 }
 

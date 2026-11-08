@@ -1,3 +1,4 @@
+import gleam/dict
 import gleam/dynamic/decode
 import gleam/json
 import gleam/result
@@ -6,6 +7,8 @@ import inventory_planning/application/queries/list_rules/ports as list_rules_por
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
 import inventory_planning/domain/location_ref.{type LocationRef}
+import inventory_planning/domain/managed_location.{type ManagedLocation}
+import shared/domain/copy_key
 
 pub fn encode_inventory_rules(
   rules: List(list_rules_ports.InventoryRuleReadModel),
@@ -61,6 +64,7 @@ fn encode_location(location: projection_ports.ProjectionLocation) -> json.Json {
     #("total_quantity", json.int(location.total_quantity)),
     #("cards", json.array(location.cards, of: encode_card)),
     #("sections", json.array(location.sections, of: encode_section)),
+    #("shortfall", json.array(location.shortfall, of: encode_card)),
   ])
 }
 
@@ -268,6 +272,132 @@ pub fn decode_relocate_placed_cards_body(
       from_location_name:,
       to_location_name:,
     ))
+  }
+
+  json.parse(from: json_string, using: decoder)
+  |> result.map_error(fn(_) { "invalid request body" })
+}
+
+pub fn encode_managed_locations(locations: List(ManagedLocation)) -> String {
+  json.object([
+    #("locations", json.array(locations, of: encode_managed_location)),
+  ])
+  |> json.to_string
+}
+
+fn encode_managed_location(location: ManagedLocation) -> json.Json {
+  json.object([
+    #("id", json.string(location.id)),
+    #("name", json.string(location.name)),
+    #("kind", json.string(managed_location.kind_to_string(location.kind))),
+    #(
+      "members",
+      location.members
+        |> dict.to_list
+        |> managed_location.sorted_by_key
+        |> json.array(of: encode_member),
+    ),
+  ])
+}
+
+fn encode_member(member: #(copy_key.CopyKey, Int)) -> json.Json {
+  let #(key, quantity) = member
+  json.object([
+    #("set_code", json.string(copy_key.set_code_string(key))),
+    #("collector_number", json.string(copy_key.collector_number_string(key))),
+    #("finish", json.string(copy_key.finish_string(key))),
+    #("language", json.string(copy_key.language_string(key))),
+    #("quantity", json.int(quantity)),
+  ])
+}
+
+pub type CreateManagedLocationBody {
+  CreateManagedLocationBody(id: String, name: String, kind: String)
+}
+
+pub fn decode_create_managed_location_body(
+  json_string: String,
+) -> Result(CreateManagedLocationBody, String) {
+  let decoder = {
+    use id <- decode.field("id", decode.string)
+    use name <- decode.field("name", decode.string)
+    use kind <- decode.field("kind", decode.string)
+    decode.success(CreateManagedLocationBody(id:, name:, kind:))
+  }
+
+  json.parse(from: json_string, using: decoder)
+  |> result.map_error(fn(_) { "invalid request body" })
+}
+
+pub type RenameManagedLocationBody {
+  RenameManagedLocationBody(id: String, name: String)
+}
+
+pub fn decode_rename_managed_location_body(
+  json_string: String,
+) -> Result(RenameManagedLocationBody, String) {
+  let decoder = {
+    use id <- decode.field("id", decode.string)
+    use name <- decode.field("name", decode.string)
+    decode.success(RenameManagedLocationBody(id:, name:))
+  }
+
+  json.parse(from: json_string, using: decoder)
+  |> result.map_error(fn(_) { "invalid request body" })
+}
+
+pub type DeleteManagedLocationBody {
+  DeleteManagedLocationBody(id: String)
+}
+
+pub fn decode_delete_managed_location_body(
+  json_string: String,
+) -> Result(DeleteManagedLocationBody, String) {
+  let decoder = {
+    use id <- decode.field("id", decode.string)
+    decode.success(DeleteManagedLocationBody(id:))
+  }
+
+  json.parse(from: json_string, using: decoder)
+  |> result.map_error(fn(_) { "invalid request body" })
+}
+
+pub type ManagedCopyBody {
+  ManagedCopyBody(
+    set_code: String,
+    collector_number: String,
+    finish: String,
+    language: String,
+    quantity: Int,
+  )
+}
+
+pub type ManagedMembersBody {
+  ManagedMembersBody(id: String, copies: List(ManagedCopyBody))
+}
+
+/// Shared by add and remove: both carry a location id and a list of copies.
+pub fn decode_managed_members_body(
+  json_string: String,
+) -> Result(ManagedMembersBody, String) {
+  let copy_decoder = {
+    use set_code <- decode.field("set_code", decode.string)
+    use collector_number <- decode.field("collector_number", decode.string)
+    use finish <- decode.field("finish", decode.string)
+    use language <- decode.field("language", decode.string)
+    use quantity <- decode.field("quantity", decode.int)
+    decode.success(ManagedCopyBody(
+      set_code:,
+      collector_number:,
+      finish:,
+      language:,
+      quantity:,
+    ))
+  }
+  let decoder = {
+    use id <- decode.field("id", decode.string)
+    use copies <- decode.field("copies", decode.list(copy_decoder))
+    decode.success(ManagedMembersBody(id:, copies:))
   }
 
   json.parse(from: json_string, using: decoder)

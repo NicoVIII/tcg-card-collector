@@ -1,3 +1,4 @@
+import inventory_planning/application/commands/add_to_managed_location/ports as add_to_managed_location_ports
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
 import inventory_planning/application/commands/relocate_placed_cards/ports as relocate_placed_cards_ports
@@ -5,7 +6,9 @@ import inventory_planning/application/commands/reorder_rules/ports as reorder_ru
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
+import inventory_planning/domain/managed_location
 import inventory_planning/driver/error_presentation
+import shared/domain/copy_key
 import shared/driver/presented_error.{BadRequest, Internal, PresentedError}
 
 pub fn upsert_rule_validation_errors_are_bad_requests_test() {
@@ -74,4 +77,28 @@ pub fn other_validation_errors_are_bad_requests_test() {
       relocate_placed_cards_ports.InvalidRelocation,
     )
     == PresentedError(BadRequest, "invalid relocation")
+}
+
+// The client should have prevented an over-claim, so it's a 400 — but one
+// that names the copy and the numbers, so a stale page can still act on it.
+pub fn an_overclaim_names_the_copy_and_what_is_free_test() {
+  let assert Ok(key) =
+    copy_key.new(
+      set_code: "lea",
+      collector_number: "161",
+      finish: "foil",
+      language: "de",
+    )
+
+  assert error_presentation.add_to_managed_location(
+      add_to_managed_location_ports.NotEnoughOwned(managed_location.Overclaim(
+        key:,
+        requested: 3,
+        available: 1,
+      )),
+    )
+    == PresentedError(
+      BadRequest,
+      "only 1 unclaimed cop(ies) of lea 161 (foil, de) left to add, 3 requested",
+    )
 }

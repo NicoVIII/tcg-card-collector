@@ -71,8 +71,8 @@ Boundary notes:
 ## Inventory Planning
 
 Purpose:
-- Represent the physical-sorting scheme as an ordered, copy-consuming rule cascade and project a
-  collection through it into per-location pull-lists.
+- Represent the physical-sorting scheme as managed locations plus an ordered, copy-consuming rule
+  cascade, and project a collection through them into per-location pull-lists.
 
 Core terms:
 - PlannedCard: a collection row (one per CopyKey) joined with whatever the catalog knew about it —
@@ -92,9 +92,24 @@ Core terms:
   only the part of the line before `" // "` — outside the game a double-faced card has only its
   front face's characteristics (CR 712.8a, ADR 0018), and a split card's front half is an accepted
   approximation of the whole. The representations themselves live in the shared kernel.
-- RuleCascade: the ordered waterfall of rules plus a bulk remainder. Rules apply in `position`
-  order and each **consumes** copies from what earlier rules left behind, so one copy is placed
-  exactly once.
+- ManagedLocation: a named location whose contents are an explicit membership list of
+  `(CopyKey, quantity)` rows rather than a predicate ([ADR 0022](../decisions/0022-managed-locations.md)).
+  Its copies are taken from the pool **before** any rule runs, so they never reach a rule location
+  or bulk. Membership is intent — what the location should hold — not fact: it isn't pruned when
+  the collection shrinks (Shortfall is), and it doesn't say the copies were physically put there
+  (PlacedCard does). Adding beyond what's free (owned minus every managed location's claims) is
+  rejected. Names are unique among managed locations only. Does not own deck-building concerns:
+  no construction help, legality, sideboards, or decklist import (the vision's Deck building
+  non-goal).
+- Deck: the only ManagedLocationKind so far — a deck box. It has no sort keys; its cards list in
+  the canonical claim order as one section.
+- Shortfall: **always derived, never stored**, per managed location and CopyKey — membership the
+  pool couldn't supply because the collection owns fewer copies than all managed locations claim.
+  When several compete for a scarce copy, the one whose name sorts first gets it. Shown, never
+  silently resolved: the client warns before a removal or an import would cause one.
+- RuleCascade: the ordered waterfall of rules plus a bulk remainder, run on whatever managed
+  locations left in the pool. Rules apply in `position` order and each **consumes** copies from
+  what earlier rules left behind, so one copy is placed exactly once.
 - InventoryRule / CascadeRule: one waterfall step — a `position`, a copy `selector`, a match
   `predicate`, and a location `target`. Reordering the cascade renumbers every rule's `position`
   contiguously from 0 in one atomic write (`ReorderInventoryRules`) rather than editing one rule's
@@ -148,8 +163,9 @@ Core terms:
   card-level date variance (Secret Lair drops, promos) still forms a single contiguous Section
   instead of splitting by year the way `released_at` does (#145).
 - BulkSpec: the single leftover-remainder location plus the sort-key list ordering its pile.
-- InventoryProjection: the computed placement — locations in cascade order, each with its cards and
-  total, plus a count of collection keys unknown to the catalog.
+- InventoryProjection: the computed placement — managed locations (every one, empty or not), then
+  locations in cascade order, each with its cards and total (and, for a managed location, its
+  Shortfall), plus a count of collection keys unknown to the catalog.
 - Section: a contiguous, divider-worthy run of a location's sorted cards, derived from that
   location's own sort keys (a rule's, or the bulk spec's) next to the sort itself so a label can
   never drift from the physical order (#138). Keys are tried outermost-first: a key's equal-
@@ -227,6 +243,9 @@ Boundary notes:
   an arbitrary but deterministic tie-break, since a plain quantity change carries no location to
   blame. ReconcilePlacedLedger has no skir method or REST route; it is only ever invoked as an
   event-bus subscriber.
+- Managed-location membership is not reconciled when the collection shrinks: unlike the ledger,
+  it records intent, and the gap surfaces as a Shortfall. Deleting a managed location removes its
+  ledger rows with it, so its copies re-enter PlacementGuidance at their cascade destination.
 - Consumes collection and catalog data as inputs through application ports.
 - There is no separate Settings context. Target-set preferences for completion tracking belong to
   Insights, not here.

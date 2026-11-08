@@ -75,6 +75,7 @@ function projection(): InventoryProjection {
         total_quantity: 2,
         cards: [card({ name: "Lightning Bolt" }), card({ name: "Shock", set_code: "m19" })],
         sections: [],
+        shortfall: [],
       },
       {
         location: { kind: "cascade", key: "Bulk" },
@@ -83,6 +84,7 @@ function projection(): InventoryProjection {
         total_quantity: 1,
         cards: [card({ name: "Counterspell", set_code: "leb" })],
         sections: [],
+        shortfall: [],
       },
     ],
     total_quantity: 3,

@@ -119,6 +119,10 @@ struct ProjectionLocation {
   sections: [ProjectionSection] = 4;
   // The location's identity; `location_name` is its display name.
   location: LocationRef = 5;
+  // Copies a managed location claims that the collection can't supply, each
+  // with the missing quantity (ADR 0022). Always empty for a cascade
+  // location.
+  shortfall: [ProjectionCard] = 6;
 }
 
 struct InventoryProjection {
@@ -171,3 +175,37 @@ struct PlacedLedger {
 method GetPlacedLedger(
   PlacedLedgerRequest
 ): PlacedLedger = 306;
+
+// Duplicated from commands.skir for the same reason as Finish/Language.
+enum ManagedLocationKind {
+  deck = 1;
+}
+
+struct ManagedLocationMember {
+  set_code: string = 0;
+  collector_number: string = 1;
+  finish: Finish = 2;
+  language: Language = 3;
+  quantity: int32 = 4;
+}
+
+// A managed location with its whole membership — including copies the
+// collection no longer owns; GetInventoryProjection derives the shortfall.
+struct ManagedLocation {
+  id: string = 0;
+  name: string = 1;
+  kind: ManagedLocationKind = 2;
+  members: [ManagedLocationMember] = 3;
+}
+
+struct ManagedLocationList {
+  locations: [ManagedLocation] = 0;
+}
+
+struct ListManagedLocationsRequest {
+  unit: bool = 0;
+}
+
+method ListManagedLocations(
+  ListManagedLocationsRequest
+): ManagedLocationList = 316;
