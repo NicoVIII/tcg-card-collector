@@ -47,15 +47,16 @@ drop the import-history tables). Before a destructive migration touches a real D
 db file gets copied; a missing backup step in the plan is a finding.
 
 **Upgrades never lose user data (the v0.1.0 promise).** From v0.1.0 on, a released
-migration carries collection, placement and rule data forward intact. The Scryfall
+migration carries every user-authored table (below) forward intact. The Scryfall
 catalog is exempt — an up may drop it when a re-sync restores it. Losing anything else
 is a breaking change: it ships only if the release notes say so plainly, and a migration
 plan that loses user data without that note is a finding. README's "Data preservation"
 section is the user-facing wording — keep the two in step.
 
 The promise is proven, not asserted: a migration that rewrites or drops a
-user-authored table (`collection`, `placed_cards`, `inventory_rules`,
-`inventory_bulk_spec`, `target_sets`) ships a data-preservation test in
+user-authored table — any table behind a section of Portability's export
+(`server/src/portability/domain/export_document.gleam`, ADR 0019: everything
+hand-made in the app; the Scryfall catalog never is) — ships a data-preservation test in
 `server/test/migrations/`, using `support/test_db.with_seeded_upgrade` —
 a temp DB is seeded at the schema one migration earlier, the migration under
 test is applied, and the test asserts on the exact rows that survived. A

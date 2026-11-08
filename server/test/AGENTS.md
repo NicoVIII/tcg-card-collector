@@ -19,7 +19,7 @@ The two levels are cut on **different axes, intentionally** — `process/` by ar
 
 ## `migrations/` — a third area, not a third axis
 
-`test/migrations/` sits beside the per-context trees: seeds in `migrations/seeds/<migration_stem>.sql` (frozen, one per migration, written against the schema one migration earlier), tests as `migrations/migration_<stem>_test.gleam` using `support/test_db.with_seeded_upgrade`. It exists because the migration chain is one flat global sequence, not context-partitioned — see `test/README.md` § "A third area" for the full reasoning. A migration touching a user-authored table (`collection`, `placed_cards`, `inventory_rules`, `inventory_bulk_spec`, `target_sets`) ships a test here, or the release notes say what it loses (the v0.1.0 promise — `.claude/skills/data-migrations/SKILL.md`).
+`test/migrations/` sits beside the per-context trees: seeds in `migrations/seeds/<migration_stem>.sql` (frozen, one per migration, written against the schema one migration earlier), tests as `migrations/migration_<stem>_test.gleam` using `support/test_db.with_seeded_upgrade`. It exists because the migration chain is one flat global sequence, not context-partitioned — see `test/README.md` § "A third area" for the full reasoning. A migration touching a user-authored table (any table behind a Portability export section — `data-migrations` skill) ships a test here, or the release notes say what it loses (the v0.1.0 promise — `.claude/skills/data-migrations/SKILL.md`).
 
 ## `test/portability/fixtures/` — frozen export files, one per format version
 

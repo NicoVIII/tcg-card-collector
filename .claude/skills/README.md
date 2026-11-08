@@ -9,7 +9,7 @@ nothing beyond an agent that reads skills.
 | --- | --- | --- | --- |
 | [architecture](architecture/SKILL.md) | Design and review structure: functional core / imperative shell, DDD, ports and adapters, CQRS | Opus | 🚧 WIP |
 | [contract-design](contract-design/SKILL.md) | Shape Skir methods and wire types, and keep the REST surface honest | Opus | 🧪 Experimental |
-| [data-migrations](data-migrations/SKILL.md) | Design and review SQLite schema, DB invariants, and dbmate migrations | Opus | 🚧 WIP |
+| [data-migrations](data-migrations/SKILL.md) | Design and review SQLite schema, DB invariants, and dbmate migrations | Opus | 🧪 Experimental |
 | [documentation](documentation/SKILL.md) | Route knowledge to the right doc tier, write ADRs, hunt doc–code drift | Opus | 🚧 WIP |
 | [domain-design](domain-design/SKILL.md) | Place concepts in bounded contexts and keep MTG semantics honest | Opus | 🧪 Experimental |
 | [qa](qa/SKILL.md) | Judge test quality and verify the running app against real behaviour | Opus | 🚧 WIP |
