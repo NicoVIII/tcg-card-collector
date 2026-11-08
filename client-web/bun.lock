@@ -8,7 +8,7 @@
         "@solidjs/router": "^1.0.0",
         "@tanstack/solid-query": "^5.104.0",
         "@yornaath/batshit": "^0.14.0",
-        "skir-client": "^1.0.19",
+        "skir-client": "^1.0.22",
         "solid-js": "^1.9.15",
         "zod": "^4.6.5",
       },
@@ -568,7 +568,7 @@
 
     "shebang-regex": ["shebang-regex@3.0.0", "", {}, "sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A=="],
 
-    "skir-client": ["skir-client@1.0.19", "", { "dependencies": { "@types/express": "^5.0.1" } }, "sha512-1bc0f9bfXiCSG/+q7W8DD9/XJWwx7d62tFnRxddOTVOd1PbxG/VeevqFqWhKFt8RnXtYaGzW48VxIFPs2Qi2Pg=="],
+    "skir-client": ["skir-client@1.0.22", "", { "dependencies": { "@types/express": "^5.0.1" } }, "sha512-HoHdNYDhnupzEjxR6x/AY1PiPSbDXiSmz6TC7LrHRZJzNXdSFCd1P1k2iHK1Wo91Z+mLlztw91AT7t6BncEfCA=="],
 
     "solid-js": ["solid-js@1.9.15", "", { "dependencies": { "csstype": "^3.1.0", "seroval": "~1.5.4", "seroval-plugins": "~1.5.4" } }, "sha512-EeiY2xfpZJqPLjXspVEKjAII4yv8NyG//NxZ3IpOFHdUNnnTyL0uJOeS9LWGvA7cFCz5y94cjFwYlmw5Luncsg=="],
 
