@@ -17,7 +17,7 @@
     "@tanstack/solid-query": "^5.103.2",
     "@yornaath/batshit": "^0.14.0",
     "skir-client": "^1.0.19",
-    "solid-js": "^1.9.3",
+    "solid-js": "^1.9.15",
     "zod": "^4.6.5"
   },
   "devDependencies": {
