@@ -8,7 +8,7 @@ nothing beyond an agent that reads skills.
 | Skill | Summary | Suggested model | Maturity |
 | --- | --- | --- | --- |
 | [architecture](architecture/SKILL.md) | Design and review structure: functional core / imperative shell, DDD, ports and adapters, CQRS | Opus | 🚧 WIP |
-| [contract-design](contract-design/SKILL.md) | Shape Skir methods and wire types, and keep the REST surface honest | Opus | 🚧 WIP |
+| [contract-design](contract-design/SKILL.md) | Shape Skir methods and wire types, and keep the REST surface honest | Opus | 🧪 Experimental |
 | [data-migrations](data-migrations/SKILL.md) | Design and review SQLite schema, DB invariants, and dbmate migrations | Opus | 🚧 WIP |
 | [documentation](documentation/SKILL.md) | Route knowledge to the right doc tier, write ADRs, hunt doc–code drift | Opus | 🚧 WIP |
 | [domain-design](domain-design/SKILL.md) | Place concepts in bounded contexts and keep MTG semantics honest | Opus | 🧪 Experimental |

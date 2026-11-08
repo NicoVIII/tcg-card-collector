@@ -71,8 +71,13 @@ reports success, or a new `rejected`-style variant standing in for a user-input 
   7xx portability). New contexts take the next free block; don't mint new
   mid-block ranges.
 - Operation-first method names (`RefreshCatalog`, `MarkCardsPlaced`); every method gets
-  its own request struct even when empty (the `unit: bool` placeholder pattern);
-  response types are nouns, not `*Response`.
+  its own request struct even when empty (the `unit: bool` placeholder pattern).
+- A response never carries a `success`/`error` variant: failure travels as
+  `ServiceError` (ADR 0021), so a generic `error` variant models nothing. A response
+  that carries data is a noun (`InventoryProjection`, `ImportedData`); one with nothing
+  to carry is an empty `<Method>Response` struct with the `unit: bool` placeholder. The
+  older commands' `success`/`error` enums are legacy, not precedent — flag them when
+  touching adjacent surface.
 - Field numbers and method IDs may be renumbered — ADR 0002 makes it atomic and the
   snapshot check catches drift — but renumbering is diff noise; do it only with a
   reason.

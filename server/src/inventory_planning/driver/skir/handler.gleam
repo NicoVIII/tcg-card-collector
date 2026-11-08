@@ -254,7 +254,7 @@ fn handle_create_managed_location(
   get_dependencies: fn(context) -> Dependencies,
 ) -> helpers.MethodHandler(
   inventory_planning_commands.CreateManagedLocationRequest,
-  inventory_planning_commands.ManagedLocationCreated,
+  inventory_planning_commands.CreateManagedLocationResponse,
   context,
 ) {
   fn(req: inventory_planning_commands.CreateManagedLocationRequest, _, ctx) {
@@ -277,7 +277,7 @@ fn handle_rename_managed_location(
   get_dependencies: fn(context) -> Dependencies,
 ) -> helpers.MethodHandler(
   inventory_planning_commands.RenameManagedLocationRequest,
-  inventory_planning_commands.ManagedLocationRenamed,
+  inventory_planning_commands.RenameManagedLocationResponse,
   context,
 ) {
   fn(req: inventory_planning_commands.RenameManagedLocationRequest, _, ctx) {
@@ -297,7 +297,7 @@ fn handle_delete_managed_location(
   get_dependencies: fn(context) -> Dependencies,
 ) -> helpers.MethodHandler(
   inventory_planning_commands.DeleteManagedLocationRequest,
-  inventory_planning_commands.ManagedLocationDeleted,
+  inventory_planning_commands.DeleteManagedLocationResponse,
   context,
 ) {
   fn(req: inventory_planning_commands.DeleteManagedLocationRequest, _, ctx) {
@@ -314,7 +314,7 @@ fn handle_add_to_managed_location(
   get_dependencies: fn(context) -> Dependencies,
 ) -> helpers.MethodHandler(
   inventory_planning_commands.AddToManagedLocationRequest,
-  inventory_planning_commands.ManagedLocationMembersAdded,
+  inventory_planning_commands.AddToManagedLocationResponse,
   context,
 ) {
   fn(req: inventory_planning_commands.AddToManagedLocationRequest, _, ctx) {
@@ -337,7 +337,7 @@ fn handle_remove_from_managed_location(
   get_dependencies: fn(context) -> Dependencies,
 ) -> helpers.MethodHandler(
   inventory_planning_commands.RemoveFromManagedLocationRequest,
-  inventory_planning_commands.ManagedLocationMembersRemoved,
+  inventory_planning_commands.RemoveFromManagedLocationResponse,
   context,
 ) {
   fn(req: inventory_planning_commands.RemoveFromManagedLocationRequest, _, ctx) {

@@ -382,12 +382,12 @@ pub fn map_bulk_spec(
 pub fn map_create_managed_location_result(
   result: Result(Nil, create_managed_location_ports.CreateManagedLocationError),
 ) -> Result(
-  inventory_planning_commands.ManagedLocationCreated,
+  inventory_planning_commands.CreateManagedLocationResponse,
   service.ServiceError,
 ) {
   helpers.map_command(
     result,
-    inventory_planning_commands.managed_location_created_new(True),
+    inventory_planning_commands.create_managed_location_response_new(True),
     error_presentation.create_managed_location,
   )
 }
@@ -395,12 +395,12 @@ pub fn map_create_managed_location_result(
 pub fn map_rename_managed_location_result(
   result: Result(Nil, rename_managed_location_ports.RenameManagedLocationError),
 ) -> Result(
-  inventory_planning_commands.ManagedLocationRenamed,
+  inventory_planning_commands.RenameManagedLocationResponse,
   service.ServiceError,
 ) {
   helpers.map_command(
     result,
-    inventory_planning_commands.managed_location_renamed_new(True),
+    inventory_planning_commands.rename_managed_location_response_new(True),
     error_presentation.rename_managed_location,
   )
 }
@@ -408,12 +408,12 @@ pub fn map_rename_managed_location_result(
 pub fn map_delete_managed_location_result(
   result: Result(Nil, delete_managed_location_ports.DeleteManagedLocationError),
 ) -> Result(
-  inventory_planning_commands.ManagedLocationDeleted,
+  inventory_planning_commands.DeleteManagedLocationResponse,
   service.ServiceError,
 ) {
   helpers.map_command(
     result,
-    inventory_planning_commands.managed_location_deleted_new(True),
+    inventory_planning_commands.delete_managed_location_response_new(True),
     error_presentation.delete_managed_location,
   )
 }
@@ -421,12 +421,12 @@ pub fn map_delete_managed_location_result(
 pub fn map_add_to_managed_location_result(
   result: Result(Nil, add_to_managed_location_ports.AddToManagedLocationError),
 ) -> Result(
-  inventory_planning_commands.ManagedLocationMembersAdded,
+  inventory_planning_commands.AddToManagedLocationResponse,
   service.ServiceError,
 ) {
   helpers.map_command(
     result,
-    inventory_planning_commands.managed_location_members_added_new(True),
+    inventory_planning_commands.add_to_managed_location_response_new(True),
     error_presentation.add_to_managed_location,
   )
 }
@@ -437,12 +437,12 @@ pub fn map_remove_from_managed_location_result(
     remove_from_managed_location_ports.RemoveFromManagedLocationError,
   ),
 ) -> Result(
-  inventory_planning_commands.ManagedLocationMembersRemoved,
+  inventory_planning_commands.RemoveFromManagedLocationResponse,
   service.ServiceError,
 ) {
   helpers.map_command(
     result,
-    inventory_planning_commands.managed_location_members_removed_new(True),
+    inventory_planning_commands.remove_from_managed_location_response_new(True),
     error_presentation.remove_from_managed_location,
   )
 }

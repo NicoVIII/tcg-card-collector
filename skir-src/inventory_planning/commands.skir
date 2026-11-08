@@ -175,13 +175,13 @@ struct CreateManagedLocationRequest {
   kind: ManagedLocationKind = 2;
 }
 
-struct ManagedLocationCreated {
+struct CreateManagedLocationResponse {
   unit: bool = 0;
 }
 
 method CreateManagedLocation(
   CreateManagedLocationRequest
-): ManagedLocationCreated = 311;
+): CreateManagedLocationResponse = 311;
 
 // Changes only the display name; placed-ledger rows key on the id.
 struct RenameManagedLocationRequest {
@@ -189,13 +189,13 @@ struct RenameManagedLocationRequest {
   name: string = 1;
 }
 
-struct ManagedLocationRenamed {
+struct RenameManagedLocationResponse {
   unit: bool = 0;
 }
 
 method RenameManagedLocation(
   RenameManagedLocationRequest
-): ManagedLocationRenamed = 312;
+): RenameManagedLocationResponse = 312;
 
 // Also removes every placed-ledger row recorded at the location, so its
 // copies re-enter placement guidance at their cascade destination.
@@ -203,13 +203,13 @@ struct DeleteManagedLocationRequest {
   id: string = 0;
 }
 
-struct ManagedLocationDeleted {
+struct DeleteManagedLocationResponse {
   unit: bool = 0;
 }
 
 method DeleteManagedLocation(
   DeleteManagedLocationRequest
-): ManagedLocationDeleted = 313;
+): DeleteManagedLocationResponse = 313;
 
 // Claiming more copies of a key than are free (owned minus what managed
 // locations already claim) rejects the whole batch with a 400.
@@ -218,13 +218,13 @@ struct AddToManagedLocationRequest {
   copies: [ManagedCopy] = 1;
 }
 
-struct ManagedLocationMembersAdded {
+struct AddToManagedLocationResponse {
   unit: bool = 0;
 }
 
 method AddToManagedLocation(
   AddToManagedLocationRequest
-): ManagedLocationMembersAdded = 314;
+): AddToManagedLocationResponse = 314;
 
 // Removing more than the location holds rejects the whole batch with a 400.
 struct RemoveFromManagedLocationRequest {
@@ -232,10 +232,10 @@ struct RemoveFromManagedLocationRequest {
   copies: [ManagedCopy] = 1;
 }
 
-struct ManagedLocationMembersRemoved {
+struct RemoveFromManagedLocationResponse {
   unit: bool = 0;
 }
 
 method RemoveFromManagedLocation(
   RemoveFromManagedLocationRequest
-): ManagedLocationMembersRemoved = 315;
+): RemoveFromManagedLocationResponse = 315;
