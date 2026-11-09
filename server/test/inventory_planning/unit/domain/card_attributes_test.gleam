@@ -78,6 +78,17 @@ pub fn card_type_priority_test() {
   assert attrs.card_type_from_type_line("Conspiracy") == attrs.Other
 }
 
+// A subtype spelled like a type must not win: the Lander token and Lander
+// creatures are not lands.
+pub fn card_type_ignores_subtypes_test() {
+  assert attrs.card_type_from_type_line("Token Artifact — Lander")
+    == attrs.Artifact
+  assert attrs.card_type_from_type_line(
+      "Legendary Artifact Creature — Lander Rogue",
+    )
+    == attrs.Creature
+}
+
 // A double-faced card reduces to its front face's type (CR 712.8a, ADR
 // 0018), not whichever face the land-first priority would otherwise match.
 pub fn card_type_reads_front_face_test() {

@@ -152,11 +152,23 @@ fn front_face(type_line: String) -> String {
   }
 }
 
+// Card types print left of the em dash, subtypes right of it. Only the left
+// side is read, and by whole word: a subtype may contain a type's spelling
+// ("Token Artifact — Lander" is an artifact, not a land).
+fn type_words(type_line: String) -> List(String) {
+  let face = front_face(type_line)
+  let types = case string.split_once(face, "—") {
+    Ok(#(types, _subtypes)) -> types
+    Error(Nil) -> face
+  }
+  types |> string.lowercase |> string.split(" ")
+}
+
 pub fn card_type_from_type_line(type_line: String) -> CardType {
-  let lower = string.lowercase(front_face(type_line))
+  let words = type_words(type_line)
   type_priority
   |> list.find_map(fn(pair) {
-    case string.contains(lower, pair.0) {
+    case list.contains(words, pair.0) {
       True -> Ok(pair.1)
       False -> Error(Nil)
     }
@@ -239,7 +251,7 @@ pub fn supertype_to_string(value: Supertype) -> String {
 }
 
 // Supertypes print left of card types, so they're a prefix of the front
-// face's words (ADR 0018) — a positional walk, not the substring test
+// face's words (ADR 0018) — a positional walk, not the membership test
 // card_type_from_type_line uses. Stops at the first word that isn't a
 // supertype, so a subtype that happens to share a supertype's spelling
 // (after the em dash) is never reached.

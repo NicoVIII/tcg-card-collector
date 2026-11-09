@@ -23,6 +23,13 @@ Each release section uses only the subheadings it needs:
   [MTGJSON](https://mtgjson.com), and a token set counts all its cards. Sets with no known size
   say so instead of showing `owned / —`.
 
+### Fixed
+
+- Lander tokens and Lander creatures were sorted as lands by `type = land`, `{type}`, and the
+  `type` sort key, because their subtype contains the word "land". They now count as the
+  artifact or creature they are. Copies already marked placed in a land location show up in the
+  re-sort worklist.
+
 ### Upgrading
 
 - The catalog refresh now also downloads MTGJSON's set list (about 12 MB), so the server needs
