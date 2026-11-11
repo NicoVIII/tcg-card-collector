@@ -1,11 +1,15 @@
 import gleam/dict
 import gleam/dynamic/decode
 import gleam/json
+import gleam/option.{type Option, None}
 import gleam/result
+import gleam/time/duration
+import gleam/time/timestamp
 import inventory_planning/application/queries/get_bulk_spec/ports as bulk_spec_ports
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
+import inventory_planning/domain/location_audit.{type AuditRecord}
 import inventory_planning/domain/location_ref.{type LocationRef}
 import inventory_planning/domain/managed_location.{type ManagedLocation}
 import shared/domain/copy_key
@@ -402,4 +406,81 @@ pub fn decode_managed_members_body(
 
   json.parse(from: json_string, using: decoder)
   |> result.map_error(fn(_) { "invalid request body" })
+}
+
+pub type UnexpectedCopyBody {
+  UnexpectedCopyBody(copy: ManagedCopyBody, source: Option(#(String, String)))
+}
+
+pub type CompleteLocationAuditBody {
+  CompleteLocationAuditBody(
+    location: #(String, String),
+    missing: List(ManagedCopyBody),
+    unexpected: List(UnexpectedCopyBody),
+  )
+}
+
+fn copy_body_decoder() -> decode.Decoder(ManagedCopyBody) {
+  use set_code <- decode.field("set_code", decode.string)
+  use collector_number <- decode.field("collector_number", decode.string)
+  use finish <- decode.field("finish", decode.string)
+  use language <- decode.field("language", decode.string)
+  use quantity <- decode.field("quantity", decode.int)
+  decode.success(ManagedCopyBody(
+    set_code:,
+    collector_number:,
+    finish:,
+    language:,
+    quantity:,
+  ))
+}
+
+/// `{"location": <LocationRef>, "missing": [copy], "unexpected": [{"copy":
+/// copy, "source"?: <LocationRef>}]}`; an absent or null source marks the
+/// copy here instead of moving it.
+pub fn decode_complete_location_audit_body(
+  json_string: String,
+) -> Result(CompleteLocationAuditBody, String) {
+  let unexpected_decoder = {
+    use copy <- decode.field("copy", copy_body_decoder())
+    use source <- decode.optional_field(
+      "source",
+      None,
+      decode.optional(location_ref_decoder()),
+    )
+    decode.success(UnexpectedCopyBody(copy:, source:))
+  }
+  let decoder = {
+    use location <- decode.field("location", location_ref_decoder())
+    use missing <- decode.field("missing", decode.list(copy_body_decoder()))
+    use unexpected <- decode.field(
+      "unexpected",
+      decode.list(unexpected_decoder),
+    )
+    decode.success(CompleteLocationAuditBody(location:, missing:, unexpected:))
+  }
+
+  json.parse(from: json_string, using: decoder)
+  |> result.map_error(fn(_) { "invalid request body" })
+}
+
+pub fn encode_location_audits(records: List(AuditRecord)) -> String {
+  json.object([
+    #(
+      "audits",
+      json.array(records, of: fn(record) {
+        json.object([
+          #("location", encode_location_ref(record.location)),
+          #(
+            "last_audited_at",
+            json.string(timestamp.to_rfc3339(
+              record.completed_at,
+              duration.seconds(0),
+            )),
+          ),
+        ])
+      }),
+    ),
+  ])
+  |> json.to_string
 }

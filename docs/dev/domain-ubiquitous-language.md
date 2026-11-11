@@ -218,7 +218,7 @@ Core terms:
   placed there minus what's currently projected there, clamped at zero. Non-zero only where the
   ledger claims a copy sits somewhere the *current* projection no longer sends it (a rule
   re-target, a deleted rule, or a claim-order change moving which copy a rule claims — ADR 0013).
-  Not to be confused with #108's AuditFinding (`Missing`/`Unexpected`): Misplaced compares the
+  Not to be confused with AuditFinding (`Missing`/`Unexpected`): Misplaced compares the
   ledger against the *projection*; AuditFinding compares the ledger against *physical reality*.
   Different comparisons, different bugs.
 - ResortWorklist: the derived worklist of Misplaced copies (`data/placement/resort.ts`,
@@ -229,6 +229,19 @@ Core terms:
   can verify, resolved by RelocatePlacedCards; any other shape resolves by pulling copies out
   (UnmarkCardsPlaced) to re-enter PlacementGuidance for their new location ([ADR
   0014](../decisions/0014-resort-worklist-is-derived-locations-stay-text.md)).
+- LocationAudit: one completed verification pass over a single location — the placed ledger's
+  claim for that location checked against what is physically found in it (#108, [ADR
+  0024](../decisions/0024-location-audit-completes-atomically.md)). Owns the reality↔ledger
+  comparison only; never writes the collection, and is not the ledger↔projection comparison
+  (Misplaced / ResortWorklist). Nothing is written until completion, which applies every
+  AuditFinding and appends to the audit history in one transaction; abandoning writes nothing.
+- AuditFinding: per CopyKey at the audited location — Confirmed (no write), Missing (the
+  ledger claims copies that weren't found; unmarked here), or Unexpected (copies found that the
+  ledger doesn't record here). An Unexpected copy with a source was misfiled from there and
+  moves; without one it is marked here, which must stay within the copies owned but not placed
+  anywhere. A copy the collection doesn't own is reported, never sent.
+- LastAuditedAt: **always derived, never stored**, per LocationRef — the latest completion in
+  the audit history (`location_audits`, one row per completed audit).
 - PlacementGuidance: the derived worklist — locations still holding unplaced copies (cascade order,
   empty ones dropped), each card's copies-still-to-place plus its cascade-order neighbours for
   physical orientation, and the grand total of unplaced copies (Unplaced, summed).
@@ -247,7 +260,8 @@ Boundary notes:
   event-bus subscriber.
 - Managed-location membership is not reconciled when the collection shrinks: unlike the ledger,
   it records intent, and the gap surfaces as a Shortfall. Deleting a managed location removes its
-  ledger rows with it, so its copies re-enter PlacementGuidance at their cascade destination.
+  ledger rows and audit history with it, so its copies re-enter PlacementGuidance at their
+  cascade destination.
 - Consumes collection and catalog data as inputs through application ports.
 - There is no separate Settings context. Target-set preferences for completion tracking belong to
   Insights, not here.

@@ -1,10 +1,14 @@
 import gleam/dict
 import inventory_planning/domain/managed_location.{Deck, ManagedLocation}
+import inventory_planning/infrastructure/daos/location_audits_dao.{
+  LocationAuditRow,
+}
 import inventory_planning/infrastructure/daos/managed_locations_dao.{
   type MemberRow, ManagedLocationRow, MemberRow,
 }
 import inventory_planning/infrastructure/daos/placed_cards_dao.{PlacedCardRow}
 import shared/domain/copy_key
+import shared/infrastructure/stores/sqlite_store
 import support/test_db
 
 fn member(id: String, collector_number: String, quantity: Int) -> MemberRow {
@@ -80,7 +84,7 @@ pub fn the_database_rejects_a_second_location_with_the_same_name_test() {
 // Deleting a deck takes its members and its ledger rows with it — and only
 // its own: a cascade location whose name happens to equal the deck's id keeps
 // its rows, since the two namespaces never share a ledger row.
-pub fn delete_removes_members_and_only_its_own_ledger_rows_test() {
+pub fn delete_removes_members_and_only_its_own_ledger_and_audit_rows_test() {
   use _db <- test_db.with_temp_db()
   let assert Ok(Nil) =
     managed_locations_dao.insert(ManagedLocationRow("d1", "Mono-Red", "deck"))
@@ -91,6 +95,19 @@ pub fn delete_removes_members_and_only_its_own_ledger_rows_test() {
       PlacedCardRow("lea", "1", "nonfoil", "en", "managed", "d1", 1),
       PlacedCardRow("lea", "1", "nonfoil", "en", "cascade", "d1", 2),
     ])
+  let assert Ok(Nil) =
+    sqlite_store.exec_all_atomically([
+      location_audits_dao.insert_statement(LocationAuditRow(
+        "managed",
+        "d1",
+        "2026-01-01T00:00:00Z",
+      )),
+      location_audits_dao.insert_statement(LocationAuditRow(
+        "cascade",
+        "d1",
+        "2026-01-01T00:00:00Z",
+      )),
+    ])
 
   let assert Ok(Nil) = managed_locations_dao.delete("d1")
 
@@ -98,4 +115,6 @@ pub fn delete_removes_members_and_only_its_own_ledger_rows_test() {
   assert managed_locations_dao.list_members() == Ok([])
   assert placed_cards_dao.list()
     == Ok([PlacedCardRow("lea", "1", "nonfoil", "en", "cascade", "d1", 2)])
+  assert location_audits_dao.list()
+    == Ok([LocationAuditRow("cascade", "d1", "2026-01-01T00:00:00Z")])
 }

@@ -1,4 +1,5 @@
 import inventory_planning/application/commands/add_to_managed_location/ports as add_to_managed_location_ports
+import inventory_planning/application/commands/complete_location_audit/ports as complete_location_audit_ports
 import inventory_planning/application/commands/create_managed_location/ports as create_managed_location_ports
 import inventory_planning/application/commands/delete_managed_location/ports as delete_managed_location_ports
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
@@ -11,6 +12,7 @@ import inventory_planning/application/commands/unmark_cards_placed/ports as unma
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
 import inventory_planning/application/queries/get_bulk_spec/ports as get_bulk_spec_ports
+import inventory_planning/application/queries/list_location_audits/ports as list_location_audits_ports
 import inventory_planning/application/queries/list_managed_locations/ports as list_managed_locations_ports
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
@@ -35,5 +37,7 @@ pub type Dependencies {
     delete_managed_location_ports: delete_managed_location_ports.DeleteManagedLocationPorts,
     add_to_managed_location_ports: add_to_managed_location_ports.AddToManagedLocationPorts,
     remove_from_managed_location_ports: remove_from_managed_location_ports.RemoveFromManagedLocationPorts,
+    complete_location_audit_ports: complete_location_audit_ports.CompleteLocationAuditPorts,
+    list_location_audits_port: list_location_audits_ports.ListLocationAuditsPort,
   )
 }

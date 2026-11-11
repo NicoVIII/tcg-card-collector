@@ -1,7 +1,9 @@
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/list
+import gleam/option
 import inventory_planning/application/commands/add_to_managed_location/handler as add_to_managed_location_handler
+import inventory_planning/application/commands/complete_location_audit/handler as complete_location_audit_handler
 import inventory_planning/application/commands/create_managed_location/handler as create_managed_location_handler
 import inventory_planning/application/commands/delete_managed_location/handler as delete_managed_location_handler
 import inventory_planning/application/commands/delete_rule/handler as delete_rule_handler
@@ -14,6 +16,7 @@ import inventory_planning/application/commands/unmark_cards_placed/handler as un
 import inventory_planning/application/commands/update_bulk_spec/handler as update_bulk_spec_handler
 import inventory_planning/application/commands/upsert_rule/handler as upsert_rule_handler
 import inventory_planning/application/queries/get_bulk_spec/handler as get_bulk_spec_handler
+import inventory_planning/application/queries/list_location_audits/handler as list_location_audits_handler
 import inventory_planning/application/queries/list_managed_locations/handler as list_managed_locations_handler
 import inventory_planning/application/queries/list_rules/handler as list_rules_handler
 import inventory_planning/application/queries/placed_ledger/handler as placed_ledger_handler
@@ -384,6 +387,39 @@ pub fn handle_remove_from_managed_location(
   }
 }
 
+fn to_audit_raw_location(
+  location: #(String, String),
+) -> complete_location_audit_handler.RawLocation {
+  complete_location_audit_handler.RawLocation(kind: location.0, key: location.1)
+}
+
+fn to_audit_raw_copy(
+  body: inventory_codec.ManagedCopyBody,
+) -> complete_location_audit_handler.RawAuditedCopy {
+  complete_location_audit_handler.RawAuditedCopy(
+    set_code: body.set_code,
+    collector_number: body.collector_number,
+    finish: body.finish,
+    language: body.language,
+    quantity: body.quantity,
+  )
+}
+
+fn to_complete_location_audit_command(
+  body: inventory_codec.CompleteLocationAuditBody,
+) -> complete_location_audit_handler.CompleteLocationAuditCommand {
+  complete_location_audit_handler.CompleteLocationAuditCommand(
+    location: to_audit_raw_location(body.location),
+    missing: list.map(body.missing, to_audit_raw_copy),
+    unexpected: list.map(body.unexpected, fn(unexpected) {
+      complete_location_audit_handler.RawUnexpectedCopy(
+        copy: to_audit_raw_copy(unexpected.copy),
+        source: option.map(unexpected.source, to_audit_raw_location),
+      )
+    }),
+  )
+}
+
 fn to_mark_raw_placement(
   body: inventory_codec.PlacementBody,
 ) -> mark_cards_placed_handler.RawPlacement {
@@ -434,4 +470,38 @@ fn to_remove_raw_copy(
     language: body.language,
     quantity: body.quantity,
   )
+}
+
+pub fn handle_complete_location_audit(
+  req: Request(mist.Connection),
+  deps: Dependencies,
+) -> Response(mist.ResponseData) {
+  use body <- helpers.with_json_body(req)
+  case inventory_codec.decode_complete_location_audit_body(body) {
+    Error(msg) -> helpers.json_response(400, json_codec.encode_error(msg))
+    Ok(b) ->
+      case
+        complete_location_audit_handler.execute(
+          to_complete_location_audit_command(b),
+          deps.complete_location_audit_ports,
+        )
+      {
+        Ok(_) ->
+          helpers.json_response(200, json_codec.encode_ok("audit completed"))
+        Error(error) ->
+          helpers.error_response(error_presentation.complete_location_audit(
+            error,
+          ))
+      }
+  }
+}
+
+pub fn handle_list_location_audits(
+  deps: Dependencies,
+) -> Response(mist.ResponseData) {
+  list_location_audits_handler.execute(
+    list_location_audits_handler.ListLocationAuditsQuery,
+    deps.list_location_audits_port,
+  )
+  |> helpers.query_response(inventory_codec.encode_location_audits)
 }

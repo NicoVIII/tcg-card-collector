@@ -78,3 +78,16 @@ export function fromWireLanguageKind(kind: string): Language {
   const lower = kind.toLowerCase();
   return (LANGUAGES as readonly string[]).includes(lower) ? (lower as Language) : DEFAULT_LANGUAGE;
 }
+
+// One kind of copy (ADR 0010): a printing in a finish and a language.
+export type CopyIdentity = {
+  set_code: string;
+  collector_number: string;
+  finish: Finish;
+  language: Language;
+};
+
+// A string identity for maps and sets keyed on a kind of copy.
+export function copyIdentityKey(copy: CopyIdentity): string {
+  return `${copy.set_code} ${copy.collector_number} ${copy.finish} ${copy.language}`;
+}

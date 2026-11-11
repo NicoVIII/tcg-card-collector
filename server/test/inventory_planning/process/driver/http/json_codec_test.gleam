@@ -1,8 +1,11 @@
 import gleam/dict
+import gleam/option.{None, Some}
+import gleam/time/timestamp
 import inventory_planning/application/queries/get_bulk_spec/ports as bulk_spec_ports
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
+import inventory_planning/domain/location_audit
 import inventory_planning/domain/location_ref
 import inventory_planning/domain/managed_location
 import inventory_planning/driver/http/json_codec
@@ -232,4 +235,60 @@ pub fn decode_managed_members_body_reads_id_and_copies_test() {
         ),
       ]),
     )
+}
+
+pub fn decode_complete_location_audit_body_reads_findings_test() {
+  let copy =
+    "{\"set_code\":\"lea\",\"collector_number\":\"1\","
+    <> "\"finish\":\"nonfoil\",\"language\":\"en\",\"quantity\":1}"
+  let body =
+    "{\"location\":{\"kind\":\"cascade\",\"key\":\"Binder\"},"
+    <> "\"missing\":["
+    <> copy
+    <> "],\"unexpected\":[{\"copy\":"
+    <> copy
+    <> "},{\"copy\":"
+    <> copy
+    <> ",\"source\":{\"kind\":\"managed\",\"key\":\"d1\"}}]}"
+  let copy_body =
+    json_codec.ManagedCopyBody(
+      set_code: "lea",
+      collector_number: "1",
+      finish: "nonfoil",
+      language: "en",
+      quantity: 1,
+    )
+
+  assert json_codec.decode_complete_location_audit_body(body)
+    == Ok(
+      json_codec.CompleteLocationAuditBody(
+        location: #("cascade", "Binder"),
+        missing: [copy_body],
+        unexpected: [
+          json_codec.UnexpectedCopyBody(copy: copy_body, source: None),
+          json_codec.UnexpectedCopyBody(
+            copy: copy_body,
+            source: Some(#("managed", "d1")),
+          ),
+        ],
+      ),
+    )
+}
+
+pub fn decode_complete_location_audit_body_rejects_missing_lists_test() {
+  assert json_codec.decode_complete_location_audit_body(
+      "{\"location\":{\"kind\":\"cascade\",\"key\":\"Binder\"}}",
+    )
+    == Error("invalid request body")
+}
+
+pub fn encode_location_audits_lists_latest_per_location_test() {
+  assert json_codec.encode_location_audits([
+      location_audit.AuditRecord(
+        location: location_ref.Cascade("Binder"),
+        completed_at: timestamp.from_unix_seconds(0),
+      ),
+    ])
+    == "{\"audits\":[{\"location\":{\"kind\":\"cascade\",\"key\":\"Binder\"},"
+    <> "\"last_audited_at\":\"1970-01-01T00:00:00Z\"}]}"
 }

@@ -1,7 +1,12 @@
 import gleam/dict
 import gleam/list
+import gleam/option
+import gleam/time/duration
+import gleam/time/timestamp
 import inventory_planning/application/commands/add_to_managed_location/handler as add_to_managed_location_handler
 import inventory_planning/application/commands/add_to_managed_location/ports as add_to_managed_location_ports
+import inventory_planning/application/commands/complete_location_audit/handler as complete_location_audit_handler
+import inventory_planning/application/commands/complete_location_audit/ports as complete_location_audit_ports
 import inventory_planning/application/commands/create_managed_location/ports as create_managed_location_ports
 import inventory_planning/application/commands/delete_managed_location/ports as delete_managed_location_ports
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
@@ -20,6 +25,7 @@ import inventory_planning/application/queries/get_bulk_spec/ports as get_bulk_sp
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
+import inventory_planning/domain/location_audit
 import inventory_planning/domain/location_ref
 import inventory_planning/domain/managed_location
 import inventory_planning/driver/error_presentation
@@ -517,5 +523,68 @@ fn map_managed_location_member(
     language: query_language_from_string(copy_key.language_string(key)),
     quantity:,
     set_code: copy_key.set_code_string(key),
+  )
+}
+
+fn to_raw_location(
+  ref: inventory_planning_commands.LocationRef,
+) -> complete_location_audit_handler.RawLocation {
+  let #(kind, key) = command_location_ref(ref)
+  complete_location_audit_handler.RawLocation(kind:, key:)
+}
+
+fn to_raw_audited_copy(
+  copy: inventory_planning_commands.AuditedCopy,
+) -> complete_location_audit_handler.RawAuditedCopy {
+  complete_location_audit_handler.RawAuditedCopy(
+    set_code: copy.set_code,
+    collector_number: copy.collector_number,
+    finish: command_finish_to_string(copy.finish),
+    language: command_language_to_string(copy.language),
+    quantity: copy.quantity,
+  )
+}
+
+pub fn to_complete_location_audit_command(
+  req: inventory_planning_commands.CompleteLocationAuditRequest,
+) -> complete_location_audit_handler.CompleteLocationAuditCommand {
+  complete_location_audit_handler.CompleteLocationAuditCommand(
+    location: to_raw_location(req.location),
+    missing: list.map(req.missing, to_raw_audited_copy),
+    unexpected: list.map(req.unexpected, fn(unexpected) {
+      complete_location_audit_handler.RawUnexpectedCopy(
+        copy: to_raw_audited_copy(unexpected.copy),
+        source: option.map(unexpected.source, to_raw_location),
+      )
+    }),
+  )
+}
+
+pub fn map_complete_location_audit_result(
+  result: Result(Nil, complete_location_audit_ports.CompleteLocationAuditError),
+) -> Result(
+  inventory_planning_commands.CompleteLocationAuditResponse,
+  service.ServiceError,
+) {
+  helpers.map_command(
+    result,
+    inventory_planning_commands.complete_location_audit_response_new(True),
+    error_presentation.complete_location_audit,
+  )
+}
+
+pub fn map_location_audit_list(
+  records: List(location_audit.AuditRecord),
+) -> inventory_planning_queries.LocationAuditList {
+  inventory_planning_queries.location_audit_list_new(
+    list.map(records, fn(record) {
+      inventory_planning_queries.location_audit_summary_new(
+        last_audited_at: timestamp.to_rfc3339(
+          record.completed_at,
+          duration.seconds(0),
+        ),
+        location: query_location_ref(record.location),
+      )
+    }),
   )
 }

@@ -1,5 +1,6 @@
 import gleam/list
 import inventory_planning/application/commands/add_to_managed_location/handler as add_to_managed_location_handler
+import inventory_planning/application/commands/complete_location_audit/handler as complete_location_audit_handler
 import inventory_planning/application/commands/create_managed_location/handler as create_managed_location_handler
 import inventory_planning/application/commands/delete_managed_location/handler as delete_managed_location_handler
 import inventory_planning/application/commands/delete_rule/handler as delete_rule_handler
@@ -12,6 +13,7 @@ import inventory_planning/application/commands/unmark_cards_placed/handler as un
 import inventory_planning/application/commands/update_bulk_spec/handler as update_bulk_spec_handler
 import inventory_planning/application/commands/upsert_rule/handler as upsert_rule_handler
 import inventory_planning/application/queries/get_bulk_spec/handler as get_bulk_spec_handler
+import inventory_planning/application/queries/list_location_audits/handler as list_location_audits_handler
 import inventory_planning/application/queries/list_managed_locations/handler as list_managed_locations_handler
 import inventory_planning/application/queries/list_rules/handler as list_rules_handler
 import inventory_planning/application/queries/placed_ledger/handler as placed_ledger_handler
@@ -356,6 +358,40 @@ fn handle_remove_from_managed_location(
   }
 }
 
+fn handle_complete_location_audit(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_commands.CompleteLocationAuditRequest,
+  inventory_planning_commands.CompleteLocationAuditResponse,
+  context,
+) {
+  fn(req: inventory_planning_commands.CompleteLocationAuditRequest, _, ctx) {
+    complete_location_audit_handler.execute(
+      inventory_planning_skir_codec.to_complete_location_audit_command(req),
+      get_dependencies(ctx).complete_location_audit_ports,
+    )
+    |> inventory_planning_skir_codec.map_complete_location_audit_result
+    |> helpers.respond
+  }
+}
+
+fn handle_list_location_audits(
+  get_dependencies: fn(context) -> Dependencies,
+) -> helpers.MethodHandler(
+  inventory_planning_queries.ListLocationAuditsRequest,
+  inventory_planning_queries.LocationAuditList,
+  context,
+) {
+  fn(_: inventory_planning_queries.ListLocationAuditsRequest, _, ctx) {
+    list_location_audits_handler.execute(
+      list_location_audits_handler.ListLocationAuditsQuery,
+      get_dependencies(ctx).list_location_audits_port,
+    )
+    |> helpers.map_query(inventory_planning_skir_codec.map_location_audit_list)
+    |> helpers.respond
+  }
+}
+
 pub fn register(
   svc: service.Service(Nil, context, Nil),
   get_dependencies: fn(context) -> Dependencies,
@@ -428,5 +464,13 @@ pub fn register(
   |> service.add_method(
     inventory_planning_commands.remove_from_managed_location_method(),
     handle_remove_from_managed_location(get_dependencies),
+  )
+  |> service.add_method(
+    inventory_planning_commands.complete_location_audit_method(),
+    handle_complete_location_audit(get_dependencies),
+  )
+  |> service.add_method(
+    inventory_planning_queries.list_location_audits_method(),
+    handle_list_location_audits(get_dependencies),
   )
 }

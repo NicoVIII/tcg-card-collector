@@ -115,9 +115,9 @@ pub fn rename(id: String, name: String) -> Result(Nil, String) {
   ])
 }
 
-/// Removes the location, its members, and every placed-ledger row recorded
-/// at it, together — its copies re-enter placement guidance at their cascade
-/// destination (ADR 0022). Spelled out rather than left to ON DELETE CASCADE:
+/// Removes the location, its members, its audit history, and every
+/// placed-ledger row recorded at it, together — its copies re-enter placement
+/// guidance at their cascade destination (ADR 0022). Spelled out rather than left to ON DELETE CASCADE:
 /// the ledger's location column is polymorphic, and the app's connections
 /// don't enable foreign keys.
 pub fn delete(id: String) -> Result(Nil, String) {
@@ -129,6 +129,10 @@ pub fn delete(id: String) -> Result(Nil, String) {
     #("DELETE FROM managed_location_members WHERE managed_location_id = ?;", [
       sqlight.text(id),
     ]),
+    #(
+      "DELETE FROM location_audits WHERE location_kind = 'managed' AND location = ?;",
+      [sqlight.text(id)],
+    ),
     #("DELETE FROM managed_locations WHERE id = ?;", [sqlight.text(id)]),
   ])
 }

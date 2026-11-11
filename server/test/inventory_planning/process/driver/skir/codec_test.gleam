@@ -1,4 +1,7 @@
 import gleam/dict
+import gleam/option.{None, Some}
+import gleam/time/timestamp
+import inventory_planning/application/commands/complete_location_audit/handler as complete_location_audit_handler
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
 import inventory_planning/application/commands/mark_cards_placed/handler as mark_cards_placed_handler
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
@@ -12,6 +15,7 @@ import inventory_planning/application/queries/get_bulk_spec/ports as get_bulk_sp
 import inventory_planning/application/queries/list_rules/ports as list_rules_ports
 import inventory_planning/application/queries/placed_ledger/ports as placed_ledger_ports
 import inventory_planning/application/queries/projection/ports as projection_ports
+import inventory_planning/domain/location_audit
 import inventory_planning/domain/location_ref
 import inventory_planning/domain/managed_location
 import inventory_planning/driver/skir/codec as inventory_planning_skir_codec
@@ -510,4 +514,75 @@ pub fn an_unknown_managed_location_kind_maps_to_an_empty_string_test() {
       inventory_planning_commands.managed_location_kind_unknown,
     )
     == ""
+}
+
+pub fn to_complete_location_audit_command_maps_location_and_findings_test() {
+  let copy =
+    inventory_planning_commands.audited_copy_new(
+      collector_number: "146",
+      finish: inventory_planning_commands.FinishFoil,
+      language: inventory_planning_commands.LanguageJa,
+      quantity: 1,
+      set_code: "m11",
+    )
+  let request =
+    inventory_planning_commands.complete_location_audit_request_new(
+      location: inventory_planning_commands.LocationRefCascade("Binder"),
+      missing: [copy],
+      unexpected: [
+        inventory_planning_commands.unexpected_copy_new(copy:, source: None),
+        inventory_planning_commands.unexpected_copy_new(
+          copy:,
+          source: Some(inventory_planning_commands.LocationRefManaged("d1")),
+        ),
+      ],
+    )
+  let raw_copy =
+    complete_location_audit_handler.RawAuditedCopy(
+      set_code: "m11",
+      collector_number: "146",
+      finish: "foil",
+      language: "ja",
+      quantity: 1,
+    )
+
+  assert inventory_planning_skir_codec.to_complete_location_audit_command(
+      request,
+    )
+    == complete_location_audit_handler.CompleteLocationAuditCommand(
+      location: complete_location_audit_handler.RawLocation(
+        kind: "cascade",
+        key: "Binder",
+      ),
+      missing: [raw_copy],
+      unexpected: [
+        complete_location_audit_handler.RawUnexpectedCopy(
+          copy: raw_copy,
+          source: None,
+        ),
+        complete_location_audit_handler.RawUnexpectedCopy(
+          copy: raw_copy,
+          source: Some(complete_location_audit_handler.RawLocation(
+            kind: "managed",
+            key: "d1",
+          )),
+        ),
+      ],
+    )
+}
+
+pub fn map_location_audit_list_renders_rfc3339_utc_test() {
+  let record =
+    location_audit.AuditRecord(
+      location: location_ref.Managed("d1"),
+      completed_at: timestamp.from_unix_seconds(0),
+    )
+
+  assert inventory_planning_skir_codec.map_location_audit_list([record])
+    == inventory_planning_queries.location_audit_list_new([
+      inventory_planning_queries.location_audit_summary_new(
+        last_audited_at: "1970-01-01T00:00:00Z",
+        location: inventory_planning_queries.LocationRefManaged("d1"),
+      ),
+    ])
 }
