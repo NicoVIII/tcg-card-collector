@@ -25,8 +25,10 @@ Every screen has one of two natures, judged by different yardsticks:
 
 - **Workflow screens** (placement, add-cards staging, import) pair with a physical
   activity. Yardstick: usable with cards in one hand — big targets, minimal required
-  precision, interruption-safe (progress lives server-side so a reload or a dead
-  battery loses nothing), every action undoable in place, guidance anchored to
+  precision, interruption-safe (a reload or a dead battery loses nothing: progress
+  lives server-side, or, for a flow that writes nothing until it completes, in a
+  per-browser draft re-validated against fresh server state on restore), every
+  action undoable in place, guidance anchored to
   physical reality (the between-neighbours pattern: tell the user where the card goes
   relative to cards they can see).
 - **Management screens** (inventory rules, insights, catalog) are desk

@@ -13,7 +13,7 @@ nothing beyond an agent that reads skills.
 | [documentation](documentation/SKILL.md) | Route knowledge to the right doc tier, write ADRs, hunt doc–code drift | Opus | 🚧 WIP |
 | [domain-design](domain-design/SKILL.md) | Place concepts in bounded contexts and keep MTG semantics honest | Opus | 🧪 Experimental |
 | [qa](qa/SKILL.md) | Judge test quality and verify the running app against real behaviour | Opus | 🚧 WIP |
-| [ux-design](ux-design/SKILL.md) | Design and review flows, density, and feedback for the physical sorting task | Opus | 🚧 WIP |
+| [ux-design](ux-design/SKILL.md) | Design and review flows, density, and feedback for the physical sorting task | Opus | 🧪 Experimental |
 
 **Suggested model** is the model to run the skill with. **Maturity** is
 🚧 WIP → 🧪 Experimental → 🟢 Usable → 🛡️ Battle-tested, rated from the skill's
