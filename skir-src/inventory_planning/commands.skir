@@ -239,3 +239,42 @@ struct RemoveFromManagedLocationResponse {
 method RemoveFromManagedLocation(
   RemoveFromManagedLocationRequest
 ): RemoveFromManagedLocationResponse = 315;
+
+// A location audit (#108, ADR 0024): the placed ledger's claim for one
+// location checked against what was physically found there. Nothing is
+// written until completion, which applies every finding and stamps the audit
+// history in one transaction.
+struct AuditedCopy {
+  set_code: string = 0;
+  collector_number: string = 1;
+  finish: Finish = 2;
+  language: Language = 3;
+  quantity: int32 = 4;
+}
+
+// A copy found that the ledger doesn't record at the audited location. With
+// a source it was misfiled from there and moves; without one it is marked
+// here, which must stay within the owned quantity.
+struct UnexpectedCopy {
+  copy: AuditedCopy = 0;
+  source: LocationRef? = 1;
+}
+
+// `missing` is what the ledger records here minus what was found. Copies the
+// collection doesn't own are reported client-side and never sent. Any
+// rejection (a finding the ledger or the owned quantity contradicts, or a
+// managed location that no longer exists) is a 400: the client holds the
+// ledger and projection it would have to be stale to violate.
+struct CompleteLocationAuditRequest {
+  location: LocationRef = 0;
+  missing: [AuditedCopy] = 1;
+  unexpected: [UnexpectedCopy] = 2;
+}
+
+struct CompleteLocationAuditResponse {
+  unit: bool = 0;
+}
+
+method CompleteLocationAudit(
+  CompleteLocationAuditRequest
+): CompleteLocationAuditResponse = 317;

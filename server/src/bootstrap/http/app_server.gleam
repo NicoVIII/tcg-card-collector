@@ -145,6 +145,13 @@ fn handle_request(
         req,
         deps.inventory_planning,
       )
+    Get, "/api/inventory/location-audits" ->
+      inventory_http.handle_list_location_audits(deps.inventory_planning)
+    Post, "/api/inventory/location-audits" ->
+      inventory_http.handle_complete_location_audit(
+        req,
+        deps.inventory_planning,
+      )
     Get, "/api/insights/completion" ->
       insights_http.handle_get_set_completion(deps.insights)
     Put, "/api/insights/targets" ->

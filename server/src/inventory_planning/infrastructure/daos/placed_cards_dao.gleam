@@ -60,7 +60,9 @@ fn row_params(row: PlacedCardRow) -> List(sqlight.Value) {
   ]
 }
 
-fn increment_batch(batch: List(PlacedCardRow)) -> Result(Nil, String) {
+fn increment_batch_statement(
+  batch: List(PlacedCardRow),
+) -> #(String, List(sqlight.Value)) {
   let placeholders =
     sqlite_store.placeholders(list.length(batch), "(?, ?, ?, ?, ?, ?, ?)")
   let params = list.flat_map(batch, row_params)
@@ -70,15 +72,24 @@ fn increment_batch(batch: List(PlacedCardRow)) -> Result(Nil, String) {
     <> placeholders
     <> " ON CONFLICT(set_code, collector_number, finish, language, location_kind, location) "
     <> "DO UPDATE SET quantity = quantity + excluded.quantity;"
-  sqlite_store.exec(sql, params)
+  #(sql, params)
+}
+
+/// `increment`'s statements, for a caller composing them with other writes in
+/// one `sqlite_store.exec_all_atomically`.
+pub fn increment_statements(
+  rows: List(PlacedCardRow),
+) -> List(#(String, List(sqlight.Value))) {
+  rows
+  |> list.sized_chunk(insert_batch_size)
+  |> list.map(increment_batch_statement)
 }
 
 /// Adds each row's quantity onto the matching (key, location), inserting the
 /// row when it is absent.
 pub fn increment(rows: List(PlacedCardRow)) -> Result(Nil, String) {
-  rows
-  |> list.sized_chunk(insert_batch_size)
-  |> list.try_each(increment_batch)
+  increment_statements(rows)
+  |> list.try_each(fn(statement) { sqlite_store.exec(statement.0, statement.1) })
 }
 
 // The CHECK (quantity > 0) forbids ever writing a non-positive row, so a row
@@ -128,11 +139,19 @@ fn decrement_row_statements(
   ]
 }
 
+/// `decrement`'s statements, for a caller composing them with other writes in
+/// one `sqlite_store.exec_all_atomically`.
+pub fn decrement_statements(
+  rows: List(PlacedCardRow),
+) -> List(#(String, List(sqlight.Value))) {
+  list.flat_map(rows, decrement_row_statements)
+}
+
 /// Subtracts each row's quantity from the matching (key, location), pruning any
 /// row driven to zero or below, all in one transaction. Decrementing an absent
 /// row is a no-op.
 pub fn decrement(rows: List(PlacedCardRow)) -> Result(Nil, String) {
-  sqlite_store.exec_all_atomically(list.flat_map(rows, decrement_row_statements))
+  sqlite_store.exec_all_atomically(decrement_statements(rows))
 }
 
 /// Moves every row at cascade location `from` onto cascade location `to`,

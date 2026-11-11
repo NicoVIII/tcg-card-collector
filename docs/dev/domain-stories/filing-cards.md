@@ -41,8 +41,7 @@ sequenceDiagram
 8. The Collector notices a wrong record and takes it back — singly, or a whole stretch
    at once. [cmd: inventory_planning/unmark_cards_placed]
 
-> **Gap:** nothing checks that a location's physical contents match the ledger; a
-> mis-filed copy stays recorded as correct. [#108](https://github.com/NicoVIII/tcg-card-collector/issues/108)
+Story 4 checks a location's contents against the ledger after the fact.
 
 ## 2. Re-sorting after the rules changed
 
@@ -116,11 +115,57 @@ skips steps 2–3, so step 4 prunes by a fixed location order instead
 > can't check them against what was physically taken out.
 > [#181](https://github.com/NicoVIII/tcg-card-collector/issues/181)
 
+## 4. Auditing a location
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor C as Collector
+  participant L as Location (physical)
+  participant A as App
+  A->>A: projects the collection into locations
+  A->>A: reads the placed ledger
+  A->>A: reads when each location was last audited
+  A->>C: lists the locations with their last audit
+  A->>C: lists what the ledger records at the chosen one
+  C->>L: walks the binder or box
+  C->>A: counts each recorded copy found
+  C->>A: enters copies found that aren't listed
+  C->>A: names where a misfiled copy came from
+  C->>A: completes the audit
+```
+
+1. The App projects the collection through the rule cascade into locations.
+   [query: inventory_planning/projection]
+2. The App reads the placed ledger. [query: inventory_planning/placed_ledger]
+3. The App reads when each location was last audited.
+   [query: inventory_planning/list_location_audits]
+4. The App lists every location with its last audit, including ones only the ledger
+   still records. [derived: client-web/src/data/location_audit/audit_list.ts]
+5. The App lists what the ledger records at the chosen location, in its physical
+   order. [derived: client-web/src/data/location_audit/audit_list.ts]
+6. The Collector walks the physical binder or box.
+7. The Collector counts how many of each recorded copy are there.
+   [derived: client-web/src/data/location_audit/audit_session.ts]
+8. The Collector enters copies found that the ledger doesn't record there. A copy the
+   collection doesn't own is only reported.
+   [derived: client-web/src/data/location_audit/audit_session.ts]
+9. When every owned copy of a found card is already recorded somewhere, the Collector
+   names the location it was misfiled from.
+   [derived: client-web/src/data/location_audit/audit_session.ts]
+10. The Collector completes the audit. The App unmarks the copies not found, so they
+    reappear in placement guidance, marks or moves the found ones here, and records the
+    audit ([ADR 0024](../../decisions/0024-location-audit-completes-atomically.md)).
+    [cmd: inventory_planning/complete_location_audit]
+
+Abandoning the walk changes nothing.
+
 ## Coverage
 
 Inventory Planning handlers referenced: `mark_cards_placed`, `unmark_cards_placed`,
-`relocate_placed_cards`, `reconcile_placed_ledger`, `upsert_rule`, `delete_rule`,
-`reorder_rules`, `projection`, `placed_ledger`.
+`relocate_placed_cards`, `reconcile_placed_ledger`, `complete_location_audit`,
+`upsert_rule`, `delete_rule`, `reorder_rules`, `projection`, `placed_ledger`,
+`list_location_audits`.
 
 Owed by other stories: `list_rules`, `get_bulk_spec`, `update_bulk_spec`
 (*Designing the sorting scheme*), `restore_plan` (*Backing up and restoring*).

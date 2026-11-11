@@ -209,3 +209,22 @@ struct ListManagedLocationsRequest {
 method ListManagedLocations(
   ListManagedLocationsRequest
 ): ManagedLocationList = 316;
+
+// When each location was last audited (#108); never-audited locations are
+// absent. RFC 3339, like the catalog's refresh timestamps.
+struct LocationAuditSummary {
+  location: LocationRef = 0;
+  last_audited_at: string = 1;
+}
+
+struct LocationAuditList {
+  audits: [LocationAuditSummary] = 0;
+}
+
+struct ListLocationAuditsRequest {
+  unit: bool = 0;
+}
+
+method ListLocationAudits(
+  ListLocationAuditsRequest
+): LocationAuditList = 318;

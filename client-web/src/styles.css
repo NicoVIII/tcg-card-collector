@@ -408,6 +408,26 @@ p[role="alert"] {
   margin-left: auto;
 }
 
+/* An audit row's found-count buttons: at the row's end, sized for a thumb
+   while the other hand holds the card (#108). */
+.audit-controls {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+
+.page-panel .audit-controls button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* An audit's found-but-not-listed row carries a source picker and notes on
+   top of the staging row's key and name, so it wraps instead of pushing a
+   phone viewport sideways. */
+.audit-find {
+  flex-wrap: wrap;
+}
+
 /* An unstruck placement row's "Up to here" button, same end-of-row spot as
    Pull out (#106). */
 .placement-mark-through {

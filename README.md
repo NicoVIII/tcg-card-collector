@@ -15,6 +15,7 @@ See [docs/vision.md](docs/vision.md) for why the project exists, where it is hea
 - Location rules and inventory projections for physical sorting
 - Decks: a named list of owned copies kept out of the binders — the projection takes a deck's cards before any rule, shows what a deck is missing when the collection owns fewer than it lists, and won't let a removal quietly eat into a deck
 - A re-sort worklist flags placed copies a rule change left behind, and re-points a renamed location's records without treating it as a physical move
+- Location audits check a binder, box, or deck against what's recorded there and correct the record, including moving a misfiled card from where it was recorded
 - The collection can be exported to a versioned JSON file and restored from one, byte-for-byte round-trip
 - All of it available over Skir RPC and REST
 

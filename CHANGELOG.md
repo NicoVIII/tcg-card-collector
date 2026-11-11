@@ -25,6 +25,14 @@ Each release section uses only the subheadings it needs:
   copies than a deck lists, the deck keeps its list and shows what's missing; removing cards from
   the collection refuses to cut into a deck's copies, and the restore preview warns when a file
   would leave a deck short. Deleting a deck sends its cards back to wherever the rules put them.
+- Location audits (#108): Place cards links to a new Audit locations page that lists every
+  location with when it was last audited. Auditing one lists what's recorded there; count what
+  you actually find, and enter cards you find that aren't listed. Completing the audit takes
+  the cards you didn't find off the location (they show up again under Place cards), records
+  the found ones there, and asks which location a misfiled card came from when it's recorded
+  elsewhere. Cards that aren't in the collection are only reported. Nothing changes until you
+  complete, and a walk in progress survives a reload in the same browser. Backups don't include
+  audit history yet, so a restore loses it.
 
 ### Changed
 

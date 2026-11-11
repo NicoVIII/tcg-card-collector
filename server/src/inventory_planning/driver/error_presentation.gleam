@@ -1,5 +1,6 @@
 import gleam/int
 import inventory_planning/application/commands/add_to_managed_location/ports as add_to_managed_location_ports
+import inventory_planning/application/commands/complete_location_audit/ports as complete_location_audit_ports
 import inventory_planning/application/commands/create_managed_location/ports as create_managed_location_ports
 import inventory_planning/application/commands/delete_managed_location/ports as delete_managed_location_ports
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
@@ -11,6 +12,7 @@ import inventory_planning/application/commands/reorder_rules/ports as reorder_ru
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
+import inventory_planning/domain/location_audit
 import inventory_planning/domain/managed_location
 import shared/domain/copy_key.{type CopyKey}
 import shared/driver/presented_error.{
@@ -207,4 +209,48 @@ fn underheld_message(underheld: managed_location.Underheld) -> String {
   <> ", "
   <> int.to_string(underheld.requested)
   <> " requested"
+}
+
+fn audit_rejection_message(rejection: location_audit.Rejection) -> String {
+  case rejection {
+    location_audit.NotRecordedHere(key:, requested:, recorded:) ->
+      "the ledger records "
+      <> int.to_string(recorded)
+      <> " cop(ies) of "
+      <> copy_label(key)
+      <> " at this location, "
+      <> int.to_string(requested)
+      <> " reported missing"
+    location_audit.NotRecordedAtSource(key:, requested:, recorded:, ..) ->
+      "the ledger records "
+      <> int.to_string(recorded)
+      <> " cop(ies) of "
+      <> copy_label(key)
+      <> " at the location named as its source, "
+      <> int.to_string(requested)
+      <> " to move"
+    location_audit.ExceedsOwned(key:, requested:, available:) ->
+      "only "
+      <> int.to_string(available)
+      <> " owned cop(ies) of "
+      <> copy_label(key)
+      <> " are not placed anywhere, "
+      <> int.to_string(requested)
+      <> " found; name the location they came from"
+  }
+}
+
+pub fn complete_location_audit(
+  error: complete_location_audit_ports.CompleteLocationAuditError,
+) -> PresentedError {
+  case error {
+    complete_location_audit_ports.UnknownLocation ->
+      PresentedError(BadRequest, "this deck no longer exists")
+    complete_location_audit_ports.InvalidAudit ->
+      PresentedError(BadRequest, "invalid audit findings")
+    complete_location_audit_ports.Rejected(rejection) ->
+      PresentedError(BadRequest, audit_rejection_message(rejection))
+    complete_location_audit_ports.PersistenceFailed(_) ->
+      PresentedError(Internal, "failed to complete the audit")
+  }
 }

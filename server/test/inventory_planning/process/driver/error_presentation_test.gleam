@@ -1,4 +1,5 @@
 import inventory_planning/application/commands/add_to_managed_location/ports as add_to_managed_location_ports
+import inventory_planning/application/commands/complete_location_audit/ports as complete_location_audit_ports
 import inventory_planning/application/commands/delete_rule/ports as delete_rule_ports
 import inventory_planning/application/commands/mark_cards_placed/ports as mark_cards_placed_ports
 import inventory_planning/application/commands/relocate_placed_cards/ports as relocate_placed_cards_ports
@@ -6,6 +7,7 @@ import inventory_planning/application/commands/reorder_rules/ports as reorder_ru
 import inventory_planning/application/commands/unmark_cards_placed/ports as unmark_cards_placed_ports
 import inventory_planning/application/commands/update_bulk_spec/ports as update_bulk_spec_ports
 import inventory_planning/application/commands/upsert_rule/ports as upsert_rule_ports
+import inventory_planning/domain/location_audit
 import inventory_planning/domain/managed_location
 import inventory_planning/driver/error_presentation
 import shared/domain/copy_key
@@ -107,4 +109,32 @@ pub fn an_overclaim_names_the_copy_and_what_is_free_test() {
       BadRequest,
       "only 1 unclaimed cop(ies) of lea 161 (foil, de) left to add, 3 requested",
     )
+}
+
+// A contradicted finding means a stale page; the message says which copy and
+// what the user can do about it.
+pub fn an_audit_needing_a_source_names_the_copy_and_the_fix_test() {
+  let assert Ok(key) =
+    copy_key.new(
+      set_code: "lea",
+      collector_number: "161",
+      finish: "foil",
+      language: "de",
+    )
+
+  assert error_presentation.complete_location_audit(
+      complete_location_audit_ports.Rejected(location_audit.ExceedsOwned(
+        key:,
+        requested: 1,
+        available: 0,
+      )),
+    )
+    == PresentedError(
+      BadRequest,
+      "only 0 owned cop(ies) of lea 161 (foil, de) are not placed anywhere, 1 found; name the location they came from",
+    )
+  assert error_presentation.complete_location_audit(
+      complete_location_audit_ports.PersistenceFailed("disk full"),
+    )
+    == PresentedError(Internal, "failed to complete the audit")
 }
