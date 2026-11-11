@@ -20,6 +20,11 @@ describe("routes", () => {
     expect(navRoutes.map((route) => route.path)).not.toContain("/backup");
   });
 
+  it("routes the audit page without putting it in the nav", () => {
+    expect(routes.map((route) => route.path)).toContain("/audit");
+    expect(navRoutes.map((route) => route.path)).not.toContain("/audit");
+  });
+
   it("keeps route labels non-empty", () => {
     for (const route of routes) {
       expect(route.label.length).toBeGreaterThan(0);

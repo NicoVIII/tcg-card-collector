@@ -1,4 +1,5 @@
 import type { Component } from "solid-js";
+import { AuditPage } from "./pages/audit_page";
 import { BackupPage } from "./pages/backup_page";
 import { CatalogPage } from "./pages/catalog_page";
 import { CollectionPage } from "./pages/collection_page";
@@ -10,6 +11,7 @@ import { PlacementPage } from "./pages/placement_page";
 export type AppRoute = {
   path:
     | "/collection"
+    | "/audit"
     | "/backup"
     | "/catalog"
     | "/decks"
@@ -35,4 +37,5 @@ export const navRoutes: AppRoute[] = [
 export const routes: AppRoute[] = [
   ...navRoutes,
   { path: "/backup", label: "Back up & restore", component: BackupPage },
+  { path: "/audit", label: "Audit locations", component: AuditPage },
 ];

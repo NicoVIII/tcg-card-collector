@@ -1,5 +1,5 @@
 import { For, Show, createMemo, createSignal } from "solid-js";
-import { useSearchParams } from "@solidjs/router";
+import { A, useSearchParams } from "@solidjs/router";
 import { mapError } from "../data/http/error";
 import { createMutationError } from "../lib/mutation_error";
 import { createInitialScroll } from "../lib/initial_scroll";
@@ -674,7 +674,8 @@ export function PlacementPage() {
       <p class="hint">
         Cards you've added but not yet sorted into their storage locations. Open a location to file
         it; tick each card as you place it, untick a struck-through card to undo. Filed a whole
-        stretch in one sitting? Use a row's "Up to here" to mark everything above it at once.
+        stretch in one sitting? Use a row's "Up to here" to mark everything above it at once. To
+        check a location's real contents against the record, <A href="/audit">audit it</A>.
       </p>
       <Show when={isLoading()}>
         <p>Loading placement guidance...</p>
