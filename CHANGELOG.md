@@ -32,6 +32,19 @@ Each release section uses only the subheadings it needs:
   recorded in a deck. Files exported by earlier releases (`format_version` 1) still import
   unchanged; a release before this one can't read a version 2 file.
 
+### Fixed
+
+- Target sets typed in capitals or with spaces (`GRN`, ` grn `) are now tracked as `grn`, so
+  they count owned cards instead of staying at 0. Either spelling unmarks the set. A restore
+  file that lists the same set twice (in any spelling) reports the second entry and skips it
+  (#175).
+
+### Upgrading
+
+- The upgrade rewrites existing target sets to their lowercase, trimmed code. Spellings of the
+  same set become one target. A target whose code was only spaces tracked nothing and is removed
+  (#175).
+
 ## v0.3.0 — 2026-10-06
 
 ### Added

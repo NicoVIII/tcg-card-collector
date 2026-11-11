@@ -149,6 +149,22 @@ pub fn a_blank_target_set_code_is_rejected_with_its_position_test() {
     ]
 }
 
+pub fn target_set_codes_import_canonically_and_a_respelling_is_rejected_test() {
+  let #(codes, rejected) =
+    import_document.validate_target_sets([" GRN ", "neo", "grn"])
+
+  assert codes == ["grn", "neo"]
+  assert rejected
+    == [
+      RejectedEntry(
+        section: TargetSetsSection,
+        position: 3,
+        identity: "grn",
+        reason: "set code is listed twice",
+      ),
+    ]
+}
+
 fn a_raw_placed(location: String, quantity: Int) -> import_document.RawPlaced {
   RawPlaced(
     set_code: "mh2",

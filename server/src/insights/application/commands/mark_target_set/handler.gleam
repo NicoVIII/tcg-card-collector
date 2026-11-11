@@ -12,7 +12,7 @@ pub fn execute(
   port: ports.MarkTargetSetPort,
 ) -> command_result.CommandResult(ports.MarkTargetSetError) {
   case target_set.parse(command.set_code) {
-    Error(Nil) -> Error(ports.InvalidSetCode)
+    Error(_) -> Error(ports.InvalidSetCode)
     Ok(target) ->
       port.mark(target_set.to_string(target))
       |> result.map_error(ports.PersistenceFailed)

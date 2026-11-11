@@ -1,15 +1,17 @@
 import gleam/result
-import shared/domain/non_empty_string.{type NonEmptyString}
+import shared/domain/set_code.{type SetCode, type SetCodeError}
 
 pub type TargetSet {
-  TargetSet(set_code: NonEmptyString)
+  TargetSet(set_code: SetCode)
 }
 
-pub fn parse(raw: String) -> Result(TargetSet, Nil) {
-  non_empty_string.new(raw)
+/// Canonicalises user-typed input (` GRN ` → `grn`) so a target always
+/// matches the catalog's and the collection's spelling of its set.
+pub fn parse(raw: String) -> Result(TargetSet, SetCodeError) {
+  set_code.from_user_input(raw)
   |> result.map(TargetSet)
 }
 
 pub fn to_string(target: TargetSet) -> String {
-  non_empty_string.to_string(target.set_code)
+  set_code.to_string(target.set_code)
 }

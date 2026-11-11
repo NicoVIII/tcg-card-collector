@@ -11,6 +11,7 @@ import portability/domain/export_document.{
   InLocation, InManagedLocation, ManagedLocationEntry, MemberEntry, PlacedEntry,
 }
 import shared/domain/copy_key.{type CopyKey}
+import shared/domain/set_code
 
 /// The five fields a collection entry carries on the wire, before
 /// validation — everything defaults to an empty/zero value rather than
@@ -362,36 +363,38 @@ pub fn validate_entries(
   split_outcomes(outcomes)
 }
 
-fn validate_target_set(
-  position: Int,
-  raw: String,
-) -> Result(String, RejectedEntry) {
-  case string.trim(raw) {
-    "" ->
-      Error(RejectedEntry(
-        section: TargetSetsSection,
-        position:,
-        identity: raw,
-        reason: "set code is blank",
-      ))
-    trimmed -> Ok(trimmed)
-  }
-}
-
 /// Validates `insights.target_sets` positionally, same shape as
-/// `validate_entries`. Only a blank code is rejected here — Portability's
-/// own domain can't reach Insights' `target_set.parse` (that would cross
-/// the bounded-context boundary outside the allowed driver/gleam facade
-/// link), so `InsightsApi.replace_target_sets` re-validates at write time
-/// (ADR 0019: defense in depth, not a caller-facing filter).
+/// `validate_entries`: each code is canonicalised through the shared-kernel
+/// `SetCode` (` GRN ` imports as `grn`), and a blank code, or one an earlier
+/// entry already spelled, is rejected. `InsightsApi.replace_target_sets`
+/// re-validates at write time (ADR 0019: defense in depth, not a
+/// caller-facing filter).
 pub fn validate_target_sets(
   raw: List(String),
 ) -> #(List(String), List(RejectedEntry)) {
-  let outcomes =
-    list.index_map(raw, fn(set_code, index) {
-      validate_target_set(index + 1, set_code)
+  let #(_, outcomes_rev) =
+    list.index_fold(raw, #(set.new(), []), fn(state, raw_code, index) {
+      let #(seen, acc) = state
+      let reject = fn(reason) {
+        Error(RejectedEntry(
+          section: TargetSetsSection,
+          position: index + 1,
+          identity: raw_code,
+          reason:,
+        ))
+      }
+      case set_code.from_user_input(raw_code) {
+        Error(_) -> #(seen, [reject("set code is blank"), ..acc])
+        Ok(code) -> {
+          let code = set_code.to_string(code)
+          case set.contains(seen, code) {
+            True -> #(seen, [reject("set code is listed twice"), ..acc])
+            False -> #(set.insert(seen, code), [Ok(code), ..acc])
+          }
+        }
+      }
     })
-  split_outcomes(outcomes)
+  split_outcomes(list.reverse(outcomes_rev))
 }
 
 pub fn managed_names(locations: List(ManagedLocationEntry)) -> Set(String) {

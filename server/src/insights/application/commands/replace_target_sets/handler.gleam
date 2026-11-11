@@ -21,7 +21,7 @@ pub fn execute(
   let ReplaceTargetSetsCommand(set_codes: set_codes) = command
 
   case list.try_map(set_codes, target_set.parse) {
-    Error(Nil) -> Error(ports.InvalidSetCodes)
+    Error(_) -> Error(ports.InvalidSetCodes)
     Ok(targets) ->
       port.replace(list.map(targets, target_set.to_string))
       |> result.map_error(ports.PersistenceFailed)

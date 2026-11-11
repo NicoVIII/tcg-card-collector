@@ -28,6 +28,20 @@ pub fn valid_set_code_is_marked_test() {
   assert ref.get(marked) == ["lea"]
 }
 
+pub fn set_code_is_canonicalised_before_reaching_the_port_test() {
+  let marked = ref.new([])
+  let port = build_port(marked:, mark_result: Ok(Nil))
+
+  let upper =
+    handler.execute(handler.MarkTargetSetCommand(set_code: "GRN"), port)
+  let padded =
+    handler.execute(handler.MarkTargetSetCommand(set_code: " grn "), port)
+
+  assert upper == Ok(Nil)
+  assert padded == Ok(Nil)
+  assert ref.get(marked) == ["grn", "grn"]
+}
+
 pub fn blank_set_code_is_rejected_without_calling_the_port_test() {
   let marked = ref.new([])
   let port = build_port(marked:, mark_result: Ok(Nil))
