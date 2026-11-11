@@ -13,7 +13,7 @@
     "test": "vitest run --environment node"
   },
   "dependencies": {
-    "@solidjs/router": "^1.0.0",
+    "@solidjs/router": "^1.0.1",
     "@tanstack/solid-query": "^5.106.1",
     "@yornaath/batshit": "^0.14.0",
     "skir-client": "^1.0.22",
