@@ -94,25 +94,27 @@ sequenceDiagram
   participant L as Location (physical)
   participant A as App
   C->>L: takes copies out
-  C->>A: removes them, or re-imports the collection
-  A->>A: prunes the ledger down to what is owned
+  C->>A: removes them, naming where each came from
+  A->>A: unmarks those locations, then shrinks the collection
+  A->>A: prunes the ledger wherever still more is placed than owned
 ```
 
 1. The Collector takes copies out of their locations (sold, traded, moved to a deck).
-2. The Collector removes them from the collection — or replaces the collection with a
-   fresh CSV import. [cmd: collection/remove_cards] [cmd: collection/import_collection]
+2. The Collector stages the copies to remove; where a copy could have come from more than
+   one place, the App lists the locations the ledger records it in (and the unplaced
+   ones) and the Collector picks where each was taken from. [query: inventory_planning/placed_ledger]
+3. The App unmarks the picked locations, then removes the copies from the collection.
+   [cmd: inventory_planning/unmark_cards_placed] [cmd: collection/remove_cards]
+4. The collection announces it changed; the App prunes the ledger wherever more copies
+   are still placed than owned. [cmd: inventory_planning/reconcile_placed_ledger]
 
-> **Gap:** the App does not show where the removed copies are recorded as placed; the
-> Collector has to know or search. [#158](https://github.com/NicoVIII/tcg-card-collector/issues/158)
+Replacing the collection with a fresh CSV import [cmd: collection/import_collection]
+skips steps 2–3, so step 4 prunes by a fixed location order instead
+([ADR 0023](../../decisions/0023-removal-names-the-location.md)).
 
-3. The collection announces it changed; the App prunes the ledger wherever more copies
-   are placed than owned. [cmd: inventory_planning/reconcile_placed_ledger]
-
-> **Gap:** the App prunes locations in alphabetical order, not the location the
-> Collector took the copy from. With copies placed in A and B and the copy taken from
-> B, the ledger keeps B. If the remaining copy projects to A, guidance asks to file a
-> copy into A that is already there, and the re-sort worklist sends the Collector to
-> pull a copy out of B that is gone. [#158](https://github.com/NicoVIII/tcg-card-collector/issues/158)
+> **Gap:** the App does not show which ledger rows an import pruned, so the Collector
+> can't check them against what was physically taken out.
+> [#181](https://github.com/NicoVIII/tcg-card-collector/issues/181)
 
 ## Coverage
 

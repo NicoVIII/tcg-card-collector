@@ -1,4 +1,4 @@
-import { createQuery } from "@tanstack/solid-query";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { queryKeys } from "../query-keys/factory";
 import { getPlacedLedger } from "./request";
 
@@ -13,4 +13,17 @@ export function usePlacedLedgerQuery() {
     // (#105). It reconciles on the next mount instead.
     refetchOnWindowFocus: false,
   }));
+}
+
+// Imperative, like useFetchOwnedCopies: removal staging must see where copies
+// are recorded now, not the placement page's deliberately stale cache.
+export function useFetchPlacedLedger() {
+  const queryClient = useQueryClient();
+
+  return () =>
+    queryClient.fetchQuery({
+      queryKey: queryKeys.placedLedger(),
+      queryFn: getPlacedLedger,
+      staleTime: 0,
+    });
 }

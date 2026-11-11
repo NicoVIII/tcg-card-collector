@@ -1,6 +1,6 @@
 # 0011 — In-process synchronous event bus for cross-context reconciliation
 
-- Status: accepted
+- Status: accepted; the location tie-break as the rule for removals superseded by [0023](0023-removal-names-the-location.md)
 - Date: 2026-09-19
 
 ## Context

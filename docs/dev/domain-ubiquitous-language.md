@@ -241,7 +241,9 @@ Boundary notes:
   quantities and the whole ledger on every run (no per-key payload) and, for any key whose placed
   total exceeds what's owned, prunes that key's locations in alphabetical order until it doesn't —
   an arbitrary but deterministic tie-break, since a plain quantity change carries no location to
-  blame. ReconcilePlacedLedger has no skir method or REST route; it is only ever invoked as an
+  blame. A ManualRemoval avoids it: the client unmarks the location each removed copy was taken
+  from before removing, so only imports reach the tie-break
+  ([ADR 0023](../decisions/0023-removal-names-the-location.md)). ReconcilePlacedLedger has no skir method or REST route; it is only ever invoked as an
   event-bus subscriber.
 - Managed-location membership is not reconciled when the collection shrinks: unlike the ledger,
   it records intent, and the gap surfaces as a Shortfall. Deleting a managed location removes its
