@@ -45,6 +45,10 @@ import {
   type ProjectionLocationSummary,
 } from "./inventory_projection";
 
+// Mirrors the server's blank-name rejection (location_ref.parse_cascade_name),
+// so the user is told before the request instead of after it.
+const isBlank = (name: string) => name.trim().length === 0;
+
 type RuleFieldsProps = {
   draft: RuleDraft;
   onChange: (draft: RuleDraft) => void;
@@ -449,7 +453,7 @@ export function InventoryPage() {
   const addRule = () => {
     mutationError.clear();
     const draft = newRuleDraft();
-    if (draft.location_name.trim().length === 0) {
+    if (isBlank(draft.location_name)) {
       mutationError.report(new Error("Enter a location name for the rule."), "add");
       return;
     }
@@ -474,6 +478,10 @@ export function InventoryPage() {
 
   const saveRule = (rule: InventoryRule) => {
     mutationError.clear();
+    if (isBlank(rule.location_name)) {
+      mutationError.report(new Error("Enter a location name for the rule."), rule.id);
+      return;
+    }
     upsertMutation.mutate(rule, {
       onSuccess: () => setEditingId(null),
       onError: (error) => mutationError.report(error, rule.id),
@@ -499,6 +507,10 @@ export function InventoryPage() {
 
   const saveBulkSpec = () => {
     mutationError.clear();
+    if (isBlank(bulkLocation())) {
+      mutationError.report(new Error("Enter a location name for bulk."), "bulk");
+      return;
+    }
     updateBulkSpecMutation.mutate(
       {
         location_name: bulkLocation(),

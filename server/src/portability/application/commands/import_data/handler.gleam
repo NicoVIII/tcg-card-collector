@@ -132,7 +132,7 @@ pub fn execute(
       document,
       DeepCheckers(
         check_rule: ports.check_rule,
-        check_sort_keys: ports.check_sort_keys,
+        check_bulk_spec: ports.check_bulk_spec,
         check_managed_kind: ports.check_managed_kind,
       ),
     )

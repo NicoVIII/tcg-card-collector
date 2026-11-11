@@ -16,6 +16,7 @@ pub type UpsertInventoryRulePort {
 }
 
 pub type UpsertInventoryRuleError {
+  InvalidLocationName
   InvalidExpression
   InvalidSelector
   InvalidSortKeys

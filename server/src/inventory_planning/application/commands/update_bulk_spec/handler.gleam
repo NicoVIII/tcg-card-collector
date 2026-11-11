@@ -1,5 +1,6 @@
 import gleam/result
 import inventory_planning/application/commands/update_bulk_spec/ports
+import inventory_planning/domain/location_ref
 import inventory_planning/domain/sort_spec
 import shared/application/command_result
 
@@ -14,6 +15,10 @@ pub fn execute(
   let UpdateBulkSpecCommand(location_name: location_name, sort_keys: sort_keys) =
     command
 
+  use location_name <- result.try(
+    location_ref.parse_cascade_name(location_name)
+    |> result.replace_error(ports.InvalidLocationName),
+  )
   use keys <- result.try(
     sort_spec.parse_sort_keys(sort_keys)
     |> result.replace_error(ports.InvalidSortKeys),

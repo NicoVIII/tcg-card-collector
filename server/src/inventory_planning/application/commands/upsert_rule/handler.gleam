@@ -2,6 +2,7 @@ import gleam/result
 import inventory_planning/application/commands/upsert_rule/ports
 import inventory_planning/domain/card_predicate
 import inventory_planning/domain/copy_selector
+import inventory_planning/domain/location_ref
 import inventory_planning/domain/sort_spec
 import shared/application/command_result
 
@@ -29,10 +30,12 @@ pub fn execute(
     sort_keys: sort_keys,
   ) = command
 
-  // The location string doubles as a fan-out template; location_target.parse
-  // treats any string as valid (plain name = degenerate template), so it needs
-  // no validation here — only the predicate, selector, and sort keys can be
-  // malformed.
+  // The location doubles as a fan-out template, so beyond being non-blank any
+  // string is a valid target (a plain name is a degenerate template).
+  use location_name <- result.try(
+    location_ref.parse_cascade_name(location_name)
+    |> result.replace_error(ports.InvalidLocationName),
+  )
   use selector <- result.try(
     copy_selector.parse(selector)
     |> result.replace_error(ports.InvalidSelector),

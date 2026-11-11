@@ -78,3 +78,30 @@ pub fn unknown_sort_key_is_rejected_before_persistence_test() {
     )
     == Error(ports.InvalidSortKeys)
 }
+
+pub fn location_name_is_trimmed_before_persistence_test() {
+  let port =
+    ports.UpsertInventoryRulePort(upsert_rule: fn(model) {
+      Error(model.location_name)
+    })
+
+  assert handler.execute(
+      handler.UpsertInventoryRuleCommand(
+        ..command(expression: "set_code=m11", selector: "all", sort_keys: ""),
+        location_name: "  Binder {color_identity} ",
+      ),
+      port,
+    )
+    == Error(ports.PersistenceFailed("Binder {color_identity}"))
+}
+
+pub fn blank_location_name_is_rejected_before_persistence_test() {
+  assert handler.execute(
+      handler.UpsertInventoryRuleCommand(
+        ..command(expression: "set_code=m11", selector: "all", sort_keys: ""),
+        location_name: "   ",
+      ),
+      echoing_port(),
+    )
+    == Error(ports.InvalidLocationName)
+}

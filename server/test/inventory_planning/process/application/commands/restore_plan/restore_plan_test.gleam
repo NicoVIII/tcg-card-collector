@@ -129,7 +129,24 @@ pub fn one_invalid_rule_rejects_the_whole_batch_without_writing_test() {
   assert ref.get(captured) == []
 }
 
-pub fn a_valid_bulk_spec_canonicalizes_its_sort_keys_test() {
+pub fn a_blank_rule_location_rejects_the_whole_batch_without_writing_test() {
+  let captured = ref.new([])
+  let port = recording_port(captured, Ok(Nil))
+
+  let result =
+    handler.execute(
+      handler.RestorePlanCommand(
+        ..empty_command(),
+        rules: Some([a_rule("  ", "rarity >= rare")]),
+      ),
+      port,
+    )
+
+  assert result == Error(ports.InvalidRules)
+  assert ref.get(captured) == []
+}
+
+pub fn a_valid_bulk_spec_is_trimmed_and_canonicalizes_its_sort_keys_test() {
   let captured = ref.new([])
   let port = recording_port(captured, Ok(Nil))
 
@@ -138,7 +155,7 @@ pub fn a_valid_bulk_spec_canonicalizes_its_sort_keys_test() {
       handler.RestorePlanCommand(
         ..empty_command(),
         bulk: Some(handler.RawBulkSpec(
-          location_name: "Bulk",
+          location_name: " Bulk ",
           sort_keys: " name , set_code ",
         )),
       ),
@@ -165,6 +182,23 @@ pub fn an_invalid_bulk_sort_key_is_rejected_without_writing_test() {
           location_name: "Bulk",
           sort_keys: "power",
         )),
+      ),
+      port,
+    )
+
+  assert result == Error(ports.InvalidBulkSpec)
+  assert ref.get(captured) == []
+}
+
+pub fn a_blank_bulk_location_is_rejected_without_writing_test() {
+  let captured = ref.new([])
+  let port = recording_port(captured, Ok(Nil))
+
+  let result =
+    handler.execute(
+      handler.RestorePlanCommand(
+        ..empty_command(),
+        bulk: Some(handler.RawBulkSpec(location_name: "", sort_keys: "name")),
       ),
       port,
     )

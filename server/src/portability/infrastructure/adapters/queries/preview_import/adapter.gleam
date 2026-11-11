@@ -1,11 +1,11 @@
 import inventory_planning/driver/gleam/inventory_planning_api
 import portability/application/queries/preview_import/ports
-import portability/domain/export_document.{type Rule}
+import portability/domain/export_document.{type BulkSpec, type Rule}
 
 pub fn new() -> ports.PreviewImportPorts {
   ports.PreviewImportPorts(
     check_rule: check_rule_adapter,
-    check_sort_keys: inventory_planning_api.check_sort_keys,
+    check_bulk_spec: check_bulk_spec_adapter,
     check_managed_kind: inventory_planning_api.check_managed_location_kind,
   )
 }
@@ -16,5 +16,12 @@ fn check_rule_adapter(rule: Rule) -> Result(Nil, String) {
     expression: rule.expression,
     selector: rule.selector,
     sort_keys: rule.sort_keys,
+  ))
+}
+
+fn check_bulk_spec_adapter(spec: BulkSpec) -> Result(Nil, String) {
+  inventory_planning_api.check_bulk_spec(inventory_planning_api.BulkSpecSpec(
+    location: spec.location,
+    sort_keys: spec.sort_keys,
   ))
 }

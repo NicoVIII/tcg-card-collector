@@ -55,7 +55,7 @@ fn build_ports(
 ) -> ports.ImportDataPorts {
   ports.ImportDataPorts(
     check_rule: fn(_rule) { check_rule_result },
-    check_sort_keys: fn(_raw) { Ok(Nil) },
+    check_bulk_spec: fn(_raw) { Ok(Nil) },
     check_managed_kind: fn(_kind) { Ok(Nil) },
     replace_target_sets: fn(_codes) {
       record_if_ok(written, [TargetSetsSection], replace_target_sets_result)

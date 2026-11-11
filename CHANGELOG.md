@@ -38,6 +38,8 @@ Each release section uses only the subheadings it needs:
   they count owned cards instead of staying at 0. Either spelling unmarks the set. A restore
   file that lists the same set twice (in any spelling) reports the second entry and skips it
   (#175).
+- A rule or the bulk location can no longer be saved with an empty name, and the restore preview
+  reports one. Names are saved trimmed (#175).
 
 ### Upgrading
 

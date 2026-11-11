@@ -21,7 +21,7 @@ pub fn new(
 ) -> ports.ImportDataPorts {
   ports.ImportDataPorts(
     check_rule: check_rule_adapter,
-    check_sort_keys: inventory_planning_api.check_sort_keys,
+    check_bulk_spec: check_bulk_spec_adapter,
     check_managed_kind: inventory_planning_api.check_managed_location_kind,
     replace_target_sets: insights_api.replace_target_sets,
     replace_plan: replace_plan_adapter,
@@ -31,6 +31,10 @@ pub fn new(
 
 fn check_rule_adapter(rule: Rule) -> Result(Nil, String) {
   inventory_planning_api.check_rule(to_rule_spec(rule))
+}
+
+fn check_bulk_spec_adapter(spec: BulkSpec) -> Result(Nil, String) {
+  inventory_planning_api.check_bulk_spec(to_bulk_spec_spec(spec))
 }
 
 fn replace_plan_adapter(

@@ -595,18 +595,16 @@ pub fn validate_rules(
   split_outcomes(outcomes)
 }
 
-/// Validates the bulk spec's sort keys via an injected checker, same
-/// boundary reasoning as `validate_rules`. The location isn't checked — any
-/// string is a valid bulk location, matching Inventory Planning's own
-/// UpdateBulkSpec.
+/// Validates the bulk spec via an injected checker, same boundary reasoning
+/// as `validate_rules`.
 pub fn validate_bulk(
   raw: Option(BulkSpec),
-  check_sort_keys: fn(String) -> Result(Nil, String),
+  check_bulk_spec: fn(BulkSpec) -> Result(Nil, String),
 ) -> #(Option(BulkSpec), List(RejectedEntry)) {
   case raw {
     None -> #(None, [])
     Some(spec) ->
-      case check_sort_keys(spec.sort_keys) {
+      case check_bulk_spec(spec) {
         Ok(Nil) -> #(Some(spec), [])
         Error(reason) -> #(None, [
           RejectedEntry(
@@ -625,7 +623,7 @@ pub fn validate_bulk(
 pub type DeepCheckers {
   DeepCheckers(
     check_rule: fn(Rule) -> Result(Nil, String),
-    check_sort_keys: fn(String) -> Result(Nil, String),
+    check_bulk_spec: fn(BulkSpec) -> Result(Nil, String),
     check_managed_kind: fn(String) -> Result(Nil, String),
   )
 }
@@ -743,7 +741,7 @@ pub fn resolve_deep_sections(
     }
   }
   let #(bulk, bulk_rejected) =
-    validate_bulk(document.bulk, checkers.check_sort_keys)
+    validate_bulk(document.bulk, checkers.check_bulk_spec)
   let #(managed_locations, managed_rejected) =
     check_managed_kinds(document.managed_locations, checkers.check_managed_kind)
   let dropped =

@@ -6,6 +6,7 @@ import gleam/result
 import inventory_planning/application/commands/restore_plan/ports
 import inventory_planning/domain/card_predicate
 import inventory_planning/domain/copy_selector
+import inventory_planning/domain/location_ref
 import inventory_planning/domain/managed_location.{type ManagedLocation}
 import inventory_planning/domain/placement
 import inventory_planning/domain/sort_spec
@@ -75,7 +76,7 @@ pub type RestorePlanCommand {
 /// (ImportCollection, ReplaceTargetSets). The caller (Portability) already
 /// holds entries it pre-filtered at the document level (ADR 0019), so this
 /// re-validation is defense-in-depth: a genuine failure here means
-/// Portability's own check_rule/check_sort_keys ports disagreed with this
+/// Portability's own check_rule/check_bulk_spec ports disagreed with this
 /// command's parsers, which should not happen in practice.
 pub fn execute(
   command: RestorePlanCommand,
@@ -177,6 +178,9 @@ fn to_rule_write_model(
   row: RawRule,
   position: Int,
 ) -> Result(ports.RuleWriteModel, Nil) {
+  use location_name <- result.try(location_ref.parse_cascade_name(
+    row.location_name,
+  ))
   use selector <- result.try(
     copy_selector.parse(row.selector) |> result.replace_error(Nil),
   )
@@ -188,7 +192,7 @@ fn to_rule_write_model(
   )
   Ok(ports.RuleWriteModel(
     id: "imported-" <> int.to_string(position),
-    location_name: row.location_name,
+    location_name:,
     expression: card_predicate.to_string(predicate),
     position:,
     selector: copy_selector.to_string(selector),
@@ -202,13 +206,17 @@ fn validate_bulk(
   case raw {
     None -> Ok(None)
     Some(spec) -> {
+      use location_name <- result.try(
+        location_ref.parse_cascade_name(spec.location_name)
+        |> result.replace_error(ports.InvalidBulkSpec),
+      )
       use sort_keys <- result.try(
         sort_spec.parse_sort_keys(spec.sort_keys)
         |> result.replace_error(ports.InvalidBulkSpec),
       )
       Ok(
         Some(ports.BulkSpecWriteModel(
-          location_name: spec.location_name,
+          location_name:,
           sort_keys: sort_spec.sort_keys_to_string(sort_keys),
         )),
       )

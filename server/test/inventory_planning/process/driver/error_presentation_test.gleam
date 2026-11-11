@@ -12,6 +12,8 @@ import shared/domain/copy_key
 import shared/driver/presented_error.{BadRequest, Internal, PresentedError}
 
 pub fn upsert_rule_validation_errors_are_bad_requests_test() {
+  assert error_presentation.upsert_rule(upsert_rule_ports.InvalidLocationName)
+    == PresentedError(BadRequest, "inventory rule location name is blank")
   assert error_presentation.upsert_rule(upsert_rule_ports.InvalidExpression)
     == PresentedError(BadRequest, "invalid inventory rule expression")
   assert error_presentation.upsert_rule(upsert_rule_ports.InvalidSelector)
@@ -61,6 +63,10 @@ pub fn reorder_rules_not_a_permutation_is_a_bad_request_test() {
 }
 
 pub fn other_validation_errors_are_bad_requests_test() {
+  assert error_presentation.update_bulk_spec(
+      update_bulk_spec_ports.InvalidLocationName,
+    )
+    == PresentedError(BadRequest, "bulk location name is blank")
   assert error_presentation.update_bulk_spec(
       update_bulk_spec_ports.InvalidSortKeys,
     )

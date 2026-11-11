@@ -101,7 +101,7 @@ pub fn filename(document: ExportDocument) -> String {
 /// Inventory Planning's own parsers, which this driver-layer function has
 /// no port to reach. The application layer's import_data/preview_import
 /// handlers run that second validation pass through an injected
-/// check_rule/check_sort_keys port before anything is written or shown.
+/// check_rule/check_bulk_spec port before anything is written or shown.
 pub fn parse(content: String) -> Result(ImportDocument, DocumentError) {
   use root <- result.try(
     json.parse(from: content, using: decode.dynamic)

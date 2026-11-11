@@ -1,5 +1,6 @@
 import gleam/bool
 import gleam/order.{type Order}
+import gleam/result
 import gleam/string
 
 /// Where a copy sits, in one of two namespaces (#122): a cascade location
@@ -16,12 +17,21 @@ pub type LocationRef {
   Managed(id: String)
 }
 
+/// Parses a cascade-namespace name as a user typed it — a rule target or the
+/// bulk location — into the trimmed spelling the projection renders and the
+/// placed ledger stores. Blank after trimming is an error: a location with no
+/// name can never be ticked off.
+pub fn parse_cascade_name(raw: String) -> Result(String, Nil) {
+  let name = string.trim(raw)
+  use <- bool.guard(name == "", Error(Nil))
+  Ok(name)
+}
+
 /// Parses the `(kind, key)` pair the wire and the database carry — `kind` is
 /// "cascade" or "managed", `key` the name or id. The key is trimmed first, so
 /// a whitespace-only one is as invalid as an empty one.
 pub fn new(kind kind: String, key key: String) -> Result(LocationRef, Nil) {
-  let key = string.trim(key)
-  use <- bool.guard(key == "", Error(Nil))
+  use key <- result.try(parse_cascade_name(key))
   case kind {
     "cascade" -> Ok(Cascade(key))
     "managed" -> Ok(Managed(key))

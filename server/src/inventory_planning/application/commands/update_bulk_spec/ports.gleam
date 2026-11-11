@@ -7,6 +7,7 @@ pub type UpdateBulkSpecPort {
 }
 
 pub type UpdateBulkSpecError {
+  InvalidLocationName
   InvalidSortKeys
   PersistenceFailed(reason: String)
 }

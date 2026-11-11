@@ -13,7 +13,7 @@ import shared/domain/copy_key
 fn happy_ports() -> ports.PreviewImportPorts {
   ports.PreviewImportPorts(
     check_rule: fn(_rule) { Ok(Nil) },
-    check_sort_keys: fn(_raw) { Ok(Nil) },
+    check_bulk_spec: fn(_raw) { Ok(Nil) },
     check_managed_kind: fn(_kind) { Ok(Nil) },
   )
 }

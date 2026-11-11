@@ -317,11 +317,11 @@ pub fn ledger_excess_reports_only_keys_placed_beyond_what_is_owned_test() {
 
 fn checkers(
   check_rule: fn(export_document.Rule) -> Result(Nil, String),
-  check_sort_keys: fn(String) -> Result(Nil, String),
+  check_bulk_spec: fn(export_document.BulkSpec) -> Result(Nil, String),
 ) -> import_document.DeepCheckers {
   import_document.DeepCheckers(
     check_rule:,
-    check_sort_keys:,
+    check_bulk_spec:,
     check_managed_kind: fn(_) { Ok(Nil) },
   )
 }
@@ -494,7 +494,7 @@ pub fn a_rejected_managed_location_takes_its_dependents_with_it_test() {
   let checkers =
     import_document.DeepCheckers(
       check_rule: fn(_) { Ok(Nil) },
-      check_sort_keys: fn(_) { Ok(Nil) },
+      check_bulk_spec: fn(_) { Ok(Nil) },
       check_managed_kind: fn(kind) {
         case kind {
           "deck" -> Ok(Nil)

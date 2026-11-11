@@ -148,11 +148,22 @@ pub fn list_placed() -> Result(List(PlacedCopy), String) {
   })
 }
 
-/// Validates a rule's DSL fields without persisting — Portability's import
-/// preview uses this to report a bad rule before anything is written
-/// (ADR 0019). The location field isn't checked: it doubles as a fan-out
-/// template and `location_target.parse` accepts any string.
+fn check_location_name(raw: String) -> Result(Nil, String) {
+  location_ref.parse_cascade_name(raw)
+  |> result.replace_error("location name is blank")
+  |> result.map(fn(_) { Nil })
+}
+
+fn check_sort_keys(raw: String) -> Result(Nil, String) {
+  sort_spec.parse_sort_keys(raw)
+  |> result.replace_error("invalid sort keys")
+  |> result.map(fn(_) { Nil })
+}
+
+/// Validates a rule without persisting — Portability's import preview uses
+/// this to report a bad rule before anything is written (ADR 0019).
 pub fn check_rule(rule: RuleSpec) -> Result(Nil, String) {
+  use _ <- result.try(check_location_name(rule.location))
   use _ <- result.try(
     copy_selector.parse(rule.selector)
     |> result.replace_error("unrecognized copies selector"),
@@ -164,10 +175,10 @@ pub fn check_rule(rule: RuleSpec) -> Result(Nil, String) {
   check_sort_keys(rule.sort_keys)
 }
 
-pub fn check_sort_keys(raw: String) -> Result(Nil, String) {
-  sort_spec.parse_sort_keys(raw)
-  |> result.replace_error("invalid sort keys")
-  |> result.map(fn(_) { Nil })
+/// The bulk spec's counterpart of check_rule.
+pub fn check_bulk_spec(spec: BulkSpecSpec) -> Result(Nil, String) {
+  use _ <- result.try(check_location_name(spec.location))
+  check_sort_keys(spec.sort_keys)
 }
 
 /// Validates a managed location's kind without persisting — the import
@@ -181,7 +192,7 @@ pub fn check_managed_location_kind(raw: String) -> Result(Nil, String) {
 /// Replaces whichever of rules/bulk/managed/placed are given, atomically together,
 /// reusing RestorePlan's own validation and persistence — the caller
 /// (Portability) already holds entries it validated at the document level
-/// via check_rule/check_sort_keys (ADR 0019), so this is defense-in-depth.
+/// via check_rule/check_bulk_spec (ADR 0019), so this is defense-in-depth.
 pub fn replace_plan(
   rules: Option(List(RuleSpec)),
   bulk: Option(BulkSpecSpec),

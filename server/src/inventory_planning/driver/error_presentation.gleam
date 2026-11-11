@@ -21,6 +21,8 @@ pub fn upsert_rule(
   error: upsert_rule_ports.UpsertInventoryRuleError,
 ) -> PresentedError {
   case error {
+    upsert_rule_ports.InvalidLocationName ->
+      PresentedError(BadRequest, "inventory rule location name is blank")
     upsert_rule_ports.InvalidExpression ->
       PresentedError(BadRequest, "invalid inventory rule expression")
     upsert_rule_ports.InvalidSelector ->
@@ -56,6 +58,8 @@ pub fn update_bulk_spec(
   error: update_bulk_spec_ports.UpdateBulkSpecError,
 ) -> PresentedError {
   case error {
+    update_bulk_spec_ports.InvalidLocationName ->
+      PresentedError(BadRequest, "bulk location name is blank")
     update_bulk_spec_ports.InvalidSortKeys ->
       PresentedError(BadRequest, "invalid bulk sort keys")
     update_bulk_spec_ports.PersistenceFailed(_) ->
