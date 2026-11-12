@@ -18,8 +18,10 @@ import sqlight
 /// `collection_dao.replace_collection` already does for the collection.
 ///
 /// Managed locations go before the ledger: replacing them drops the ledger
-/// rows recorded at the old ones (their ids are gone), and a present ledger
-/// section then writes its own rows, including ones at the new locations.
+/// rows and audit history recorded at the old ones (their ids are gone, and a
+/// restore reuses position-based ids, so a stale row would attach to a
+/// different location), and a present ledger section then writes its own
+/// rows, including ones at the new locations.
 pub fn replace(
   rules: Option(List(RuleRow)),
   bulk: Option(#(String, String)),
@@ -94,6 +96,7 @@ fn managed_statements(
   list.flatten([
     [
       #("DELETE FROM placed_cards WHERE location_kind = 'managed';", []),
+      #("DELETE FROM location_audits WHERE location_kind = 'managed';", []),
       #("DELETE FROM managed_location_members;", []),
       #("DELETE FROM managed_locations;", []),
     ],

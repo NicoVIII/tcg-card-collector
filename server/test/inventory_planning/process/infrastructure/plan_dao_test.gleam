@@ -1,9 +1,11 @@
 import gleam/option.{None, Some}
 import inventory_planning/infrastructure/daos/bulk_spec_dao
 import inventory_planning/infrastructure/daos/inventory_rules_dao
+import inventory_planning/infrastructure/daos/location_audits_dao
 import inventory_planning/infrastructure/daos/managed_locations_dao
 import inventory_planning/infrastructure/daos/placed_cards_dao
 import inventory_planning/infrastructure/daos/plan_dao
+import shared/infrastructure/stores/sqlite_store
 import support/test_db
 
 fn a_rule(id: String) -> inventory_rules_dao.RuleRow {
@@ -108,4 +110,50 @@ pub fn replacing_managed_locations_drops_only_their_old_ledger_rows_test() {
   assert placed_cards_dao.list() == Ok([a_placed_row("Box A")])
   let assert Ok([deck]) = managed_locations_dao.load_all()
   assert deck.id == "new-deck"
+}
+
+fn an_audit_row(
+  kind: String,
+  location: String,
+) -> location_audits_dao.LocationAuditRow {
+  location_audits_dao.LocationAuditRow(
+    location_kind: kind,
+    location:,
+    completed_at: "2026-11-01T10:00:00Z",
+  )
+}
+
+// A restore reuses `imported-managed-<n>` ids, so an audit left behind at the
+// old location would attach to whichever new one takes its id (#183).
+pub fn replacing_managed_locations_drops_their_audit_history_test() {
+  use _db <- test_db.with_temp_db()
+  let assert Ok(Nil) =
+    sqlite_store.exec_all_atomically([
+      location_audits_dao.insert_statement(an_audit_row("cascade", "Box A")),
+      location_audits_dao.insert_statement(an_audit_row(
+        "managed",
+        "imported-managed-0",
+      )),
+    ])
+
+  let assert Ok(Nil) =
+    plan_dao.replace(
+      None,
+      None,
+      Some(
+        #(
+          [
+            managed_locations_dao.ManagedLocationRow(
+              "imported-managed-0",
+              "Burn",
+              "deck",
+            ),
+          ],
+          [],
+        ),
+      ),
+      None,
+    )
+
+  assert location_audits_dao.list() == Ok([an_audit_row("cascade", "Box A")])
 }
