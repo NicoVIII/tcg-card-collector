@@ -2,6 +2,7 @@ import gleam/dict
 import gleam/list
 import gleam/option.{type Option}
 import gleam/result
+import gleam/time/timestamp.{type Timestamp}
 import inventory_planning/application/commands/restore_plan/handler as restore_plan_handler
 import inventory_planning/application/commands/restore_plan/ports as restore_plan_ports
 import inventory_planning/application/queries/get_bulk_spec/handler as get_bulk_spec_handler
@@ -12,6 +13,7 @@ import inventory_planning/application/queries/predict_restore_prune/handler as p
 import inventory_planning/application/queries/predict_restore_prune/ports as predict_restore_prune_ports
 import inventory_planning/domain/card_predicate
 import inventory_planning/domain/copy_selector
+import inventory_planning/domain/location_audit.{type AuditRecord}
 import inventory_planning/domain/location_ref
 import inventory_planning/domain/managed_location
 import inventory_planning/domain/plan_restore
@@ -22,6 +24,9 @@ import inventory_planning/infrastructure/adapters/commands/restore_plan/adapter 
 
 // nolint: depends_only_on -- glinter_arch doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a gleam-libs change
 import inventory_planning/infrastructure/adapters/queries/get_bulk_spec/adapter as get_bulk_spec_adapter
+
+// nolint: depends_only_on -- glinter_arch doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a gleam-libs change
+import inventory_planning/infrastructure/adapters/queries/list_location_audits/adapter as list_location_audits_adapter
 
 // nolint: depends_only_on -- glinter_arch doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a gleam-libs change
 import inventory_planning/infrastructure/adapters/queries/list_managed_locations/adapter as list_managed_locations_adapter
@@ -64,6 +69,11 @@ pub type PlacedAt {
 
 pub type PlacedCopy {
   PlacedCopy(key: CopyKey, location: PlacedAt, quantity: Int)
+}
+
+/// One completed location audit, its location named as in `PlacedCopy`.
+pub type AuditedAt {
+  AuditedAt(location: PlacedAt, completed_at: Timestamp)
 }
 
 /// A managed location's hand-made state: its name (unique among managed
@@ -154,6 +164,31 @@ pub fn list_placed() -> Result(List(PlacedCopy), String) {
   })
 }
 
+fn to_audited_at(
+  record: AuditRecord,
+  names: dict.Dict(String, String),
+) -> Result(AuditedAt, Nil) {
+  use location <- result.map(case record.location {
+    location_ref.Cascade(name) -> Ok(AtCascadeLocation(name))
+    location_ref.Managed(id) ->
+      dict.get(names, id) |> result.map(AtManagedLocation)
+  })
+  AuditedAt(location:, completed_at: record.completed_at)
+}
+
+/// Every completed audit, not only each location's latest — the whole
+/// history is hand-made state a backup carries (#183). Deleting or replacing
+/// a managed location removes its audits, so an unknown id is unreachable.
+pub fn list_audit_history() -> Result(List(AuditedAt), String) {
+  use records <- result.try(list_location_audits_adapter.new()())
+  use locations <- result.map(load_managed_locations())
+  let names =
+    locations
+    |> list.map(fn(location) { #(location.id, location.name) })
+    |> dict.from_list
+  list.filter_map(records, to_audited_at(_, names))
+}
+
 fn check_location_name(raw: String) -> Result(Nil, String) {
   location_ref.parse_cascade_name(raw)
   |> result.replace_error("location name is blank")
@@ -203,19 +238,23 @@ fn restore_plan_error_message(
     restore_plan_ports.InvalidBulkSpec -> "invalid bulk spec"
     restore_plan_ports.InvalidManagedLocations -> "invalid managed locations"
     restore_plan_ports.InvalidPlaced -> "invalid placed copies"
+    restore_plan_ports.InvalidAudits -> "invalid audit history"
     restore_plan_ports.PersistenceFailed(reason) -> reason
   }
 }
 
-/// Replaces whichever of rules/bulk/managed/placed are given, atomically together,
-/// reusing RestorePlan's own validation and persistence — the caller
-/// (Portability) already holds entries it validated at the document level
-/// via check_rule/check_bulk_spec (ADR 0019), so this is defense-in-depth.
+/// Replaces whichever of rules/bulk/managed/placed/audits are given,
+/// atomically together, reusing RestorePlan's own validation and persistence
+/// — the caller (Portability) already holds entries it validated at the
+/// document level via check_rule/check_bulk_spec (ADR 0019), so this is
+/// defense-in-depth. Without `audits`, replacing the ledger empties the audit
+/// history (`restore_clears_audit_history`).
 pub fn replace_plan(
   rules: Option(List(RuleSpec)),
   bulk: Option(BulkSpecSpec),
   managed: Option(List(ManagedLocationSpec)),
   placed: Option(List(PlacedCopy)),
+  audits: Option(List(AuditedAt)),
 ) -> Result(Nil, String) {
   case
     restore_plan_handler.execute(
@@ -224,6 +263,7 @@ pub fn replace_plan(
         bulk: option.map(bulk, to_raw_bulk_spec),
         managed: option.map(managed, list.map(_, to_raw_managed_location)),
         placed: option.map(placed, list.map(_, to_raw_placed)),
+        audits: option.map(audits, list.map(_, to_raw_audit)),
       ),
       restore_plan_adapter.new(),
     )
@@ -231,6 +271,15 @@ pub fn replace_plan(
     Ok(Nil) -> Ok(Nil)
     Error(error) -> Error(restore_plan_error_message(error))
   }
+}
+
+/// Whether `replace_plan` with these sections present empties the audit
+/// history, so the restore preview can say so before anything is written.
+pub fn restore_clears_audit_history(
+  restores_audits restores_audits: Bool,
+  replaces_ledger replaces_ledger: Bool,
+) -> Bool {
+  plan_restore.clears_audit_history(restores_audits:, replaces_ledger:)
 }
 
 fn to_raw_rule(rule: RuleSpec) -> restore_plan_handler.RawRule {
@@ -268,11 +317,15 @@ fn to_raw_managed_location(
   )
 }
 
-fn to_raw_placed(copy: PlacedCopy) -> plan_restore.RawPlaced {
-  let #(location_kind, location) = case copy.location {
+fn placed_at_parts(location: PlacedAt) -> #(String, String) {
+  case location {
     AtCascadeLocation(name) -> #("cascade", name)
     AtManagedLocation(name) -> #("managed", name)
   }
+}
+
+fn to_raw_placed(copy: PlacedCopy) -> plan_restore.RawPlaced {
+  let #(location_kind, location) = placed_at_parts(copy.location)
   plan_restore.RawPlaced(
     set_code: copy_key.set_code_string(copy.key),
     collector_number: copy_key.collector_number_string(copy.key),
@@ -281,6 +334,15 @@ fn to_raw_placed(copy: PlacedCopy) -> plan_restore.RawPlaced {
     location_kind:,
     location:,
     quantity: copy.quantity,
+  )
+}
+
+fn to_raw_audit(audit: AuditedAt) -> plan_restore.RawAudit {
+  let #(location_kind, location) = placed_at_parts(audit.location)
+  plan_restore.RawAudit(
+    location_kind:,
+    location:,
+    completed_at: audit.completed_at,
   )
 }
 
@@ -321,6 +383,8 @@ pub fn predict_restore_prune(
         restore_plan_error_message(restore_plan_ports.InvalidManagedLocations)
       predict_restore_prune_ports.InvalidPlan(plan_restore.InvalidPlaced) ->
         restore_plan_error_message(restore_plan_ports.InvalidPlaced)
+      predict_restore_prune_ports.InvalidPlan(plan_restore.InvalidAudits) ->
+        restore_plan_error_message(restore_plan_ports.InvalidAudits)
       predict_restore_prune_ports.UnknownManagedLocation(id) ->
         "placed ledger names unknown managed location " <> id
       predict_restore_prune_ports.PersistenceFailed(reason) -> reason

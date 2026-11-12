@@ -298,12 +298,15 @@ Core terms:
 - ExportDocument: the whole exported file as this app models it before rendering — a
   format marker, a format_version, the export date, and one section per contributing
   context: `collection`, `insights` (target sets), and `inventory_planning` (rules,
-  bulk spec, managed locations with their members, placed ledger). Managed locations
-  and the placed entries recorded at them are named, never identified by id — a
-  restore assigns fresh ids (format_version 2, #122).
+  bulk spec, managed locations with their members, placed ledger, audit history).
+  Managed locations and the placed entries and audits recorded at them are named, never
+  identified by id — a restore assigns fresh ids (format_version 2, #122). Audit history
+  arrived in format_version 3 (#183); restoring the ledger without it clears the history.
 - format_version: an integer identifying the document's shape, independent of the app's
-  own version — it changes only when a section's shape changes in a way an importer must
-  branch on, never merely because a new section was added.
+  own version — it changes whenever what export writes changes, a new section included,
+  because the current version's frozen fixture must re-export byte-identically ([ADR
+  0020](../decisions/0020-export-format-compatibility.md), [ADR
+  0022](../decisions/0022-managed-locations.md)).
 - ImportDocument: an ExportDocument's inverse — the valid entries decoded from an
   uploaded file, plus every entry that failed validation, each recorded as a
   RejectedEntry. An import is all-or-nothing at the whole-file level (bad JSON, wrong

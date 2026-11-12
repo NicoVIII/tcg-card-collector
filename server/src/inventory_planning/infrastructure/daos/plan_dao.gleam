@@ -1,6 +1,9 @@
 import gleam/list
 import gleam/option.{type Option}
 import inventory_planning/infrastructure/daos/inventory_rules_dao.{type RuleRow}
+import inventory_planning/infrastructure/daos/location_audits_dao.{
+  type LocationAuditRow,
+}
 import inventory_planning/infrastructure/daos/managed_locations_dao.{
   type ManagedLocationRow, type MemberRow,
 }
@@ -10,7 +13,7 @@ import inventory_planning/infrastructure/daos/placed_cards_dao.{
 import shared/infrastructure/stores/sqlite_store
 import sqlight
 
-/// Replaces whichever of rules/bulk/managed/placed are present, atomically
+/// Replaces whichever of rules/bulk/managed/placed/audits are present, atomically
 /// together — Portability's restore (ADR 0019). `None` leaves that table untouched;
 /// a present but empty `Some([])` clears it, same as any other
 /// present-but-empty section. A full delete-then-insert, unlike `upsert`/
@@ -21,12 +24,14 @@ import sqlight
 /// rows and audit history recorded at the old ones (their ids are gone, and a
 /// restore reuses position-based ids, so a stale row would attach to a
 /// different location), and a present ledger section then writes its own
-/// rows, including ones at the new locations.
+/// rows, including ones at the new locations. Audits go last for the same
+/// reason.
 pub fn replace(
   rules: Option(List(RuleRow)),
   bulk: Option(#(String, String)),
   managed: Option(#(List(ManagedLocationRow), List(MemberRow))),
   placed: Option(List(PlacedCardRow)),
+  audits: Option(List(LocationAuditRow)),
 ) -> Result(Nil, String) {
   let statements =
     list.flatten([
@@ -34,6 +39,7 @@ pub fn replace(
       option_statements(bulk, fn(spec) { [bulk_statement(spec)] }),
       option_statements(managed, managed_statements),
       option_statements(placed, placed_statements),
+      option_statements(audits, audit_statements),
     ])
 
   case statements {
@@ -156,4 +162,13 @@ fn placed_insert_statement(
       sqlight.int(row.quantity),
     ],
   )
+}
+
+fn audit_statements(
+  rows: List(LocationAuditRow),
+) -> List(#(String, List(sqlight.Value))) {
+  [
+    #("DELETE FROM location_audits;", []),
+    ..list.map(rows, location_audits_dao.insert_statement)
+  ]
 }

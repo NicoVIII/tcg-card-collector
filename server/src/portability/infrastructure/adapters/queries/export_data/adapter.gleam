@@ -16,6 +16,7 @@ pub fn new() -> ports.ExportDataPorts {
     get_bulk_spec: get_bulk_spec_adapter(),
     list_managed_locations: list_managed_locations_adapter(),
     list_placed: list_placed_adapter(),
+    list_audits: list_audits_adapter(),
     today: today_adapter(),
   )
 }
@@ -74,6 +75,17 @@ fn list_managed_locations_adapter() -> ports.ListManagedLocationsPort {
   }
 }
 
+fn from_placed_at(
+  location: inventory_planning_api.PlacedAt,
+) -> export_document.PlacedIn {
+  case location {
+    inventory_planning_api.AtCascadeLocation(name) ->
+      export_document.InLocation(name)
+    inventory_planning_api.AtManagedLocation(name) ->
+      export_document.InManagedLocation(name)
+  }
+}
+
 fn list_placed_adapter() -> ports.ListPlacedPort {
   fn() {
     use copies <- result.try(inventory_planning_api.list_placed())
@@ -81,16 +93,23 @@ fn list_placed_adapter() -> ports.ListPlacedPort {
       list.map(copies, fn(copy) {
         export_document.PlacedEntry(
           key: copy.key,
-          location: case copy.location {
-            inventory_planning_api.AtCascadeLocation(name) ->
-              export_document.InLocation(name)
-            inventory_planning_api.AtManagedLocation(name) ->
-              export_document.InManagedLocation(name)
-          },
+          location: from_placed_at(copy.location),
           quantity: copy.quantity,
         )
       }),
     )
+  }
+}
+
+fn list_audits_adapter() -> ports.ListAuditsPort {
+  fn() {
+    use audits <- result.map(inventory_planning_api.list_audit_history())
+    list.map(audits, fn(audit) {
+      export_document.AuditEntry(
+        location: from_placed_at(audit.location),
+        completed_at: audit.completed_at,
+      )
+    })
   }
 }
 

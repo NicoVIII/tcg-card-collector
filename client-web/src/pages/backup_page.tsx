@@ -23,6 +23,7 @@ const SECTION_LABELS: Record<string, string> = {
   "inventory_planning.managed_locations": "decks",
   "inventory_planning.managed_location_members": "deck cards",
   "inventory_planning.placed": "placed ledger",
+  "inventory_planning.audits": "location audits",
 };
 
 function sectionLabel(section: string): string {
@@ -80,12 +81,19 @@ function canRestore(preview: ImportPreview | null): boolean {
 }
 
 // What a restore will change beyond writing its entries: ledger rows pruned
-// right after, and decks left short of cards.
+// right after, decks left short of cards, and audit history the file can't
+// give back.
 function RestoreWarnings(props: { preview: ImportPreview }) {
   return (
     <>
       <LedgerPruneNotice pruned={props.preview.pruned} done={false} />
       <DeckShortfallNotice shortfall={props.preview.shortfall} />
+      <Show when={props.preview.clears_audit_history}>
+        <p role="alert">
+          This file has no location audits, so restoring it clears when each location was last
+          audited.
+        </p>
+      </Show>
     </>
   );
 }

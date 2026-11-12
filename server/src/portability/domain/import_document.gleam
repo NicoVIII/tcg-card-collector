@@ -1,3 +1,4 @@
+import gleam/bool
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -5,10 +6,13 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/set.{type Set}
 import gleam/string
+import gleam/time/calendar
+import gleam/time/timestamp
 import portability/domain/export_document.{
-  type BulkSpec, type CollectionEntry, type ManagedLocationEntry,
-  type MemberEntry, type PlacedEntry, type PlacedIn, type Rule, CollectionEntry,
-  InLocation, InManagedLocation, ManagedLocationEntry, MemberEntry, PlacedEntry,
+  type AuditEntry, type BulkSpec, type CollectionEntry,
+  type ManagedLocationEntry, type MemberEntry, type PlacedEntry, type PlacedIn,
+  type Rule, AuditEntry, CollectionEntry, InLocation, InManagedLocation,
+  ManagedLocationEntry, MemberEntry, PlacedEntry,
 }
 import shared/domain/copy_key.{type CopyKey}
 import shared/domain/set_code
@@ -59,6 +63,13 @@ pub type RawMember {
   )
 }
 
+/// An audit-history entry as it arrives on the wire (v3 on), before
+/// validation: exactly one of `location` and `managed_location` may be
+/// non-blank, as in RawPlaced, and `completed_at` is RFC 3339 text.
+pub type RawAudit {
+  RawAudit(location: String, managed_location: String, completed_at: String)
+}
+
 /// Which part of the document an entry or a count belongs to — #119 widened
 /// the document beyond the collection alone, so every rejection and every
 /// written count now names the section it came from.
@@ -70,6 +81,7 @@ pub type Section {
   ManagedLocationsSection
   MembersSection
   PlacedSection
+  AuditsSection
 }
 
 pub fn section_name(section: Section) -> String {
@@ -81,6 +93,7 @@ pub fn section_name(section: Section) -> String {
     ManagedLocationsSection -> "inventory_planning.managed_locations"
     MembersSection -> "inventory_planning.managed_location_members"
     PlacedSection -> "inventory_planning.placed"
+    AuditsSection -> "inventory_planning.audits"
   }
 }
 
@@ -135,6 +148,7 @@ pub type ImportDocument {
     managed_locations: Option(List(ManagedLocationEntry)),
     members: Option(List(MemberEntry)),
     placed: Option(List(PlacedEntry)),
+    audits: Option(List(AuditEntry)),
   )
 }
 
@@ -165,6 +179,7 @@ pub fn section_results(document: ImportDocument) -> List(SectionResult) {
   ))
   |> list.append(option_list_result(document.members, MembersSection))
   |> list.append(option_list_result(document.placed, PlacedSection))
+  |> list.append(option_list_result(document.audits, AuditsSection))
 }
 
 fn key_identity(key: CopyKey) -> String {
@@ -491,11 +506,13 @@ fn placed_identity(entry: RawPlaced) -> String {
   }
 }
 
-fn placed_location(
-  entry: RawPlaced,
+// A placed entry and an audit name their location the same way.
+fn named_location(
+  location: String,
+  managed_location: String,
   managed_names: Set(String),
 ) -> Result(PlacedIn, String) {
-  case string.trim(entry.location), string.trim(entry.managed_location) {
+  case string.trim(location), string.trim(managed_location) {
     "", "" -> Error("location is blank")
     location, "" -> Ok(InLocation(location))
     "", name ->
@@ -531,7 +548,9 @@ fn validate_placed_entry(
     Error(key_error) -> reject(copy_key.describe_error(key_error))
     Ok(_) if entry.quantity < 1 -> reject("quantity must be at least 1")
     Ok(key) ->
-      case placed_location(entry, managed_names) {
+      case
+        named_location(entry.location, entry.managed_location, managed_names)
+      {
         Error(reason) -> reject(reason)
         Ok(location) ->
           Ok(PlacedEntry(key:, location:, quantity: entry.quantity))
@@ -550,6 +569,52 @@ pub fn validate_placed(
   let outcomes =
     list.index_map(raw, fn(entry, index) {
       validate_placed_entry(index + 1, entry, managed_names)
+    })
+  split_outcomes(outcomes)
+}
+
+fn audit_identity(entry: RawAudit) -> String {
+  case entry.managed_location {
+    "" -> entry.location
+    name -> name
+  }
+  <> " "
+  <> entry.completed_at
+}
+
+fn validate_audit(
+  position: Int,
+  entry: RawAudit,
+  managed_names: Set(String),
+) -> Result(AuditEntry, RejectedEntry) {
+  let reject = fn(reason) {
+    RejectedEntry(
+      section: AuditsSection,
+      position:,
+      identity: audit_identity(entry),
+      reason:,
+    )
+  }
+  use location <- result.try(
+    named_location(entry.location, entry.managed_location, managed_names)
+    |> result.map_error(reject),
+  )
+  use completed_at <- result.map(
+    timestamp.parse_rfc3339(string.trim(entry.completed_at))
+    |> result.replace_error(reject("completed_at is not an RFC 3339 time")),
+  )
+  AuditEntry(location:, completed_at:)
+}
+
+/// Validates `inventory_planning.audits` positionally, same location rule as
+/// `validate_placed`.
+pub fn validate_audits(
+  raw: List(RawAudit),
+  managed_names: Set(String),
+) -> #(List(AuditEntry), List(RejectedEntry)) {
+  let outcomes =
+    list.index_map(raw, fn(entry, index) {
+      validate_audit(index + 1, entry, managed_names)
     })
   split_outcomes(outcomes)
 }
@@ -645,63 +710,49 @@ fn rejected_location_reason(name: String) -> String {
 // Positions here are within the already-validated list, not the file — the
 // file position was lost when the section was first validated. The identity
 // still names the entry unambiguously.
-fn drop_members_of(
-  members: Option(List(MemberEntry)),
+fn drop_entries_at(
+  entries: Option(List(a)),
   dropped: Set(String),
-) -> #(Option(List(MemberEntry)), List(RejectedEntry)) {
-  case members {
+  section: Section,
+  managed_name: fn(a) -> Option(String),
+  identity: fn(a) -> String,
+) -> #(Option(List(a)), List(RejectedEntry)) {
+  let check = fn(entry, index) {
+    case managed_name(entry) {
+      None -> Ok(entry)
+      Some(name) -> {
+        use <- bool.guard(!set.contains(dropped, name), Ok(entry))
+        Error(RejectedEntry(
+          section:,
+          position: index + 1,
+          identity: identity(entry),
+          reason: rejected_location_reason(name),
+        ))
+      }
+    }
+  }
+  case entries {
     None -> #(None, [])
     Some(entries) -> {
-      let outcomes =
-        list.index_map(entries, fn(member, index) {
-          case set.contains(dropped, member.managed_location) {
-            False -> Ok(member)
-            True ->
-              Error(RejectedEntry(
-                section: MembersSection,
-                position: index + 1,
-                identity: key_identity(member.key),
-                reason: rejected_location_reason(member.managed_location),
-              ))
-          }
-        })
-      let #(valid, rejected) = split_outcomes(outcomes)
+      let #(valid, rejected) = split_outcomes(list.index_map(entries, check))
       #(Some(valid), rejected)
     }
   }
 }
 
-fn placed_at_dropped(entry: PlacedEntry, dropped: Set(String)) -> Bool {
-  case entry.location {
-    InManagedLocation(name) -> set.contains(dropped, name)
-    InLocation(_) -> False
+fn managed_name_of(location: PlacedIn) -> Option(String) {
+  case location {
+    InManagedLocation(name) -> Some(name)
+    InLocation(_) -> None
   }
 }
 
-fn drop_placed_at(
-  placed: Option(List(PlacedEntry)),
-  dropped: Set(String),
-) -> #(Option(List(PlacedEntry)), List(RejectedEntry)) {
-  case placed {
-    None -> #(None, [])
-    Some(entries) -> {
-      let outcomes =
-        list.index_map(entries, fn(entry, index) {
-          case entry.location, placed_at_dropped(entry, dropped) {
-            InManagedLocation(name), True ->
-              Error(RejectedEntry(
-                section: PlacedSection,
-                position: index + 1,
-                identity: key_identity(entry.key),
-                reason: rejected_location_reason(name),
-              ))
-            _, _ -> Ok(entry)
-          }
-        })
-      let #(valid, rejected) = split_outcomes(outcomes)
-      #(Some(valid), rejected)
-    }
+fn audit_entry_identity(entry: AuditEntry) -> String {
+  let name = case entry.location {
+    InLocation(name) -> name
+    InManagedLocation(name) -> name
   }
+  name <> " " <> timestamp.to_rfc3339(entry.completed_at, calendar.utc_offset)
 }
 
 /// Runs the one validation pass Portability's own domain can't do alone —
@@ -711,7 +762,7 @@ fn drop_placed_at(
 /// `export_file.parse` produced, before doing anything else with it, so the
 /// two doors validate identically. A section absent from the document
 /// (`None`) is left as-is — there is nothing to check. A managed location
-/// rejected here takes its members and placed entries with it, each
+/// rejected here takes its members, placed entries, and audits with it, each
 /// reported, so nothing is left pointing at it.
 pub fn resolve_deep_sections(
   document: ImportDocument,
@@ -733,8 +784,30 @@ pub fn resolve_deep_sections(
       managed_names(option.unwrap(document.managed_locations, [])),
       managed_names(option.unwrap(managed_locations, [])),
     )
-  let #(members, members_rejected) = drop_members_of(document.members, dropped)
-  let #(placed, placed_rejected) = drop_placed_at(document.placed, dropped)
+  let #(members, members_rejected) =
+    drop_entries_at(
+      document.members,
+      dropped,
+      MembersSection,
+      fn(member) { Some(member.managed_location) },
+      fn(member) { key_identity(member.key) },
+    )
+  let #(placed, placed_rejected) =
+    drop_entries_at(
+      document.placed,
+      dropped,
+      PlacedSection,
+      fn(entry) { managed_name_of(entry.location) },
+      fn(entry) { key_identity(entry.key) },
+    )
+  let #(audits, audits_rejected) =
+    drop_entries_at(
+      document.audits,
+      dropped,
+      AuditsSection,
+      fn(entry) { managed_name_of(entry.location) },
+      audit_entry_identity,
+    )
   ImportDocument(
     ..document,
     rules:,
@@ -742,6 +815,7 @@ pub fn resolve_deep_sections(
     managed_locations:,
     members:,
     placed:,
+    audits:,
     rejected: list.flatten([
       document.rejected,
       rules_rejected,
@@ -749,6 +823,7 @@ pub fn resolve_deep_sections(
       managed_rejected,
       members_rejected,
       placed_rejected,
+      audits_rejected,
     ]),
   )
 }

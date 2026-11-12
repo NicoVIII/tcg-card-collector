@@ -20,6 +20,7 @@ pub fn execute(
     ports.list_managed_locations(),
   )
   use placed <- result.try(ports.list_placed())
+  use audits <- result.try(ports.list_audits())
   Ok(export_document.new(
     ports.today(),
     collection,
@@ -30,6 +31,7 @@ pub fn execute(
       managed_locations:,
       members:,
       placed:,
+      audits:,
     ),
   ))
 }

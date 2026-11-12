@@ -87,6 +87,9 @@ export type ImportPreview = {
   rejected: RejectedEntry[];
   pruned: LedgerPrune[];
   shortfall: DeckShortfall[];
+  // The file replaces the placed ledger without audit history of its own, so
+  // every location's last-audited time is cleared.
+  clears_audit_history: boolean;
 };
 
 export async function previewImport(content: string): Promise<ImportPreview> {
@@ -113,6 +116,7 @@ export async function previewImport(content: string): Promise<ImportPreview> {
       identity: entry.identity,
       missing: entry.missing,
     })),
+    clears_audit_history: response.clearsAuditHistory,
   };
 }
 

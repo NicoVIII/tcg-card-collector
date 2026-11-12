@@ -40,6 +40,7 @@ pub fn replaces_every_present_table_at_once_test() {
       Some(#("Bulk", "name")),
       None,
       Some([a_placed_row("Box A")]),
+      None,
     )
 
   assert inventory_rules_dao.list() == Ok([a_rule("rule-1")])
@@ -51,9 +52,9 @@ pub fn a_second_replace_clears_rows_the_new_call_leaves_out_test() {
   use _db <- test_db.with_temp_db()
 
   let assert Ok(Nil) =
-    plan_dao.replace(Some([a_rule("rule-1")]), None, None, None)
+    plan_dao.replace(Some([a_rule("rule-1")]), None, None, None, None)
   let assert Ok(Nil) =
-    plan_dao.replace(Some([a_rule("rule-2")]), None, None, None)
+    plan_dao.replace(Some([a_rule("rule-2")]), None, None, None, None)
 
   assert inventory_rules_dao.list() == Ok([a_rule("rule-2")])
 }
@@ -64,7 +65,7 @@ pub fn none_leaves_that_table_untouched_test() {
   let assert Ok(Nil) = inventory_rules_dao.upsert(a_rule("rule-1"))
 
   let assert Ok(Nil) =
-    plan_dao.replace(None, Some(#("Bulk", "name")), None, None)
+    plan_dao.replace(None, Some(#("Bulk", "name")), None, None, None)
 
   assert inventory_rules_dao.list() == Ok([a_rule("rule-1")])
   assert bulk_spec_dao.get() == Ok(#("Bulk", "name"))
@@ -75,7 +76,7 @@ pub fn a_present_but_empty_list_clears_the_table_test() {
 
   let assert Ok(Nil) = inventory_rules_dao.upsert(a_rule("rule-1"))
 
-  let assert Ok(Nil) = plan_dao.replace(Some([]), None, None, None)
+  let assert Ok(Nil) = plan_dao.replace(Some([]), None, None, None, None)
 
   assert inventory_rules_dao.list() == Ok([])
 }
@@ -104,6 +105,7 @@ pub fn replacing_managed_locations_drops_only_their_old_ledger_rows_test() {
           [],
         ),
       ),
+      None,
       None,
     )
 
@@ -153,7 +155,27 @@ pub fn replacing_managed_locations_drops_their_audit_history_test() {
         ),
       ),
       None,
+      None,
     )
 
   assert location_audits_dao.list() == Ok([an_audit_row("cascade", "Box A")])
+}
+
+pub fn present_audits_replace_the_whole_history_test() {
+  use _db <- test_db.with_temp_db()
+  let assert Ok(Nil) =
+    sqlite_store.exec_all_atomically([
+      location_audits_dao.insert_statement(an_audit_row("cascade", "Box A")),
+    ])
+
+  let assert Ok(Nil) =
+    plan_dao.replace(
+      None,
+      None,
+      None,
+      None,
+      Some([an_audit_row("cascade", "Box B")]),
+    )
+
+  assert location_audits_dao.list() == Ok([an_audit_row("cascade", "Box B")])
 }

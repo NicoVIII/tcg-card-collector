@@ -1,7 +1,9 @@
 import gleam/dict
 import gleam/option.{None, Some}
+import gleam/time/timestamp
 import inventory_planning/application/commands/restore_plan/handler
 import inventory_planning/application/commands/restore_plan/ports
+import inventory_planning/domain/location_audit.{AuditRecord}
 import inventory_planning/domain/location_ref
 import inventory_planning/domain/managed_location
 import inventory_planning/domain/plan_restore
@@ -13,6 +15,7 @@ type Captured {
     bulk: option.Option(ports.BulkSpecWriteModel),
     managed: option.Option(List(managed_location.ManagedLocation)),
     placed: option.Option(List(ports.PlacedWriteModel)),
+    audits: option.Option(List(location_audit.AuditRecord)),
   )
 }
 
@@ -23,9 +26,9 @@ fn recording_port(
   result: Result(Nil, String),
 ) -> ports.RestorePlanPorts {
   ports.RestorePlanPorts(
-    replace_plan: fn(rules, bulk, managed, placed) {
+    replace_plan: fn(rules, bulk, managed, placed, audits) {
       ref.set(captured, [
-        Captured(rules:, bulk:, managed:, placed:),
+        Captured(rules:, bulk:, managed:, placed:, audits:),
         ..ref.get(captured)
       ])
       result
@@ -58,6 +61,7 @@ fn empty_command() -> handler.RestorePlanCommand {
     bulk: None,
     managed: None,
     placed: None,
+    audits: None,
   )
 }
 
@@ -69,7 +73,15 @@ pub fn absent_sections_are_passed_through_as_none_test() {
 
   assert result == Ok(Nil)
   assert ref.get(captured)
-    == [Captured(rules: None, bulk: None, managed: None, placed: None)]
+    == [
+      Captured(
+        rules: None,
+        bulk: None,
+        managed: None,
+        placed: None,
+        audits: None,
+      ),
+    ]
 }
 
 pub fn valid_rules_get_deterministic_imported_ids_and_positions_test() {
@@ -371,4 +383,80 @@ pub fn two_restored_decks_sharing_a_name_are_rejected_test() {
     )
 
   assert result == Error(ports.InvalidManagedLocations)
+}
+
+fn an_audit(kind: String, location: String) -> plan_restore.RawAudit {
+  let assert Ok(completed_at) = timestamp.parse_rfc3339("2026-11-01T10:00:00Z")
+  plan_restore.RawAudit(location_kind: kind, location:, completed_at:)
+}
+
+// A managed audit names its deck, resolved like a placed entry to the id this
+// restore assigns; the history holds each completion once.
+pub fn restored_audits_resolve_their_decks_and_collapse_repeats_test() {
+  let captured = ref.new([])
+  let port = recording_port(captured, Ok(Nil))
+
+  let assert Ok(Nil) =
+    handler.execute(
+      handler.RestorePlanCommand(
+        ..empty_command(),
+        managed: Some([
+          plan_restore.RawManagedLocation(
+            name: "Burn",
+            kind: "deck",
+            members: [],
+          ),
+        ]),
+        audits: Some([
+          an_audit("cascade", "Box A"),
+          an_audit("managed", "Burn"),
+          an_audit("cascade", "Box A"),
+        ]),
+      ),
+      port,
+    )
+
+  let assert [Captured(audits: Some(audits), ..)] = ref.get(captured)
+  let assert Ok(completed_at) = timestamp.parse_rfc3339("2026-11-01T10:00:00Z")
+  assert audits
+    == [
+      AuditRecord(location: location_ref.Cascade("Box A"), completed_at:),
+      AuditRecord(
+        location: location_ref.Managed("imported-managed-0"),
+        completed_at:,
+      ),
+    ]
+}
+
+// Every audit attested the ledger being replaced, so a restore without
+// history of its own empties it (#183).
+pub fn replacing_the_ledger_without_audits_clears_the_history_test() {
+  let captured = ref.new([])
+  let port = recording_port(captured, Ok(Nil))
+
+  let assert Ok(Nil) =
+    handler.execute(
+      handler.RestorePlanCommand(..empty_command(), placed: Some([])),
+      port,
+    )
+
+  let assert [written] = ref.get(captured)
+  assert written.audits == Some([])
+}
+
+pub fn an_audit_naming_an_unknown_deck_rejects_the_restore_without_writing_test() {
+  let captured = ref.new([])
+  let port = recording_port(captured, Ok(Nil))
+
+  let result =
+    handler.execute(
+      handler.RestorePlanCommand(
+        ..empty_command(),
+        audits: Some([an_audit("managed", "Control")]),
+      ),
+      port,
+    )
+
+  assert result == Error(ports.InvalidAudits)
+  assert ref.get(captured) == []
 }

@@ -3,6 +3,9 @@ import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import gleam/time/timestamp.{type Timestamp}
+import inventory_planning/domain/location_audit.{type AuditRecord, AuditRecord}
+import inventory_planning/domain/location_ref
 import inventory_planning/domain/managed_location.{type ManagedLocation}
 import inventory_planning/domain/placed_ledger_reconciliation.{
   type PlacedRow, PlacedRow,
@@ -42,9 +45,15 @@ pub type RawManagedLocation {
   RawManagedLocation(name: String, kind: String, members: List(RawMember))
 }
 
+/// One completed audit, its location named the way `RawPlaced` names one.
+pub type RawAudit {
+  RawAudit(location_kind: String, location: String, completed_at: Timestamp)
+}
+
 pub type PlanRestoreError {
   InvalidManagedLocations
   InvalidPlaced
+  InvalidAudits
 }
 
 fn validate_managed(
@@ -171,4 +180,50 @@ pub fn restored_ledger(
   let ids = managed_ids_by_name(option.unwrap(restored, existing_managed))
   use rows <- result.map(validate_placed(placed, ids))
   #(restored, rows)
+}
+
+/// Whether a restore empties the audit history: it carries no history of its
+/// own but replaces the ledger, and every audit attested a ledger that is
+/// then gone (#183).
+pub fn clears_audit_history(
+  restores_audits restores_audits: Bool,
+  replaces_ledger replaces_ledger: Bool,
+) -> Bool {
+  !restores_audits && replaces_ledger
+}
+
+fn to_audit_record(
+  raw: RawAudit,
+  managed_ids: Dict(String, String),
+) -> Result(AuditRecord, Nil) {
+  use key <- result.try(case raw.location_kind {
+    "managed" -> dict.get(managed_ids, raw.location)
+    _ -> Ok(raw.location)
+  })
+  use location <- result.map(location_ref.new(raw.location_kind, key))
+  AuditRecord(location:, completed_at: raw.completed_at)
+}
+
+/// The audit history a restore writes, names resolved against `managed` —
+/// the managed locations the restore leaves behind. `None` leaves the
+/// history untouched; `Some([])` empties it (`clears_audit_history`). A
+/// repeated audit collapses to one, as the history holds each completion
+/// once.
+pub fn restored_audits(
+  audits: Option(List(RawAudit)),
+  replaces_ledger: Bool,
+  managed: List(ManagedLocation),
+) -> Result(Option(List(AuditRecord)), PlanRestoreError) {
+  case audits {
+    Some(rows) ->
+      rows
+      |> list.try_map(to_audit_record(_, managed_ids_by_name(managed)))
+      |> result.replace_error(InvalidAudits)
+      |> result.map(fn(records) { Some(list.unique(records)) })
+    None ->
+      case clears_audit_history(restores_audits: False, replaces_ledger:) {
+        True -> Ok(Some([]))
+        False -> Ok(None)
+      }
+  }
 }

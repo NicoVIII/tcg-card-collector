@@ -1,18 +1,25 @@
 import gleam/option.{None, Some}
 import gleam/time/calendar
+import gleam/time/timestamp
 import portability/domain/export_document.{
-  type InsightsSection, type InventoryPlanningSection, BulkSpec, CollectionEntry,
-  ExportDocument, InsightsSection, InventoryPlanningSection, PlacedEntry, Rule,
+  type InsightsSection, type InventoryPlanningSection, AuditEntry, BulkSpec,
+  CollectionEntry, ExportDocument, InsightsSection, InventoryPlanningSection,
+  PlacedEntry, Rule,
 }
 import portability/domain/import_document.{
-  CollectionSection, MissingCollection, NotJson, NotThisFormat, PlacedSection,
-  RejectedEntry, TargetSetsSection, UnsupportedVersion,
+  AuditsSection, CollectionSection, MissingCollection, NotJson, NotThisFormat,
+  PlacedSection, RejectedEntry, TargetSetsSection, UnsupportedVersion,
 }
 import portability/driver/export_file
 import shared/domain/copy_key
 
 fn a_date() -> calendar.Date {
   calendar.Date(2026, calendar.September, 25)
+}
+
+fn a_time(rfc3339: String) -> timestamp.Timestamp {
+  let assert Ok(time) = timestamp.parse_rfc3339(rfc3339)
+  time
 }
 
 fn no_targets() -> InsightsSection {
@@ -26,6 +33,7 @@ fn no_plan() -> InventoryPlanningSection {
     managed_locations: [],
     members: [],
     placed: [],
+    audits: [],
   )
 }
 
@@ -78,7 +86,7 @@ pub fn renders_every_finish_and_a_non_english_language_by_enum_name_test() {
   assert export_file.render(document)
     == "{\n"
     <> "  \"format\": \"tcg-card-collector\",\n"
-    <> "  \"format_version\": 2,\n"
+    <> "  \"format_version\": 3,\n"
     <> "  \"exported_on\": \"2026-09-25\",\n"
     <> "  \"collection\": [\n"
     <> "    {\"set_code\":\"dmu\",\"collector_number\":\"2\",\"quantity\":1,\"finish\":\"nonfoil\",\"language\":\"en\"},\n"
@@ -90,7 +98,8 @@ pub fn renders_every_finish_and_a_non_english_language_by_enum_name_test() {
     <> "    \"bulk\": {\"location\":\"Bulk\",\"sort\":\"\"},\n"
     <> "    \"managed_locations\": [],\n"
     <> "    \"managed_location_members\": [],\n"
-    <> "    \"placed\": []\n"
+    <> "    \"placed\": [],\n"
+    <> "    \"audits\": []\n"
     <> "  },\n"
     <> "  \"insights\": {\n"
     <> "    \"target_sets\": [\"2xm\",\"neo\"]\n"
@@ -110,7 +119,7 @@ pub fn an_empty_collection_renders_as_an_empty_array_test() {
   assert export_file.render(document)
     == "{\n"
     <> "  \"format\": \"tcg-card-collector\",\n"
-    <> "  \"format_version\": 2,\n"
+    <> "  \"format_version\": 3,\n"
     <> "  \"exported_on\": \"2026-09-25\",\n"
     <> "  \"collection\": [],\n"
     <> "  \"inventory_planning\": {\n"
@@ -118,7 +127,8 @@ pub fn an_empty_collection_renders_as_an_empty_array_test() {
     <> "    \"bulk\": {\"location\":\"Bulk\",\"sort\":\"\"},\n"
     <> "    \"managed_locations\": [],\n"
     <> "    \"managed_location_members\": [],\n"
-    <> "    \"placed\": []\n"
+    <> "    \"placed\": [],\n"
+    <> "    \"audits\": []\n"
     <> "  },\n"
     <> "  \"insights\": {\n"
     <> "    \"target_sets\": []\n"
@@ -158,13 +168,19 @@ pub fn renders_rules_bulk_and_placed_nested_under_inventory_planning_test() {
             quantity: 1,
           ),
         ],
+        audits: [
+          AuditEntry(
+            location: export_document.InLocation("Binder mh2"),
+            completed_at: a_time("2026-09-24T18:30:00Z"),
+          ),
+        ],
       ),
     )
 
   assert export_file.render(document)
     == "{\n"
     <> "  \"format\": \"tcg-card-collector\",\n"
-    <> "  \"format_version\": 2,\n"
+    <> "  \"format_version\": 3,\n"
     <> "  \"exported_on\": \"2026-09-25\",\n"
     <> "  \"collection\": [],\n"
     <> "  \"inventory_planning\": {\n"
@@ -176,6 +192,9 @@ pub fn renders_rules_bulk_and_placed_nested_under_inventory_planning_test() {
     <> "    \"managed_location_members\": [],\n"
     <> "    \"placed\": [\n"
     <> "      {\"set_code\":\"mh2\",\"collector_number\":\"17\",\"finish\":\"foil\",\"language\":\"en\",\"location\":\"Binder mh2\",\"quantity\":1}\n"
+    <> "    ],\n"
+    <> "    \"audits\": [\n"
+    <> "      {\"location\":\"Binder mh2\",\"completed_at\":\"2026-09-24T18:30:00Z\"}\n"
     <> "    ]\n"
     <> "  },\n"
     <> "  \"insights\": {\n"
@@ -234,6 +253,16 @@ pub fn render_then_parse_then_render_is_byte_identical_including_etched_and_the_
             quantity: 2,
           ),
         ],
+        audits: [
+          AuditEntry(
+            location: export_document.InLocation("Binder A"),
+            completed_at: a_time("2026-09-20T08:00:00.123456789Z"),
+          ),
+          AuditEntry(
+            location: export_document.InLocation("Binder A"),
+            completed_at: a_time("2026-09-24T18:30:00Z"),
+          ),
+        ],
       ),
     )
   let rendered = export_file.render(original)
@@ -244,6 +273,7 @@ pub fn render_then_parse_then_render_is_byte_identical_including_etched_and_the_
   let assert Some(rules) = parsed.rules
   let assert Some(bulk) = parsed.bulk
   let assert Some(placed) = parsed.placed
+  let assert Some(audits) = parsed.audits
   let re_rendered =
     export_file.render(ExportDocument(
       exported_on: a_date(),
@@ -255,6 +285,7 @@ pub fn render_then_parse_then_render_is_byte_identical_including_etched_and_the_
         managed_locations: [],
         members: [],
         placed:,
+        audits:,
       ),
     ))
 
@@ -276,9 +307,9 @@ pub fn a_missing_or_wrong_format_marker_is_rejected_test() {
 
 pub fn an_unsupported_format_version_is_rejected_before_any_entry_is_parsed_test() {
   assert export_file.parse(
-      "{\"format\": \"tcg-card-collector\", \"format_version\": 3, \"collection\": [{}]}",
+      "{\"format\": \"tcg-card-collector\", \"format_version\": 4, \"collection\": [{}]}",
     )
-    == Error(UnsupportedVersion("3"))
+    == Error(UnsupportedVersion("4"))
 }
 
 pub fn a_missing_format_version_is_rejected_as_unsupported_test() {
@@ -482,4 +513,54 @@ pub fn a_v1_file_ignores_a_managed_location_key_test() {
   assert document.placed == Some([])
   let assert [rejected] = document.rejected
   assert rejected.reason == "location is blank"
+}
+
+// The v2 decoder is frozen (ADR 0020): audit history is a v3 section, so a
+// v2 file's `audits` key is unknown and the history counts as absent.
+pub fn a_v2_file_ignores_an_audits_key_test() {
+  let assert Ok(document) =
+    export_file.parse(
+      "{\"format\": \"tcg-card-collector\", \"format_version\": 2, \"collection\": [],"
+      <> " \"inventory_planning\": {\"audits\": [{\"location\": \"Box A\","
+      <> " \"completed_at\": \"2026-09-24T18:30:00Z\"}]}}",
+    )
+
+  assert document.audits == None
+}
+
+pub fn an_audit_needs_a_known_location_and_a_parseable_time_test() {
+  let assert Ok(document) =
+    export_file.parse(
+      "{\"format\": \"tcg-card-collector\", \"format_version\": 3, \"collection\": [],"
+      <> " \"inventory_planning\": {"
+      <> " \"managed_locations\": [{\"name\": \"Burn\", \"kind\": \"deck\"}],"
+      <> " \"audits\": ["
+      <> " {\"managed_location\": \"Burn\", \"completed_at\": \"2026-09-24T18:30:00Z\"},"
+      <> " {\"managed_location\": \"Control\", \"completed_at\": \"2026-09-24T18:30:00Z\"},"
+      <> " {\"location\": \"Box A\", \"completed_at\": \"yesterday\"}"
+      <> " ]}}",
+    )
+
+  assert document.audits
+    == Some([
+      AuditEntry(
+        location: export_document.InManagedLocation("Burn"),
+        completed_at: a_time("2026-09-24T18:30:00Z"),
+      ),
+    ])
+  assert document.rejected
+    == [
+      RejectedEntry(
+        section: AuditsSection,
+        position: 2,
+        identity: "Control 2026-09-24T18:30:00Z",
+        reason: "no managed location named \"Control\"",
+      ),
+      RejectedEntry(
+        section: AuditsSection,
+        position: 3,
+        identity: "Box A yesterday",
+        reason: "completed_at is not an RFC 3339 time",
+      ),
+    ]
 }

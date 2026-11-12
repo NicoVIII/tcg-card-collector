@@ -1,0 +1,43 @@
+{
+  "format": "tcg-card-collector",
+  "format_version": 3,
+  "exported_on": "2026-11-12",
+  "collection": [
+    {"set_code":"dmu","collector_number":"101","quantity":3,"finish":"etched","language":"zhs"},
+    {"set_code":"dmu","collector_number":"2","quantity":4,"finish":"nonfoil","language":"en"},
+    {"set_code":"dsk","collector_number":"017","quantity":1,"finish":"nonfoil","language":"de"},
+    {"set_code":"dsk","collector_number":"104a","quantity":6,"finish":"foil","language":"en"},
+    {"set_code":"mh2","collector_number":"17","quantity":2,"finish":"foil","language":"zht"}
+  ],
+  "inventory_planning": {
+    "rules": [
+      {"location":"Binder A","match":"rarity >= rare and finish = foil","copies":"first_per_printing","sort":"color_identity,type,name"},
+      {"location":"{set_code} box","match":"token = no","copies":"all","sort":""}
+    ],
+    "bulk": {"location":"Bulk crate","sort":"set_code,name"},
+    "managed_locations": [
+      {"name":"Binder A","kind":"deck"},
+      {"name":"Mono-Red","kind":"deck"}
+    ],
+    "managed_location_members": [
+      {"managed_location":"Binder A","set_code":"dmu","collector_number":"2","finish":"nonfoil","language":"en","quantity":1},
+      {"managed_location":"Mono-Red","set_code":"dsk","collector_number":"104a","finish":"foil","language":"en","quantity":2},
+      {"managed_location":"Mono-Red","set_code":"mh2","collector_number":"17","finish":"foil","language":"zht","quantity":4}
+    ],
+    "placed": [
+      {"set_code":"dsk","collector_number":"104a","finish":"foil","language":"en","location":"Box B / Row 1","quantity":3},
+      {"set_code":"dsk","collector_number":"104a","finish":"foil","language":"en","location":"Box B / Row 2","quantity":1},
+      {"set_code":"dsk","collector_number":"104a","finish":"foil","language":"en","managed_location":"Mono-Red","quantity":2}
+    ],
+    "audits": [
+      {"location":"Binder A","completed_at":"2026-11-10T09:00:00Z"},
+      {"location":"Box B / Row 1","completed_at":"2026-11-01T17:45:00Z"},
+      {"location":"Box B / Row 1","completed_at":"2026-11-10T09:15:30.25Z"},
+      {"managed_location":"Binder A","completed_at":"2026-11-11T20:00:00Z"},
+      {"managed_location":"Mono-Red","completed_at":"2026-11-11T20:30:00Z"}
+    ]
+  },
+  "insights": {
+    "target_sets": ["2xm","neo"]
+  }
+}

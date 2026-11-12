@@ -31,14 +31,16 @@ Each release section uses only the subheadings it needs:
   the cards you didn't find off the location (they show up again under Place cards), records
   the found ones there, and asks which location a misfiled card came from when it's recorded
   elsewhere. Cards that aren't in the collection are only reported. Nothing changes until you
-  complete, and a walk in progress survives a reload in the same browser. Backups don't include
-  audit history yet, so a restore loses it.
+  complete, and a walk in progress survives a reload in the same browser. Backups carry every
+  location's audit history (#183).
 
 ### Changed
 
-- Exports are now `format_version` 2, which adds decks (their names and cards) and placed copies
-  recorded in a deck. Files exported by earlier releases (`format_version` 1) still import
-  unchanged; a release before this one can't read a version 2 file.
+- Exports are now `format_version` 3, which adds decks (their names and cards), placed copies
+  recorded in a deck, and location audit history. Files exported by earlier releases
+  (`format_version` 1) still import, but restoring one clears audit history: each audit checked
+  a placed ledger the restore replaces, and the restore preview says so before you confirm. A
+  release before this one can't read a version 3 file.
 
 ### Fixed
 

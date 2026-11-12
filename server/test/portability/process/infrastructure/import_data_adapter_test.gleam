@@ -25,6 +25,7 @@ fn rendered_export() -> String {
   let assert Ok(rules) = export_ports.list_rules()
   let assert Ok(bulk) = export_ports.get_bulk_spec()
   let assert Ok(placed) = export_ports.list_placed()
+  let assert Ok(audits) = export_ports.list_audits()
   export_file.render(export_document.new(
     a_date(),
     entries,
@@ -35,6 +36,7 @@ fn rendered_export() -> String {
       managed_locations: [],
       members: [],
       placed:,
+      audits:,
     ),
   ))
 }
@@ -106,6 +108,7 @@ pub fn export_import_export_is_byte_identical_and_every_section_is_unchanged_tes
       document.bulk,
       None,
       document.placed,
+      document.audits,
     )
   let assert Ok(Nil) = import_ports.replace_collection(document.collection)
 

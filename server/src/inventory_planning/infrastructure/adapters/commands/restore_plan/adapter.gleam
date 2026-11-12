@@ -1,10 +1,14 @@
 import gleam/dict
 import gleam/list
 import gleam/option
+import gleam/time/duration
+import gleam/time/timestamp
 import inventory_planning/application/commands/restore_plan/ports
+import inventory_planning/domain/location_audit.{type AuditRecord}
 import inventory_planning/domain/location_ref
 import inventory_planning/domain/managed_location
 import inventory_planning/infrastructure/daos/inventory_rules_dao
+import inventory_planning/infrastructure/daos/location_audits_dao
 import inventory_planning/infrastructure/daos/managed_locations_dao
 import inventory_planning/infrastructure/daos/placed_cards_dao
 import inventory_planning/infrastructure/daos/plan_dao
@@ -12,12 +16,13 @@ import shared/domain/copy_key
 
 pub fn new() -> ports.RestorePlanPorts {
   ports.RestorePlanPorts(
-    replace_plan: fn(rules, bulk, managed, placed) {
+    replace_plan: fn(rules, bulk, managed, placed, audits) {
       plan_dao.replace(
         option.map(rules, list.map(_, to_rule_row)),
         option.map(bulk, to_bulk_row),
         option.map(managed, to_managed_rows),
         option.map(placed, list.map(_, to_placed_row)),
+        option.map(audits, list.map(_, to_audit_row)),
       )
     },
     list_managed_locations: managed_locations_dao.load_all,
@@ -77,5 +82,13 @@ fn to_placed_row(
     location_kind: location_ref.kind_string(model.location),
     location: location_ref.key_string(model.location),
     quantity: model.quantity,
+  )
+}
+
+fn to_audit_row(record: AuditRecord) -> location_audits_dao.LocationAuditRow {
+  location_audits_dao.LocationAuditRow(
+    location_kind: location_ref.kind_string(record.location),
+    location: location_ref.key_string(record.location),
+    completed_at: timestamp.to_rfc3339(record.completed_at, duration.seconds(0)),
   )
 }

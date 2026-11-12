@@ -4,8 +4,9 @@ import gleam/result
 import portability/application/commands/import_data/ports
 import portability/domain/import_document.{
   type ImportDocument, type LedgerPrune, type Section, type SectionResult,
-  BulkSection, CollectionSection, DeepCheckers, ManagedLocationsSection,
-  MembersSection, PlacedSection, RulesSection, TargetSetsSection,
+  AuditsSection, BulkSection, CollectionSection, DeepCheckers,
+  ManagedLocationsSection, MembersSection, PlacedSection, RulesSection,
+  TargetSetsSection,
 }
 
 pub type ImportDataCommand {
@@ -25,7 +26,7 @@ type WriteStep {
 /// insights, then inventory planning, then collection last — so a
 /// collection-triggered reconciliation (ADR 0011) always sees the ledger
 /// already replaced. A section absent from the file gets no step at all,
-/// leaving its data untouched. Rules/bulk/placed share one step: they
+/// leaving its data untouched. Rules/bulk/managed/placed/audits share one step: they
 /// replace atomically together, in one context-level transaction (ADR
 /// 0019), not three independent ones.
 fn write_steps(
@@ -47,6 +48,7 @@ fn write_steps(
           document.bulk,
           import_document.managed_with_members(document),
           document.placed,
+          document.audits,
         )
       }),
     ]
@@ -66,6 +68,7 @@ fn plan_sections(document: ImportDocument) -> List(Section) {
       |> option_to_list,
     option.map(document.members, fn(_) { MembersSection }) |> option_to_list,
     option.map(document.placed, fn(_) { PlacedSection }) |> option_to_list,
+    option.map(document.audits, fn(_) { AuditsSection }) |> option_to_list,
   ])
 }
 

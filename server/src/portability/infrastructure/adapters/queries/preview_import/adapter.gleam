@@ -25,5 +25,11 @@ pub fn new() -> ports.PreviewImportPorts {
     check_bulk_spec: check_bulk_spec_adapter,
     check_managed_kind: inventory_planning_api.check_managed_location_kind,
     predict_prune: import_data_adapter.predict_prune,
+    clears_audit_history: fn(restores_audits, replaces_ledger) {
+      inventory_planning_api.restore_clears_audit_history(
+        restores_audits:,
+        replaces_ledger:,
+      )
+    },
   )
 }

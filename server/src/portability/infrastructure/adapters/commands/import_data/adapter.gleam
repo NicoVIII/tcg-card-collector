@@ -6,9 +6,9 @@ import insights/driver/gleam/insights_api
 import inventory_planning/driver/gleam/inventory_planning_api
 import portability/application/commands/import_data/ports
 import portability/domain/export_document.{
-  type BulkSpec, type CollectionEntry, type ManagedLocationEntry,
-  type MemberEntry, type PlacedEntry, type Rule, InLocation, InManagedLocation,
-  PlacedEntry,
+  type AuditEntry, type BulkSpec, type CollectionEntry,
+  type ManagedLocationEntry, type MemberEntry, type PlacedEntry, type PlacedIn,
+  type Rule, InLocation, InManagedLocation, PlacedEntry,
 }
 import portability/domain/import_document
 
@@ -20,17 +20,33 @@ fn check_bulk_spec_adapter(spec: BulkSpec) -> Result(Nil, String) {
   inventory_planning_api.check_bulk_spec(to_bulk_spec_spec(spec))
 }
 
+fn to_placed_at(location: PlacedIn) -> inventory_planning_api.PlacedAt {
+  case location {
+    InLocation(name) -> inventory_planning_api.AtCascadeLocation(name)
+    InManagedLocation(name) -> inventory_planning_api.AtManagedLocation(name)
+  }
+}
+
+fn to_audited_at(entry: AuditEntry) -> inventory_planning_api.AuditedAt {
+  inventory_planning_api.AuditedAt(
+    location: to_placed_at(entry.location),
+    completed_at: entry.completed_at,
+  )
+}
+
 fn replace_plan_adapter(
   rules: option.Option(List(Rule)),
   bulk: option.Option(BulkSpec),
   managed: option.Option(#(List(ManagedLocationEntry), List(MemberEntry))),
   placed: option.Option(List(PlacedEntry)),
+  audits: option.Option(List(AuditEntry)),
 ) -> Result(Nil, String) {
   inventory_planning_api.replace_plan(
     option.map(rules, list.map(_, to_rule_spec)),
     option.map(bulk, to_bulk_spec_spec),
     option.map(managed, to_managed_location_specs),
     option.map(placed, list.map(_, to_placed_copy)),
+    option.map(audits, list.map(_, to_audited_at)),
   )
 }
 
@@ -68,10 +84,7 @@ fn to_bulk_spec_spec(spec: BulkSpec) -> inventory_planning_api.BulkSpecSpec {
 fn to_placed_copy(entry: PlacedEntry) -> inventory_planning_api.PlacedCopy {
   inventory_planning_api.PlacedCopy(
     key: entry.key,
-    location: case entry.location {
-      InLocation(name) -> inventory_planning_api.AtCascadeLocation(name)
-      InManagedLocation(name) -> inventory_planning_api.AtManagedLocation(name)
-    },
+    location: to_placed_at(entry.location),
     quantity: entry.quantity,
   )
 }

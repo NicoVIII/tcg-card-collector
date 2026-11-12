@@ -16,6 +16,9 @@ fn happy_ports() -> ports.PreviewImportPorts {
     check_bulk_spec: fn(_raw) { Ok(Nil) },
     check_managed_kind: fn(_kind) { Ok(Nil) },
     predict_prune: fn(_collection, _managed, _placed) { Ok([]) },
+    clears_audit_history: fn(restores_audits, replaces_ledger) {
+      !restores_audits && replaces_ledger
+    },
   )
 }
 
@@ -29,6 +32,7 @@ fn empty_document() -> ImportDocument {
     managed_locations: None,
     members: None,
     placed: None,
+    audits: None,
   )
 }
 
@@ -157,4 +161,23 @@ pub fn a_ledger_that_cannot_be_read_fails_the_preview_test() {
 
   // assert
   assert result == Error("db down")
+}
+
+pub fn a_ledger_without_audits_says_the_history_is_cleared_test() {
+  let document = ImportDocument(..empty_document(), placed: Some([]))
+
+  let assert Ok(preview) =
+    handler.execute(handler.PreviewImportQuery(document:), happy_ports())
+
+  assert preview.clears_audit_history
+}
+
+pub fn a_ledger_with_its_audits_keeps_the_history_test() {
+  let document =
+    ImportDocument(..empty_document(), placed: Some([]), audits: Some([]))
+
+  let assert Ok(preview) =
+    handler.execute(handler.PreviewImportQuery(document:), happy_ports())
+
+  assert !preview.clears_audit_history
 }
