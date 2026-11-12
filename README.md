@@ -26,7 +26,7 @@ The MVP vertical slice works end-to-end. Docker images are published to [GHCR](h
 ## Self-hosting
 
 ```
-docker run -d -p 8080:8080 -v tcg-data:/data ghcr.io/nicoviii/tcg-card-collector:0.3
+docker run -d -p 8080:8080 -v tcg-data:/data ghcr.io/nicoviii/tcg-card-collector:0.4
 ```
 
 - SQLite database is stored at `/data/tcg-card-collector.db` (override with `TCG_DB_FILE`)

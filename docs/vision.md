@@ -24,7 +24,7 @@ The MVP vertical slice works end-to-end: catalog sync from Scryfall, CSV collect
 
 [v0.3.0](https://github.com/NicoVIII/tcg-card-collector/milestone/3) made the first full physical inventory possible: a real collection can be filed through Placement one session at a time, with every row saying which section of its location it belongs in.
 
-The next release, [v0.4.0](https://github.com/NicoVIII/tcg-card-collector/milestone/4) keeps the placed ledger true to the physical collection after that first inventory: deck cards stay out of the binder projection without being deleted, and a location's real contents can be audited against the ledger and corrected.
+[v0.4.0](https://github.com/NicoVIII/tcg-card-collector/milestone/4) keeps the placed ledger true to the physical collection after that first inventory: deck cards stay out of the binder projection without being deleted, and a location's real contents can be audited against the ledger and corrected.
 
 ## Direction
 
