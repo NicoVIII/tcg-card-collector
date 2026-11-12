@@ -38,13 +38,41 @@ export type RejectedEntry = {
   reason: string;
 };
 
-// A placed-ledger copy the imported collection doesn't own enough of —
-// what ReconcilePlacedLedger will prune right after import (ADR 0011).
-export type LedgerExcess = {
+// Where a pruned copy sat, by name: a restore assigns decks fresh ids.
+export type PlacedIn = { kind: "cascade" | "managed"; name: string };
+
+// A placed-ledger row ReconcilePlacedLedger prunes right after import (ADR
+// 0011): `quantity` copies leave `location`'s ledger.
+export type LedgerPrune = {
   identity: string;
-  placed: number;
-  owned: number;
+  location: PlacedIn;
+  quantity: number;
 };
+
+// Structural, so it covers both the queries and the commands contract's copy
+// of PlacedIn.
+type WireLedgerPrune = {
+  identity: string;
+  location: {
+    union:
+      | { kind: "UNKNOWN"; value: undefined }
+      | { kind: "cascade"; value: string }
+      | { kind: "managed"; value: string };
+  };
+  quantity: number;
+};
+
+function fromWireLedgerPrune(entry: WireLedgerPrune): LedgerPrune {
+  const location = entry.location.union;
+  if (location.kind === "UNKNOWN") {
+    throw new Error("The server sent a location of an unknown kind.");
+  }
+  return {
+    identity: entry.identity,
+    location: { kind: location.kind, name: location.value },
+    quantity: entry.quantity,
+  };
+}
 
 // A deck member the imported collection can't supply — the shortfall the
 // deck will show right after import (ADR 0022).
@@ -57,7 +85,7 @@ export type DeckShortfall = {
 export type ImportPreview = {
   sections: SectionCount[];
   rejected: RejectedEntry[];
-  excess: LedgerExcess[];
+  pruned: LedgerPrune[];
   shortfall: DeckShortfall[];
 };
 
@@ -79,11 +107,7 @@ export async function previewImport(content: string): Promise<ImportPreview> {
       identity: entry.identity,
       reason: entry.reason,
     })),
-    excess: response.excess.map((entry) => ({
-      identity: entry.identity,
-      placed: entry.placed,
-      owned: entry.owned,
-    })),
+    pruned: response.pruned.map(fromWireLedgerPrune),
     shortfall: response.shortfall.map((entry) => ({
       location_name: entry.locationName,
       identity: entry.identity,
@@ -92,7 +116,12 @@ export async function previewImport(content: string): Promise<ImportPreview> {
   };
 }
 
-export async function importData(content: string): Promise<{ sections: SectionCount[] }> {
+export type ImportedData = {
+  sections: SectionCount[];
+  pruned: LedgerPrune[];
+};
+
+export async function importData(content: string): Promise<ImportedData> {
   const response = await skirClient.invokeRemote(
     ImportData,
     ImportDataRequest.create({ content }),
@@ -104,5 +133,6 @@ export async function importData(content: string): Promise<{ sections: SectionCo
       section: section.section,
       count: section.count,
     })),
+    pruned: response.pruned.map(fromWireLedgerPrune),
   };
 }

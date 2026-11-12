@@ -6,7 +6,7 @@ import portability/domain/export_document.{
 }
 import portability/domain/import_document.{
   type ImportDocument, BulkSection, CollectionSection, ImportDocument,
-  LedgerExcess, RejectedEntry, RulesSection, SectionResult,
+  LedgerPrune, RejectedEntry, RulesSection, SectionResult,
 }
 import shared/domain/copy_key
 
@@ -15,6 +15,7 @@ fn happy_ports() -> ports.PreviewImportPorts {
     check_rule: fn(_rule) { Ok(Nil) },
     check_bulk_spec: fn(_raw) { Ok(Nil) },
     check_managed_kind: fn(_kind) { Ok(Nil) },
+    predict_prune: fn(_collection, _managed, _placed) { Ok([]) },
   )
 }
 
@@ -44,12 +45,12 @@ pub fn a_document_with_only_a_collection_previews_one_section_test() {
       CollectionEntry(key:, quantity: 2),
     ])
 
-  let preview =
+  let assert Ok(preview) =
     handler.execute(handler.PreviewImportQuery(document:), happy_ports())
 
   assert preview.sections == [SectionResult(CollectionSection, 1)]
   assert preview.rejected == []
-  assert preview.excess == []
+  assert preview.pruned == []
 }
 
 pub fn a_rule_the_checker_rejects_is_reported_and_not_counted_test() {
@@ -70,7 +71,7 @@ pub fn a_rule_the_checker_rejects_is_reported_and_not_counted_test() {
       Error("invalid match expression")
     })
 
-  let preview =
+  let assert Ok(preview) =
     handler.execute(handler.PreviewImportQuery(document:), import_ports)
 
   assert preview.sections
@@ -93,14 +94,15 @@ pub fn a_valid_bulk_spec_is_counted_as_one_section_test() {
       bulk: Some(BulkSpec(location: "Bulk", sort_keys: "name")),
     )
 
-  let preview =
+  let assert Ok(preview) =
     handler.execute(handler.PreviewImportQuery(document:), happy_ports())
 
   assert preview.sections
     == [SectionResult(CollectionSection, 0), SectionResult(BulkSection, 1)]
 }
 
-pub fn placed_copies_beyond_what_is_owned_are_reported_as_excess_test() {
+pub fn the_ledger_rows_the_import_would_prune_are_reported_test() {
+  // arrange
   let assert Ok(key) =
     copy_key.new(
       set_code: "mh2",
@@ -108,24 +110,51 @@ pub fn placed_copies_beyond_what_is_owned_are_reported_as_excess_test() {
       finish: "foil",
       language: "en",
     )
+  let collection = [CollectionEntry(key:, quantity: 1)]
+  let placed = [
+    PlacedEntry(
+      key:,
+      location: export_document.InLocation("Box A"),
+      quantity: 3,
+    ),
+  ]
   let document =
-    ImportDocument(
-      ..empty_document(),
-      collection: [CollectionEntry(key:, quantity: 1)],
-      managed_locations: None,
-      members: None,
-      placed: Some([
-        PlacedEntry(
-          key:,
-          location: export_document.InLocation("Box A"),
-          quantity: 3,
-        ),
-      ]),
+    ImportDocument(..empty_document(), collection:, placed: Some(placed))
+  let prune =
+    LedgerPrune(
+      identity: "mh2 17 foil en",
+      location: export_document.InLocation("Box A"),
+      quantity: 2,
     )
+  let import_ports =
+    ports.PreviewImportPorts(..happy_ports(), predict_prune: fn(c, m, p) {
+      case c == collection && m == None && p == Some(placed) {
+        True -> Ok([prune])
+        False -> Error("asked about other sections")
+      }
+    })
 
-  let preview =
-    handler.execute(handler.PreviewImportQuery(document:), happy_ports())
+  // act
+  let result =
+    handler.execute(handler.PreviewImportQuery(document:), import_ports)
 
-  assert preview.excess
-    == [LedgerExcess(identity: "mh2 17 foil en", placed: 3, owned: 1)]
+  // assert
+  let assert Ok(preview) = result
+  assert preview.pruned == [prune]
+}
+
+pub fn a_ledger_that_cannot_be_read_fails_the_preview_test() {
+  // arrange
+  let document = empty_document()
+  let import_ports =
+    ports.PreviewImportPorts(..happy_ports(), predict_prune: fn(_, _, _) {
+      Error("db down")
+    })
+
+  // act
+  let result =
+    handler.execute(handler.PreviewImportQuery(document:), import_ports)
+
+  // assert
+  assert result == Error("db down")
 }

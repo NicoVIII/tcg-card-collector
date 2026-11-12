@@ -36,14 +36,11 @@ fn handle_preview_import(
   fn(req: portability_queries.PreviewImportRequest, _, ctx) {
     case export_file.parse(req.content) {
       Ok(document) ->
-        Ok(
-          portability_skir_codec.map_import_preview(
-            preview_import_handler.execute(
-              preview_import_handler.PreviewImportQuery(document:),
-              get_dependencies(ctx).preview_import_ports,
-            ),
-          ),
+        preview_import_handler.execute(
+          preview_import_handler.PreviewImportQuery(document:),
+          get_dependencies(ctx).preview_import_ports,
         )
+        |> helpers.map_query(portability_skir_codec.map_import_preview)
       Error(error) -> Error(portability_skir_codec.map_parse_error(error))
     }
     |> helpers.respond

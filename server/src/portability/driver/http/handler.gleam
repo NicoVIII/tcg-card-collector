@@ -49,15 +49,11 @@ pub fn handle_preview_import(
   use body <- helpers.with_json_body(req)
   case export_file.parse(body) {
     Ok(document) ->
-      helpers.json_response(
-        200,
-        portability_json_codec.encode_import_preview(
-          preview_import_handler.execute(
-            preview_import_handler.PreviewImportQuery(document:),
-            deps.preview_import_ports,
-          ),
-        ),
+      preview_import_handler.execute(
+        preview_import_handler.PreviewImportQuery(document:),
+        deps.preview_import_ports,
       )
+      |> helpers.query_response(portability_json_codec.encode_import_preview)
     Error(error) ->
       helpers.error_response(error_presentation.document_error(error))
   }
@@ -78,10 +74,10 @@ pub fn handle_import_data(
           deps.import_data_ports,
         )
       {
-        Ok(sections) ->
+        Ok(imported) ->
           helpers.json_response(
             200,
-            portability_json_codec.encode_imported_data(sections),
+            portability_json_codec.encode_imported_data(imported),
           )
         Error(error) ->
           helpers.error_response(error_presentation.import_data(error))

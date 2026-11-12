@@ -3,7 +3,7 @@ import portability/domain/export_document.{
   type BulkSpec, type CollectionEntry, type ManagedLocationEntry,
   type MemberEntry, type PlacedEntry, type Rule,
 }
-import portability/domain/import_document.{type Section}
+import portability/domain/import_document.{type LedgerPrune, type Section}
 
 pub type ReplaceCollectionPort =
   fn(List(CollectionEntry)) -> Result(Nil, String)
@@ -31,6 +31,16 @@ pub type CheckBulkSpecPort =
 pub type CheckManagedKindPort =
   fn(String) -> Result(Nil, String)
 
+/// The ledger rows ReconcilePlacedLedger prunes right after an import that
+/// writes this collection plus the given managed and placed sections (None:
+/// absent from the file, so the current state stays).
+pub type PredictPrunePort =
+  fn(
+    List(CollectionEntry),
+    Option(#(List(ManagedLocationEntry), List(MemberEntry))),
+    Option(List(PlacedEntry)),
+  ) -> Result(List(LedgerPrune), String)
+
 pub type ImportDataPorts {
   ImportDataPorts(
     check_rule: CheckRulePort,
@@ -39,6 +49,7 @@ pub type ImportDataPorts {
     replace_target_sets: ReplaceTargetSetsPort,
     replace_plan: ReplacePlanPort,
     replace_collection: ReplaceCollectionPort,
+    predict_prune: PredictPrunePort,
   )
 }
 

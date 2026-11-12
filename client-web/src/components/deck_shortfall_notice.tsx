@@ -4,7 +4,7 @@ import type { DeckShortfall } from "../data/portability/request";
 // What a restore's decks will be missing right after import: a deck keeps
 // its whole list, but the file's own collection owns fewer copies than the
 // decks claim (ADR 0022). Said before the user confirms, the same posture as
-// LedgerExcessNotice — nothing is lost, but a deck coming up short should
+// LedgerPruneNotice — nothing is lost, but a deck coming up short should
 // never be a surprise.
 export function DeckShortfallNotice(props: { shortfall: DeckShortfall[] }) {
   return (

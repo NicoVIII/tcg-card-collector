@@ -323,12 +323,13 @@ Core terms:
   between sections"), managed locations and their members with them; import writes
   insights, then inventory_planning, then collection last, so a collection-triggered
   reconciliation (ADR 0011) always runs against the other sections' final state.
-- LedgerExcess: a placed-ledger key whose total across locations exceeds what the
-  document's own collection owns — computed from the document alone, before anything is
-  written, so the preview can say what ReconcilePlacedLedger (ADR 0011) will prune right
-  after import. Needs no cross-context call: both sides are already Portability's own
-  validated data by the time it runs.
-- ManagedShortfall: LedgerExcess's counterpart for managed locations — a member the
+- LedgerPrune: a placed-ledger row ReconcilePlacedLedger (ADR 0011) prunes right after
+  import — the copy, the location (by name) that loses it, and how many. Predicted before
+  anything is written by Inventory Planning's PredictRestorePrune, which runs the reconcile's
+  own prune on the ledger the restore leaves behind (the file's placed section, else the
+  current ledger minus rows in replaced managed locations). The preview and the import
+  result both carry the list.
+- ManagedShortfall: a managed location's member the
   document's own collection can't supply, predicted with the projection's own precedence
   (by name) so the preview can say which deck will come up short after import. Nothing is
   pruned for it; it's a warning, not a loss.

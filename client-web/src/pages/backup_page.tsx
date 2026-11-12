@@ -2,7 +2,7 @@ import { Show, createSignal } from "solid-js";
 import { A } from "@solidjs/router";
 import { ConfirmButton } from "../components/confirm_button";
 import { DeckShortfallNotice } from "../components/deck_shortfall_notice";
-import { LedgerExcessNotice } from "../components/ledger_excess_notice";
+import { LedgerPruneNotice } from "../components/ledger_prune_notice";
 import { RejectedList } from "../components/rejected_list";
 import { mapError } from "../data/http/error";
 import {
@@ -10,7 +10,7 @@ import {
   useImportDataMutation,
   usePreviewImportMutation,
 } from "../data/portability/mutation";
-import type { ImportPreview, SectionCount } from "../data/portability/request";
+import type { ImportPreview, LedgerPrune, SectionCount } from "../data/portability/request";
 
 // Maps a section's wire name (Portability's own vocabulary, ADR 0019) to
 // what the page shows for it — a section this build doesn't know about
@@ -84,7 +84,7 @@ function canRestore(preview: ImportPreview | null): boolean {
 function RestoreWarnings(props: { preview: ImportPreview }) {
   return (
     <>
-      <LedgerExcessNotice excess={props.preview.excess} />
+      <LedgerPruneNotice pruned={props.preview.pruned} done={false} />
       <DeckShortfallNotice shortfall={props.preview.shortfall} />
     </>
   );
@@ -135,10 +135,12 @@ export function BackupPage() {
   const [preview, setPreview] = createSignal<ImportPreview | null>(null);
   const [restoreError, setRestoreError] = createSignal<string | null>(null);
   const [restoreSuccess, setRestoreSuccess] = createSignal<string | null>(null);
+  const [restorePruned, setRestorePruned] = createSignal<LedgerPrune[]>([]);
 
   const onFileSelected = async (file: File | undefined) => {
     setRestoreError(null);
     setRestoreSuccess(null);
+    setRestorePruned([]);
     setPreview(null);
     if (file === undefined) {
       setFileContent(null);
@@ -156,10 +158,12 @@ export function BackupPage() {
     }
     setRestoreError(null);
     setRestoreSuccess(null);
+    setRestorePruned([]);
     await runOrReportError(
       () => importMutation.mutateAsync(content),
       (result) => {
         setRestoreSuccess(`Restored ${summarize(result.sections)}.`);
+        setRestorePruned(result.pruned);
         setFileContent(null);
         setPreview(null);
       },
@@ -203,6 +207,7 @@ export function BackupPage() {
       </Show>
       <Show when={restoreSuccess() !== null}>
         <p class="success">{restoreSuccess()}</p>
+        <LedgerPruneNotice pruned={restorePruned()} done={true} />
       </Show>
     </section>
   );

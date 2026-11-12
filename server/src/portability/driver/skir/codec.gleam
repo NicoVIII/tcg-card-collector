@@ -1,11 +1,14 @@
 import gleam/list
+import portability/application/commands/import_data/handler.{type ImportResult} as _
 import portability/application/commands/import_data/ports as import_data_ports
 import portability/application/queries/preview_import/handler.{
   type ImportPreview,
 }
-import portability/domain/export_document.{type ExportDocument}
+import portability/domain/export_document.{
+  type ExportDocument, InLocation, InManagedLocation,
+}
 import portability/domain/import_document.{
-  type DocumentError, type LedgerExcess, type SectionResult,
+  type DocumentError, type LedgerPrune, type SectionResult,
 }
 import portability/driver/error_presentation
 import portability/driver/export_file
@@ -29,33 +32,6 @@ pub fn map_export_data(
 /// don't each write their own mapping.
 pub fn map_parse_error(error: DocumentError) -> service.ServiceError {
   helpers.service_error(error_presentation.document_error(error))
-}
-
-pub fn map_import_preview(
-  preview: ImportPreview,
-) -> portability_queries.ImportPreview {
-  portability_queries.import_preview_new(
-    sections: list.map(preview.sections, map_section_result),
-    rejected: list.map(preview.rejected, map_rejected_entry),
-    excess: list.map(preview.excess, map_ledger_excess),
-    shortfall: list.map(preview.shortfall, map_managed_shortfall),
-  )
-}
-
-pub fn map_import_data_result(
-  result: Result(List(SectionResult), import_data_ports.ImportDataError),
-) -> Result(portability_commands.ImportedData, service.ServiceError) {
-  case result {
-    Ok(sections) ->
-      Ok(
-        portability_commands.imported_data_new(sections: list.map(
-          sections,
-          map_command_section_result,
-        )),
-      )
-    Error(error) ->
-      Error(helpers.service_error(error_presentation.import_data(error)))
-  }
 }
 
 fn map_section_result(
@@ -97,10 +73,53 @@ fn map_managed_shortfall(
   )
 }
 
-fn map_ledger_excess(excess: LedgerExcess) -> portability_queries.LedgerExcess {
-  portability_queries.ledger_excess_new(
-    identity: excess.identity,
-    owned: excess.owned,
-    placed: excess.placed,
+fn map_query_ledger_prune(
+  prune: LedgerPrune,
+) -> portability_queries.LedgerPrune {
+  portability_queries.ledger_prune_new(
+    identity: prune.identity,
+    location: case prune.location {
+      InLocation(name) -> portability_queries.PlacedInCascade(name)
+      InManagedLocation(name) -> portability_queries.PlacedInManaged(name)
+    },
+    quantity: prune.quantity,
   )
+}
+
+fn map_command_ledger_prune(
+  prune: LedgerPrune,
+) -> portability_commands.LedgerPrune {
+  portability_commands.ledger_prune_new(
+    identity: prune.identity,
+    location: case prune.location {
+      InLocation(name) -> portability_commands.PlacedInCascade(name)
+      InManagedLocation(name) -> portability_commands.PlacedInManaged(name)
+    },
+    quantity: prune.quantity,
+  )
+}
+
+pub fn map_import_preview(
+  preview: ImportPreview,
+) -> portability_queries.ImportPreview {
+  portability_queries.import_preview_new(
+    sections: list.map(preview.sections, map_section_result),
+    rejected: list.map(preview.rejected, map_rejected_entry),
+    pruned: list.map(preview.pruned, map_query_ledger_prune),
+    shortfall: list.map(preview.shortfall, map_managed_shortfall),
+  )
+}
+
+pub fn map_import_data_result(
+  result: Result(ImportResult, import_data_ports.ImportDataError),
+) -> Result(portability_commands.ImportedData, service.ServiceError) {
+  case result {
+    Ok(imported) ->
+      Ok(portability_commands.imported_data_new(
+        sections: list.map(imported.sections, map_command_section_result),
+        pruned: list.map(imported.pruned, map_command_ledger_prune),
+      ))
+    Error(error) ->
+      Error(helpers.service_error(error_presentation.import_data(error)))
+  }
 }

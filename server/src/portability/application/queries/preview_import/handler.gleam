@@ -1,7 +1,8 @@
 import gleam/option
+import gleam/result
 import portability/application/queries/preview_import/ports
 import portability/domain/import_document.{
-  type ImportDocument, type LedgerExcess, type ManagedShortfall,
+  type ImportDocument, type LedgerPrune, type ManagedShortfall,
   type RejectedEntry, type SectionResult, DeepCheckers,
 }
 
@@ -13,7 +14,7 @@ pub type ImportPreview {
   ImportPreview(
     sections: List(SectionResult),
     rejected: List(RejectedEntry),
-    excess: List(LedgerExcess),
+    pruned: List(LedgerPrune),
     shortfall: List(ManagedShortfall),
   )
 }
@@ -21,11 +22,11 @@ pub type ImportPreview {
 /// Resolves the one validation pass `export_file.parse` couldn't do alone
 /// (rules, the bulk spec, and managed-location kinds need Inventory
 /// Planning's parsers), then reports what an import would do — without
-/// writing anything.
+/// writing anything. Fails only when the current ledger can't be read.
 pub fn execute(
   query: PreviewImportQuery,
   ports: ports.PreviewImportPorts,
-) -> ImportPreview {
+) -> Result(ImportPreview, String) {
   let resolved =
     import_document.resolve_deep_sections(
       query.document,
@@ -35,13 +36,15 @@ pub fn execute(
         check_managed_kind: ports.check_managed_kind,
       ),
     )
+  use pruned <- result.map(ports.predict_prune(
+    resolved.collection,
+    import_document.managed_with_members(resolved),
+    resolved.placed,
+  ))
   ImportPreview(
     sections: import_document.section_results(resolved),
     rejected: resolved.rejected,
-    excess: import_document.ledger_excess(
-      resolved.collection,
-      option.unwrap(resolved.placed, []),
-    ),
+    pruned:,
     shortfall: import_document.managed_shortfall(
       resolved.collection,
       option.unwrap(resolved.managed_locations, []),

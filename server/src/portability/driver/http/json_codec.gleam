@@ -1,25 +1,14 @@
 import gleam/json
+import portability/application/commands/import_data/handler.{type ImportResult} as _
 import portability/application/queries/preview_import/handler.{
   type ImportPreview,
 }
+import portability/domain/export_document.{
+  type PlacedIn, InLocation, InManagedLocation,
+}
 import portability/domain/import_document.{
-  type LedgerExcess, type ManagedShortfall, type RejectedEntry,
+  type LedgerPrune, type ManagedShortfall, type RejectedEntry,
   type SectionResult,
-}
-
-pub fn encode_import_preview(preview: ImportPreview) -> String {
-  json.object([
-    #("sections", json.array(preview.sections, of: encode_section_result)),
-    #("rejected", json.array(preview.rejected, of: encode_rejected_entry)),
-    #("excess", json.array(preview.excess, of: encode_ledger_excess)),
-    #("shortfall", json.array(preview.shortfall, of: encode_managed_shortfall)),
-  ])
-  |> json.to_string
-}
-
-pub fn encode_imported_data(sections: List(SectionResult)) -> String {
-  json.object([#("sections", json.array(sections, of: encode_section_result))])
-  |> json.to_string
 }
 
 fn encode_section_result(result: SectionResult) -> json.Json {
@@ -46,10 +35,38 @@ fn encode_managed_shortfall(shortfall: ManagedShortfall) -> json.Json {
   ])
 }
 
-fn encode_ledger_excess(excess: LedgerExcess) -> json.Json {
+// REST's twin of the skir PlacedIn union: `{"kind": "cascade" | "managed",
+// "name": <name>}`, the shape Inventory Planning's LocationRef uses.
+fn encode_placed_in(location: PlacedIn) -> json.Json {
+  let #(kind, name) = case location {
+    InLocation(name) -> #("cascade", name)
+    InManagedLocation(name) -> #("managed", name)
+  }
+  json.object([#("kind", json.string(kind)), #("name", json.string(name))])
+}
+
+fn encode_ledger_prune(prune: LedgerPrune) -> json.Json {
   json.object([
-    #("identity", json.string(excess.identity)),
-    #("placed", json.int(excess.placed)),
-    #("owned", json.int(excess.owned)),
+    #("identity", json.string(prune.identity)),
+    #("location", encode_placed_in(prune.location)),
+    #("quantity", json.int(prune.quantity)),
   ])
+}
+
+pub fn encode_import_preview(preview: ImportPreview) -> String {
+  json.object([
+    #("sections", json.array(preview.sections, of: encode_section_result)),
+    #("rejected", json.array(preview.rejected, of: encode_rejected_entry)),
+    #("shortfall", json.array(preview.shortfall, of: encode_managed_shortfall)),
+    #("pruned", json.array(preview.pruned, of: encode_ledger_prune)),
+  ])
+  |> json.to_string
+}
+
+pub fn encode_imported_data(imported: ImportResult) -> String {
+  json.object([
+    #("sections", json.array(imported.sections, of: encode_section_result)),
+    #("pruned", json.array(imported.pruned, of: encode_ledger_prune)),
+  ])
+  |> json.to_string
 }

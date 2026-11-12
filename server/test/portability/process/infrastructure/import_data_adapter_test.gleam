@@ -2,9 +2,13 @@ import collection/infrastructure/daos/collection_dao
 import gleam/option.{None, Some}
 import gleam/time/calendar
 import insights/infrastructure/daos/insights_dao
+import inventory_planning/application/commands/reconcile_placed_ledger/handler as reconcile_handler
+import inventory_planning/infrastructure/adapters/commands/reconcile_placed_ledger/adapter as reconcile_adapter
 import inventory_planning/infrastructure/daos/inventory_rules_dao
+import inventory_planning/infrastructure/daos/managed_locations_dao
 import inventory_planning/infrastructure/daos/placed_cards_dao
-import portability/domain/export_document
+import portability/domain/export_document.{InLocation, InManagedLocation}
+import portability/domain/import_document.{LedgerPrune}
 import portability/driver/export_file
 import portability/infrastructure/adapters/commands/import_data/adapter
 import portability/infrastructure/adapters/queries/export_data/adapter as export_data_adapter
@@ -134,4 +138,83 @@ pub fn a_failing_change_notification_does_not_fail_the_import_test() {
   let import_ports = adapter.new(fn(_) { Error("subscriber down") })
 
   assert import_ports.replace_collection(document.collection) == Ok(Nil)
+}
+
+fn placed_row(
+  location_kind: String,
+  location: String,
+  quantity: Int,
+) -> placed_cards_dao.PlacedCardRow {
+  placed_cards_dao.PlacedCardRow(
+    set_code: "mh2",
+    collector_number: "17",
+    finish: "nonfoil",
+    language: "en",
+    location_kind:,
+    location:,
+    quantity:,
+  )
+}
+
+fn reconcile(_: Nil) -> Result(Nil, String) {
+  let assert Ok(Nil) =
+    reconcile_handler.execute(
+      reconcile_handler.ReconcilePlacedLedgerCommand,
+      reconcile_adapter.new(),
+    )
+  Ok(Nil)
+}
+
+/// The prediction names exactly the rows the reconcile then prunes, by
+/// location name — a deck by its name, not its id (#181).
+pub fn the_predicted_prune_is_what_the_reconcile_removes_test() {
+  // arrange
+  use _db <- test_db.with_temp_db()
+  let assert Ok(Nil) =
+    collection_dao.upsert_cards([
+      collection_dao.CardRow(
+        set_code: "mh2",
+        collector_number: "17",
+        finish: "nonfoil",
+        language: "en",
+        quantity: 3,
+      ),
+    ])
+  let assert Ok(Nil) =
+    managed_locations_dao.insert(managed_locations_dao.ManagedLocationRow(
+      id: "d1",
+      name: "Burn",
+      kind: "deck",
+    ))
+  let assert Ok(Nil) =
+    placed_cards_dao.increment([
+      placed_row("cascade", "Binder A", 1),
+      placed_row("managed", "d1", 2),
+    ])
+  let assert Ok(document) = export_file.parse(rendered_export())
+  let restored_collection = case document.collection {
+    [entry] -> [export_document.CollectionEntry(..entry, quantity: 1)]
+    _ -> panic as "expected one collection entry"
+  }
+  let import_ports = adapter.new(reconcile)
+
+  // act
+  let predicted = import_ports.predict_prune(restored_collection, None, None)
+  let assert Ok(Nil) = import_ports.replace_collection(restored_collection)
+
+  // assert
+  assert predicted
+    == Ok([
+      LedgerPrune(
+        identity: "mh2 17 nonfoil en",
+        location: InLocation("Binder A"),
+        quantity: 1,
+      ),
+      LedgerPrune(
+        identity: "mh2 17 nonfoil en",
+        location: InManagedLocation("Burn"),
+        quantity: 1,
+      ),
+    ])
+  assert placed_cards_dao.list() == Ok([placed_row("managed", "d1", 1)])
 }

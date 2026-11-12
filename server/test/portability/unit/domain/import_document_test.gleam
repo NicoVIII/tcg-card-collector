@@ -7,10 +7,10 @@ import portability/domain/export_document.{
 }
 import portability/domain/import_document.{
   type ImportDocument, BulkSection, CollectionSection, ImportDocument,
-  LedgerExcess, ManagedLocationsSection, ManagedShortfall, MembersSection,
-  MissingCollection, NotJson, NotThisFormat, PlacedSection, RawEntry,
-  RawManagedLocation, RawMember, RawPlaced, RejectedEntry, RulesSection,
-  SectionResult, TargetSetsSection, UnsupportedVersion,
+  ManagedLocationsSection, ManagedShortfall, MembersSection, MissingCollection,
+  NotJson, NotThisFormat, PlacedSection, RawEntry, RawManagedLocation, RawMember,
+  RawPlaced, RejectedEntry, RulesSection, SectionResult, TargetSetsSection,
+  UnsupportedVersion,
 }
 import shared/domain/copy_key
 
@@ -271,47 +271,6 @@ pub fn a_bulk_spec_the_checker_rejects_becomes_none_test() {
         identity: "Bulk",
         reason: "invalid sort keys",
       ),
-    ]
-}
-
-pub fn ledger_excess_reports_only_keys_placed_beyond_what_is_owned_test() {
-  let assert Ok(owned_key) =
-    copy_key.new(
-      set_code: "mh2",
-      collector_number: "17",
-      finish: "foil",
-      language: "en",
-    )
-  let assert Ok(unowned_key) =
-    copy_key.new(
-      set_code: "dmu",
-      collector_number: "2",
-      finish: "nonfoil",
-      language: "en",
-    )
-  let collection = [CollectionEntry(key: owned_key, quantity: 2)]
-  let placed = [
-    PlacedEntry(
-      key: owned_key,
-      location: export_document.InLocation("Box A"),
-      quantity: 1,
-    ),
-    PlacedEntry(
-      key: owned_key,
-      location: export_document.InLocation("Box B"),
-      quantity: 2,
-    ),
-    PlacedEntry(
-      key: unowned_key,
-      location: export_document.InLocation("Box A"),
-      quantity: 1,
-    ),
-  ]
-
-  assert import_document.ledger_excess(collection, placed)
-    == [
-      LedgerExcess(identity: "dmu 2 nonfoil en", placed: 1, owned: 0),
-      LedgerExcess(identity: "mh2 17 foil en", placed: 3, owned: 2),
     ]
 }
 

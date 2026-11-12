@@ -2,11 +2,11 @@ import gleam/list
 import gleam/option.{None, Some}
 import portability/application/commands/import_data/handler
 import portability/application/commands/import_data/ports
-import portability/domain/export_document.{Rule}
+import portability/domain/export_document.{InLocation, Rule}
 import portability/domain/import_document.{
-  type ImportDocument, BulkSection, CollectionSection, ImportDocument,
-  ManagedLocationsSection, PlacedSection, RulesSection, SectionResult,
-  TargetSetsSection,
+  type ImportDocument, type LedgerPrune, BulkSection, CollectionSection,
+  ImportDocument, LedgerPrune, ManagedLocationsSection, PlacedSection,
+  RulesSection, SectionResult, TargetSetsSection,
 }
 import shared/domain/copy_key
 import support/ref
@@ -74,6 +74,7 @@ fn build_ports(
     replace_collection: fn(_entries) {
       record_if_ok(written, [CollectionSection], replace_collection_result)
     },
+    predict_prune: fn(_collection, _managed, _placed) { Ok([]) },
   )
 }
 
@@ -130,7 +131,13 @@ pub fn valid_entries_alone_replace_only_the_collection_test() {
   let result =
     handler.execute(handler.ImportDataCommand(document:), import_ports)
 
-  assert result == Ok([SectionResult(CollectionSection, 1)])
+  assert result
+    == Ok(
+      handler.ImportResult(
+        sections: [SectionResult(CollectionSection, 1)],
+        pruned: [],
+      ),
+    )
   assert ref.get(written) == [CollectionSection]
 }
 
@@ -160,12 +167,17 @@ pub fn target_sets_and_the_plan_write_before_the_collection_test() {
     handler.execute(handler.ImportDataCommand(document:), import_ports)
 
   assert result
-    == Ok([
-      SectionResult(CollectionSection, 1),
-      SectionResult(TargetSetsSection, 1),
-      SectionResult(RulesSection, 1),
-      SectionResult(PlacedSection, 0),
-    ])
+    == Ok(
+      handler.ImportResult(
+        sections: [
+          SectionResult(CollectionSection, 1),
+          SectionResult(TargetSetsSection, 1),
+          SectionResult(RulesSection, 1),
+          SectionResult(PlacedSection, 0),
+        ],
+        pruned: [],
+      ),
+    )
   assert ref.get(written)
     == [TargetSetsSection, RulesSection, PlacedSection, CollectionSection]
 }
@@ -191,7 +203,15 @@ pub fn a_rule_the_checker_rejects_is_dropped_before_the_plan_writes_test() {
     handler.execute(handler.ImportDataCommand(document:), import_ports)
 
   assert result
-    == Ok([SectionResult(CollectionSection, 1), SectionResult(RulesSection, 0)])
+    == Ok(
+      handler.ImportResult(
+        sections: [
+          SectionResult(CollectionSection, 1),
+          SectionResult(RulesSection, 0),
+        ],
+        pruned: [],
+      ),
+    )
 }
 
 pub fn a_persistence_failure_before_any_section_writes_is_reported_plainly_test() {
@@ -238,4 +258,103 @@ pub fn a_failure_after_an_earlier_section_wrote_names_what_was_written_test() {
       reason: "db down",
     ))
   assert ref.get(written) == [TargetSetsSection]
+}
+
+fn ok_ports(
+  written: ref.Ref(List(import_document.Section)),
+) -> ports.ImportDataPorts {
+  build_ports(
+    written:,
+    check_rule_result: Ok(Nil),
+    replace_target_sets_result: Ok(Nil),
+    replace_plan_result: Ok(Nil),
+    replace_collection_result: Ok(Nil),
+  )
+}
+
+fn a_prune() -> LedgerPrune {
+  LedgerPrune(
+    identity: "mh2 17 nonfoil en",
+    location: InLocation("Binder A"),
+    quantity: 1,
+  )
+}
+
+pub fn the_result_lists_the_ledger_rows_the_import_prunes_test() {
+  // arrange
+  let written = ref.new([])
+  let document = ImportDocument(..empty_document(), collection: [an_entry(1)])
+  let import_ports =
+    ports.ImportDataPorts(..ok_ports(written), predict_prune: fn(_, _, _) {
+      Ok([a_prune()])
+    })
+
+  // act
+  let result =
+    handler.execute(handler.ImportDataCommand(document:), import_ports)
+
+  // assert
+  assert result
+    == Ok(
+      handler.ImportResult(
+        sections: [SectionResult(CollectionSection, 1)],
+        pruned: [a_prune()],
+      ),
+    )
+}
+
+pub fn the_prune_is_predicted_from_the_sections_the_import_writes_test() {
+  // arrange
+  let written = ref.new([])
+  let asked = ref.new(None)
+  let placed = [
+    export_document.PlacedEntry(
+      key: an_entry(1).key,
+      location: InLocation("Binder A"),
+      quantity: 2,
+    ),
+  ]
+  let document =
+    ImportDocument(
+      ..empty_document(),
+      collection: [an_entry(1)],
+      placed: Some(placed),
+    )
+  let import_ports =
+    ports.ImportDataPorts(
+      ..ok_ports(written),
+      predict_prune: fn(collection, managed, placed) {
+        ref.set(asked, Some(#(collection, managed, placed)))
+        Ok([])
+      },
+    )
+
+  // act
+  let _ = handler.execute(handler.ImportDataCommand(document:), import_ports)
+
+  // assert
+  assert ref.get(asked) == Some(#([an_entry(1)], None, Some(placed)))
+}
+
+pub fn a_failed_prune_prediction_stops_the_import_before_any_write_test() {
+  // arrange
+  let written = ref.new([])
+  let document =
+    ImportDocument(
+      ..empty_document(),
+      collection: [an_entry(1)],
+      target_sets: Some(["neo"]),
+    )
+  let import_ports =
+    ports.ImportDataPorts(..ok_ports(written), predict_prune: fn(_, _, _) {
+      Error("db down")
+    })
+
+  // act
+  let result =
+    handler.execute(handler.ImportDataCommand(document:), import_ports)
+
+  // assert
+  assert result == Error(ports.PersistenceFailed("db down"))
+  assert ref.get(written) == []
 }

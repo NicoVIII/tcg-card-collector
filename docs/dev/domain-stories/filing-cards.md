@@ -107,13 +107,11 @@ sequenceDiagram
 4. The collection announces it changed; the App prunes the ledger wherever more copies
    are still placed than owned. [cmd: inventory_planning/reconcile_placed_ledger]
 
-Replacing the collection with a fresh CSV import [cmd: collection/import_collection]
-skips steps 2–3, so step 4 prunes by a fixed location order instead
-([ADR 0023](../../decisions/0023-removal-names-the-location.md)).
-
-> **Gap:** the App does not show which ledger rows an import pruned, so the Collector
-> can't check them against what was physically taken out.
-> [#181](https://github.com/NicoVIII/tcg-card-collector/issues/181)
+Restoring a backup replaces the collection without steps 2–3, so step 4 prunes by a fixed
+location order instead ([ADR 0023](../../decisions/0023-removal-names-the-location.md)).
+The App lists the ledger rows it will prune, with their locations, before the Collector
+confirms the restore and again after it, so the Collector can check those locations.
+[query: inventory_planning/predict_restore_prune] [cmd: portability/import_data]
 
 ## 4. Auditing a location
 

@@ -1,7 +1,7 @@
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import inventory_planning/domain/location_ref.{type LocationRef}
 import shared/domain/copy_key.{type CopyKey}
 
@@ -71,5 +71,27 @@ fn prune(rows: List(PlacedRow), excess: Int) -> List(PlacedRow) {
       let taken = int.min(row.quantity, remaining)
       [PlacedRow(..row, quantity: taken), ..prune(rest, remaining - taken)]
     }
+  }
+}
+
+/// The ledger a restore leaves behind: its own placed section when it has
+/// one, which replaces the ledger wholesale. Without one the current ledger
+/// stays, minus every managed row when the restore replaces the managed
+/// locations, since their ids no longer exist.
+pub fn ledger_after_restore(
+  current: List(PlacedRow),
+  replaces_managed: Bool,
+  restored: Option(List(PlacedRow)),
+) -> List(PlacedRow) {
+  case restored, replaces_managed {
+    Some(rows), _ -> rows
+    None, False -> current
+    None, True ->
+      list.filter(current, fn(row) {
+        case row.location {
+          location_ref.Cascade(_) -> True
+          location_ref.Managed(_) -> False
+        }
+      })
   }
 }

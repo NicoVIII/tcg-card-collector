@@ -1,15 +1,20 @@
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/result
 import portability/application/commands/import_data/ports
-import portability/domain/export_document
 import portability/domain/import_document.{
-  type ImportDocument, type Section, type SectionResult, BulkSection,
-  CollectionSection, DeepCheckers, ManagedLocationsSection, MembersSection,
-  PlacedSection, RulesSection, TargetSetsSection,
+  type ImportDocument, type LedgerPrune, type Section, type SectionResult,
+  BulkSection, CollectionSection, DeepCheckers, ManagedLocationsSection,
+  MembersSection, PlacedSection, RulesSection, TargetSetsSection,
 }
 
 pub type ImportDataCommand {
   ImportDataCommand(document: ImportDocument)
+}
+
+/// What an import wrote, and the ledger rows the reconcile pruned after it.
+pub type ImportResult {
+  ImportResult(sections: List(SectionResult), pruned: List(LedgerPrune))
 }
 
 type WriteStep {
@@ -40,7 +45,7 @@ fn write_steps(
         ports.replace_plan(
           document.rules,
           document.bulk,
-          managed_with_members(document),
+          import_document.managed_with_members(document),
           document.placed,
         )
       }),
@@ -51,22 +56,6 @@ fn write_steps(
       ports.replace_collection(document.collection)
     })
   list.flatten([target_sets_step, plan_step, [collection_step]])
-}
-
-// Members without their managed locations never reach here (every one is
-// rejected for naming an unknown location), so the managed section alone
-// decides whether this part is written.
-fn managed_with_members(
-  document: ImportDocument,
-) -> option.Option(
-  #(
-    List(export_document.ManagedLocationEntry),
-    List(export_document.MemberEntry),
-  ),
-) {
-  option.map(document.managed_locations, fn(locations) {
-    #(locations, option.unwrap(document.members, []))
-  })
 }
 
 fn plan_sections(document: ImportDocument) -> List(Section) {
@@ -121,11 +110,13 @@ fn run_steps(
 /// PreviewImport's earlier check on the same content isn't trusted as a
 /// substitute for this door's own. A document with no collection entries
 /// left to import is rejected rather than silently emptying the
-/// collection — the one section that stays mandatory.
+/// collection — the one section that stays mandatory. The pruned rows are
+/// predicted before anything is written, from the same sections the writes
+/// use, so a failed ledger read stops the import with nothing written.
 pub fn execute(
   command: ImportDataCommand,
   ports: ports.ImportDataPorts,
-) -> Result(List(SectionResult), ports.ImportDataError) {
+) -> Result(ImportResult, ports.ImportDataError) {
   let ImportDataCommand(document: document) = command
   let resolved =
     import_document.resolve_deep_sections(
@@ -139,10 +130,17 @@ pub fn execute(
 
   case resolved.collection {
     [] -> Error(ports.NothingToImport)
-    _ ->
-      case run_steps(write_steps(resolved, ports), []) {
-        Ok(_written) -> Ok(import_document.section_results(resolved))
-        Error(error) -> Error(error)
-      }
+    _ -> {
+      use pruned <- result.try(
+        ports.predict_prune(
+          resolved.collection,
+          import_document.managed_with_members(resolved),
+          resolved.placed,
+        )
+        |> result.map_error(ports.PersistenceFailed),
+      )
+      use _written <- result.map(run_steps(write_steps(resolved, ports), []))
+      ImportResult(sections: import_document.section_results(resolved), pruned:)
+    }
   }
 }

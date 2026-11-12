@@ -8,10 +8,13 @@ import inventory_planning/application/queries/get_bulk_spec/handler as get_bulk_
 import inventory_planning/application/queries/list_managed_locations/handler as list_managed_locations_handler
 import inventory_planning/application/queries/list_rules/handler as list_rules_handler
 import inventory_planning/application/queries/placed_ledger/handler as placed_ledger_handler
+import inventory_planning/application/queries/predict_restore_prune/handler as predict_restore_prune_handler
+import inventory_planning/application/queries/predict_restore_prune/ports as predict_restore_prune_ports
 import inventory_planning/domain/card_predicate
 import inventory_planning/domain/copy_selector
 import inventory_planning/domain/location_ref
 import inventory_planning/domain/managed_location
+import inventory_planning/domain/plan_restore
 import inventory_planning/domain/sort_spec
 
 // nolint: depends_only_on -- glinter_arch doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a gleam-libs change
@@ -28,6 +31,9 @@ import inventory_planning/infrastructure/adapters/queries/list_rules/adapter as 
 
 // nolint: depends_only_on -- glinter_arch doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a gleam-libs change
 import inventory_planning/infrastructure/adapters/queries/placed_ledger/adapter as placed_ledger_adapter
+
+// nolint: depends_only_on -- glinter_arch doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a gleam-libs change
+import inventory_planning/infrastructure/adapters/queries/predict_restore_prune/adapter as predict_restore_prune_adapter
 import shared/domain/copy_key.{type CopyKey}
 
 // A rule's four hand-authored fields, in the DSL text form the location
@@ -189,6 +195,18 @@ pub fn check_managed_location_kind(raw: String) -> Result(Nil, String) {
   |> result.map(fn(_) { Nil })
 }
 
+fn restore_plan_error_message(
+  error: restore_plan_ports.RestorePlanError,
+) -> String {
+  case error {
+    restore_plan_ports.InvalidRules -> "invalid rules"
+    restore_plan_ports.InvalidBulkSpec -> "invalid bulk spec"
+    restore_plan_ports.InvalidManagedLocations -> "invalid managed locations"
+    restore_plan_ports.InvalidPlaced -> "invalid placed copies"
+    restore_plan_ports.PersistenceFailed(reason) -> reason
+  }
+}
+
 /// Replaces whichever of rules/bulk/managed/placed are given, atomically together,
 /// reusing RestorePlan's own validation and persistence — the caller
 /// (Portability) already holds entries it validated at the document level
@@ -211,12 +229,7 @@ pub fn replace_plan(
     )
   {
     Ok(Nil) -> Ok(Nil)
-    Error(restore_plan_ports.InvalidRules) -> Error("invalid rules")
-    Error(restore_plan_ports.InvalidBulkSpec) -> Error("invalid bulk spec")
-    Error(restore_plan_ports.InvalidManagedLocations) ->
-      Error("invalid managed locations")
-    Error(restore_plan_ports.InvalidPlaced) -> Error("invalid placed copies")
-    Error(restore_plan_ports.PersistenceFailed(reason)) -> Error(reason)
+    Error(error) -> Error(restore_plan_error_message(error))
   }
 }
 
@@ -238,13 +251,13 @@ fn to_raw_bulk_spec(spec: BulkSpecSpec) -> restore_plan_handler.RawBulkSpec {
 
 fn to_raw_managed_location(
   spec: ManagedLocationSpec,
-) -> restore_plan_handler.RawManagedLocation {
-  restore_plan_handler.RawManagedLocation(
+) -> plan_restore.RawManagedLocation {
+  plan_restore.RawManagedLocation(
     name: spec.name,
     kind: spec.kind,
     members: list.map(spec.members, fn(member) {
       let #(key, quantity) = member
-      restore_plan_handler.RawMember(
+      plan_restore.RawMember(
         set_code: copy_key.set_code_string(key),
         collector_number: copy_key.collector_number_string(key),
         finish: copy_key.finish_string(key),
@@ -255,12 +268,12 @@ fn to_raw_managed_location(
   )
 }
 
-fn to_raw_placed(copy: PlacedCopy) -> restore_plan_handler.RawPlaced {
+fn to_raw_placed(copy: PlacedCopy) -> plan_restore.RawPlaced {
   let #(location_kind, location) = case copy.location {
     AtCascadeLocation(name) -> #("cascade", name)
     AtManagedLocation(name) -> #("managed", name)
   }
-  restore_plan_handler.RawPlaced(
+  plan_restore.RawPlaced(
     set_code: copy_key.set_code_string(copy.key),
     collector_number: copy_key.collector_number_string(copy.key),
     finish: copy_key.finish_string(copy.key),
@@ -269,4 +282,48 @@ fn to_raw_placed(copy: PlacedCopy) -> restore_plan_handler.RawPlaced {
     location:,
     quantity: copy.quantity,
   )
+}
+
+fn to_pruned_copy(
+  pruned: predict_restore_prune_handler.PrunedRow,
+) -> PlacedCopy {
+  let predict_restore_prune_handler.PrunedRow(row:, location_name:) = pruned
+  let location = case row.location {
+    location_ref.Cascade(_) -> AtCascadeLocation(location_name)
+    location_ref.Managed(_) -> AtManagedLocation(location_name)
+  }
+  PlacedCopy(key: row.key, location:, quantity: row.quantity)
+}
+
+/// The placed copies ReconcilePlacedLedger will prune right after a restore
+/// writing `owned` as the collection plus the given managed and placed
+/// sections (`None` = section absent, left untouched). Each copy's quantity
+/// is the amount pruned, not what remains.
+pub fn predict_restore_prune(
+  owned: List(#(CopyKey, Int)),
+  managed: Option(List(ManagedLocationSpec)),
+  placed: Option(List(PlacedCopy)),
+) -> Result(List(PlacedCopy), String) {
+  predict_restore_prune_handler.execute(
+    predict_restore_prune_handler.PredictRestorePruneQuery(
+      owned: dict.from_list(owned),
+      managed: option.map(managed, list.map(_, to_raw_managed_location)),
+      placed: option.map(placed, list.map(_, to_raw_placed)),
+    ),
+    predict_restore_prune_adapter.new(),
+  )
+  |> result.map(list.map(_, to_pruned_copy))
+  |> result.map_error(fn(error) {
+    case error {
+      predict_restore_prune_ports.InvalidPlan(
+        plan_restore.InvalidManagedLocations,
+      ) ->
+        restore_plan_error_message(restore_plan_ports.InvalidManagedLocations)
+      predict_restore_prune_ports.InvalidPlan(plan_restore.InvalidPlaced) ->
+        restore_plan_error_message(restore_plan_ports.InvalidPlaced)
+      predict_restore_prune_ports.UnknownManagedLocation(id) ->
+        "placed ledger names unknown managed location " <> id
+      predict_restore_prune_ports.PersistenceFailed(reason) -> reason
+    }
+  })
 }

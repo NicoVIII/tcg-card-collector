@@ -1,33 +1,16 @@
 import collection/driver/gleam/collection_api
 import gleam/list
 import gleam/option
+import gleam/result
 import insights/driver/gleam/insights_api
 import inventory_planning/driver/gleam/inventory_planning_api
 import portability/application/commands/import_data/ports
 import portability/domain/export_document.{
   type BulkSpec, type CollectionEntry, type ManagedLocationEntry,
   type MemberEntry, type PlacedEntry, type Rule, InLocation, InManagedLocation,
+  PlacedEntry,
 }
-
-/// Wraps each context's own driver/gleam facade (ADR 0019: Portability
-/// reads/writes every context it exports through that context's facade,
-/// never its internals). notify_changed is injected from bootstrap so the
-/// collection write publishes to the same collection-changed subscriber
-/// ImportCollection uses (ADR 0011), rather than this adapter wiring a
-/// second one — neither target-set replacement nor the plan replace have a
-/// subscriber to notify.
-pub fn new(
-  notify_changed: fn(Nil) -> Result(Nil, String),
-) -> ports.ImportDataPorts {
-  ports.ImportDataPorts(
-    check_rule: check_rule_adapter,
-    check_bulk_spec: check_bulk_spec_adapter,
-    check_managed_kind: inventory_planning_api.check_managed_location_kind,
-    replace_target_sets: insights_api.replace_target_sets,
-    replace_plan: replace_plan_adapter,
-    replace_collection: replace_collection_adapter(notify_changed),
-  )
-}
+import portability/domain/import_document
 
 fn check_rule_adapter(rule: Rule) -> Result(Nil, String) {
   inventory_planning_api.check_rule(to_rule_spec(rule))
@@ -106,4 +89,55 @@ fn replace_collection_adapter(
 
 fn to_owned_copy(entry: CollectionEntry) -> collection_api.OwnedCopy {
   collection_api.OwnedCopy(key: entry.key, quantity: entry.quantity)
+}
+
+fn from_placed_copy(copy: inventory_planning_api.PlacedCopy) -> PlacedEntry {
+  PlacedEntry(
+    key: copy.key,
+    location: case copy.location {
+      inventory_planning_api.AtCascadeLocation(name) -> InLocation(name)
+      inventory_planning_api.AtManagedLocation(name) -> InManagedLocation(name)
+    },
+    quantity: copy.quantity,
+  )
+}
+
+/// Shared with PreviewImport's adapter, so the preview and the import ask
+/// Inventory Planning the same question.
+pub fn predict_prune(
+  collection: List(CollectionEntry),
+  managed: option.Option(#(List(ManagedLocationEntry), List(MemberEntry))),
+  placed: option.Option(List(PlacedEntry)),
+) -> Result(List(import_document.LedgerPrune), String) {
+  inventory_planning_api.predict_restore_prune(
+    list.map(collection, fn(entry) { #(entry.key, entry.quantity) }),
+    option.map(managed, to_managed_location_specs),
+    option.map(placed, list.map(_, to_placed_copy)),
+  )
+  |> result.map(
+    list.map(_, fn(copy) {
+      import_document.ledger_prune(from_placed_copy(copy))
+    }),
+  )
+}
+
+/// Wraps each context's own driver/gleam facade (ADR 0019: Portability
+/// reads/writes every context it exports through that context's facade,
+/// never its internals). notify_changed is injected from bootstrap so the
+/// collection write publishes to the same collection-changed subscriber
+/// ImportCollection uses (ADR 0011), rather than this adapter wiring a
+/// second one — neither target-set replacement nor the plan replace have a
+/// subscriber to notify.
+pub fn new(
+  notify_changed: fn(Nil) -> Result(Nil, String),
+) -> ports.ImportDataPorts {
+  ports.ImportDataPorts(
+    check_rule: check_rule_adapter,
+    check_bulk_spec: check_bulk_spec_adapter,
+    check_managed_kind: inventory_planning_api.check_managed_location_kind,
+    replace_target_sets: insights_api.replace_target_sets,
+    replace_plan: replace_plan_adapter,
+    replace_collection: replace_collection_adapter(notify_changed),
+    predict_prune: predict_prune,
+  )
 }

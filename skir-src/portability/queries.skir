@@ -40,20 +40,25 @@ struct SectionCount {
   count: int32 = 1;
 }
 
-// A placed-ledger copy the imported collection doesn't own enough of —
-// computed up front so the preview can say what ReconcilePlacedLedger will
-// prune after import (ADR 0011, ADR 0019). Always empty until #119 adds the
-// inventory_planning section.
-struct LedgerExcess {
+// Where a placed copy sits, by name: a restore assigns managed locations
+// fresh ids (ADR 0022), so the name is the identity the file carries.
+enum PlacedIn {
+  cascade: string = 1;
+  managed: string = 2;
+}
+
+// A placed-ledger row ReconcilePlacedLedger prunes right after import (ADR
+// 0011): `quantity` copies leave `location`'s ledger.
+struct LedgerPrune {
   identity: string = 0;
-  placed: int32 = 1;
-  owned: int32 = 2;
+  location: PlacedIn = 1;
+  quantity: int32 = 2;
 }
 
 // A managed location's member the imported collection can't supply —
 // computed up front so the preview can say which decks will come up short
 // right after import (ADR 0022). `identity` names the copy the same way
-// LedgerExcess does.
+// LedgerPrune does.
 struct ManagedShortfall {
   location_name: string = 0;
   identity: string = 1;
@@ -64,8 +69,9 @@ struct ImportPreview {
   removed 0;  // was entry_count: superseded by sections (#119: more than the collection)
   rejected: [RejectedEntry] = 1;
   sections: [SectionCount] = 2;
-  excess: [LedgerExcess] = 3;
+  removed 3;  // was excess: [LedgerExcess], superseded by pruned (#181: names the location)
   shortfall: [ManagedShortfall] = 4;
+  pruned: [LedgerPrune] = 5;
 }
 
 method PreviewImport(

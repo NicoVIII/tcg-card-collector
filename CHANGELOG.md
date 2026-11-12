@@ -46,6 +46,10 @@ Each release section uses only the subheadings it needs:
   from (a location, or unplaced), and only that location stops counting it as placed. Before, the
   first location alphabetically lost the copy, whichever one it really left. Collection imports
   still use that order (#158).
+- A restore lists which placed copies it will take off the ledger, and from which location or
+  deck, both before you confirm and after it finishes, so you can check those places. Before,
+  the preview gave no location, and it warned about nothing when the file had no placed ledger
+  of its own, even though the restore then pruned the existing one (#181).
 - Target sets typed in capitals or with spaces (`GRN`, ` grn `) are now tracked as `grn`, so
   they count owned cards instead of staying at 0. Either spelling unmarks the set. A restore
   file that lists the same set twice (in any spelling) reports the second entry and skips it

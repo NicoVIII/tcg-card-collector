@@ -12,9 +12,24 @@ struct SectionCount {
   count: int32 = 1;
 }
 
+// Duplicated from queries.skir, like SectionCount.
+enum PlacedIn {
+  cascade: string = 1;
+  managed: string = 2;
+}
+
+struct LedgerPrune {
+  identity: string = 0;
+  location: PlacedIn = 1;
+  quantity: int32 = 2;
+}
+
 struct ImportedData {
   removed 0;  // was entry_count: superseded by sections (#119: more than the collection)
   sections: [SectionCount] = 1;
+  // The ledger rows pruned right after this import, for the collector to
+  // check against those locations.
+  pruned: [LedgerPrune] = 2;
 }
 
 method ImportData(

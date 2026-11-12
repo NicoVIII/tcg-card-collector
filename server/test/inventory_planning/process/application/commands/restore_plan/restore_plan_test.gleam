@@ -4,6 +4,7 @@ import inventory_planning/application/commands/restore_plan/handler
 import inventory_planning/application/commands/restore_plan/ports
 import inventory_planning/domain/location_ref
 import inventory_planning/domain/managed_location
+import inventory_planning/domain/plan_restore
 import support/ref
 
 type Captured {
@@ -211,7 +212,7 @@ pub fn placed_entries_sharing_a_key_and_location_are_merged_test() {
   let captured = ref.new([])
   let port = recording_port(captured, Ok(Nil))
   let raw =
-    handler.RawPlaced(
+    plan_restore.RawPlaced(
       set_code: "mh2",
       collector_number: "17",
       finish: "foil",
@@ -241,7 +242,7 @@ pub fn an_invalid_placed_entry_rejects_the_whole_batch_without_writing_test() {
       handler.RestorePlanCommand(
         ..empty_command(),
         placed: Some([
-          handler.RawPlaced(
+          plan_restore.RawPlaced(
             set_code: "mh2",
             collector_number: "17",
             finish: "foill",
@@ -268,8 +269,8 @@ pub fn a_persistence_failure_propagates_test() {
   assert result == Error(ports.PersistenceFailed("db down"))
 }
 
-fn a_raw_member(quantity: Int) -> handler.RawMember {
-  handler.RawMember(
+fn a_raw_member(quantity: Int) -> plan_restore.RawMember {
+  plan_restore.RawMember(
     set_code: "mh2",
     collector_number: "17",
     finish: "foil",
@@ -278,8 +279,8 @@ fn a_raw_member(quantity: Int) -> handler.RawMember {
   )
 }
 
-fn a_placed_in_deck(name: String) -> handler.RawPlaced {
-  handler.RawPlaced(
+fn a_placed_in_deck(name: String) -> plan_restore.RawPlaced {
+  plan_restore.RawPlaced(
     set_code: "mh2",
     collector_number: "17",
     finish: "foil",
@@ -301,10 +302,14 @@ pub fn restored_decks_get_fresh_ids_and_placed_entries_resolve_to_them_test() {
       handler.RestorePlanCommand(
         ..empty_command(),
         managed: Some([
-          handler.RawManagedLocation(name: " Elves ", kind: "deck", members: [
-            a_raw_member(1),
-            a_raw_member(2),
-          ]),
+          plan_restore.RawManagedLocation(
+            name: " Elves ",
+            kind: "deck",
+            members: [
+              a_raw_member(1),
+              a_raw_member(2),
+            ],
+          ),
         ]),
         placed: Some([a_placed_in_deck("Elves")]),
       ),
@@ -357,7 +362,7 @@ pub fn two_restored_decks_sharing_a_name_are_rejected_test() {
   let captured = ref.new([])
   let port = recording_port(captured, Ok(Nil))
   let deck =
-    handler.RawManagedLocation(name: "Elves", kind: "deck", members: [])
+    plan_restore.RawManagedLocation(name: "Elves", kind: "deck", members: [])
 
   let result =
     handler.execute(

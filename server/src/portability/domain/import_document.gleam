@@ -105,19 +105,16 @@ pub type SectionResult {
   SectionResult(section: Section, count: Int)
 }
 
-/// A placed-ledger copy the imported collection doesn't own enough of —
-/// computed up front so the preview can say what ReconcilePlacedLedger will
-/// prune right after import (ADR 0011). Needs no cross-context call:
-/// `collection` and `placed` are both already Portability's own validated
-/// domain data by the time this runs.
-pub type LedgerExcess {
-  LedgerExcess(identity: String, placed: Int, owned: Int)
+/// A placed-ledger row ReconcilePlacedLedger prunes right after import (ADR
+/// 0011): `quantity` copies leave `location`'s ledger. Shown before the
+/// import and again after, so the collector can check those locations.
+pub type LedgerPrune {
+  LedgerPrune(identity: String, location: PlacedIn, quantity: Int)
 }
 
 /// A managed location's member the imported collection can't supply — the
 /// shortfall Inventory Planning's projection will show right after import
-/// (ADR 0022), predicted from the document alone the same way LedgerExcess
-/// predicts ReconcilePlacedLedger.
+/// (ADR 0022), predicted from the document alone.
 pub type ManagedShortfall {
   ManagedShortfall(location_name: String, identity: String, missing: Int)
 }
@@ -180,45 +177,32 @@ fn key_identity(key: CopyKey) -> String {
   <> copy_key.language_string(key)
 }
 
+/// The managed locations with their members, as one restore part. Members
+/// without their managed locations never get here (every one is rejected for
+/// naming an unknown location), so the managed section alone decides it.
+pub fn managed_with_members(
+  document: ImportDocument,
+) -> Option(#(List(ManagedLocationEntry), List(MemberEntry))) {
+  option.map(document.managed_locations, fn(locations) {
+    #(locations, option.unwrap(document.members, []))
+  })
+}
+
+/// Names a pruned ledger row the way the import preview names every copy.
+pub fn ledger_prune(entry: PlacedEntry) -> LedgerPrune {
+  LedgerPrune(
+    identity: key_identity(entry.key),
+    location: entry.location,
+    quantity: entry.quantity,
+  )
+}
+
 fn owned_quantities(
   collection: List(CollectionEntry),
 ) -> dict.Dict(CopyKey, Int) {
   collection
   |> list.map(fn(entry) { #(entry.key, entry.quantity) })
   |> dict.from_list
-}
-
-/// Every placed key whose total across locations exceeds what the imported
-/// collection owns — what ReconcilePlacedLedger prunes right after import
-/// (ADR 0011), computed here so the preview can say so before anything is
-/// written.
-pub fn ledger_excess(
-  collection: List(CollectionEntry),
-  placed: List(PlacedEntry),
-) -> List(LedgerExcess) {
-  let owned = owned_quantities(collection)
-
-  placed
-  |> list.fold(dict.new(), fn(acc, entry) {
-    dict.upsert(acc, entry.key, fn(existing) {
-      option.unwrap(existing, 0) + entry.quantity
-    })
-  })
-  |> dict.to_list
-  |> list.filter_map(fn(pair) {
-    let #(key, placed_total) = pair
-    let owned_qty = dict.get(owned, key) |> result.unwrap(0)
-    case placed_total > owned_qty {
-      True ->
-        Ok(LedgerExcess(
-          identity: key_identity(key),
-          placed: placed_total,
-          owned: owned_qty,
-        ))
-      False -> Error(Nil)
-    }
-  })
-  |> list.sort(fn(a, b) { string.compare(a.identity, b.identity) })
 }
 
 fn take_member(
