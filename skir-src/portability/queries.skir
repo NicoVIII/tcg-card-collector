@@ -72,6 +72,10 @@ struct ImportPreview {
   removed 3;  // was excess: [LedgerExcess], superseded by pruned (#181: names the location)
   shortfall: [ManagedShortfall] = 4;
   pruned: [LedgerPrune] = 5;
+  // The file replaces the placed ledger but carries no audit history (any
+  // file written before format_version 3), so the import empties it: every
+  // audit attested a ledger that is then gone (#183).
+  clears_audit_history: bool = 6;
 }
 
 method PreviewImport(

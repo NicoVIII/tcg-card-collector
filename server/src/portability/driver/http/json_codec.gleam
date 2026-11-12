@@ -59,6 +59,7 @@ pub fn encode_import_preview(preview: ImportPreview) -> String {
     #("rejected", json.array(preview.rejected, of: encode_rejected_entry)),
     #("shortfall", json.array(preview.shortfall, of: encode_managed_shortfall)),
     #("pruned", json.array(preview.pruned, of: encode_ledger_prune)),
+    #("clears_audit_history", json.bool(preview.clears_audit_history)),
   ])
   |> json.to_string
 }

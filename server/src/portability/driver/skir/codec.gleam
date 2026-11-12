@@ -107,6 +107,7 @@ pub fn map_import_preview(
     rejected: list.map(preview.rejected, map_rejected_entry),
     pruned: list.map(preview.pruned, map_query_ledger_prune),
     shortfall: list.map(preview.shortfall, map_managed_shortfall),
+    clears_audit_history: preview.clears_audit_history,
   )
 }
 

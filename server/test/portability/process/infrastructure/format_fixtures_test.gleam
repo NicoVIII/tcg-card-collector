@@ -6,6 +6,7 @@ import gleam/time/calendar
 import insights/infrastructure/daos/insights_dao
 import inventory_planning/infrastructure/daos/bulk_spec_dao
 import inventory_planning/infrastructure/daos/inventory_rules_dao
+import inventory_planning/infrastructure/daos/location_audits_dao
 import inventory_planning/infrastructure/daos/managed_locations_dao
 import inventory_planning/infrastructure/daos/placed_cards_dao
 import portability/domain/export_document
@@ -13,13 +14,14 @@ import portability/domain/import_document
 import portability/driver/export_file
 import portability/infrastructure/adapters/commands/import_data/adapter
 import portability/infrastructure/adapters/queries/export_data/adapter as export_data_adapter
+import shared/infrastructure/stores/sqlite_store
 import simplifile
 import support/test_db
 
 /// The date baked into `current_fixture` — fixed and frozen along with it,
 /// same reasoning as its rows.
 fn fixture_exported_on() -> calendar.Date {
-  calendar.Date(2026, calendar.November, 8)
+  calendar.Date(2026, calendar.November, 12)
 }
 
 /// One frozen fixture per format version (`test/portability/fixtures/`,
@@ -27,7 +29,9 @@ fn fixture_exported_on() -> calendar.Date {
 /// constant names the one the byte-identical round-trip test below checks;
 /// a format bump repoints it and leaves the old fixture's own import test
 /// in place, unchanged (ADR 0020).
-const current_fixture = "test/portability/fixtures/format_v2.json"
+const current_fixture = "test/portability/fixtures/format_v3.json"
+
+const format_v2_fixture = "test/portability/fixtures/format_v2.json"
 
 const format_v1_fixture = "test/portability/fixtures/format_v1.json"
 
@@ -51,8 +55,22 @@ fn restore(document: import_document.ImportDocument) -> Nil {
         #(locations, option.unwrap(document.members, []))
       }),
       document.placed,
+      document.audits,
     )
   let assert Ok(Nil) = import_ports.replace_collection(document.collection)
+  Nil
+}
+
+// An audit the restore must either replace or clear — never leave behind.
+fn seed_stale_audit() -> Nil {
+  let assert Ok(Nil) =
+    sqlite_store.exec_all_atomically([
+      location_audits_dao.insert_statement(location_audits_dao.LocationAuditRow(
+        location_kind: "cascade",
+        location: "Box B / Row 1",
+        completed_at: "2026-01-01T00:00:00Z",
+      )),
+    ])
   Nil
 }
 
@@ -163,6 +181,7 @@ pub fn current_format_fixture_re_exports_byte_identically_test() {
   let assert Ok(#(managed_locations, members)) =
     export_ports.list_managed_locations()
   let assert Ok(placed) = export_ports.list_placed()
+  let assert Ok(audits) = export_ports.list_audits()
 
   let rendered =
     export_file.render(export_document.new(
@@ -175,6 +194,7 @@ pub fn current_format_fixture_re_exports_byte_identically_test() {
         managed_locations:,
         members:,
         placed:,
+        audits:,
       ),
     ))
 
@@ -189,10 +209,13 @@ pub fn current_format_fixture_re_exports_byte_identically_test() {
 pub fn format_v2_fixture_imports_managed_locations_exactly_test() {
   use _db <- test_db.with_temp_db()
 
-  let assert Ok(document) = export_file.parse(read_fixture(current_fixture))
+  seed_stale_audit()
+  let assert Ok(document) = export_file.parse(read_fixture(format_v2_fixture))
   assert document.rejected == []
   restore(document)
 
+  // A v2 file carries no audit history but replaces the ledger (#183).
+  assert location_audits_dao.list() == Ok([])
   let assert Ok(locations) = managed_locations_dao.load_all()
   assert list.map(locations, fn(location) { #(location.id, location.name) })
     == [
@@ -254,6 +277,48 @@ pub fn format_v2_fixture_imports_managed_locations_exactly_test() {
         "managed",
         "imported-managed-1",
         2,
+      ),
+    ])
+}
+
+/// v3's audit history lands exactly, every completion kept: a deck sharing a
+/// rule target's name keeps its own audit apart from the cascade location's,
+/// and each managed audit lands on its deck's fresh id. The stale audit
+/// seeded first is gone — the file's history replaces it.
+pub fn format_v3_fixture_imports_audit_history_exactly_test() {
+  use _db <- test_db.with_temp_db()
+  seed_stale_audit()
+
+  let assert Ok(document) = export_file.parse(read_fixture(current_fixture))
+  assert document.rejected == []
+  restore(document)
+
+  assert location_audits_dao.list()
+    == Ok([
+      location_audits_dao.LocationAuditRow(
+        "cascade",
+        "Binder A",
+        "2026-11-10T09:00:00Z",
+      ),
+      location_audits_dao.LocationAuditRow(
+        "cascade",
+        "Box B / Row 1",
+        "2026-11-01T17:45:00Z",
+      ),
+      location_audits_dao.LocationAuditRow(
+        "cascade",
+        "Box B / Row 1",
+        "2026-11-10T09:15:30.25Z",
+      ),
+      location_audits_dao.LocationAuditRow(
+        "managed",
+        "imported-managed-0",
+        "2026-11-11T20:00:00Z",
+      ),
+      location_audits_dao.LocationAuditRow(
+        "managed",
+        "imported-managed-1",
+        "2026-11-11T20:30:00Z",
       ),
     ])
 }

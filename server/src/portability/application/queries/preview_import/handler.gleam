@@ -16,6 +16,9 @@ pub type ImportPreview {
     rejected: List(RejectedEntry),
     pruned: List(LedgerPrune),
     shortfall: List(ManagedShortfall),
+    /// The file replaces the ledger without carrying audit history, so the
+    /// import empties it.
+    clears_audit_history: Bool,
   )
 }
 
@@ -49,6 +52,10 @@ pub fn execute(
       resolved.collection,
       option.unwrap(resolved.managed_locations, []),
       option.unwrap(resolved.members, []),
+    ),
+    clears_audit_history: ports.clears_audit_history(
+      option.is_some(resolved.audits),
+      option.is_some(resolved.placed),
     ),
   )
 }

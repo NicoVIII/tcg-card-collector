@@ -34,6 +34,7 @@ pub type RestorePlanCommand {
     bulk: Option(RawBulkSpec),
     managed: Option(List(plan_restore.RawManagedLocation)),
     placed: Option(List(plan_restore.RawPlaced)),
+    audits: Option(List(plan_restore.RawAudit)),
   )
 }
 
@@ -43,6 +44,7 @@ fn to_restore_plan_error(
   case error {
     plan_restore.InvalidManagedLocations -> ports.InvalidManagedLocations
     plan_restore.InvalidPlaced -> ports.InvalidPlaced
+    plan_restore.InvalidAudits -> ports.InvalidAudits
   }
 }
 
@@ -143,11 +145,20 @@ pub fn execute(
     )
     |> result.map_error(to_restore_plan_error),
   )
+  use audits <- result.try(
+    plan_restore.restored_audits(
+      command.audits,
+      option.is_some(placed),
+      option.unwrap(managed, existing_managed),
+    )
+    |> result.map_error(to_restore_plan_error),
+  )
   ports.replace_plan(
     rules,
     bulk,
     managed,
     option.map(placed, list.map(_, to_placed_write_model)),
+    audits,
   )
   |> result.map_error(ports.PersistenceFailed)
 }

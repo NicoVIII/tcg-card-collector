@@ -34,6 +34,7 @@ fn empty_document() -> ImportDocument {
     managed_locations: None,
     members: None,
     placed: None,
+    audits: None,
   )
 }
 

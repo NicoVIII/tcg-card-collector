@@ -24,11 +24,18 @@ pub type PredictPrunePort =
     Option(List(PlacedEntry)),
   ) -> Result(List(LedgerPrune), String)
 
+/// Whether a restore that does or doesn't carry audit history (first) and
+/// does or doesn't replace the ledger (second) empties the history —
+/// Inventory Planning's rule, asked rather than restated (#183).
+pub type ClearsAuditHistoryPort =
+  fn(Bool, Bool) -> Bool
+
 pub type PreviewImportPorts {
   PreviewImportPorts(
     check_rule: CheckRulePort,
     check_bulk_spec: CheckBulkSpecPort,
     check_managed_kind: CheckManagedKindPort,
     predict_prune: PredictPrunePort,
+    clears_audit_history: ClearsAuditHistoryPort,
   )
 }

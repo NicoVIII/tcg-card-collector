@@ -2,14 +2,16 @@ import gleam/list
 import gleam/order.{type Order}
 import gleam/string
 import gleam/time/calendar.{type Date}
+import gleam/time/timestamp.{type Timestamp}
 import shared/domain/copy_key.{type CopyKey}
 
 // v1 started with the collection alone (#116/#117); #119 widened it with
 // inventory_planning and insights sections under that same version (ADR
 // 0019). v2 (#122) adds managed locations and lets a placed entry name one —
 // a bump even though the change is additive, because ADR 0020's frozen v1
-// fixture must keep re-exporting byte-identically under its own version.
-pub const format_version = 2
+// fixture must keep re-exporting byte-identically under its own version. v3
+// (#183) adds location audit history, for the same reason.
+pub const format_version = 3
 
 /// The oldest format_version this build still reads (ADR 0020's support
 /// window: the current major and the previous one).
@@ -68,9 +70,16 @@ pub type MemberEntry {
   MemberEntry(managed_location: String, key: CopyKey, quantity: Int)
 }
 
-/// Rules, bulk spec, managed locations with their members, and the placed
-/// ledger (#119, #122). Export always fills this — an empty list means
-/// "none", same as the app's own empty state.
+/// One completed location audit (#183), its location named the way a placed
+/// entry names one. Every completion is kept, not only the latest: the
+/// history is what was recorded, and the latest is derived from it.
+pub type AuditEntry {
+  AuditEntry(location: PlacedIn, completed_at: Timestamp)
+}
+
+/// Rules, bulk spec, managed locations with their members, the placed
+/// ledger, and audit history (#119, #122, #183). Export always fills this —
+/// an empty list means "none", same as the app's own empty state.
 pub type InventoryPlanningSection {
   InventoryPlanningSection(
     rules: List(Rule),
@@ -78,6 +87,7 @@ pub type InventoryPlanningSection {
     managed_locations: List(ManagedLocationEntry),
     members: List(MemberEntry),
     placed: List(PlacedEntry),
+    audits: List(AuditEntry),
   )
 }
 
@@ -118,6 +128,7 @@ pub fn new(
       ),
       members: list.sort(inventory_planning.members, compare_members),
       placed: list.sort(inventory_planning.placed, compare_placed),
+      audits: list.sort(inventory_planning.audits, compare_audits),
     ),
   )
 }
@@ -143,6 +154,13 @@ fn compare_placed(left: PlacedEntry, right: PlacedEntry) -> Order {
   compare(CollectionEntry(left.key, 0), CollectionEntry(right.key, 0))
   |> order.lazy_break_tie(fn() {
     compare_placed_in(left.location, right.location)
+  })
+}
+
+fn compare_audits(left: AuditEntry, right: AuditEntry) -> Order {
+  compare_placed_in(left.location, right.location)
+  |> order.lazy_break_tie(fn() {
+    timestamp.compare(left.completed_at, right.completed_at)
   })
 }
 

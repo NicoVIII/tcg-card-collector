@@ -1,4 +1,5 @@
 import gleam/time/calendar
+import gleam/time/timestamp
 import portability/domain/export_document.{
   type InsightsSection, type InventoryPlanningSection, BulkSpec, CollectionEntry,
   InsightsSection, InventoryPlanningSection, PlacedEntry,
@@ -27,6 +28,7 @@ fn no_plan() -> InventoryPlanningSection {
     managed_locations: [],
     members: [],
     placed: [],
+    audits: [],
   )
 }
 
@@ -133,6 +135,7 @@ pub fn rules_keep_their_given_order_while_placed_is_sorted_test() {
         managed_locations: [],
         members: [],
         placed: unsorted_placed,
+        audits: [],
       ),
     )
 
@@ -151,4 +154,39 @@ pub fn rules_keep_their_given_order_while_placed_is_sorted_test() {
         quantity: 1,
       ),
     ]
+}
+
+fn an_audit(
+  location: export_document.PlacedIn,
+  rfc3339: String,
+) -> export_document.AuditEntry {
+  let assert Ok(completed_at) = timestamp.parse_rfc3339(rfc3339)
+  export_document.AuditEntry(location:, completed_at:)
+}
+
+pub fn audits_sort_cascade_before_managed_then_by_name_then_by_time_test() {
+  let deck =
+    an_audit(export_document.InManagedLocation("Burn"), "2026-01-01T00:00:00Z")
+  let box_late =
+    an_audit(export_document.InLocation("Box"), "2026-02-01T00:00:00Z")
+  let box_early =
+    an_audit(export_document.InLocation("Box"), "2026-01-01T00:00:00Z")
+  let binder =
+    an_audit(export_document.InLocation("Binder"), "2026-03-01T00:00:00Z")
+
+  let document =
+    export_document.new(
+      calendar.Date(2026, calendar.September, 25),
+      [],
+      no_targets(),
+      InventoryPlanningSection(..no_plan(), audits: [
+        deck,
+        box_late,
+        box_early,
+        binder,
+      ]),
+    )
+
+  assert document.inventory_planning.audits
+    == [binder, box_early, box_late, deck]
 }

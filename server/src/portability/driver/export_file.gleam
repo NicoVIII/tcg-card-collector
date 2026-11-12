@@ -9,14 +9,16 @@ import gleam/result
 import gleam/set
 import gleam/string
 import gleam/time/calendar.{type Date}
+import gleam/time/timestamp
 import portability/domain/export_document.{
-  type BulkSpec, type ExportDocument, type ManagedLocationEntry,
-  type MemberEntry, type PlacedEntry, type Rule, InLocation, InManagedLocation,
+  type AuditEntry, type BulkSpec, type ExportDocument, type ManagedLocationEntry,
+  type MemberEntry, type PlacedEntry, type PlacedIn, type Rule, InLocation,
+  InManagedLocation,
 }
 import portability/domain/import_document.{
   type DocumentError, type ImportDocument, type RawEntry, type RawPlaced,
-  MissingCollection, NotJson, NotThisFormat, RawEntry, RawManagedLocation,
-  RawMember, RawPlaced, UnsupportedVersion,
+  MissingCollection, NotJson, NotThisFormat, RawAudit, RawEntry,
+  RawManagedLocation, RawMember, RawPlaced, UnsupportedVersion,
 }
 import shared/domain/copy_key
 
@@ -48,6 +50,10 @@ pub fn render(document: ExportDocument) -> String {
     document.inventory_planning.placed
     |> list.map(fn(entry) { encode_placed_line("      ", entry) })
     |> join_entries("    ")
+  let audits =
+    document.inventory_planning.audits
+    |> list.map(fn(entry) { encode_audit_line("      ", entry) })
+    |> join_entries("    ")
 
   "{\n"
   <> "  \"format\": \"tcg-card-collector\",\n"
@@ -75,6 +81,9 @@ pub fn render(document: ExportDocument) -> String {
   <> ",\n"
   <> "    \"placed\": "
   <> placed
+  <> ",\n"
+  <> "    \"audits\": "
+  <> audits
   <> "\n"
   <> "  },\n"
   <> "  \"insights\": {\n"
@@ -119,7 +128,8 @@ pub fn parse(content: String) -> Result(ImportDocument, DocumentError) {
   )
   Ok(case version {
     1 -> decode_v1(root, items)
-    _ -> decode_v2(root, items)
+    2 -> decode_v2(root, items)
+    _ -> decode_v3(root, items)
   })
 }
 
@@ -146,6 +156,7 @@ fn decode_v1(root: Dynamic, items: List(Dynamic)) -> ImportDocument {
     managed_locations: None,
     members: None,
     placed:,
+    audits: None,
   )
 }
 
@@ -177,6 +188,21 @@ fn decode_v2(root: Dynamic, items: List(Dynamic)) -> ImportDocument {
     managed_locations:,
     members:,
     placed:,
+    audits: None,
+  )
+}
+
+/// format_version 3 (#183): v2 plus location audit history, each audit
+/// naming its location the way a placed entry does.
+fn decode_v3(root: Dynamic, items: List(Dynamic)) -> ImportDocument {
+  let v2 = decode_v2(root, items)
+  let names =
+    import_document.managed_names(option.unwrap(v2.managed_locations, []))
+  let #(audits, audits_rejected) = parse_audits(root, names)
+  import_document.ImportDocument(
+    ..v2,
+    audits:,
+    rejected: list.append(v2.rejected, audits_rejected),
   )
 }
 
@@ -339,6 +365,28 @@ fn parse_members(
   }
 }
 
+fn parse_audits(
+  root: Dynamic,
+  managed_names: set.Set(String),
+) -> #(Option(List(AuditEntry)), List(import_document.RejectedEntry)) {
+  case inventory_planning_array(root, "audits") {
+    Ok(items) -> {
+      let #(entries, rejected) =
+        items
+        |> list.map(fn(item) {
+          RawAudit(
+            location: optional_string(item, "location"),
+            managed_location: optional_string(item, "managed_location"),
+            completed_at: optional_string(item, "completed_at"),
+          )
+        })
+        |> import_document.validate_audits(managed_names)
+      #(Some(entries), rejected)
+    }
+    Error(_) -> #(None, [])
+  }
+}
+
 fn join_entries(lines: List(String), close_indent: String) -> String {
   case lines {
     [] -> "[]"
@@ -416,11 +464,15 @@ fn encode_member_line(indent: String, entry: MemberEntry) -> String {
   )
 }
 
-fn encode_placed_line(indent: String, entry: PlacedEntry) -> String {
-  let location = case entry.location {
+fn encode_location_field(location: PlacedIn) -> #(String, json.Json) {
+  case location {
     InLocation(name) -> #("location", json.string(name))
     InManagedLocation(name) -> #("managed_location", json.string(name))
   }
+}
+
+fn encode_placed_line(indent: String, entry: PlacedEntry) -> String {
+  let location = encode_location_field(entry.location)
   indent
   <> json.to_string(
     json.object([
@@ -433,6 +485,22 @@ fn encode_placed_line(indent: String, entry: PlacedEntry) -> String {
       #("language", json.string(copy_key.language_string(entry.key))),
       location,
       #("quantity", json.int(entry.quantity)),
+    ]),
+  )
+}
+
+fn encode_audit_line(indent: String, entry: AuditEntry) -> String {
+  indent
+  <> json.to_string(
+    json.object([
+      encode_location_field(entry.location),
+      #(
+        "completed_at",
+        json.string(timestamp.to_rfc3339(
+          entry.completed_at,
+          calendar.utc_offset,
+        )),
+      ),
     ]),
   )
 }

@@ -1,7 +1,7 @@
 import gleam/time/calendar.{type Date}
 import portability/domain/export_document.{
-  type BulkSpec, type CollectionEntry, type ManagedLocationEntry,
-  type MemberEntry, type PlacedEntry, type Rule,
+  type AuditEntry, type BulkSpec, type CollectionEntry,
+  type ManagedLocationEntry, type MemberEntry, type PlacedEntry, type Rule,
 }
 
 pub type ListCollectionEntriesPort =
@@ -22,6 +22,9 @@ pub type ListManagedLocationsPort =
 pub type ListPlacedPort =
   fn() -> Result(List(PlacedEntry), String)
 
+pub type ListAuditsPort =
+  fn() -> Result(List(AuditEntry), String)
+
 pub type TodayPort =
   fn() -> Date
 
@@ -33,6 +36,7 @@ pub type ExportDataPorts {
     get_bulk_spec: GetBulkSpecPort,
     list_managed_locations: ListManagedLocationsPort,
     list_placed: ListPlacedPort,
+    list_audits: ListAuditsPort,
     today: TodayPort,
   )
 }

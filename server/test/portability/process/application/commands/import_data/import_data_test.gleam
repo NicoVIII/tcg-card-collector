@@ -4,9 +4,9 @@ import portability/application/commands/import_data/handler
 import portability/application/commands/import_data/ports
 import portability/domain/export_document.{InLocation, Rule}
 import portability/domain/import_document.{
-  type ImportDocument, type LedgerPrune, BulkSection, CollectionSection,
-  ImportDocument, LedgerPrune, ManagedLocationsSection, PlacedSection,
-  RulesSection, SectionResult, TargetSetsSection,
+  type ImportDocument, type LedgerPrune, AuditsSection, BulkSection,
+  CollectionSection, ImportDocument, LedgerPrune, ManagedLocationsSection,
+  PlacedSection, RulesSection, SectionResult, TargetSetsSection,
 }
 import shared/domain/copy_key
 import support/ref
@@ -32,6 +32,7 @@ fn empty_document() -> ImportDocument {
     managed_locations: None,
     members: None,
     placed: None,
+    audits: None,
   )
 }
 
@@ -60,13 +61,14 @@ fn build_ports(
     replace_target_sets: fn(_codes) {
       record_if_ok(written, [TargetSetsSection], replace_target_sets_result)
     },
-    replace_plan: fn(rules, bulk, managed, placed) {
+    replace_plan: fn(rules, bulk, managed, placed, audits) {
       let sections =
         [
           option.map(rules, fn(_) { RulesSection }),
           option.map(bulk, fn(_) { BulkSection }),
           option.map(managed, fn(_) { ManagedLocationsSection }),
           option.map(placed, fn(_) { PlacedSection }),
+          option.map(audits, fn(_) { AuditsSection }),
         ]
         |> option.values
       record_if_ok(written, sections, replace_plan_result)
@@ -153,6 +155,7 @@ pub fn target_sets_and_the_plan_write_before_the_collection_test() {
       managed_locations: None,
       members: None,
       placed: Some([]),
+      audits: None,
     )
   let import_ports =
     build_ports(

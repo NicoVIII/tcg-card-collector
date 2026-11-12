@@ -76,6 +76,10 @@ has since replaced that with `LocationRef`, and audit history follows it.
 - Renaming a rule target orphans that location's audit history, as it
   orphans its placed rows. `RelocatePlacedCards` doesn't re-point audit
   history.
-- The backup export doesn't carry audit history yet, so a restore drops it.
-  A restore also leaves existing history in place even though the restored
-  ledger may differ.
+- The backup export carries audit history from `format_version` 3 (#183),
+  and a restore replaces it with the file's. A file that restores the
+  ledger without history, which includes every older format, clears it
+  instead of keeping it: each audit attested a ledger the restore replaces,
+  and a kept "audited two days ago" would vouch for rows nobody checked.
+  Replacing managed locations always drops their history, since a restore
+  reuses position-based ids.
