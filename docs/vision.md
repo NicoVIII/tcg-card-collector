@@ -4,7 +4,7 @@ This document states why the project exists, where it is heading, and what it de
 
 ## What is this?
 
-A self-hosted service for managing a Magic: The Gathering card collection and planning its physical organization. Card metadata is synced from Scryfall into a catalog, the owned collection is imported from CSV exports, and user-defined location rules turn the collection into grouped/sorted projections for sorting real cards into real storage.
+A self-hosted service for managing a Magic: The Gathering card collection and planning its physical organization. Card metadata is synced from Scryfall into a catalog, the owned collection is entered by hand and moves between installs as an export file, and user-defined location rules turn the collection into grouped/sorted projections for sorting real cards into real storage.
 
 ## Why it exists
 
@@ -16,7 +16,7 @@ Three purposes, all first-class:
 
 ## Current status
 
-The MVP vertical slice works end-to-end: catalog sync from Scryfall, CSV collection import plus incremental manual adds, and inventory rules and projections — over both Skir RPC and REST.
+The MVP vertical slice works end-to-end: catalog sync from Scryfall, manual adds and removals, and inventory rules and projections — over both Skir RPC and REST.
 
 [v0.1.0](https://github.com/NicoVIII/tcg-card-collector/milestone/1) made it safe for personal use: upgrades don't lose data, the core loop holds up at real collection size, and versioned images ship through a written release procedure.
 

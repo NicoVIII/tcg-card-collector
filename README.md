@@ -3,16 +3,17 @@
 [![Last commit](https://img.shields.io/github/last-commit/NicoVIII/tcg-card-collector?style=flat-square)](https://github.com/NicoVIII/tcg-card-collector/commits/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
 
-A self-hosted service for managing a Magic: The Gathering card collection and planning its physical organization. Card metadata is synced from Scryfall, the owned collection is imported from CSV exports, and user-defined location rules turn the collection into grouped and sorted projections — a plan for sorting real cards into real storage.
+A self-hosted service for managing a Magic: The Gathering card collection and planning its physical organization. Card metadata is synced from Scryfall, the owned collection is entered by hand and can move between installs as an export file, and user-defined location rules turn the collection into grouped and sorted projections — a plan for sorting real cards into real storage.
 
 See [docs/vision.md](docs/vision.md) for why the project exists, where it is heading, and what it deliberately will not do.
 
 ## What works today
 
 - Catalog sync from Scryfall
-- CSV collection import replacing the live collection
 - Adding, removing, or adjusting owned quantities, correcting the placed ledger to match
 - Location rules and inventory projections for physical sorting
+- Place cards: file the projection into real storage one session at a time, with each row showing which section of its location it belongs in and an "Up to here" button to mark a run of cards placed at once
+- Set targets: mark sets to collect and see how many of each set's cards you own
 - Decks: a named list of owned copies kept out of the binders — the projection takes a deck's cards before any rule, shows what a deck is missing when the collection owns fewer than it lists, and won't let a removal quietly eat into a deck
 - A re-sort worklist flags placed copies a rule change left behind, and re-points a renamed location's records without treating it as a physical move
 - Location audits check a binder, box, or deck against what's recorded there and correct the record, including moving a misfiled card from where it was recorded

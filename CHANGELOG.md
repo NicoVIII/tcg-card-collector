@@ -48,8 +48,8 @@ Each release section uses only the subheadings it needs:
 
 - Removing cards whose copies could have come from more than one place asks where each was taken
   from (a location, or unplaced), and only that location stops counting it as placed. Before, the
-  first location alphabetically lost the copy, whichever one it really left. Collection imports
-  still use that order (#158).
+  first location alphabetically lost the copy, whichever one it really left. A restore from file
+  still takes copies off in that order (#158).
 - A restore lists which placed copies it will take off the ledger, and from which location or
   deck, both before you confirm and after it finishes, so you can check those places. Before,
   the preview gave no location, and it warned about nothing when the file had no placed ledger
