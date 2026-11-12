@@ -26,6 +26,8 @@ The MVP vertical slice works end-to-end: catalog sync from Scryfall, CSV collect
 
 [v0.4.0](https://github.com/NicoVIII/tcg-card-collector/milestone/4) keeps the placed ledger true to the physical collection after that first inventory: deck cards stay out of the binder projection without being deleted, and a location's real contents can be audited against the ledger and corrected.
 
+The next release, [v0.5.0](https://github.com/NicoVIII/tcg-card-collector/milestone/5), makes set-completion tracking count: every tracked set shows what you own against its official set size.
+
 ## Direction
 
 Themes, deliberately unordered — this is not a committed sequence:
