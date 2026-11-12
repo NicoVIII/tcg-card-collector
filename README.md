@@ -98,4 +98,4 @@ Gleam backend (Erlang target) and SolidJS/TypeScript frontend, connected by a [S
 
 ## Development
 
-Setup, commands, and quality gates are documented in the [development guide](docs/dev/development.md).
+Pull requests are welcome; for anything beyond a small fix, open an issue first so scope can be checked against the [vision](docs/vision.md). Setup, commands, and quality gates are documented in the [development guide](docs/dev/development.md).
