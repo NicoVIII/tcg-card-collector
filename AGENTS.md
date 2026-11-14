@@ -8,6 +8,16 @@ Self-hosted service for managing a Magic: The Gathering collection and planning 
 
 Gleam backend (Erlang target) + SolidJS/TypeScript frontend, connected by a Skir contract (contract-first RPC with code generation for both sides).
 
+## Standards
+
+The standards this repo is held to are a git submodule at `docs/standards/`. Read the file before the work it names. If the folder is empty, run `git submodule update --init`.
+
+- `docs/standards/architecture.md` — designing or reviewing module structure, domain types, boundaries, or error handling.
+- `docs/standards/testing.md` — writing, placing, or reviewing tests, or verifying by hand that a change works.
+- `docs/standards/repo-setup.md` — creating a repository or changing its tooling: task runner, hooks, CI, devcontainer, dependency updates, releases.
+- `docs/standards/server-backend.md` — designing or reviewing a server backend: its contexts, use cases, API contract, database schema, or migrations.
+- `docs/standards/documentation.md` — deciding where knowledge gets written down, or writing or reviewing a README, CONTRIBUTING.md, AGENTS.md, decision record, or developer doc.
+
 ## Code Shape
 
 Readability rules that hold across the stack; each sub-tree's AGENTS.md adds its own specifics.

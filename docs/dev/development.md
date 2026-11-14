@@ -4,6 +4,8 @@ Everything needed to set up a working environment, run the service locally, and 
 
 ## Environment Setup (fresh clone / new machine)
 
+Clone with `git clone --recurse-submodules`: the standards this repo is held to are a submodule at `docs/standards/`. A clone made without the flag gets them with `git submodule update --init`; the devcontainer runs that on create.
+
 1. `just dbmate-install` then `just dbmate-migrate` — SQLite migrations via dbmate; the db path comes from `TCG_DB_FILE` (`just server::run` sets it to `server/db/tcg-card-collector.db`). Some migrations request a catalog reset (adding a Scryfall-sourced column); after applying one, the next server start re-downloads the full catalog before the Catalog page shows a last-refresh entry again — a few minutes, not instant.
 2. `lefthook install` — one-time, manual; pre-commit then runs the check suite on staged content.
 

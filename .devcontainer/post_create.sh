@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+git submodule update --init
+
 sudo apt-get update
 
 # Install apt repository for modern Erlang/OTP releases.
