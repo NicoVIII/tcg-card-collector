@@ -41,7 +41,10 @@ Core terms:
   identity, raw type line, release date, mana value), parsed into shared value
   types once at the sync boundary.
 - CardSet: one set's metadata — code, name, release date, card count, official
-  printed size, icon, and the parent-set link that chains a set family.
+  size, icon, and the parent-set link that chains a set family.
+- OfficialSize: a set's collector-number denominator excluding extras,
+  resolved once at sync from Scryfall `printed_size`, then MTGJSON
+  `baseSetSize`, then a token set's card count — or Unknown (ADR 0025).
 - ProbeResult / RefreshRecord: trace of the last refresh probe — when, which
   upstream version, and whether it succeeded, was skipped, or failed.
 
@@ -274,11 +277,10 @@ Purpose:
 
 Core terms:
 - TargetSet: a set (by set code) the user has marked as one they want to track completion for.
-- SetCompletion: the owned/total pair for one target set — "owned" is the count of distinct
-  `(set_code, collector_number)` keys from the target set that appear in the
-  collection (exact key match only, no name joins or base-set/variant filtering);
-  "total" is the count of distinct collector numbers the catalog has for that set. A target set
-  absent from the catalog has `total: 0`.
+- SetCompletion: the owned/total pair for one target set — "total" is the set's OfficialSize,
+  and "owned" is the count of distinct owned collector numbers from 1 to that size (exact key
+  match only, so extras don't count). A set with no official size, or one absent from the
+  catalog, has no total, and "owned" counts every owned card of the set.
 
 Boundary notes:
 - Owns both sides of target-set tracking: the write side (marking/unmarking a target set) and

@@ -1,5 +1,7 @@
 import card_catalog/domain/card_printing
 import card_catalog/domain/card_set
+import card_catalog/domain/official_size
+import gleam/dict.{type Dict}
 import gleam/dynamic/decode
 import gleam/int
 import gleam/io
@@ -360,6 +362,7 @@ type RawSet {
     released_at: String,
     card_count: Int,
     printed_size: Option(Int),
+    set_type: String,
     icon_svg_uri: String,
     parent_set_code: Option(String),
   )
@@ -385,6 +388,7 @@ fn raw_set_decoder() -> decode.Decoder(RawSet) {
     None,
     decode.optional(decode.int),
   )
+  use set_type <- decode.field("set_type", decode.string)
   use icon_svg_uri <- decode.optional_field(
     "icon_svg_uri",
     None,
@@ -403,13 +407,17 @@ fn raw_set_decoder() -> decode.Decoder(RawSet) {
     released_at: option.unwrap(released_at, ""),
     card_count:,
     printed_size:,
+    set_type:,
     icon_svg_uri: option.unwrap(icon_svg_uri, ""),
     parent_set_code:,
   ))
 }
 
 // An invalid set is logged and dropped rather than failing the whole page.
-fn to_card_set(raw: RawSet) -> Result(card_set.CardSet, Nil) {
+fn to_card_set(
+  raw: RawSet,
+  fallback_sizes: Dict(String, Int),
+) -> Result(card_set.CardSet, Nil) {
   case
     card_set.from_raw(
       code: raw.code,
@@ -417,6 +425,9 @@ fn to_card_set(raw: RawSet) -> Result(card_set.CardSet, Nil) {
       released_at: raw.released_at,
       card_count: raw.card_count,
       printed_size: raw.printed_size,
+      fallback_size: dict.get(fallback_sizes, string.lowercase(raw.code))
+        |> option.from_result,
+      kind: official_size.set_kind_from_scryfall(raw.set_type),
       icon_svg_uri: raw.icon_svg_uri,
       parent_set_code: raw.parent_set_code,
     )
@@ -431,8 +442,10 @@ fn to_card_set(raw: RawSet) -> Result(card_set.CardSet, Nil) {
 
 // Decodes one page of the Scryfall /sets response. Returns the sets on this
 // page and the next-page URL (Some only when has_more is true).
+// `fallback_sizes` is keyed by lowercased set code (ADR 0025).
 pub fn parse_sets_page(
   json_str: String,
+  fallback_sizes: Dict(String, Int),
 ) -> Result(#(List(card_set.CardSet), Option(String)), String) {
   let page_decoder = {
     use has_more <- decode.field("has_more", decode.bool)
@@ -453,5 +466,5 @@ pub fn parse_sets_page(
     True -> next_page
     False -> None
   }
-  Ok(#(list.filter_map(raw_sets, to_card_set), next))
+  Ok(#(list.filter_map(raw_sets, to_card_set(_, fallback_sizes)), next))
 }

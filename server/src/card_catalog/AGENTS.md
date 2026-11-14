@@ -19,9 +19,10 @@ Context-specific rules; cross-context rules live in `server/AGENTS.md`.
   `WU`). Canonical WUBRG order exists only after parsing into the shared
   `ColorIdentity` type. Never string-match canonical forms in SQL against this
   column.
-- **A migration that adds or backfills a `catalog_cards` column must force a
-  full reload.** The data for any such column comes from the Scryfall bulk
-  dump, and `catalog_dao.bulk_load` is `DELETE` + reinsert — there is no
+- **A migration that adds or backfills a `catalog_cards` or `catalog_sets`
+  column must force a full reload.** The data for any such column comes from
+  upstream (the Scryfall bulk dump, `/sets`, MTGJSON's set list), and both
+  tables are `DELETE` + reinsert (`bulk_load`, `replace_sets`) — there is no
   incremental path, so the new column stays NULL until the next full import.
   The gate that decides whether a refresh runs at all is
   `refresh_record.is_probe_due`, keyed on `catalog_sync_metadata.last_probe_at`
@@ -40,3 +41,7 @@ Context-specific rules; cross-context rules live in `server/AGENTS.md`.
   migration time — a full bulk download plus reinsert, taking a few minutes.
   Until it completes, the Catalog page reports `never_run` and the new column
   reads NULL for existing rows.
+- **MTGJSON is a fallback source for the official set size only**
+  ([ADR 0025](../../../docs/decisions/0025-mtgjson-fallback-for-official-set-size.md)).
+  `official_size.resolve` applies the precedence once at sync; don't read
+  other MTGJSON fields into the catalog without a new decision.

@@ -2,7 +2,7 @@ import card_catalog/application/queries/get_cards/handler as get_cards_handler
 import card_catalog/application/queries/get_cards/ports as get_cards_ports
 import card_catalog/application/queries/get_set_metadata/handler as get_set_metadata_handler
 import card_catalog/application/queries/get_set_metadata/ports as get_set_metadata_ports
-import card_catalog/application/queries/get_set_printed_sizes/handler as get_set_printed_sizes_handler
+import card_catalog/application/queries/get_set_official_sizes/handler as get_set_official_sizes_handler
 import card_catalog/application/queries/list_cards/handler as list_cards_handler
 import card_catalog/application/queries/list_cards/ports as list_cards_ports
 import card_catalog/application/queries/list_set_card_keys/handler as list_set_card_keys_handler
@@ -16,7 +16,7 @@ import card_catalog/infrastructure/adapters/queries/get_cards/adapter as get_car
 import card_catalog/infrastructure/adapters/queries/get_set_metadata/adapter as get_set_metadata_adapter
 
 // nolint: depends_only_on -- glinter_arch doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a gleam-libs change
-import card_catalog/infrastructure/adapters/queries/get_set_printed_sizes/adapter as get_set_printed_sizes_adapter
+import card_catalog/infrastructure/adapters/queries/get_set_official_sizes/adapter as get_set_official_sizes_adapter
 
 // nolint: depends_only_on -- glinter_arch doesn't yet allow Driver->own-BC-Infrastructure, though AGENTS.md documents it; fixing needs a gleam-libs change
 import card_catalog/infrastructure/adapters/queries/list_cards/adapter as list_cards_adapter
@@ -51,12 +51,12 @@ pub fn list_set_card_keys(
   )
 }
 
-pub fn get_set_printed_sizes(
+pub fn get_set_official_sizes(
   set_codes: List(String),
 ) -> Result(Dict(String, Option(Int)), String) {
-  get_set_printed_sizes_handler.execute(
-    get_set_printed_sizes_handler.GetSetPrintedSizesQuery(set_codes:),
-    get_set_printed_sizes_adapter.new(),
+  get_set_official_sizes_handler.execute(
+    get_set_official_sizes_handler.GetSetOfficialSizesQuery(set_codes:),
+    get_set_official_sizes_adapter.new(),
   )
 }
 

@@ -7,9 +7,9 @@ pub type TargetSetsPort =
 pub type SetCardKeysPort =
   fn(List(String)) -> Result(Dict(String, List(String)), String)
 
-// Per-set official size (Scryfall printed_size). None when the set has no
+// Per-set official size (resolved by the catalog, ADR 0025). None when the set has no
 // official size, in which case completion is reported without a denominator.
-pub type PrintedSizesPort =
+pub type OfficialSizesPort =
   fn(List(String)) -> Result(Dict(String, Option(Int)), String)
 
 pub type OwnedCard {
@@ -27,7 +27,7 @@ pub type SetCompletionPorts {
   SetCompletionPorts(
     target_sets: TargetSetsPort,
     set_card_keys: SetCardKeysPort,
-    printed_sizes: PrintedSizesPort,
+    official_sizes: OfficialSizesPort,
     owned_cards: OwnedCardsPort,
   )
 }

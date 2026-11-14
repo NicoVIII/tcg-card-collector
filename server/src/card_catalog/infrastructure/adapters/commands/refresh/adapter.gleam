@@ -1,5 +1,6 @@
 import card_catalog/application/commands/refresh/ports
 import card_catalog/infrastructure/adapters/commands/refresh/now_adapter
+import card_catalog/infrastructure/clients/mtgjson_client
 import card_catalog/infrastructure/clients/scryfall_client
 import card_catalog/infrastructure/clients/scryfall_mapper
 import card_catalog/infrastructure/daos/catalog_dao
@@ -58,8 +59,15 @@ fn import_sets_adapter(
   downloader: scryfall_client.Downloader,
 ) -> ports.ImportSetsPort {
   // Sets run strictly after cards consumed the download path — safe to reuse.
+  // Both fetches finish before the replace, so a failure keeps the old sets.
   fn() {
-    use sets <- result.try(scryfall_client.fetch_sets(downloader))
+    use fallback_sizes <- result.try(mtgjson_client.fetch_base_set_sizes(
+      downloader,
+    ))
+    use sets <- result.try(scryfall_client.fetch_sets(
+      downloader,
+      fallback_sizes,
+    ))
     catalog_dao.replace_sets(sets)
   }
 }

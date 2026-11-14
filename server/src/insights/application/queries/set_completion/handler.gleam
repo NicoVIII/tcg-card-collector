@@ -16,7 +16,7 @@ pub fn execute(
 ) -> Result(List(ports.SetCompletionReadModel), String) {
   use target_sets <- result.try(ports.target_sets())
   use catalog_keys <- result.try(ports.set_card_keys(target_sets))
-  use printed_sizes <- result.try(ports.printed_sizes(target_sets))
+  use official_sizes <- result.try(ports.official_sizes(target_sets))
   use owned_cards <- result.try(ports.owned_cards())
   let owned =
     owned_cards
@@ -30,9 +30,9 @@ pub fn execute(
       |> result.unwrap([])
       |> list.filter(fn(cn) { set.contains(owned, #(set_code, cn)) })
 
-    case dict.get(printed_sizes, set_code) |> result.unwrap(None) {
-      // Official size known: the denominator is printed_size and only cards
-      // numbered within 1..printed_size count toward completion (extras excluded).
+    case dict.get(official_sizes, set_code) |> result.unwrap(None) {
+      // Official size known: the denominator is the official size and only cards
+      // numbered within 1..size count toward completion (extras excluded).
       Some(size) ->
         ports.SetCompletionReadModel(
           set_code:,
@@ -54,9 +54,9 @@ pub fn execute(
 }
 
 // A card is part of the official set when its collector number parses as an
-// integer within 1..printed_size; non-numeric or out-of-range numbers are extras.
-fn is_official(collector_number: String, printed_size: Int) -> Bool {
+// integer within 1..official_size; non-numeric or out-of-range numbers are extras.
+fn is_official(collector_number: String, official_size: Int) -> Bool {
   int.parse(collector_number)
-  |> result.map(fn(n) { n >= 1 && n <= printed_size })
+  |> result.map(fn(n) { n >= 1 && n <= official_size })
   |> result.unwrap(False)
 }

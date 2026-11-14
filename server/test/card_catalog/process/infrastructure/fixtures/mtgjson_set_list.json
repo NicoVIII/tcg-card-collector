@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "date": "2024-01-01",
+    "version": "5.2.2+20240101"
+  },
+  "data": [
+    {
+      "code": "LEA",
+      "name": "Limited Edition Alpha",
+      "baseSetSize": 290,
+      "type": "core"
+    },
+    {
+      "code": "GRN",
+      "name": "Guilds of Ravnica",
+      "baseSetSize": 259,
+      "type": "expansion"
+    },
+    {
+      "code": "M11",
+      "name": "Magic 2011",
+      "baseSetSize": 0,
+      "type": "core"
+    },
+    {
+      "code": "ZZZ",
+      "name": "Undated",
+      "baseSetSize": null,
+      "type": "box"
+    }
+  ]
+}

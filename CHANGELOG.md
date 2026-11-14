@@ -16,6 +16,21 @@ Each release section uses only the subheadings it needs:
 
 ## Unreleased
 
+### Changed
+
+- Set completion (#113) now has an official set size for most sets, including recent expansions
+  such as Throne of Eldraine and Kaldheim: where Scryfall publishes no size, it comes from
+  [MTGJSON](https://mtgjson.com), and a token set counts all its cards. Sets with no known size
+  say so instead of showing `owned / —`.
+
+### Upgrading
+
+- The catalog refresh now also downloads MTGJSON's set list (about 12 MB), so the server needs
+  outbound access to `mtgjson.com` as well as Scryfall. If MTGJSON is unreachable, the refresh
+  fails and the previous set data stays in place.
+- The first boot after upgrading reloads the catalog (a few minutes); set completion shows no
+  sizes until that finishes.
+
 ## v0.4.0 — 2026-11-12
 
 ### Added

@@ -7,15 +7,18 @@
       "object": "set",
       "code": "lea",
       "name": "Limited Edition Alpha",
+      "set_type": "core",
       "released_at": "1993-08-05",
       "card_count": 295,
       "icon_svg_uri": "https://svgs.scryfall.io/sets/lea.svg",
-      "parent_set_code": null
+      "parent_set_code": null,
+      "printed_size": 295
     },
     {
       "object": "set",
       "code": "grn",
       "name": "Guilds of Ravnica",
+      "set_type": "expansion",
       "released_at": null,
       "card_count": 259,
       "icon_svg_uri": "https://svgs.scryfall.io/sets/grn.svg"
@@ -24,6 +27,7 @@
       "object": "set",
       "code": "tgrn",
       "name": "Guilds of Ravnica Tokens",
+      "set_type": "token",
       "released_at": "2018-10-05",
       "card_count": 20,
       "icon_svg_uri": "https://svgs.scryfall.io/sets/tgrn.svg",

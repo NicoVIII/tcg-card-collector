@@ -1,3 +1,4 @@
+import card_catalog/domain/official_size.{type OfficialSize, type SetKind}
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import shared/domain/release_date.{type ReleaseDate}
@@ -9,9 +10,7 @@ pub type CardSet {
     // None when the source doesn't date the set (documented nullable).
     released_at: Option(ReleaseDate),
     card_count: Int,
-    // Scryfall's printed_size: the official set size (printed collector-number
-    // denominator), excluding extras. None when Scryfall omits it.
-    printed_size: Option(Int),
+    official_size: OfficialSize,
     icon_svg_uri: String,
     // The parent set this set belongs to (tokens, promos, art series, … hang off
     // their parent), canonicalized like `code`. None for root sets.
@@ -37,6 +36,8 @@ pub fn from_raw(
   released_at raw_released_at: String,
   card_count card_count: Int,
   printed_size printed_size: Option(Int),
+  fallback_size fallback_size: Option(Int),
+  kind kind: SetKind,
   icon_svg_uri icon_svg_uri: String,
   parent_set_code raw_parent: Option(String),
 ) -> Result(CardSet, String) {
@@ -63,7 +64,12 @@ pub fn from_raw(
         name:,
         released_at:,
         card_count:,
-        printed_size:,
+        official_size: official_size.resolve(
+          printed_size:,
+          fallback_size:,
+          kind:,
+          card_count:,
+        ),
         icon_svg_uri:,
         parent_set_code:,
       ))

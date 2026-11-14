@@ -38,25 +38,35 @@ const sets_page1_fixture = fixture_dir <> "/scryfall_sets_page1.json"
 
 const sets_page2_fixture = fixture_dir <> "/scryfall_sets_page2.json"
 
+const mtgjson_fixture = fixture_dir <> "/mtgjson_set_list.json"
+
+const mtgjson_malformed_fixture = fixture_dir
+  <> "/mtgjson_set_list_malformed.json"
+
 const fixture_updated_at = "2024-01-01T00:00:00.000Z"
 
 // URL routing for fake downloaders:
 // - "fixture.local/bulk"   → bulk cards fixture (the jsonl_download_uri in metadata.json)
 // - "fixture.local/sets"   → sets page 2 (next_page URL from page1 fixture)
 // - "scryfall.com/sets"    → sets page 1 (the /sets endpoint the client calls)
+// - "mtgjson.com"          → MTGJSON SetList fixture
 // - anything else          → metadata fixture
 fn route_url(url: String, bulk: String) -> String {
   case string.contains(url, "fixture.local/bulk") {
     True -> bulk
-    False ->
-      case string.contains(url, "fixture.local/sets") {
-        True -> sets_page2_fixture
-        False ->
-          case string.contains(url, "scryfall.com/sets") {
-            True -> sets_page1_fixture
-            False -> metadata_fixture
-          }
-      }
+    False -> route_non_bulk_url(url)
+  }
+}
+
+fn route_non_bulk_url(url: String) -> String {
+  let routes = [
+    #("mtgjson.com", mtgjson_fixture),
+    #("fixture.local/sets", sets_page2_fixture),
+    #("scryfall.com/sets", sets_page1_fixture),
+  ]
+  case list.find(routes, fn(route) { string.contains(url, route.0) }) {
+    Ok(#(_, fixture)) -> fixture
+    Error(Nil) -> metadata_fixture
   }
 }
 
@@ -87,6 +97,19 @@ fn fake_downloader() -> scryfall_client.Downloader {
 
 fn enriched_downloader() -> scryfall_client.Downloader {
   downloader_for(enriched_bulk_fixture)
+}
+
+// The fake downloader, with the MTGJSON request answered by `mtgjson`.
+fn downloader_with_mtgjson(
+  mtgjson: Result(String, String),
+) -> scryfall_client.Downloader {
+  let base = fake_downloader()
+  scryfall_client.Downloader(download: fn(url) {
+    case string.contains(url, "mtgjson.com") {
+      True -> mtgjson
+      False -> base.download(url)
+    }
+  })
 }
 
 pub fn import_succeeds_and_loads_cards_test() {
@@ -293,6 +316,78 @@ pub fn parent_set_code_stored_test() {
   assert query_set_parent("lea") == ""
   // "grn" omits the key entirely → stored NULL
   assert query_set_parent("grn") == ""
+}
+
+fn query_set_official_size(set_code: String) -> #(option.Option(Int), String) {
+  let decoder = {
+    use size <- decode.field(0, decode.optional(decode.int))
+    use source <- decode.field(1, decode.optional(decode.string))
+    decode.success(#(size, option.unwrap(source, "")))
+  }
+  case
+    sqlite_store.query(
+      "SELECT official_size, official_size_source FROM catalog_sets WHERE set_code = ?;",
+      [sqlight.text(set_code)],
+      decoder,
+    )
+  {
+    Ok([row, ..]) -> row
+    _ -> #(option.None, "no row")
+  }
+}
+
+// ADR 0025's precedence, end to end through both upstream fixtures.
+pub fn import_resolves_official_set_sizes_test() {
+  use _db <- test_db.with_temp_db()
+
+  let port = adapter.new_with_downloader(fake_downloader())
+  assert handler.execute(handler.RefreshCatalogCommand, port) == Ok(Nil)
+
+  // Scryfall says 295, MTGJSON 290: Scryfall wins.
+  assert query_set_official_size("lea") == #(option.Some(295), "printed_size")
+  // No printed_size; MTGJSON's uppercase "GRN" matches.
+  assert query_set_official_size("grn") == #(option.Some(259), "base_set_size")
+  // Token set with neither: its card_count.
+  assert query_set_official_size("tgrn")
+    == #(option.Some(20), "token_card_count")
+  // MTGJSON's 0 means unknown, not an empty set.
+  assert query_set_official_size("m11") == #(option.None, "")
+  // In neither source.
+  assert query_set_official_size("fut") == #(option.None, "")
+}
+
+// ADR 0025: an MTGJSON failure fails the sets import, names MTGJSON, and
+// leaves the previously stored sets in place.
+pub fn mtgjson_failure_fails_refresh_and_keeps_sets_test() {
+  use _db <- test_db.with_temp_db()
+  let assert Ok(Nil) =
+    sqlite_store.exec(
+      "INSERT INTO catalog_sets (set_code, name, released_at, card_count, icon_svg_uri) VALUES ('old', 'Old Set', '', 0, '');",
+      [],
+    )
+
+  let port =
+    adapter.new_with_downloader(
+      downloader_with_mtgjson(Error("curl: (6) Could not resolve host")),
+    )
+  let assert Error(error) = handler.execute(handler.RefreshCatalogCommand, port)
+
+  assert string.contains(error.reason, "mtgjson")
+  assert query_set_codes() == ["old"]
+}
+
+// A present but non-numeric baseSetSize is a format change, not "unknown".
+pub fn malformed_mtgjson_size_fails_refresh_test() {
+  use _db <- test_db.with_temp_db()
+
+  let port =
+    adapter.new_with_downloader(
+      downloader_with_mtgjson(Ok(mtgjson_malformed_fixture)),
+    )
+  let assert Error(error) = handler.execute(handler.RefreshCatalogCommand, port)
+
+  assert string.contains(error.reason, "mtgjson")
+  assert string.contains(error.reason, "baseSetSize")
 }
 
 // replace_sets is idempotent: a second import replaces stale rows entirely.

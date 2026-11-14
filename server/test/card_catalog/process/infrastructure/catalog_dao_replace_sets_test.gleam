@@ -1,4 +1,5 @@
 import card_catalog/domain/card_set.{CardSet}
+import card_catalog/domain/official_size
 import card_catalog/infrastructure/daos/catalog_dao
 import gleam/option.{None}
 import support/test_db
@@ -9,7 +10,7 @@ fn set(code: String) -> card_set.CardSet {
     name: "Set " <> code,
     released_at: None,
     card_count: 1,
-    printed_size: None,
+    official_size: official_size.Unknown,
     icon_svg_uri: "",
     parent_set_code: None,
   )

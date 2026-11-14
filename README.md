@@ -13,7 +13,7 @@ See [docs/vision.md](docs/vision.md) for why the project exists, where it is hea
 - Adding, removing, or adjusting owned quantities, correcting the placed ledger to match
 - Location rules and inventory projections for physical sorting
 - Place cards: file the projection into real storage one session at a time, with each row showing which section of its location it belongs in and an "Up to here" button to mark a run of cards placed at once
-- Set targets: mark sets to collect and see how many of each set's cards you own
+- Set targets: mark sets to collect and see how many of each set's cards you own against its official size (from Scryfall, or [MTGJSON](https://mtgjson.com) where Scryfall has none)
 - Decks: a named list of owned copies kept out of the binders — the projection takes a deck's cards before any rule, shows what a deck is missing when the collection owns fewer than it lists, and won't let a removal quietly eat into a deck
 - A re-sort worklist flags placed copies a rule change left behind, and re-points a renamed location's records without treating it as a physical move
 - Location audits check a binder, box, or deck against what's recorded there and correct the record, including moving a misfiled card from where it was recorded

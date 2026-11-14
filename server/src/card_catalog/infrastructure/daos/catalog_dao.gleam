@@ -1,4 +1,5 @@
 import card_catalog/domain/card_set
+import card_catalog/domain/official_size
 import card_catalog/domain/refresh_record
 import gleam/dynamic/decode
 import gleam/io
@@ -266,6 +267,26 @@ pub fn replace_sets(sets: List(card_set.CardSet)) -> Result(Nil, String) {
   ])
 }
 
+fn size_source_to_storage(source: official_size.SizeSource) -> String {
+  case source {
+    official_size.ScryfallPrintedSize -> "printed_size"
+    official_size.MtgjsonBaseSetSize -> "base_set_size"
+    official_size.TokenCardCount -> "token_card_count"
+  }
+}
+
+fn official_size_params(
+  size: official_size.OfficialSize,
+) -> List(sqlight.Value) {
+  case size {
+    official_size.Known(size:, source:) -> [
+      sqlight.int(size),
+      sqlight.text(size_source_to_storage(source)),
+    ]
+    official_size.Unknown -> [sqlight.null(), sqlight.null()]
+  }
+}
+
 fn insert_sets_chunk_statement(
   chunk: List(card_set.CardSet),
 ) -> #(String, List(sqlight.Value)) {
@@ -282,14 +303,15 @@ fn insert_sets_chunk_statement(
           |> option.unwrap(""),
         ),
         sqlight.int(s.card_count),
-        sqlight.nullable(sqlight.int, s.printed_size),
-        sqlight.text(s.icon_svg_uri),
-        sqlight.nullable(sqlight.text, s.parent_set_code),
+        ..list.append(official_size_params(s.official_size), [
+          sqlight.text(s.icon_svg_uri),
+          sqlight.nullable(sqlight.text, s.parent_set_code),
+        ])
       ]
     })
   #(
-    "INSERT INTO catalog_sets (set_code, name, released_at, card_count, printed_size, icon_svg_uri, parent_set_code) VALUES "
-      <> sqlite_store.placeholders(list.length(chunk), "(?,?,?,?,?,?,?)")
+    "INSERT INTO catalog_sets (set_code, name, released_at, card_count, official_size, official_size_source, icon_svg_uri, parent_set_code) VALUES "
+      <> sqlite_store.placeholders(list.length(chunk), "(?,?,?,?,?,?,?,?)")
       <> ";",
     params,
   )
@@ -327,33 +349,33 @@ pub fn get_set_metadata(
   )
 }
 
-fn set_printed_size_row_decoder() -> decode.Decoder(#(String, Option(Int))) {
+fn set_official_size_row_decoder() -> decode.Decoder(#(String, Option(Int))) {
   use set_code <- decode.field(0, decode.string)
-  use printed_size <- decode.field(1, decode.optional(decode.int))
-  decode.success(#(set_code, printed_size))
+  use size <- decode.field(1, decode.optional(decode.int))
+  decode.success(#(set_code, size))
 }
 
-fn get_set_printed_sizes_chunk(
+fn get_set_official_sizes_chunk(
   codes: List(String),
 ) -> Result(List(#(String, Option(Int))), String) {
   sqlite_store.query(
-    "SELECT set_code, printed_size FROM catalog_sets WHERE set_code IN ("
+    "SELECT set_code, official_size FROM catalog_sets WHERE set_code IN ("
       <> sqlite_store.placeholders(list.length(codes), "?")
       <> ");",
     list.map(codes, sqlight.text),
-    set_printed_size_row_decoder(),
+    set_official_size_row_decoder(),
   )
 }
 
 // Sets absent from catalog_sets are simply missing from the result; a NULL
-// printed_size maps to None. Both mean "no official size" to the caller.
-pub fn get_set_printed_sizes(
+// official_size maps to None. Both mean "no official size" to the caller.
+pub fn get_set_official_sizes(
   set_codes: List(String),
 ) -> Result(List(#(String, Option(Int))), String) {
   sqlite_store.query_in_chunks(
     set_codes,
     get_by_keys_batch_size,
-    get_set_printed_sizes_chunk,
+    get_set_official_sizes_chunk,
   )
 }
 

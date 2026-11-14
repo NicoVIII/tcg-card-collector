@@ -77,7 +77,8 @@ export function InsightsPage() {
           <For each={completionQuery.data}>
             {(row) => (
               <li>
-                {row.set_code}: {row.owned} / {row.total ?? "—"}
+                {row.set_code}: {row.owned}
+                {row.total === null ? " (official size unknown)" : ` / ${row.total}`}
                 <ConfirmButton
                   label="Remove"
                   ariaLabel={`Remove target set ${row.set_code}`}

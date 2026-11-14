@@ -1,6 +1,7 @@
 import card_catalog/domain/card_set
 import card_catalog/infrastructure/clients/scryfall_mapper
 import gleam/bool
+import gleam/dict.{type Dict}
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
@@ -109,6 +110,7 @@ pub fn fetch_metadata(io: Downloader) -> Result(#(String, String), String) {
 
 fn fetch_sets_loop(
   io: Downloader,
+  fallback_sizes: Dict(String, Int),
   url: String,
   acc: List(card_set.CardSet),
   page: Int,
@@ -126,17 +128,22 @@ fn fetch_sets_loop(
     |> or_fail("sets read"),
   )
   use #(sets, next_page) <- result.try(
-    scryfall_mapper.parse_sets_page(content) |> or_fail("sets parse"),
+    scryfall_mapper.parse_sets_page(content, fallback_sizes)
+    |> or_fail("sets parse"),
   )
   let collected = list.append(acc, sets)
   case next_page {
     None -> Ok(collected)
-    Some(next_url) -> fetch_sets_loop(io, next_url, collected, page + 1)
+    Some(next_url) ->
+      fetch_sets_loop(io, fallback_sizes, next_url, collected, page + 1)
   }
 }
 
-pub fn fetch_sets(io: Downloader) -> Result(List(card_set.CardSet), String) {
-  fetch_sets_loop(io, sets_url, [], 0)
+pub fn fetch_sets(
+  io: Downloader,
+  fallback_sizes: Dict(String, Int),
+) -> Result(List(card_set.CardSet), String) {
+  fetch_sets_loop(io, fallback_sizes, sets_url, [], 0)
 }
 
 pub fn download_cards(io: Downloader, uri: String) -> Result(String, String) {

@@ -6,6 +6,7 @@
       "object": "set",
       "code": "m11",
       "name": "Magic 2011",
+      "set_type": "core",
       "released_at": "2010-07-16",
       "card_count": 249,
       "icon_svg_uri": "https://svgs.scryfall.io/sets/m11.svg"
@@ -14,6 +15,7 @@
       "object": "set",
       "code": "fut",
       "name": "Unreleased Future Set",
+      "set_type": "expansion",
       "card_count": 0,
       "icon_svg_uri": "https://svgs.scryfall.io/sets/default.svg"
     }
