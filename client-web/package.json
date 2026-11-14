@@ -18,7 +18,7 @@
     "@yornaath/batshit": "^0.14.0",
     "skir-client": "^1.0.22",
     "solid-js": "^1.9.15",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
