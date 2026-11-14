@@ -6,7 +6,7 @@
       "name": "tcg-card-collector-web",
       "dependencies": {
         "@solidjs/router": "^1.0.1",
-        "@tanstack/solid-query": "^5.106.1",
+        "@tanstack/solid-query": "^5.107.1",
         "@yornaath/batshit": "^0.14.0",
         "skir-client": "^1.0.22",
         "solid-js": "^1.9.15",
@@ -224,9 +224,9 @@
 
     "@solidjs/router": ["@solidjs/router@1.0.1", "", { "peerDependencies": { "solid-js": "^1.8.6" } }, "sha512-JxY0+Y8RMZZjk3pATfY5f9ANbFa26+aOf3X7KtpRC9yCuy7f2UWDL8ukx6pVot2OYOJyUfTH7LYG2bbMPZ3WDw=="],
 
-    "@tanstack/query-core": ["@tanstack/query-core@5.106.1", "", {}, "sha512-erYv/UACddcdgjOL2ixmFdK6tO/AVBeUcTCOtX2N51yZpDQ2U7KJ+xgB/bCNfsF3uoCDTqGHEEbDiFsIO9YUmQ=="],
+    "@tanstack/query-core": ["@tanstack/query-core@5.107.1", "", {}, "sha512-PSyAik11oQBEVOiVy5hjZWHmoUqOXqK1WYy4v55mcxozEfKaQgpUMsgnXhWjuESzSht8JfzqMS1m6M/9CpNgvg=="],
 
-    "@tanstack/solid-query": ["@tanstack/solid-query@5.106.1", "", { "dependencies": { "@tanstack/query-core": "5.106.1" }, "peerDependencies": { "solid-js": "^1.6.0" } }, "sha512-2cjUi6x0WnZQO5VzktXcz7ShY9q60MCTMBE0tIWV/JoByFaajfwI0yvbysCS4ZNpg824DI9WJ6jq4TysUVsmGA=="],
+    "@tanstack/solid-query": ["@tanstack/solid-query@5.107.1", "", { "dependencies": { "@tanstack/query-core": "5.107.1" }, "peerDependencies": { "solid-js": "^1.6.0" } }, "sha512-ZqwDSKk/DtKblv+09XUgrbHENvTzZvyEQK5E19j8QTrjcW2jw+bLitLdtfayC83rWNMQvkzsCqGnOj+SWnBD2w=="],
 
     "@types/babel__core": ["@types/babel__core@7.20.5", "", { "dependencies": { "@babel/parser": "^7.20.7", "@babel/types": "^7.20.7", "@types/babel__generator": "*", "@types/babel__template": "*", "@types/babel__traverse": "*" } }, "sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA=="],
 
