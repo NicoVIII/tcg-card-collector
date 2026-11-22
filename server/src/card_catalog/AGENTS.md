@@ -4,7 +4,7 @@ Context-specific rules; cross-context rules live in `server/AGENTS.md`.
 
 - **`catalog_dao.bulk_load` is a deliberate exception to "no raw SQL strings,
   use sqlight"**: it shells out to the `sqlite3` CLI's `.import` for
-  bulk-loading the ~90k-row Scryfall CSV dump. This is safe because the input
+  bulk-loading the ~115k-row Scryfall CSV dump. This is safe because the input
   is our own `scryfall_mapper` output, not user-supplied text — the injection
   risk that motivated moving everything else to `sqlight` doesn't apply here,
   and CLI bulk import is meaningfully faster than row-by-row parameterized

@@ -46,8 +46,8 @@ graph TD
 - **Portability** reads and writes every context that owns exportable data
   through its `driver/gleam` facade, so the whole exported document's shape
   lives in one place ([ADR 0019](../decisions/0019-portability-export-format.md)).
-  Collection, Insights, and Inventory Planning (rules, bulk spec, placed
-  ledger) — #119's full scope.
+  Collection, Insights, and Inventory Planning (rules, bulk spec, managed
+  locations, placed ledger, audit history).
 
 A cross-BC dependency is only legal in one shape: the consumer's
 `infrastructure/` importing the provider's `driver/gleam/` facade
@@ -128,7 +128,8 @@ Decision record:
 
 Shared cross-context code lives under `server/src/shared/`:
 
-- `shared/domain/` — shared kernel (`card_key`, `non_empty_string`); pure, no I/O.
+- `shared/domain/` — shared kernel value types (`card_key`, `copy_key`, …; listed in
+  [domain-ubiquitous-language.md](domain-ubiquitous-language.md)); pure, no I/O.
 - `shared/application/command_result.gleam` — shared app type.
 - `shared/application/event_bus.gleam` — a generic, synchronous publish/subscribe
   primitive so one bounded context can notify another (built at composition time)

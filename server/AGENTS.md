@@ -77,8 +77,9 @@ Five contexts: **card_catalog**, **collection**, **inventory_planning**,
   — no string-interpolated SQL; `?` placeholders +
   `sqlight.text`/`sqlight.int`/`sqlight.nullable`. Migrations:
   `just dbmate-migrate`; db path from `TCG_DB_FILE`.
-- **Migrations don't auto-apply in dev** — run `just dbmate-migrate` after
-  pulling or writing one. Boot triggers a catalog refresh, and a stale schema
+- **Only `just dev` / `just server::run` apply pending migrations before
+  boot** — a bare `gleam run` does not, so run `just dbmate-migrate` first
+  there. Boot triggers a catalog refresh, and a stale schema
   fails it mid-import (bit us 2026-07-12: an unapplied migration emptied
   `catalog_sets` before `replace_sets` was made atomic).
 - **All tables are STRICT** (migration 0014). New tables declare `STRICT` and
