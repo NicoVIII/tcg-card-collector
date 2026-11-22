@@ -86,10 +86,11 @@ pub fn increment_statements(
 }
 
 /// Adds each row's quantity onto the matching (key, location), inserting the
-/// row when it is absent.
+/// row when it is absent, all in one transaction — a batch spanning several
+/// chunks must not leave only its first chunks marked placed.
 pub fn increment(rows: List(PlacedCardRow)) -> Result(Nil, String) {
   increment_statements(rows)
-  |> list.try_each(fn(statement) { sqlite_store.exec(statement.0, statement.1) })
+  |> sqlite_store.exec_all_atomically
 }
 
 // The CHECK (quantity > 0) forbids ever writing a non-positive row, so a row

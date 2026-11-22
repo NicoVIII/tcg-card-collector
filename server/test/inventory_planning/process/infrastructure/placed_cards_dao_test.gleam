@@ -1,3 +1,5 @@
+import gleam/int
+import gleam/list
 import inventory_planning/infrastructure/daos/placed_cards_dao
 import support/test_db
 
@@ -47,6 +49,21 @@ pub fn increment_sums_into_existing_key_and_location_test() {
     placed_cards_dao.increment([row("lea", "1", "Binder", 3)])
 
   assert placed_cards_dao.list() == Ok([row("lea", "1", "Binder", 5)])
+}
+
+// The CHECK (quantity > 0) rejects the last row, which sits in the second
+// 100-row chunk; the first chunk must not survive on its own.
+pub fn increment_failing_in_a_later_chunk_writes_nothing_test() {
+  use _db <- test_db.with_temp_db()
+
+  let valid =
+    list.repeat(Nil, 100)
+    |> list.index_map(fn(_, i) { row("lea", int.to_string(i), "Binder", 1) })
+  let rows = list.append(valid, [row("lea", "101", "Binder", 0)])
+
+  let assert Error(_) = placed_cards_dao.increment(rows)
+
+  assert placed_cards_dao.list() == Ok([])
 }
 
 pub fn same_key_in_two_locations_stays_separate_test() {
